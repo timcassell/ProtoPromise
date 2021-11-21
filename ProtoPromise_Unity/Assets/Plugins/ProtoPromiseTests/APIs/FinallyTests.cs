@@ -4,10 +4,11 @@
 #undef PROMISE_DEBUG
 #endif
 
-using System;
 using NUnit.Framework;
+using Proto.Promises;
+using System;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class FinallyTests
     {
@@ -30,7 +31,7 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
 
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 promise.Finally(default(Action));
             });
@@ -46,7 +47,7 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise.Preserve();
 
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 promise.Finally(default(Action));
             });

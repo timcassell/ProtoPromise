@@ -7,9 +7,10 @@
 #pragma warning disable IDE1006 // Naming Styles
 
 using NUnit.Framework;
+using Proto.Promises;
 using System;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class APlus_2_2_TheThenMethod
     {
@@ -47,93 +48,93 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred();
                 var promise = deferred.Promise.Preserve();
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Action));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<Promise>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<Promise<int>>));
                 });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Action), () => { });
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Action), (string failValue) => { });
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int>), () => default(int));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int>), (string failValue) => default(int));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<Promise>), () => default(Promise));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<Promise>), (string failValue) => default(Promise));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<Promise<int>>), () => default(Promise<int>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<Promise<int>>), (string failValue) => default(Promise<int>));
                 });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Action), () => default(Promise));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Action), (string failValue) => default(Promise));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int>), () => default(Promise<int>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int>), (string failValue) => default(Promise<int>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<Promise>), () => { });
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<Promise>), (string failValue) => { });
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<Promise<int>>), () => default(int));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<Promise<int>>), (string failValue) => default(int));
                 });
@@ -149,93 +150,93 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred<int>();
                 var promise = deferred.Promise.Preserve();
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Action<int>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, int>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, Promise>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, Promise<int>>));
                 });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Action<int>), () => { });
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Action<int>), (string failValue) => { });
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, int>), () => default(int));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, int>), (string failValue) => default(int));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, Promise>), () => default(Promise));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, Promise>), (string failValue) => default(Promise));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, Promise<int>>), () => default(Promise<int>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, Promise<int>>), (string failValue) => default(Promise<int>));
                 });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Action<int>), () => default(Promise));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Action<int>), (string failValue) => default(Promise));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, int>), () => default(Promise<int>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, int>), (string failValue) => default(Promise<int>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, Promise>), () => { });
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, Promise>), (string failValue) => { });
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, Promise<int>>), () => default(int));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(default(Func<int, Promise<int>>), (string failValue) => default(int));
                 });
@@ -251,94 +252,94 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred();
                 var promise = deferred.Promise.Preserve();
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Catch(default(Action));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Catch(default(Action<string>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Catch(default(Func<Promise>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Catch(default(Func<string, Promise>));
                 });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => { }, default(Action));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => { }, default(Action<string>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => default(Promise), default(Func<Promise>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => default(Promise), default(Func<string, Promise>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => "string", default(Func<string>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => "string", default(Func<Exception, string>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => default(Promise<string>), default(Func<Promise<string>>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => default(Promise<string>), default(Func<Exception, Promise<string>>));
                 });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => default(Promise), default(Action));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => default(Promise), default(Action<string>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => { }, default(Func<Promise>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => { }, default(Func<string, Promise>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => default(Promise<string>), default(Func<string>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => default(Promise<string>), default(Func<Exception, string>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => "string", default(Func<Promise<string>>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then(() => "string", default(Func<Exception, Promise<string>>));
                 });
@@ -354,94 +355,94 @@ namespace Proto.Promises.Tests
                 var deferred = Promise.NewDeferred<int>();
                 var promise = deferred.Promise.Preserve();
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Catch(default(Func<int>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Catch(default(Func<string, int>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Catch(default(Func<Promise<int>>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Catch(default(Func<string, Promise<int>>));
                 });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => { }, default(Action));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => { }, default(Action<string>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => default(Promise), default(Func<Promise>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => default(Promise), default(Func<string, Promise>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => "string", default(Func<string>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => "string", default(Func<Exception, string>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => default(Promise<string>), default(Func<Promise<string>>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => default(Promise<string>), default(Func<Exception, Promise<string>>));
                 });
 
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => default(Promise), default(Action));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => default(Promise), default(Action<string>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => { }, default(Func<Promise>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => { }, default(Func<string, Promise>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => default(Promise<string>), default(Func<string>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => default(Promise<string>), default(Func<Exception, string>));
                 });
 
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => "string", default(Func<Promise<string>>));
                 });
-                Assert.Throws<ArgumentNullException>(() =>
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
                 {
                     promise.Then((int x) => "string", default(Func<Exception, Promise<string>>));
                 });
@@ -564,7 +565,7 @@ namespace Proto.Promises.Tests
                 deferred.Resolve();
 
                 Assert.IsFalse(deferred.TryResolve());
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
 
                 Assert.AreEqual(
                     (TestHelper.resolveVoidVoidCallbacks + TestHelper.resolveVoidConvertCallbacks +
@@ -593,7 +594,7 @@ namespace Proto.Promises.Tests
                 deferred.Resolve(1);
 
                 Assert.IsFalse(deferred.TryResolve(1));
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve(100));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(100));
 
                 Assert.AreEqual(
                     (TestHelper.resolveTVoidCallbacks + TestHelper.resolveTConvertCallbacks +
@@ -709,7 +710,7 @@ namespace Proto.Promises.Tests
                 deferred.Reject("Fail value");
 
                 Assert.IsFalse(deferred.TryReject("Fail value"));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
 
                 Assert.AreEqual(
                     (TestHelper.rejectVoidVoidCallbacks + TestHelper.rejectVoidConvertCallbacks +
@@ -732,7 +733,7 @@ namespace Proto.Promises.Tests
                 deferred.Reject("Fail value");
 
                 Assert.IsFalse(deferred.TryReject("Fail value"));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
 
                 Assert.AreEqual(
                     (TestHelper.rejectTVoidCallbacks + TestHelper.rejectTConvertCallbacks + TestHelper.rejectTTCallbacks +

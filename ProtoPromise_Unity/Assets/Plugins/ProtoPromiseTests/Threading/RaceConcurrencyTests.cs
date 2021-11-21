@@ -1,4 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL
 
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
@@ -7,11 +7,12 @@
 #endif
 
 using NUnit.Framework;
+using Proto.Promises;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Proto.Promises.Tests.Threading
+namespace ProtoPromiseTests.Threading
 {
     public class RaceConcurrencyTests
     {
@@ -69,13 +70,15 @@ namespace Proto.Promises.Tests.Threading
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredVoid(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredVoid(completeType1, out cancelationSource1);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -124,14 +127,16 @@ namespace Proto.Promises.Tests.Threading
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredVoid(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredVoid(completeType1, out cancelationSource1);
                     deferred2 = TestHelper.GetNewDeferredVoid(completeType2, out cancelationSource2);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -187,7 +192,8 @@ namespace Proto.Promises.Tests.Threading
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredVoid(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredVoid(completeType1, out cancelationSource1);
@@ -195,7 +201,8 @@ namespace Proto.Promises.Tests.Threading
                     deferred3 = TestHelper.GetNewDeferredVoid(completeType3, out cancelationSource3);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -250,7 +257,8 @@ namespace Proto.Promises.Tests.Threading
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferreds = new Promise.Deferred[]
                     {
@@ -262,7 +270,8 @@ namespace Proto.Promises.Tests.Threading
                     promises = deferreds.Select(d => d.Promise).GetEnumerator();
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -308,13 +317,15 @@ namespace Proto.Promises.Tests.Threading
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -364,14 +375,16 @@ namespace Proto.Promises.Tests.Threading
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
                     deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -428,7 +441,8 @@ namespace Proto.Promises.Tests.Threading
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
@@ -436,7 +450,8 @@ namespace Proto.Promises.Tests.Threading
                     deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -492,7 +507,8 @@ namespace Proto.Promises.Tests.Threading
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferreds = new Promise<int>.Deferred[]
                     {
@@ -504,7 +520,8 @@ namespace Proto.Promises.Tests.Threading
                     promises = deferreds.Select(d => d.Promise).GetEnumerator();
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();

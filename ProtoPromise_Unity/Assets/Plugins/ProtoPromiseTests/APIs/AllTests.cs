@@ -5,9 +5,10 @@
 #endif
 
 using System.Linq;
+using Proto.Promises;
 using NUnit.Framework;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class AllTests
     {

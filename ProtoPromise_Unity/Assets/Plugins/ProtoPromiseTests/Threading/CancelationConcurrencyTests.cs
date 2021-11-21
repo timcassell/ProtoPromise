@@ -1,15 +1,16 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL
 
 #pragma warning disable IDE0018 // Inline variable declaration
 
 using NUnit.Framework;
+using Proto.Promises;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-namespace Proto.Promises.Tests.Threading
+namespace ProtoPromiseTests.Threading
 {
     public class CancelationConcurrencyTests
     {
@@ -41,7 +42,7 @@ namespace Proto.Promises.Tests.Threading
                         cancelationSource.Cancel();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -68,7 +69,7 @@ namespace Proto.Promises.Tests.Threading
                         cancelationSource.Cancel("Cancel");
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -147,7 +148,7 @@ namespace Proto.Promises.Tests.Threading
                         cancelationSource.Dispose();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -174,7 +175,7 @@ namespace Proto.Promises.Tests.Threading
                         cancelationSource.Dispose();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -201,7 +202,7 @@ namespace Proto.Promises.Tests.Threading
                         cancelationSource.Dispose();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -496,7 +497,7 @@ namespace Proto.Promises.Tests.Threading
                         registration.Unregister();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -525,7 +526,7 @@ namespace Proto.Promises.Tests.Threading
                         registration.Unregister();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -662,8 +663,8 @@ namespace Proto.Promises.Tests.Threading
                  () => { },
                  // Parallel actions
                  () => cancelationSource.TryDispose(),
-                 () => { try { cancelationToken.Register(_ => { }); } catch (InvalidOperationException) { } },
-                 () => { try { cancelationToken.Register(1, (cv, _) => { }); } catch (InvalidOperationException) { } }
+                 () => { try { cancelationToken.Register(_ => { }); } catch (Proto.Promises.InvalidOperationException) { } },
+                 () => { try { cancelationToken.Register(1, (cv, _) => { }); } catch (Proto.Promises.InvalidOperationException) { } }
              );
         }
 
@@ -1346,7 +1347,7 @@ namespace Proto.Promises.Tests.Threading
                      {
                          object _ = cancelationToken.CancelationValue;
                      }
-                     catch (InvalidOperationException) { }
+                     catch (Proto.Promises.InvalidOperationException) { }
                  },
                  () =>
                  {
@@ -1354,7 +1355,7 @@ namespace Proto.Promises.Tests.Threading
                      {
                          Type _ = cancelationToken.CancelationValueType;
                      }
-                     catch (InvalidOperationException) { }
+                     catch (Proto.Promises.InvalidOperationException) { }
                  },
                  () =>
                  {
@@ -1363,7 +1364,7 @@ namespace Proto.Promises.Tests.Threading
                          int _;
                          cancelationToken.TryGetCancelationValueAs(out _);
                      }
-                     catch (InvalidOperationException) { }
+                     catch (Proto.Promises.InvalidOperationException) { }
                  },
                  () =>
                  {
@@ -1381,7 +1382,7 @@ namespace Proto.Promises.Tests.Threading
                      {
                          cancelationToken.Register(_ => { });
                      }
-                     catch (InvalidOperationException) { }
+                     catch (Proto.Promises.InvalidOperationException) { }
                  },
                  () =>
                  {
@@ -1389,7 +1390,7 @@ namespace Proto.Promises.Tests.Threading
                      {
                          cancelationToken.Register(1, (cv, _) => { });
                      }
-                     catch (InvalidOperationException) { }
+                     catch (Proto.Promises.InvalidOperationException) { }
                  },
                  () => { bool _ = cancelationRegistration1.IsRegistered; },
                  () => { bool _1, _2; cancelationRegistration1.GetIsRegisteredAndIsCancelationRequested(out _1, out _2); },

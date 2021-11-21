@@ -1,4 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL
 
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
@@ -7,11 +7,12 @@
 #endif
 
 using NUnit.Framework;
+using Proto.Promises;
 using System;
 using System.Linq;
 using System.Threading;
 
-namespace Proto.Promises.Tests.Threading
+namespace ProtoPromiseTests.Threading
 {
     public class ApiWithCancelationTokenConcurrencyTests
     {

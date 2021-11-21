@@ -7,10 +7,11 @@
 #endif
 
 using NUnit.Framework;
+using Proto.Promises;
 using System;
 using System.Threading;
 
-namespace Proto.Promises.Tests.Threading
+namespace ProtoPromiseTests.Threading
 {
     public class AwaitConcurrencyTests
     {

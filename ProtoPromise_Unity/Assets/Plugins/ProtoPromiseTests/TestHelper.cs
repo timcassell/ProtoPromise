@@ -2,14 +2,13 @@
 #pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 #pragma warning disable CS0618 // Type or member is obsolete
 
-using NUnit.Framework;
+using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests
 {
     public enum CompleteType
     {
@@ -17,13 +16,6 @@ namespace Proto.Promises.Tests
         Reject,
         Cancel,
         CancelFromToken,
-    }
-
-    public enum ProgressType
-    {
-        Callback,
-        CallbackWithCapture,
-        Interface
     }
 
     public enum SynchronizationType
@@ -38,205 +30,8 @@ namespace Proto.Promises.Tests
 
     public delegate void TestAction<T>(ref T value);
 
-    public class ProgressHelper : IProgress<float>
-    {
-        public readonly object _locker = new object();
-        private readonly ProgressType _progressType;
-        private readonly SynchronizationType _synchronizationType;
-        private readonly Action<float> _onProgress;
-        volatile private bool _wasInvoked;
-        volatile private float _currentProgress = float.NaN;
-        volatile private float _expectedProgress = float.NaN;
-
-        public ProgressHelper(ProgressType progressType, SynchronizationType synchronizationType, Action<float> onProgress = null)
-        {
-            _progressType = progressType;
-            _synchronizationType = synchronizationType;
-            _onProgress = onProgress;
-        }
-
-        public void Reset()
-        {
-            TestHelper.ExecuteForegroundCallbacks();
-            _wasInvoked = false;
-            _currentProgress = _expectedProgress = float.NaN;
-        }
-
-        public void SetExpectedProgress(float expected)
-        {
-            _expectedProgress = expected;
-            _wasInvoked = false;
-        }
-
-        public void Report(float value)
-        {
-            if (_onProgress != null)
-            {
-                _onProgress.Invoke(value);
-            }
-            lock (_locker)
-            {
-                _currentProgress = value;
-                _wasInvoked = true;
-                Monitor.Pulse(_locker);
-            }
-        }
-
-        public void AssertCurrentProgress(float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
-        {
-            float currentProgress = GetCurrentProgress(expectInvoke, executeForeground);
-            if (float.IsNaN(expectedProgress))
-            {
-                Assert.IsNaN(currentProgress);
-            }
-            else
-            {
-                Assert.AreEqual(expectedProgress, currentProgress, TestHelper.progressEpsilon);
-            }
-        }
-
-        public float GetCurrentProgress(bool expectInvoke, bool executeForeground)
-        {
-            lock (_locker)
-            {
-                if (executeForeground)
-                {
-                    TestHelper.ExecuteForegroundCallbacks();
-                }
-                if (expectInvoke)
-                {
-                    // Wait for Report to be called in case it happens in a separate thread.
-                    if (!_wasInvoked)
-                    {
-                        if (!Monitor.Wait(_locker, TimeSpan.FromSeconds(1)))
-                        {
-                            throw new TimeoutException();
-                        }
-                    }
-                }
-                return _currentProgress;
-            }
-        }
-
-        public void ReportProgressAndAssertResult(Promise.DeferredBase deferred, float reportValue, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
-        {
-            lock (_locker)
-            {
-                SetExpectedProgress(expectedProgress);
-                deferred.ReportProgress(reportValue);
-                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
-            }
-        }
-
-        public void RejectAndAssertResult<TReject>(Promise.DeferredBase deferred, TReject reason, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
-        {
-            lock (_locker)
-            {
-                SetExpectedProgress(expectedProgress);
-                deferred.Reject(reason);
-                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
-            }
-        }
-
-        public void CancelAndAssertResult(Promise.DeferredBase deferred, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
-        {
-            lock (_locker)
-            {
-                SetExpectedProgress(expectedProgress);
-                deferred.Cancel();
-                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
-            }
-        }
-
-        public void CancelAndAssertResult(CancelationSource cancelationSource, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
-        {
-            lock (_locker)
-            {
-                SetExpectedProgress(expectedProgress);
-                cancelationSource.Cancel();
-                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
-            }
-        }
-
-        public void ResolveAndAssertResult(Promise.Deferred deferred, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
-        {
-            lock (_locker)
-            {
-                SetExpectedProgress(expectedProgress);
-                deferred.Resolve();
-                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
-            }
-        }
-
-        public void ResolveAndAssertResult<T>(Promise<T>.Deferred deferred, T result, float expectedProgress, bool expectInvoke = true, bool executeForeground = true)
-        {
-            lock (_locker)
-            {
-                SetExpectedProgress(expectedProgress);
-                deferred.Resolve(result);
-                AssertCurrentProgress(expectedProgress, expectInvoke, executeForeground);
-            }
-        }
-
-        public Promise Subscribe(Promise promise, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            if (_synchronizationType == SynchronizationType.Explicit)
-            {
-                switch (_progressType)
-                {
-                    case ProgressType.Callback:
-                        return promise.Progress(Report, TestHelper._foregroundContext, cancelationToken);
-                    case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), TestHelper._foregroundContext, cancelationToken);
-                    default:
-                        return promise.Progress(this, TestHelper._foregroundContext, cancelationToken);
-                }
-            }
-            else
-            {
-                switch (_progressType)
-                {
-                    case ProgressType.Callback:
-                        return promise.Progress(Report, (SynchronizationOption) _synchronizationType, cancelationToken);
-                    case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), (SynchronizationOption) _synchronizationType, cancelationToken);
-                    default:
-                        return promise.Progress(this, (SynchronizationOption) _synchronizationType, cancelationToken);
-                }
-            }
-        }
-
-        public Promise<T> Subscribe<T>(Promise<T> promise, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            if (_synchronizationType == SynchronizationType.Explicit)
-            {
-                switch (_progressType)
-                {
-                    case ProgressType.Callback:
-                        return promise.Progress(Report, TestHelper._foregroundContext, cancelationToken);
-                    case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), TestHelper._foregroundContext, cancelationToken);
-                    default:
-                        return promise.Progress(this, TestHelper._foregroundContext, cancelationToken);
-                }
-            }
-            else
-            {
-                switch (_progressType)
-                {
-                    case ProgressType.Callback:
-                        return promise.Progress(Report, (SynchronizationOption) _synchronizationType, cancelationToken);
-                    case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), (SynchronizationOption) _synchronizationType, cancelationToken);
-                    default:
-                        return promise.Progress(this, (SynchronizationOption) _synchronizationType, cancelationToken);
-                }
-            }
-        }
-    }
-
     // These help test all Then/Catch/ContinueWith methods at once.
-    public static partial class TestHelper
+    public static class TestHelper
     {
         public static readonly PromiseSynchronizationContext _foregroundContext;
         private static readonly List<Exception> _uncaughtExceptions = new List<Exception>();
@@ -280,10 +75,11 @@ namespace Proto.Promises.Tests
             }
             if (exceptions.Length > 0)
             {
-                if (true) // Set to false to throw all uncaught rejections, leave true to only throw 1 exception to avoid overloading the test error output.
-                    throw exceptions[0];
-                else
-                    throw new AggregateException(exceptions);
+#if true // Set to false to throw all uncaught rejections, leave true to only throw 1 exception to avoid overloading the test error output.
+                throw exceptions[0];
+#else
+                throw new AggregateException(exceptions);
+#endif
             }
         }
 
@@ -1812,6 +1608,669 @@ namespace Proto.Promises.Tests
             onCallbackAddedConvert(ref p8);
 
             promise.Forget();
+        }
+
+        public static Action<Promise>[] ResolveActionsVoid(Action onResolved)
+        {
+            return new Action<Promise>[8]
+            {
+                promise => promise.Then(() => onResolved()).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return 1; }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(1); }).Forget(),
+
+                promise => promise.Then(1, cv => onResolved()).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return 1; }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }).Forget()
+            };
+        }
+
+        public static Action<Promise<T>>[] ResolveActions<T>(Action<T> onResolved)
+        {
+            return new Action<Promise<T>>[8]
+            {
+                promise => promise.Then(v => onResolved(v)).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return 1; }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }).Forget(),
+
+                promise => promise.Then(1, (cv, v) => onResolved(v)).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return 1; }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }).Forget(),
+            };
+        }
+
+        public static Action<Promise>[] ThenActionsVoid(Action onResolved, Action onRejected)
+        {
+            return new Action<Promise>[64]
+            {
+                promise => promise.Then(() => onResolved(), () => onRejected()).Forget(),
+                promise => promise.Then(() => onResolved(), (object o) => onRejected()).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(); }, () => onRejected()).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(); }, (object o) => onRejected()).Forget(),
+                promise => promise.Then(() => { onResolved(); return 1; }, () => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(() => { onResolved(); return 1; }, (object o) => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, () => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, (object o) => { onRejected(); return 1; }).Forget(),
+
+                promise => promise.Then(() => onResolved(), () => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(() => onResolved(), (object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(); }, () => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(); }, (object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return 1; }, () => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return 1; }, (object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, () => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, (object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+
+                promise => promise.Then(1, cv => onResolved(), () => onRejected()).Forget(),
+                promise => promise.Then(1, cv => onResolved(), (object o) => onRejected()).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, () => onRejected()).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, (object o) => onRejected()).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return 1; }, () => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return 1; }, (object o) => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, () => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, (object o) => { onRejected(); return 1; }).Forget(),
+
+                promise => promise.Then(1, cv => onResolved(), () => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, cv => onResolved(), (object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, () => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, (object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return 1; }, () => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return 1; }, (object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, () => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, (object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+
+                promise => promise.Then(() => onResolved(), 1, cv => onRejected()).Forget(),
+                promise => promise.Then(() => onResolved(), 1, (int cv, object o) => onRejected()).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(); }, 1, cv => onRejected()).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(); }, 1, (int cv, object o) => onRejected()).Forget(),
+                promise => promise.Then(() => { onResolved(); return 1; }, 1, cv => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(() => { onResolved(); return 1; }, 1, (int cv, object o) => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, 1, cv => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return 1; }).Forget(),
+
+                promise => promise.Then(() => onResolved(), 1, cv => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(() => onResolved(), 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(); }, 1, cv => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return 1; }, 1, cv => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return 1; }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, 1, cv => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+
+                promise => promise.Then(1, cv => onResolved(), 1, cv => onRejected()).Forget(),
+                promise => promise.Then(1, cv => onResolved(), 1, (int cv, object o) => onRejected()).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, 1, cv => onRejected()).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, 1, (int cv, object o) => onRejected()).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return 1; }, 1, cv => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return 1; }, 1, (int cv, object o) => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, 1, cv => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return 1; }).Forget(),
+
+                promise => promise.Then(1, cv => onResolved(), 1, cv => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, cv => onResolved(), 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, 1, cv => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return 1; }, 1, cv => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return 1; }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, 1, cv => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+            };
+        }
+
+        public static Action<Promise<T>>[] ThenActions<T>(Action<T> onResolved, Action onRejected)
+        {
+            return new Action<Promise<T>>[64]
+            {
+                promise => promise.Then(v => onResolved(v), () => onRejected()).Forget(),
+                promise => promise.Then(v => onResolved(v), (object o) => onRejected()).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, () => onRejected()).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, (object o) => onRejected()).Forget(),
+                promise => promise.Then(v => { onResolved(v); return 1; }, () => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return 1; }, (object o) => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, () => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, (object o) => { onRejected(); return 1; }).Forget(),
+
+                promise => promise.Then(v => onResolved(v), () => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(v => onResolved(v), (object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, () => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, (object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return 1; }, () => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return 1; }, (object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, () => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, (object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+
+                promise => promise.Then(1, (cv, v) => onResolved(v), () => onRejected()).Forget(),
+                promise => promise.Then(1, (cv, v) => onResolved(v), (object o) => onRejected()).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, () => onRejected()).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, (object o) => onRejected()).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, () => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, (object o) => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, () => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, (object o) => { onRejected(); return 1; }).Forget(),
+
+                promise => promise.Then(1, (cv, v) => onResolved(v), () => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, (cv, v) => onResolved(v), (object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, () => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, (object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, () => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, (object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, () => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, (object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+
+                promise => promise.Then(v => onResolved(v), 1, cv => onRejected()).Forget(),
+                promise => promise.Then(v => onResolved(v), 1, (int cv, object o) => onRejected()).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, 1, cv => onRejected()).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, 1, (int cv, object o) => onRejected()).Forget(),
+                promise => promise.Then(v => { onResolved(v); return 1; }, 1, cv => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return 1; }, 1, (int cv, object o) => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, 1, cv => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return 1; }).Forget(),
+
+                promise => promise.Then(v => onResolved(v), 1, cv => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(v => onResolved(v), 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, 1, cv => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return 1; }, 1, cv => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return 1; }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, 1, cv => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+
+                promise => promise.Then(1, (cv, v) => onResolved(v), 1, cv => onRejected()).Forget(),
+                promise => promise.Then(1, (cv, v) => onResolved(v), 1, (int cv, object o) => onRejected()).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, 1, cv => onRejected()).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, 1, (int cv, object o) => onRejected()).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, 1, cv => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, 1, (int cv, object o) => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, 1, cv => { onRejected(); return 1; }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return 1; }).Forget(),
+
+                promise => promise.Then(1, (cv, v) => onResolved(v), 1, cv => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, (cv, v) => onResolved(v), 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, 1, cv => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, 1, cv => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, 1, cv => { onRejected(); return Promise.Resolved(1); }).Forget(),
+                promise => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }).Forget()
+            };
+        }
+
+        public static Action<Promise>[] CatchActionsVoid(Action onRejected)
+        {
+            return new Action<Promise>[8]
+            {
+                promise => promise.Catch(() => onRejected()).Forget(),
+                promise => promise.Catch(() => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Catch((object o) => onRejected()).Forget(),
+                promise => promise.Catch((object o) => { onRejected(); return Promise.Resolved(); }).Forget(),
+
+                promise => promise.Catch(1, cv => onRejected()).Forget(),
+                promise => promise.Catch(1, cv => { onRejected(); return Promise.Resolved(); }).Forget(),
+                promise => promise.Catch(1, (int cv, object o) => onRejected()).Forget(),
+                promise => promise.Catch(1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }).Forget()
+            };
+        }
+
+        public static Action<Promise<T>>[] CatchActions<T>(Action onRejected)
+        {
+            return new Action<Promise<T>>[8]
+            {
+                promise => promise.Catch(() => { onRejected(); return default(T); }).Forget(),
+                promise => promise.Catch(() => { onRejected(); return Promise.Resolved(default(T)); }).Forget(),
+                promise => promise.Catch((object o) => { onRejected(); return default(T); }).Forget(),
+                promise => promise.Catch((object o) => { onRejected(); return Promise.Resolved(default(T)); }).Forget(),
+
+                promise => promise.Catch(1, cv => { onRejected(); return default(T); }).Forget(),
+                promise => promise.Catch(1, cv => { onRejected(); return Promise.Resolved(default(T)); }).Forget(),
+                promise => promise.Catch(1, (int cv, object o) => { onRejected(); return default(T); }).Forget(),
+                promise => promise.Catch(1, (int cv, object o) => { onRejected(); return Promise.Resolved(default(T)); }).Forget(),
+            };
+        }
+
+        public static Action<Promise>[] ContinueWithActionsVoid(Action onContinue)
+        {
+            return new Action<Promise>[8]
+            {
+                promise => promise.ContinueWith(_ => onContinue()).Forget(),
+                promise => promise.ContinueWith(_ => { onContinue(); return Promise.Resolved(); }).Forget(),
+                promise => promise.ContinueWith(_ => { onContinue(); return 1; }).Forget(),
+                promise => promise.ContinueWith(_ => { onContinue(); return Promise.Resolved(1); }).Forget(),
+
+                promise => promise.ContinueWith(1, (int cv, Promise.ResultContainer _) => onContinue()).Forget(),
+                promise => promise.ContinueWith(1, (int cv, Promise.ResultContainer _) => { onContinue(); return Promise.Resolved(); }).Forget(),
+                promise => promise.ContinueWith(1, (Promise.ContinueFunc<int, int>)((cv, _) => { onContinue(); return 1; })).Forget(),
+                promise => promise.ContinueWith(1, (Promise.ContinueFunc<int, Promise<int>>)((cv, _) => { onContinue(); return Promise.Resolved(1); })).Forget()
+            };
+        }
+
+        public static Action<Promise<T>>[] ContinueWithActions<T>(Action onContinue)
+        {
+            return new Action<Promise<T>>[8]
+            {
+                promise => promise.ContinueWith(_ => onContinue()).Forget(),
+                promise => promise.ContinueWith(_ => { onContinue(); return Promise.Resolved(); }).Forget(),
+                promise => promise.ContinueWith(_ => { onContinue(); return 1; }).Forget(),
+                promise => promise.ContinueWith(_ => { onContinue(); return Promise.Resolved(1); }).Forget(),
+
+                promise => promise.ContinueWith(1, (int cv, Promise<T>.ResultContainer _) => onContinue()).Forget(),
+                promise => promise.ContinueWith(1, (int cv, Promise<T>.ResultContainer _) => { onContinue(); return Promise.Resolved(); }).Forget(),
+                promise => promise.ContinueWith(1, (Promise<T>.ContinueFunc<int, int>)((cv, _) => { onContinue(); return 1; })).Forget(),
+                promise => promise.ContinueWith(1, (Promise<T>.ContinueFunc<int, Promise<int>>)((cv, _) => { onContinue(); return Promise.Resolved(1); })).Forget()
+            };
+        }
+        public static Func<Promise, CancelationToken, Promise>[] ResolveActionsVoidWithCancelation(Action onResolved)
+        {
+            return new Func<Promise, CancelationToken, Promise>[8]
+            {
+                (promise, cancelationToken) => promise.Then(() => onResolved(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(1, cv => onResolved(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, cancelationToken)
+            };
+        }
+
+        public static Func<Promise<T>, CancelationToken, Promise>[] ResolveActionsWithCancelation<T>(Action<T> onResolved)
+        {
+            return new Func<Promise<T>, CancelationToken, Promise>[8]
+            {
+                (promise, cancelationToken) => promise.Then(v => onResolved(v), cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => onResolved(v), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, cancelationToken),
+            };
+        }
+
+        public static Func<Promise, CancelationToken, Promise>[] ThenActionsVoidWithCancelation(Action onResolved, Action onRejected)
+        {
+            return new Func<Promise, CancelationToken, Promise>[64]
+            {
+                (promise, cancelationToken) => promise.Then(() => onResolved(), () => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => onResolved(), (object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(); }, () => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(); }, (object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return 1; }, () => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return 1; }, (object o) => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, () => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, (object o) => { onRejected(); return 1; }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(() => onResolved(), () => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => onResolved(), (object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(); }, () => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(); }, (object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return 1; }, () => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return 1; }, (object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, () => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, (object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(1, cv => onResolved(), () => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => onResolved(), (object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, () => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, (object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return 1; }, () => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return 1; }, (object o) => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, () => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, (object o) => { onRejected(); return 1; }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(1, cv => onResolved(), () => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => onResolved(), (object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, () => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, (object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return 1; }, () => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return 1; }, (object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, () => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, (object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(() => onResolved(), 1, cv => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => onResolved(), 1, (int cv, object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(); }, 1, cv => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(); }, 1, (int cv, object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return 1; }, 1, cv => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return 1; }, 1, (int cv, object o) => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, 1, cv => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return 1; }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(() => onResolved(), 1, cv => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => onResolved(), 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(); }, 1, cv => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return 1; }, 1, cv => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return 1; }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, 1, cv => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(() => { onResolved(); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(1, cv => onResolved(), 1, cv => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => onResolved(), 1, (int cv, object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, 1, cv => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, 1, (int cv, object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return 1; }, 1, cv => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return 1; }, 1, (int cv, object o) => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, 1, cv => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return 1; }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(1, cv => onResolved(), 1, cv => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => onResolved(), 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, 1, cv => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return 1; }, 1, cv => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return 1; }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, 1, cv => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, cv => { onResolved(); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+            };
+        }
+
+        public static Func<Promise<T>, CancelationToken, Promise>[] ThenActionsWithCancelation<T>(Action<T> onResolved, Action onRejected)
+        {
+            return new Func<Promise<T>, CancelationToken, Promise>[64]
+            {
+                (promise, cancelationToken) => promise.Then(v => onResolved(v), () => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => onResolved(v), (object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, () => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, (object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return 1; }, () => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return 1; }, (object o) => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, () => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, (object o) => { onRejected(); return 1; }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(v => onResolved(v), () => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => onResolved(v), (object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, () => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, (object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return 1; }, () => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return 1; }, (object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, () => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, (object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => onResolved(v), () => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => onResolved(v), (object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, () => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, (object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, () => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, (object o) => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, () => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, (object o) => { onRejected(); return 1; }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => onResolved(v), () => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => onResolved(v), (object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, () => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, (object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, () => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, (object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, () => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, (object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(v => onResolved(v), 1, cv => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => onResolved(v), 1, (int cv, object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, 1, cv => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, 1, (int cv, object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return 1; }, 1, cv => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return 1; }, 1, (int cv, object o) => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, 1, cv => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return 1; }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(v => onResolved(v), 1, cv => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => onResolved(v), 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, 1, cv => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return 1; }, 1, cv => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return 1; }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, 1, cv => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(v => { onResolved(v); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => onResolved(v), 1, cv => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => onResolved(v), 1, (int cv, object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, 1, cv => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, 1, (int cv, object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, 1, cv => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, 1, (int cv, object o) => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, 1, cv => { onRejected(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return 1; }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => onResolved(v), 1, cv => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => onResolved(v), 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, 1, cv => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, 1, cv => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return 1; }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, 1, cv => { onRejected(); return Promise.Resolved(1); }, cancelationToken),
+                (promise, cancelationToken) => promise.Then(1, (cv, v) => { onResolved(v); return Promise.Resolved(1); }, 1, (int cv, object o) => { onRejected(); return Promise.Resolved(1); }, cancelationToken)
+            };
+        }
+
+        public static Func<Promise, CancelationToken, Promise>[] CatchActionsVoidWithCancelation(Action onRejected)
+        {
+            return new Func<Promise, CancelationToken, Promise>[8]
+            {
+                (promise, cancelationToken) => promise.Catch(() => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Catch(() => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Catch((object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Catch((object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Catch(1, cv => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Catch(1, cv => { onRejected(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.Catch(1, (int cv, object o) => onRejected(), cancelationToken),
+                (promise, cancelationToken) => promise.Catch(1, (int cv, object o) => { onRejected(); return Promise.Resolved(); }, cancelationToken)
+            };
+        }
+
+        public static Func<Promise<T>, CancelationToken, Promise>[] CatchActionsWithCancelation<T>(Action onRejected)
+        {
+            return new Func<Promise<T>, CancelationToken, Promise>[8]
+            {
+                (promise, cancelationToken) => promise.Catch(() => { onRejected(); return default(T); }, cancelationToken),
+                (promise, cancelationToken) => promise.Catch(() => { onRejected(); return Promise.Resolved(default(T)); }, cancelationToken),
+                (promise, cancelationToken) => promise.Catch((object o) => { onRejected(); return default(T); }, cancelationToken),
+                (promise, cancelationToken) => promise.Catch((object o) => { onRejected(); return Promise.Resolved(default(T)); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.Catch(1, cv => { onRejected(); return default(T); }, cancelationToken),
+                (promise, cancelationToken) => promise.Catch(1, cv => { onRejected(); return Promise.Resolved(default(T)); }, cancelationToken),
+                (promise, cancelationToken) => promise.Catch(1, (int cv, object o) => { onRejected(); return default(T); }, cancelationToken),
+                (promise, cancelationToken) => promise.Catch(1, (int cv, object o) => { onRejected(); return Promise.Resolved(default(T)); }, cancelationToken),
+            };
+        }
+
+        public static Func<Promise, CancelationToken, Promise>[] ContinueWithActionsVoidWithCancelation(Action onContinue)
+        {
+            return new Func<Promise, CancelationToken, Promise>[8]
+            {
+                (promise, cancelationToken) => promise.ContinueWith(_ => onContinue(), cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(_ => { onContinue(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(_ => { onContinue(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(_ => { onContinue(); return Promise.Resolved(1); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.ContinueWith(1, (int cv, Promise.ResultContainer _) => onContinue(), cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(1, (int cv, Promise.ResultContainer _) => { onContinue(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(1, new Promise.ContinueFunc<int, int>((cv, _) => { onContinue(); return 1; }), cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(1, new Promise.ContinueFunc<int, Promise<int>>((cv, _) => { onContinue(); return Promise.Resolved(1); }), cancelationToken)
+            };
+        }
+
+        public static Func<Promise<T>, CancelationToken, Promise>[] ContinueWithActionsWithCancelation<T>(Action onContinue)
+        {
+            return new Func<Promise<T>, CancelationToken, Promise>[8]
+            {
+                (promise, cancelationToken) => promise.ContinueWith(_ => onContinue(), cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(_ => { onContinue(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(_ => { onContinue(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(_ => { onContinue(); return Promise.Resolved(1); }, cancelationToken),
+
+                (promise, cancelationToken) => promise.ContinueWith(1, (int cv, Promise<T>.ResultContainer _) => onContinue(), cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(1, (int cv, Promise<T>.ResultContainer _) => { onContinue(); return Promise.Resolved(); }, cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(1, new Promise<T>.ContinueFunc<int, int>((cv, _) => { onContinue(); return 1; }), cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(1, new Promise<T>.ContinueFunc<int, Promise<int>>((cv, _) => { onContinue(); return Promise.Resolved(1); }), cancelationToken)
+            };
+        }
+
+        public static Func<Promise>[] ActionsReturningPromiseVoid(Func<Promise> returnProvider)
+        {
+            return new Func<Promise>[]
+            {
+                () => Promise.Resolved().Then(() => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider()),
+
+
+                () => Promise.Resolved().Then(() => returnProvider(), () => { }),
+                () => Promise.Resolved().Then(() => returnProvider(), (int r) => { }),
+                () => Promise.Resolved().Then(() => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved().Then(() => returnProvider(), (int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), () => { }),
+                () => Promise.Resolved(1).Then(v => returnProvider(), (int r) => { }),
+                () => Promise.Resolved(1).Then(v => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(() => { }, () => returnProvider()),
+                () => Promise.Rejected(2).Then(() => { }, (int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), () => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(1, cv => returnProvider(), () => { }),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), (int r) => { }),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), (int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), () => { }),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), (int r) => { }),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(1, cv => { }, () => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => { }, (int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), () => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(() => returnProvider(), 1, cv => { }),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, (int cv, int r) => { }),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, cv => { }),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, (int cv, int r) => { }),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(() => { }, 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(() => { }, 1, (int cv, int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, cv => { }),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, (int cv, int r) => { }),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, cv => { }),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, (int cv, int r) => { }),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(1, cv => { }, 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => { }, 1, (int cv, int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+
+                () => Promise.Rejected(2).Catch(() => returnProvider()),
+                () => Promise.Rejected(2).Catch((int r) => returnProvider()),
+                () => Promise.Rejected(2).Catch(1, cv => returnProvider()),
+                () => Promise.Rejected(2).Catch(1, (int cv, int r) => returnProvider()),
+
+
+                () => Promise.Resolved().ContinueWith(_ => returnProvider()),
+                () => Promise.Resolved().ContinueWith(1, (int cv, Promise.ResultContainer _) => returnProvider()),
+                () => Promise.Resolved(1).ContinueWith(_ => returnProvider()),
+                () => Promise.Resolved(1).ContinueWith(1, (int cv, Promise<int>.ResultContainer _) => returnProvider()),
+            };
+        }
+
+        public static Func<Promise<T>>[] ActionsReturningPromiseT<T>(Func<Promise<T>> returnProvider)
+        {
+            return new Func<Promise<T>>[]
+            {
+                () => Promise.Resolved().Then(() => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider()),
+
+
+                () => Promise.Resolved().Then(() => returnProvider(), () => default(T)),
+                () => Promise.Resolved().Then(() => returnProvider(), (int r) => default(T)),
+                () => Promise.Resolved().Then(() => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved().Then(() => returnProvider(), (int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), () => default(T)),
+                () => Promise.Resolved(1).Then(v => returnProvider(), (int r) => default(T)),
+                () => Promise.Resolved(1).Then(v => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(() => default(T), () => returnProvider()),
+                () => Promise.Rejected(2).Then(() => default(T), (int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), () => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(1, cv => returnProvider(), () => default(T)),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), (int r) => default(T)),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), (int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), () => default(T)),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), (int r) => default(T)),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), () => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(1, cv => default(T), () => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => default(T), (int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), () => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), (int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(() => returnProvider(), 1, cv => default(T)),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, (int cv, int r) => default(T)),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved().Then(() => returnProvider(), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, cv => default(T)),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, (int cv, int r) => default(T)),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(v => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(() => default(T), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(() => default(T), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(() => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, cv => default(T)),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, (int cv, int r) => default(T)),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved().Then(1, cv => returnProvider(), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, cv => default(T)),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, (int cv, int r) => default(T)),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Resolved(1).Then(1, (cv, v) => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+                () => Promise.Rejected(2).Then(1, cv => default(T), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => default(T), 1, (int cv, int r) => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), 1, cv => returnProvider()),
+                () => Promise.Rejected(2).Then(1, cv => returnProvider(), 1, (int cv, int r) => returnProvider()),
+
+
+                () => Promise<T>.Rejected(2).Catch(() => returnProvider()),
+                () => Promise<T>.Rejected(2).Catch((int r) => returnProvider()),
+                () => Promise<T>.Rejected(2).Catch(1, cv => returnProvider()),
+                () => Promise<T>.Rejected(2).Catch(1, (int cv, int r) => returnProvider()),
+
+
+                () => Promise.Resolved().ContinueWith(_ => returnProvider()),
+                () => Promise.Resolved().ContinueWith(1, (Promise.ContinueFunc<int, Promise<T>>)((cv, _) => returnProvider())),
+                () => Promise.Resolved(1).ContinueWith(_ => returnProvider()),
+                () => Promise.Resolved(1).ContinueWith(1, (Promise<int>.ContinueFunc<int, Promise<T>>)((cv, _) => returnProvider())),
+            };
         }
     }
 }

@@ -9,12 +9,13 @@
 #undef PROMISE_PROGRESS
 #endif
 
+using NUnit.Framework;
+using Proto.Promises;
+using ProtoPromiseTests.Threading;
 using System;
 using System.Threading;
-using NUnit.Framework;
-using Proto.Promises.Tests.Threading;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class ProgressTests
     {
@@ -170,7 +171,7 @@ namespace Proto.Promises.Tests
                 throw new Exception();
             });
 
-            progressHelper.SetExpectedProgress(0f);
+            progressHelper.PrepareForInvoke();
             ExecuteOnThread(() =>
             {
                 progressHelper
@@ -179,12 +180,12 @@ namespace Proto.Promises.Tests
             }, threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
             progressHelper.AssertCurrentProgress(0f);
 
-            progressHelper.SetExpectedProgress(0f);
+            progressHelper.PrepareForInvoke();
             ExecuteOnThread(() => deferred.ReportProgress(0.5f),
                 threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
             progressHelper.AssertCurrentProgress(0.5f);
 
-            progressHelper.SetExpectedProgress(1f);
+            progressHelper.PrepareForInvoke();
             ExecuteOnThread(() => deferred.Resolve(),
                 threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
             progressHelper.AssertCurrentProgress(1f);
@@ -233,7 +234,7 @@ namespace Proto.Promises.Tests
                 throw new Exception();
             });
 
-            progressHelper.SetExpectedProgress(0f);
+            progressHelper.PrepareForInvoke();
             ExecuteOnThread(() =>
             {
                 progressHelper
@@ -242,12 +243,12 @@ namespace Proto.Promises.Tests
             }, threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
             progressHelper.AssertCurrentProgress(0f);
 
-            progressHelper.SetExpectedProgress(0f);
+            progressHelper.PrepareForInvoke();
             ExecuteOnThread(() => deferred.ReportProgress(0.5f),
                 threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
             progressHelper.AssertCurrentProgress(0.5f);
 
-            progressHelper.SetExpectedProgress(1f);
+            progressHelper.PrepareForInvoke();
             ExecuteOnThread(() => deferred.Resolve(1),
                 threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
             progressHelper.AssertCurrentProgress(1f);
@@ -842,15 +843,15 @@ namespace Proto.Promises.Tests
         {
             var deferred = Promise.NewDeferred();
 
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 deferred.Promise.Progress(default(Action<float>));
             });
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 deferred.Promise.Progress(1, default(Action<int, float>));
             });
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 deferred.Promise.Progress(default(IProgress<float>));
             });
@@ -859,15 +860,15 @@ namespace Proto.Promises.Tests
 
             var deferredInt = Promise.NewDeferred<int>();
 
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 deferredInt.Promise.Progress(default(Action<float>));
             });
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 deferredInt.Promise.Progress(1, default(Action<int, float>));
             });
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 deferredInt.Promise.Progress(default(IProgress<float>));
             });
@@ -891,13 +892,13 @@ namespace Proto.Promises.Tests
                 })
                 .Forget();
 
-            Assert.Throws<ArgumentOutOfRangeException>(() => deferred.ReportProgress(float.NaN));
-            Assert.Throws<ArgumentOutOfRangeException>(() => deferred.ReportProgress(float.NegativeInfinity));
-            Assert.Throws<ArgumentOutOfRangeException>(() => deferred.ReportProgress(float.PositiveInfinity));
-            Assert.Throws<ArgumentOutOfRangeException>(() => deferred.ReportProgress(float.MinValue));
-            Assert.Throws<ArgumentOutOfRangeException>(() => deferred.ReportProgress(float.MaxValue));
-            Assert.Throws<ArgumentOutOfRangeException>(() => deferred.ReportProgress(-0.1f));
-            Assert.Throws<ArgumentOutOfRangeException>(() => deferred.ReportProgress(1.1f));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => deferred.ReportProgress(float.NaN));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => deferred.ReportProgress(float.NegativeInfinity));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => deferred.ReportProgress(float.PositiveInfinity));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => deferred.ReportProgress(float.MinValue));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => deferred.ReportProgress(float.MaxValue));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => deferred.ReportProgress(-0.1f));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => deferred.ReportProgress(1.1f));
 
             deferred.Resolve();
         }
@@ -1212,7 +1213,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
-                progressHelpers[i].SetExpectedProgress(0f);
+                progressHelpers[i].PrepareForInvoke();
                 progressHelpers[i].Subscribe(promise)
                     .Forget();
             }
@@ -1225,7 +1226,7 @@ namespace Proto.Promises.Tests
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].SetExpectedProgress(0.1f);
+                progressHelpers[i].PrepareForInvoke();
             }
             deferred.ReportProgress(0.1f);
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1235,7 +1236,7 @@ namespace Proto.Promises.Tests
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].SetExpectedProgress(1f);
+                progressHelpers[i].PrepareForInvoke();
             }
             deferred.Resolve();
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1255,7 +1256,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
-                progressHelpers[i].SetExpectedProgress(1f);
+                progressHelpers[i].PrepareForInvoke();
                 progressHelpers[i].Subscribe(promise)
                     .Forget();
             }
@@ -1279,7 +1280,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
-                progressHelpers[i].SetExpectedProgress(0f);
+                progressHelpers[i].PrepareForInvoke();
                 progressHelpers[i].Subscribe(promise)
                     .Forget();
             }
@@ -1292,7 +1293,7 @@ namespace Proto.Promises.Tests
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].SetExpectedProgress(0.1f);
+                progressHelpers[i].PrepareForInvoke();
             }
             deferred.ReportProgress(0.1f);
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1302,7 +1303,7 @@ namespace Proto.Promises.Tests
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].SetExpectedProgress(1f);
+                progressHelpers[i].PrepareForInvoke();
             }
             deferred.Resolve(1);
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1322,7 +1323,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
-                progressHelpers[i].SetExpectedProgress(1f);
+                progressHelpers[i].PrepareForInvoke();
                 progressHelpers[i].Subscribe(promise)
                     .Forget();
             }
@@ -1346,7 +1347,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
-                progressHelpers[i].SetExpectedProgress(0f);
+                progressHelpers[i].PrepareForInvoke();
                 promise = progressHelpers[i].Subscribe(promise);
             }
 
@@ -1358,7 +1359,7 @@ namespace Proto.Promises.Tests
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].SetExpectedProgress(0.1f);
+                progressHelpers[i].PrepareForInvoke();
             }
             deferred.ReportProgress(0.1f);
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1368,7 +1369,7 @@ namespace Proto.Promises.Tests
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].SetExpectedProgress(1f);
+                progressHelpers[i].PrepareForInvoke();
             }
             deferred.Resolve();
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1388,7 +1389,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
-                progressHelpers[i].SetExpectedProgress(1f);
+                progressHelpers[i].PrepareForInvoke();
                 promise = progressHelpers[i].Subscribe(promise);
             }
 
@@ -1411,7 +1412,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
-                progressHelpers[i].SetExpectedProgress(0f);
+                progressHelpers[i].PrepareForInvoke();
                 promise = progressHelpers[i].Subscribe(promise);
             }
 
@@ -1423,7 +1424,7 @@ namespace Proto.Promises.Tests
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].SetExpectedProgress(0.1f);
+                progressHelpers[i].PrepareForInvoke();
             }
             deferred.ReportProgress(0.1f);
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1433,7 +1434,7 @@ namespace Proto.Promises.Tests
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i].SetExpectedProgress(1f);
+                progressHelpers[i].PrepareForInvoke();
             }
             deferred.Resolve(1);
             for (int i = 0; i < MultiProgressCount; ++i)
@@ -1453,7 +1454,7 @@ namespace Proto.Promises.Tests
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
-                progressHelpers[i].SetExpectedProgress(1f);
+                progressHelpers[i].PrepareForInvoke();
                 promise = progressHelpers[i].Subscribe(promise);
             }
 

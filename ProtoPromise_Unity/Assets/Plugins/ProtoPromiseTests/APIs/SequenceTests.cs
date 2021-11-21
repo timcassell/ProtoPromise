@@ -4,11 +4,12 @@
 #undef PROMISE_PROGRESS
 #endif
 
+using NUnit.Framework;
+using Proto.Promises;
 using System;
 using System.Linq;
-using NUnit.Framework;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class SequenceTests
     {

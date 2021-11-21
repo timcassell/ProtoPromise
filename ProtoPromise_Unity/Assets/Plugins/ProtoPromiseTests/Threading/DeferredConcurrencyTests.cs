@@ -1,4 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL
 
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
@@ -7,9 +7,10 @@
 #endif
 
 using NUnit.Framework;
+using Proto.Promises;
 using System.Threading;
 
-namespace Proto.Promises.Tests.Threading
+namespace ProtoPromiseTests.Threading
 {
     public class DeferredConcurrencyTests
     {
@@ -66,8 +67,8 @@ namespace Proto.Promises.Tests.Threading
                     {
                         Monitor.Enter(progressHelper2._locker);
                     }
-                    progressHelper1.Reset();
-                    progressHelper2.Reset();
+                    progressHelper1.PrepareForInvoke();
+                    progressHelper2.PrepareForInvoke();
                 },
                 // Teardown
                 () =>
@@ -140,8 +141,8 @@ namespace Proto.Promises.Tests.Threading
                     {
                         Monitor.Enter(progressHelper2._locker);
                     }
-                    progressHelper1.Reset();
-                    progressHelper2.Reset();
+                    progressHelper1.PrepareForInvoke();
+                    progressHelper2.PrepareForInvoke();
                 },
                 // Teardown
                 () =>

@@ -7,8 +7,9 @@
 #endif
 
 using NUnit.Framework;
+using Proto.Promises;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class AwaitTests
     {

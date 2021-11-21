@@ -1,11 +1,12 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL
 
 using NUnit.Framework;
+using Proto.Promises;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace Proto.Promises.Tests.Threading
+namespace ProtoPromiseTests.Threading
 {
     public class NonPreservedPromiseConcurrencyTests
     {
@@ -38,7 +39,7 @@ namespace Proto.Promises.Tests.Threading
                         promise.Forget();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -67,7 +68,7 @@ namespace Proto.Promises.Tests.Threading
                         promise.Forget();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -96,7 +97,7 @@ namespace Proto.Promises.Tests.Threading
                         promise.Duplicate().Forget();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -125,7 +126,7 @@ namespace Proto.Promises.Tests.Threading
                         promise.Duplicate().Forget();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -154,7 +155,7 @@ namespace Proto.Promises.Tests.Threading
                         promise.Preserve().Forget();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -183,7 +184,7 @@ namespace Proto.Promises.Tests.Threading
                         promise.Preserve().Forget();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -215,7 +216,7 @@ namespace Proto.Promises.Tests.Threading
                             action(promise);
                             Interlocked.Increment(ref successCount);
                         }
-                        catch (InvalidOperationException)
+                        catch (Proto.Promises.InvalidOperationException)
                         {
                             Interlocked.Increment(ref invalidCount);
                         }
@@ -249,7 +250,7 @@ namespace Proto.Promises.Tests.Threading
                             action(promise);
                             Interlocked.Increment(ref successCount);
                         }
-                        catch (InvalidOperationException)
+                        catch (Proto.Promises.InvalidOperationException)
                         {
                             Interlocked.Increment(ref invalidCount);
                         }
@@ -282,7 +283,7 @@ namespace Proto.Promises.Tests.Threading
                             action(promise);
                             Interlocked.Increment(ref successCount);
                         }
-                        catch (InvalidOperationException)
+                        catch (Proto.Promises.InvalidOperationException)
                         {
                             Interlocked.Increment(ref invalidCount);
                         }
@@ -315,7 +316,7 @@ namespace Proto.Promises.Tests.Threading
                             action(promise);
                             Interlocked.Increment(ref successCount);
                         }
-                        catch (InvalidOperationException)
+                        catch (Proto.Promises.InvalidOperationException)
                         {
                             Interlocked.Increment(ref invalidCount);
                         }
@@ -348,7 +349,7 @@ namespace Proto.Promises.Tests.Threading
                             action(promise);
                             Interlocked.Increment(ref successCount);
                         }
-                        catch (InvalidOperationException)
+                        catch (Proto.Promises.InvalidOperationException)
                         {
                             Interlocked.Increment(ref invalidCount);
                         }
@@ -381,7 +382,7 @@ namespace Proto.Promises.Tests.Threading
                             action(promise);
                             Interlocked.Increment(ref successCount);
                         }
-                        catch (InvalidOperationException)
+                        catch (Proto.Promises.InvalidOperationException)
                         {
                             Interlocked.Increment(ref invalidCount);
                         }
@@ -395,6 +396,7 @@ namespace Proto.Promises.Tests.Threading
             }
         }
 
+#if CSHARP_7_3_OR_NEWER
         [Test]
         public void PromiseWithReferenceBackingMayOnlyBeAwaitedOnce_void()
         {
@@ -416,7 +418,7 @@ namespace Proto.Promises.Tests.Threading
                             await promise;
                             Interlocked.Increment(ref successCount);
                         }
-                        catch (InvalidOperationException)
+                        catch (Proto.Promises.InvalidOperationException)
                         {
                             Interlocked.Increment(ref invalidCount);
                         }
@@ -451,7 +453,7 @@ namespace Proto.Promises.Tests.Threading
                             await promise;
                             Interlocked.Increment(ref successCount);
                         }
-                        catch (InvalidOperationException)
+                        catch (Proto.Promises.InvalidOperationException)
                         {
                             Interlocked.Increment(ref invalidCount);
                         }
@@ -464,6 +466,7 @@ namespace Proto.Promises.Tests.Threading
             Assert.AreEqual(1, successCount);
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
         }
+#endif
     }
 }
 

@@ -1,16 +1,19 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL
+
+#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 
-namespace Proto.Promises.Tests.Threading
+namespace ProtoPromiseTests.Threading
 {
     public class ThreadHelper
     {
         private sealed class ThreadRunner
         {
+            // Pool threads globally because creating new threads is expensive.
+            // Better to control the threads here than use ThreadPool.
             private static readonly Stack<ThreadRunner> _pool = new Stack<ThreadRunner>();
 
             private readonly object _locker = new object();
@@ -18,8 +21,7 @@ namespace Proto.Promises.Tests.Threading
             private Action<Action> _manualAction;
             bool didWait = false;
             private int _offset;
-            private Barrier _barrier;
-            private TaskCompletionSource<bool> _taskCompletionSource;
+            private ThreadMerger _merger;
 
             private readonly Action WaitAction;
 
@@ -31,21 +33,21 @@ namespace Proto.Promises.Tests.Threading
             private void WaitForBarrier()
             {
                 didWait = true;
-                _barrier.SignalAndWait(); // Try to make actions run in lock-step to increase likelihood of breaking race conditions.
+                _merger._barrier.SignalAndWait(); // Try to make actions run in lock-step to increase likelihood of breaking race conditions.
                 for (int j = _offset; j > 0; --j) { } // Just spin in a loop for the offset.
             }
 
-            public static Task Run(Action action, int offset, Barrier barrier)
+            public static void Run(Action action, int offset, ThreadMerger merger)
             {
-                return Run(action, null, offset, barrier);
+                Run(action, null, offset, merger);
             }
 
-            public static Task Run(Action<Action> action, int offset, Barrier barrier)
+            public static void Run(Action<Action> action, int offset, ThreadMerger merger)
             {
-                return Run(null, action, offset, barrier);
+                Run(null, action, offset, merger);
             }
 
-            private static Task Run(Action autoAction, Action<Action> manualAction, int offset, Barrier barrier)
+            private static void Run(Action autoAction, Action<Action> manualAction, int offset, ThreadMerger merger)
             {
                 bool reused = false;
                 ThreadRunner threadRunner = null;
@@ -66,8 +68,7 @@ namespace Proto.Promises.Tests.Threading
                     threadRunner._autoAction = autoAction;
                     threadRunner._manualAction = manualAction;
                     threadRunner._offset = offset;
-                    threadRunner._barrier = barrier;
-                    var taskSource = threadRunner._taskCompletionSource = new TaskCompletionSource<bool>();
+                    threadRunner._merger = merger;
                     if (reused)
                     {
                         Monitor.Pulse(threadRunner._locker);
@@ -77,7 +78,6 @@ namespace Proto.Promises.Tests.Threading
                         // Thread will never be garbage collected until the application terminates.
                         new Thread(threadRunner.ThreadAction) { IsBackground = true }.Start();
                     }
-                    return taskSource.Task;
                 }
             }
 
@@ -85,7 +85,7 @@ namespace Proto.Promises.Tests.Threading
             {
                 while (true)
                 {
-                    Exception exception = null;
+                    ThreadMerger merger = _merger;
                     try
                     {
                         Action autoAction = _autoAction;
@@ -107,21 +107,14 @@ namespace Proto.Promises.Tests.Threading
                     }
                     catch (Exception e)
                     {
-                        exception = e;
+                        // Only reporting one exception instead of aggregate.
+                        Interlocked.CompareExchange(ref merger._executionException, e, null);
                     }
                     // Allow GC to reclaim memory.
-                    TaskCompletionSource<bool> taskSource = _taskCompletionSource;
                     _autoAction = null;
-                    _barrier = null;
-                    _taskCompletionSource = null;
-                    if (exception == null)
-                    {
-                        taskSource.SetResult(true);
-                    }
-                    else
-                    {
-                        taskSource.SetException(exception);
-                    }
+                    _manualAction = null;
+                    _merger = null;
+                    Interlocked.Decrement(ref merger._currentParticipants);
                     lock (_locker)
                     {
                         lock (_pool)
@@ -134,12 +127,21 @@ namespace Proto.Promises.Tests.Threading
             }
         }
 
+        // Used to wait for all threads and propagate exceptions without using Tasks (for old runtime).
+        private sealed class ThreadMerger
+        {
+            public readonly Barrier _barrier = new Barrier(1);
+            volatile public int _currentParticipants = 0;
+            // Only reporting the first exception instead of aggregate.
+            // This is so we don't have to wait on all actions to complete when 1 has errored, and also so we don't overload the test error output.
+            volatile public Exception _executionException = null;
+        }
+
         public static readonly int multiExecutionCount = Math.Min(Environment.ProcessorCount * 100, 32766); // Maximum participants Barrier allows is 32767 (15 bits), subtract 1 for main/test thread.
         private static readonly int[] offsets = new int[] { 0, 10, 100 }; // Only using 3 values to not explode test times.
 
-        private readonly Stack<Task> _executingTasks = new Stack<Task>(multiExecutionCount);
-        private readonly Barrier _barrier = new Barrier(1);
-        private int _currentParticipants = 0;
+        private readonly object _locker = new object();
+        private ThreadMerger _threadMerger = new ThreadMerger();
 
         /// <summary>
         /// Execute the action multiple times in parallel threads.
@@ -167,11 +169,11 @@ namespace Proto.Promises.Tests.Threading
         /// </summary>
         public void AddParallelAction(Action action, int offset = 0)
         {
-            lock (_executingTasks)
+            lock (_locker)
             {
-                ++_currentParticipants;
-                _barrier.AddParticipant();
-                _executingTasks.Push(ThreadRunner.Run(action, offset, _barrier));
+                ++_threadMerger._currentParticipants;
+                _threadMerger._barrier.AddParticipant();
+                ThreadRunner.Run(action, offset, _threadMerger);
             }
         }
 
@@ -180,17 +182,17 @@ namespace Proto.Promises.Tests.Threading
         /// </summary>
         public void AddParallelActionSetup(Action<Action> action, int offset = 0)
         {
-            lock (_executingTasks)
+            lock (_locker)
             {
-                ++_currentParticipants;
-                _barrier.AddParticipant();
-                _executingTasks.Push(ThreadRunner.Run(action, offset, _barrier));
+                ++_threadMerger._currentParticipants;
+                _threadMerger._barrier.AddParticipant();
+                ThreadRunner.Run(action, offset, _threadMerger);
             }
         }
 
         /// <summary>
         /// Runs the pending actions in parallel, attempting to run them in lock-step, with a default timeoutPerAction value of 1 second.
-        /// Throws a <see cref="TimeoutException"/> if <paramref name="timeoutPerAction"/> is exceeded.
+        /// Throws a <see cref="TimeoutException"/> if (the number of actions) seconds is exceeded.
         /// </summary>
         public void ExecutePendingParallelActions()
         {
@@ -199,31 +201,31 @@ namespace Proto.Promises.Tests.Threading
 
         /// <summary>
         /// Runs the pending actions in parallel, attempting to run them in lock-step.
-        /// Throws a <see cref="TimeoutException"/> if <paramref name="timeoutPerAction"/> is exceeded.
+        /// Throws a <see cref="TimeoutException"/> if <paramref name="timeoutPerAction"/> times the number of actions is exceeded.
         /// </summary>
         public void ExecutePendingParallelActions(TimeSpan timeoutPerAction)
         {
-            Task[] tasks;
-            lock (_executingTasks)
+            ThreadMerger merger;
+            int numActions;
+            lock (_locker)
             {
-                tasks = _executingTasks.ToArray();
-                _executingTasks.Clear();
-                _barrier.SignalAndWait();
-                _barrier.RemoveParticipants(_currentParticipants);
-                _currentParticipants = 0;
+                merger = _threadMerger;
+                _threadMerger = new ThreadMerger();
+                numActions = merger._currentParticipants;
+                merger._barrier.SignalAndWait();
             }
-            try
+            TimeSpan timeout = TimeSpan.FromTicks(timeoutPerAction.Ticks * numActions);
+            if (!SpinWait.SpinUntil(() => merger._currentParticipants <= 0 || merger._executionException != null, timeout))
             {
-                TimeSpan timeout = TimeSpan.FromTicks(timeoutPerAction.Ticks * tasks.Length);
-                if (!Task.WaitAll(tasks, timeout))
+                if (merger._executionException == null)
                 {
-                    throw new TimeoutException($"{tasks.Length} Action(s) timed out after {timeout}, there may be a deadlock.");
+                    throw new TimeoutException(numActions + " Action(s) timed out after " + timeout + ", there may be a deadlock.");
                 }
             }
-            catch (AggregateException e)
+            if (merger._executionException != null)
             {
-                // Only throw one exception instead of aggregate to try to avoid overloading the test error output.
-                throw new Exception(null, e.Flatten().InnerException);
+                // Preserve the stacktrace.
+                throw new Exception("", merger._executionException);
             }
         }
 

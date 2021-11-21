@@ -4,10 +4,11 @@
 #undef PROMISE_DEBUG
 #endif
 
-using System;
 using NUnit.Framework;
+using Proto.Promises;
+using System;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class PromiseCancelationTests
     {
@@ -205,9 +206,9 @@ namespace Proto.Promises.Tests
                 deferred.Resolve();
 
                 Assert.IsFalse(deferred.TryResolve());
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
                 Assert.IsFalse(deferred.TryReject("Fail value"));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
 
                 cancelationSource.Cancel();
 
@@ -233,9 +234,9 @@ namespace Proto.Promises.Tests
                 deferred.Resolve(1);
 
                 Assert.IsFalse(deferred.TryResolve(1));
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(1));
                 Assert.IsFalse(deferred.TryReject("Fail value"));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
 
                 cancelationSource.Cancel();
 
@@ -276,9 +277,9 @@ namespace Proto.Promises.Tests
                 deferred.Reject("Fail Value");
 
                 Assert.IsFalse(deferred.TryResolve());
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
                 Assert.IsFalse(deferred.TryReject("Fail value"));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
 
                 cancelationSource.Cancel();
 
@@ -304,9 +305,9 @@ namespace Proto.Promises.Tests
                 deferred.Reject("Fail Value");
 
                 Assert.IsFalse(deferred.TryResolve(1));
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(1));
                 Assert.IsFalse(deferred.TryReject("Fail value"));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
 
                 cancelationSource.Cancel();
 
@@ -347,10 +348,10 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel();
 
                 Assert.IsFalse(deferred.TryResolve());
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
                 Assert.IsFalse(deferred.TryReject("Fail value"));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Assert.Throws<InvalidOperationException>(() => cancelationSource.Cancel());
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationSource.Cancel());
 
                 Assert.IsTrue(canceled);
 
@@ -374,10 +375,10 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel();
 
                 Assert.IsFalse(deferred.TryResolve(1));
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(1));
                 Assert.IsFalse(deferred.TryReject("Fail value"));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Assert.Throws<InvalidOperationException>(() => cancelationSource.Cancel());
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationSource.Cancel());
 
                 Assert.IsTrue(canceled);
 
@@ -416,7 +417,7 @@ namespace Proto.Promises.Tests
                     .CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value))
                     .Forget();
 
-                Assert.Throws<InvalidOperationException>(() =>
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() =>
                     cancelationSource.Cancel("Different Cancel Value")
                 );
 
@@ -458,7 +459,7 @@ namespace Proto.Promises.Tests
                     .CatchCancelation(cancelValue => Assert.AreEqual(expected, cancelation = cancelValue.Value))
                     .Forget();
 
-                Assert.Throws<InvalidOperationException>(() =>
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() =>
                     cancelationSource.Cancel("Different Cancel Value")
                 );
 
@@ -476,7 +477,7 @@ namespace Proto.Promises.Tests
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 deferred.Promise.CatchCancelation(default(Promise.CanceledAction));
             });
@@ -492,7 +493,7 @@ namespace Proto.Promises.Tests
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 deferred.Promise.CatchCancelation(default(Promise.CanceledAction));
             });
@@ -573,7 +574,7 @@ namespace Proto.Promises.Tests
                     .Forget();
                 cancelationSource.Cancel("Cancel value");
 
-                Assert.Throws<InvalidOperationException>(() =>
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() =>
                     cancelationSource.Cancel("Cancel value")
                 );
 

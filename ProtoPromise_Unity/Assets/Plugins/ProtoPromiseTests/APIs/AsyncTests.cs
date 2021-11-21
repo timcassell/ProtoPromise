@@ -8,10 +8,11 @@
 
 #pragma warning disable IDE0062 // Make local function 'static'
 
-using System;
 using NUnit.Framework;
+using Proto.Promises;
+using System;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class AsyncTests
     {

@@ -1,4 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL
 
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
@@ -7,13 +7,14 @@
 #endif
 
 using NUnit.Framework;
+using Proto.Promises;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-namespace Proto.Promises.Tests.Threading
+namespace ProtoPromiseTests.Threading
 {
     public class PromiseConcurrencyTests
     {
@@ -48,7 +49,7 @@ namespace Proto.Promises.Tests.Threading
                         promise.Forget();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -77,7 +78,7 @@ namespace Proto.Promises.Tests.Threading
                         promise.Forget();
                         Interlocked.Increment(ref successCount);
                     }
-                    catch (InvalidOperationException)
+                    catch (Proto.Promises.InvalidOperationException)
                     {
                         Interlocked.Increment(ref invalidCount);
                     }
@@ -203,61 +204,101 @@ namespace Proto.Promises.Tests.Threading
 
 #if PROMISE_PROGRESS
         [Test]
-        public void PromiseProgressMayBeCalledConcurrently_Resolved_void()
+        public void PromiseProgressMayBeCalledConcurrently_Resolved_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             int invokedCount = 0;
             Promise promise = Promise.Resolved().Preserve();
 
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Forget()
+            ProgressHelper[] progressHelpers = new ProgressHelper[ThreadHelper.multiExecutionCount];
+            for (int i = 0; i < progressHelpers.Length; ++i)
+            {
+                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType,
+                    v => { Interlocked.Increment(ref invokedCount); }
+                );
+            }
+
+            int index = -1;
+            new ThreadHelper().ExecuteMultiActionParallel(
+                () => promise
+                    .SubscribeProgress(progressHelpers[Interlocked.Increment(ref index)])
+                    .Forget()
             );
             promise.Forget();
+
+            for (int i = 0; i < progressHelpers.Length; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(1f, true, i == 0); // Only need to execute foreground the first time.
+            }
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
         [Test]
-        public void PromiseProgressMayBeCalledConcurrently_Resolved_T()
+        public void PromiseProgressMayBeCalledConcurrently_Resolved_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             int invokedCount = 0;
-            Promise<int> promise = Promise.Resolved(1).Preserve();
+            Promise promise = Promise.Resolved(1).Preserve();
 
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () => promise.Progress(v => { Interlocked.Increment(ref invokedCount); }).Forget()
+            ProgressHelper[] progressHelpers = new ProgressHelper[ThreadHelper.multiExecutionCount];
+            for (int i = 0; i < progressHelpers.Length; ++i)
+            {
+                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType,
+                    v => { Interlocked.Increment(ref invokedCount); }
+                );
+            }
+
+            int index = -1;
+            new ThreadHelper().ExecuteMultiActionParallel(
+                () => promise
+                    .SubscribeProgress(progressHelpers[Interlocked.Increment(ref index)])
+                    .Forget()
             );
             promise.Forget();
+
+            for (int i = 0; i < progressHelpers.Length; ++i)
+            {
+                progressHelpers[i].AssertCurrentProgress(1f, true, i == 0); // Only need to execute foreground the first time.
+            }
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
         [Test]
         public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReportedConcurrently_Pending_void(
-            [Values] ActionType subscribeType,
-            [Values] ActionType reportType,
-            [Values] ActionType completePlace,
-            [Values] CompleteType completeType)
+            [Values] ActionPlace subscribePlace,
+            [Values] ActionPlace reportPlace,
+            [Values] ActionPlace completePlace,
+            [Values] CompleteType completeType,
+            // Testing all ProgressTypes takes too long, and they are tested in other tests.
+            [Values(ProgressType.Interface)] ProgressType progressType,
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground
+#if !UNITY_WEBGL
+                , SynchronizationType.Background
+#endif
+                )] SynchronizationType synchronizationType)
         {
-            // TODO: test progress reported on synchronization context.
-
             int expectedInvokes = completeType == CompleteType.Resolve ? 10 : 0;
-            if (subscribeType == ActionType.InSetup)
+            if (subscribePlace == ActionPlace.InSetup)
             {
                 expectedInvokes += 10;
-                if (reportType == ActionType.InSetup)
+                if (reportPlace == ActionPlace.InSetup)
                 {
-                    expectedInvokes += 10 * 10;
+                    // Implementation detail: when progress is reported with the same value, the callback will not be invoked. This behavior is not guaranteed by the API.
+                    expectedInvokes += 10;
                 }
             }
             else // parallel or teardown
             {
                 // If all types are parallel, we can't know if it will be extra invokes.
                 // We only know there are extra invokes if complete (and report) come after subscribe.
-                if (completeType == CompleteType.Resolve && completePlace == ActionType.InTeardown)
+                if (completeType == CompleteType.Resolve && completePlace == ActionPlace.InTeardown)
                 {
                     expectedInvokes += 10;
-                    if (reportType == ActionType.InTeardown)
+                    if (reportPlace == ActionPlace.InTeardown)
                     {
-                        expectedInvokes += 10 * 10;
+                        expectedInvokes += 10;
                     }
                 }
             }
@@ -267,28 +308,31 @@ namespace Proto.Promises.Tests.Threading
             var cancelationSource = default(CancelationSource);
             int invokedCount = 0;
 
-            Action AssertInvokes = completeType != CompleteType.Resolve && completePlace == ActionType.InSetup
+            ProgressHelper[] progressHelpers = new ProgressHelper[10];
+
+            Action AssertInvokes = completeType != CompleteType.Resolve && completePlace == ActionPlace.InSetup
                 // If the promise is rejected or canceled in the setup, we know that it should not be invoked more times than expected.
                 ? (Action) (() => Assert.AreEqual(expectedInvokes, invokedCount))
-                // OnProgress is potentially invoked from each background thread concurrently,
+                // OnProgress is potentially invoked from background threads concurrently,
                 // but each TryReportProgress call is not guaranteed to invoke the callback,
                 // so we can't know how many onProgress invokes actually occurred, so just make sure it happened at least expectedInvokes times.
                 : () => Assert.GreaterOrEqual(invokedCount, expectedInvokes);
 
             List<Action> parallelActions = new List<Action>();
 
+            int index = -1;
             var progressSubscriber = ParallelActionTestHelper.Create(
-                subscribeType,
+                subscribePlace,
                 10,
                 () => promise
-                    .Progress(v => { Interlocked.Increment(ref invokedCount); })
+                    .SubscribeProgress(progressHelpers[Interlocked.Increment(ref index)])
                     .Catch((string error) => { Assert.AreEqual(rejectValue, error); })
                     .Forget()
             );
             progressSubscriber.MaybeAddParallelAction(parallelActions);
 
             var progressReporter = ParallelActionTestHelper.Create(
-                reportType,
+                reportPlace,
                 10,
                 () => deferred.TryReportProgress(0.5f)
             );
@@ -302,22 +346,82 @@ namespace Proto.Promises.Tests.Threading
             );
             promiseCompleter.MaybeAddParallelAction(parallelActions);
 
+            bool shouldLockProgress = synchronizationType != SynchronizationType.Synchronous;
+
+            bool waitForSubscribeSetup = subscribePlace == ActionPlace.InSetup;
+            bool waitForReportSetup = subscribePlace == ActionPlace.InSetup && reportPlace == ActionPlace.InSetup;
             Action setupAction = () =>
             {
+                index = -1;
+                for (int i = 0; i < progressHelpers.Length; ++i)
+                {
+                    progressHelpers[i] = new ProgressHelper(progressType, synchronizationType,
+                        v => { Interlocked.Increment(ref invokedCount); }
+                    );
+                    if (shouldLockProgress)
+                    {
+                        Monitor.Enter(progressHelpers[i]._locker);
+                    }
+                }
                 invokedCount = 0;
                 deferred = TestHelper.GetNewDeferredVoid(completeType, out cancelationSource);
                 promise = deferred.Promise.Preserve();
                 progressSubscriber.Setup();
+                if (waitForSubscribeSetup)
+                {
+                    for (int i = 0; i < progressHelpers.Length; ++i)
+                    {
+                        progressHelpers[i].AssertCurrentProgress(0f, true, i == 0); // Only need to execute foreground the first time.
+                        progressHelpers[i].PrepareForInvoke();
+                    }
+                }
                 progressReporter.Setup();
+                if (waitForReportSetup)
+                {
+                    for (int i = 0; i < progressHelpers.Length; ++i)
+                    {
+                        progressHelpers[i].AssertCurrentProgress(0.5f, true, i == 0); // Only need to execute foreground the first time.
+                        progressHelpers[i].PrepareForInvoke();
+                    }
+                }
                 promiseCompleter.Setup();
             };
+            bool waitForSubscribeTeardown = !waitForSubscribeSetup && completePlace == ActionPlace.InTeardown && reportPlace == ActionPlace.InTeardown;
+            bool waitForReportTeardown = !waitForReportSetup && completePlace == ActionPlace.InTeardown;
             Action teardownAction = () =>
             {
                 progressSubscriber.Teardown();
+                if (waitForSubscribeTeardown)
+                {
+                    for (int i = 0; i < progressHelpers.Length; ++i)
+                    {
+                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
+                        progressHelpers[i].PrepareForInvoke();
+                    }
+                }
                 progressReporter.Teardown();
+                if (waitForReportTeardown)
+                {
+                    for (int i = 0; i < progressHelpers.Length; ++i)
+                    {
+                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
+                        progressHelpers[i].PrepareForInvoke();
+                    }
+                }
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
+
+                for (int i = 0; i < progressHelpers.Length; ++i)
+                {
+                    // Progress may have been invoked simultaneously, so we can't know what the progress value is here.
+                    // We must only WaitForInvoke instead of AssertCurrentProgress.
+                    progressHelpers[i].MaybeWaitForInvoke(completeType == CompleteType.Resolve, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
+                    if (shouldLockProgress)
+                    {
+                        Monitor.Exit(progressHelpers[i]._locker);
+                    }
+                }
                 AssertInvokes();
             };
             if (parallelActions.Count == 0)
@@ -336,32 +440,38 @@ namespace Proto.Promises.Tests.Threading
 
         [Test]
         public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReportedConcurrently_Pending_T(
-            [Values] ActionType subscribeType,
-            [Values] ActionType reportType,
-            [Values] ActionType completePlace,
-            [Values] CompleteType completeType)
+            [Values] ActionPlace subscribePlace,
+            [Values] ActionPlace reportPlace,
+            [Values] ActionPlace completePlace,
+            [Values] CompleteType completeType,
+            // Testing all ProgressTypes takes too long, and they are tested in other tests.
+            [Values(ProgressType.Interface)] ProgressType progressType,
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground
+#if !UNITY_WEBGL
+                , SynchronizationType.Background
+#endif
+                )] SynchronizationType synchronizationType)
         {
-            // TODO: test progress reported on synchronization context.
-
             int expectedInvokes = completeType == CompleteType.Resolve ? 10 : 0;
-            if (subscribeType == ActionType.InSetup)
+            if (subscribePlace == ActionPlace.InSetup)
             {
                 expectedInvokes += 10;
-                if (reportType == ActionType.InSetup)
+                if (reportPlace == ActionPlace.InSetup)
                 {
-                    expectedInvokes += 10 * 10;
+                    // Implementation detail: when progress is reported with the same value, the callback will not be invoked. This behavior is not guaranteed by the API.
+                    expectedInvokes += 10;
                 }
             }
             else // parallel or teardown
             {
                 // If all types are parallel, we can't know if it will be extra invokes.
                 // We only know there are extra invokes if complete (and report) come after subscribe.
-                if (completeType == CompleteType.Resolve && completePlace == ActionType.InTeardown)
+                if (completeType == CompleteType.Resolve && completePlace == ActionPlace.InTeardown)
                 {
                     expectedInvokes += 10;
-                    if (reportType == ActionType.InTeardown)
+                    if (reportPlace == ActionPlace.InTeardown)
                     {
-                        expectedInvokes += 10 * 10;
+                        expectedInvokes += 10;
                     }
                 }
             }
@@ -371,29 +481,31 @@ namespace Proto.Promises.Tests.Threading
             var cancelationSource = default(CancelationSource);
             int invokedCount = 0;
 
-            Action AssertInvokes = completeType != CompleteType.Resolve && completePlace == ActionType.InSetup
+            ProgressHelper[] progressHelpers = new ProgressHelper[10];
+
+            Action AssertInvokes = completeType != CompleteType.Resolve && completePlace == ActionPlace.InSetup
                 // If the promise is rejected or canceled in the setup, we know that it should not be invoked more times than expected.
                 ? (Action) (() => Assert.AreEqual(expectedInvokes, invokedCount))
-                // OnProgress is potentially invoked from each background thread concurrently,
+                // OnProgress is potentially invoked from background threads concurrently,
                 // but each TryReportProgress call is not guaranteed to invoke the callback,
                 // so we can't know how many onProgress invokes actually occurred, so just make sure it happened at least expectedInvokes times.
                 : () => Assert.GreaterOrEqual(invokedCount, expectedInvokes);
 
-
             List<Action> parallelActions = new List<Action>();
 
+            int index = -1;
             var progressSubscriber = ParallelActionTestHelper.Create(
-                subscribeType,
+                subscribePlace,
                 10,
                 () => promise
-                    .Progress(v => { Interlocked.Increment(ref invokedCount); })
+                    .SubscribeProgress(progressHelpers[Interlocked.Increment(ref index)])
                     .Catch((string error) => { Assert.AreEqual(rejectValue, error); })
                     .Forget()
             );
             progressSubscriber.MaybeAddParallelAction(parallelActions);
 
             var progressReporter = ParallelActionTestHelper.Create(
-                reportType,
+                reportPlace,
                 10,
                 () => deferred.TryReportProgress(0.5f)
             );
@@ -407,22 +519,82 @@ namespace Proto.Promises.Tests.Threading
             );
             promiseCompleter.MaybeAddParallelAction(parallelActions);
 
+            bool shouldLockProgress = synchronizationType != SynchronizationType.Synchronous;
+
+            bool waitForSubscribeSetup = subscribePlace == ActionPlace.InSetup;
+            bool waitForReportSetup = subscribePlace == ActionPlace.InSetup && reportPlace == ActionPlace.InSetup;
             Action setupAction = () =>
             {
+                index = -1;
+                for (int i = 0; i < progressHelpers.Length; ++i)
+                {
+                    progressHelpers[i] = new ProgressHelper(progressType, synchronizationType,
+                        v => { Interlocked.Increment(ref invokedCount); }
+                    );
+                    if (shouldLockProgress)
+                    {
+                        Monitor.Enter(progressHelpers[i]._locker);
+                    }
+                }
                 invokedCount = 0;
                 deferred = TestHelper.GetNewDeferredT<int>(completeType, out cancelationSource);
                 promise = deferred.Promise.Preserve();
                 progressSubscriber.Setup();
+                if (waitForSubscribeSetup)
+                {
+                    for (int i = 0; i < progressHelpers.Length; ++i)
+                    {
+                        progressHelpers[i].AssertCurrentProgress(0f, true, i == 0); // Only need to execute foreground the first time.
+                        progressHelpers[i].PrepareForInvoke();
+                    }
+                }
                 progressReporter.Setup();
+                if (waitForReportSetup)
+                {
+                    for (int i = 0; i < progressHelpers.Length; ++i)
+                    {
+                        progressHelpers[i].AssertCurrentProgress(0.5f, true, i == 0); // Only need to execute foreground the first time.
+                        progressHelpers[i].PrepareForInvoke();
+                    }
+                }
                 promiseCompleter.Setup();
             };
+            bool waitForSubscribeTeardown = !waitForSubscribeSetup && completePlace == ActionPlace.InTeardown && reportPlace == ActionPlace.InTeardown;
+            bool waitForReportTeardown = !waitForReportSetup && completePlace == ActionPlace.InTeardown;
             Action teardownAction = () =>
             {
                 progressSubscriber.Teardown();
+                if (waitForSubscribeTeardown)
+                {
+                    for (int i = 0; i < progressHelpers.Length; ++i)
+                    {
+                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
+                        progressHelpers[i].PrepareForInvoke();
+                    }
+                }
                 progressReporter.Teardown();
+                if (waitForReportTeardown)
+                {
+                    for (int i = 0; i < progressHelpers.Length; ++i)
+                    {
+                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
+                        progressHelpers[i].PrepareForInvoke();
+                    }
+                }
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
+
+                for (int i = 0; i < progressHelpers.Length; ++i)
+                {
+                    // Progress may have been invoked simultaneously, so we can't know what the progress value is here.
+                    // We must only WaitForInvoke instead of AssertCurrentProgress.
+                    progressHelpers[i].MaybeWaitForInvoke(completeType == CompleteType.Resolve, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
+                    if (shouldLockProgress)
+                    {
+                        Monitor.Exit(progressHelpers[i]._locker);
+                    }
+                }
                 AssertInvokes();
             };
             if (parallelActions.Count == 0)

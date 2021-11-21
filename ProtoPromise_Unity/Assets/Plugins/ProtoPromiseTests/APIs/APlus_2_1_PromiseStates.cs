@@ -1,8 +1,9 @@
 ﻿#pragma warning disable IDE1006 // Naming Styles
 
 using NUnit.Framework;
+using Proto.Promises;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class APlus_2_1_PromiseStates
     {
