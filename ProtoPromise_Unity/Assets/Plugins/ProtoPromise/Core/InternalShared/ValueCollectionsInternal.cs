@@ -75,36 +75,9 @@ namespace Proto.Promises
             }
         }
 #else // PROTO_PROMISE_DEVELOPER_MODE
-        partial struct ValueLinkedStack<T>
+        private static void AssertNotInCollection<T>(T item) where T : class, ILinked<T>
         {
-            private void AssertNotInCollection(T item)
-            {
-                CollectionChecker<T>.AssertNotInCollection(item, null);
-            }
-        }
-
-        partial struct ValueLinkedStackSafe<T>
-        {
-            private void AssertNotInCollection(T item)
-            {
-                CollectionChecker<T>.AssertNotInCollection(item, null);
-            }
-        }
-
-        partial struct ValueLinkedQueue<T>
-        {
-            private void AssertNotInCollection(T item)
-            {
-                CollectionChecker<T>.AssertNotInCollection(item, null);
-            }
-        }
-
-        partial struct ValueWriteOnlyLinkedQueue<T>
-        {
-            private void AssertNotInCollection(T item)
-            {
-                CollectionChecker<T>.AssertNotInCollection(item, null);
-            }
+            CollectionChecker<T>.AssertNotInCollection(item, null);
         }
 #endif // PROTO_PROMISE_DEVELOPER_MODE
 
@@ -140,7 +113,7 @@ namespace Proto.Promises
             }
         }
 #else // PROMISE_DEBUG
-        static partial void AssertNotInCollection<T>(T item);
+        static partial void AssertNotInCollection<T>(T item) where T : class, ILinked<T>;
 
 #endif // PROMISE_DEBUG
 
@@ -203,11 +176,13 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
+#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
         internal partial class ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
 #else
-        internal partial struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
+        internal struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
 #endif
         {
             private T _head;
@@ -323,11 +298,13 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
+#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
         internal partial class ValueLinkedStackSafe<T> where T : class, ILinked<T>
 #else
-        internal partial struct ValueLinkedStackSafe<T> where T : class, ILinked<T>
+        internal struct ValueLinkedStackSafe<T> where T : class, ILinked<T>
 #endif
         {
             volatile private T _head;
@@ -371,11 +348,13 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
+#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
         internal partial class ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
 #else
-        internal partial struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
+        internal struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
 #endif
         {
             private T _head;
@@ -516,11 +495,13 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
+#if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
+#endif
+#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
         internal partial class ValueWriteOnlyLinkedQueue<T> where T : class, ILinked<T>
 #else
-        internal partial struct ValueWriteOnlyLinkedQueue<T> where T : class, ILinked<T>
+        internal struct ValueWriteOnlyLinkedQueue<T> where T : class, ILinked<T>
 #endif
         {
             private readonly ILinked<T> _sentinel;
