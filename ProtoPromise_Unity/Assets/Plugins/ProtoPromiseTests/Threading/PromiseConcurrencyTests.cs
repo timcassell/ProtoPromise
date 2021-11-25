@@ -424,14 +424,7 @@ namespace ProtoPromiseTests.Threading
                 }
                 AssertInvokes();
             };
-            if (parallelActions.Count == 0)
-            {
-                setupAction();
-                teardownAction();
-                return;
-            }
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
+            new ThreadHelper().ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 setupAction,
                 teardownAction,
                 parallelActions.ToArray()
@@ -597,14 +590,7 @@ namespace ProtoPromiseTests.Threading
                 }
                 AssertInvokes();
             };
-            if (parallelActions.Count == 0)
-            {
-                setupAction();
-                teardownAction();
-                return;
-            }
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActions(ThreadHelper.multiExecutionCount,
+            new ThreadHelper().ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                 setupAction,
                 teardownAction,
                 parallelActions.ToArray()
@@ -688,7 +674,7 @@ namespace ProtoPromiseTests.Threading
 
             Promise.State result = Promise.State.Pending;
 
-            var actions = TestHelper.ActionsReturningPromiseVoid(() =>
+            var actions = TestHelper.ActionsReturningPromiseT(() =>
             {
                 threadBarrier();
                 return returnPromise;

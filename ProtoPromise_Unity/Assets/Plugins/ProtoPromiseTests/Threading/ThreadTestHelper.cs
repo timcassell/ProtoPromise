@@ -87,10 +87,10 @@ namespace ProtoPromiseTests.Threading
                         break;
 #if PROMISE_PROGRESS
                     case CombineType.Parallel_WithProgress:
-                        parallelActions.Add(() => _combinedPromise = _combiner().Progress(v => { }));
+                        parallelActions.Add(() => _combinedPromise = _combiner().Progress(v => { }, SynchronizationOption.Synchronous));
                         break;
                     case CombineType.InSetup_ProgressParallel:
-                        parallelActions.Add(() => _combinedPromise = _combinedPromise.Progress(v => { }));
+                        parallelActions.Add(() => _combinedPromise = _combinedPromise.Progress(v => { }, SynchronizationOption.Synchronous));
                         break;
 #endif
                 }
@@ -103,7 +103,7 @@ namespace ProtoPromiseTests.Threading
 #if PROMISE_PROGRESS
                     _combineType == CombineType.InSetup_WithProgress)
                 {
-                    _combinedPromise = _combiner().Progress(v => { });
+                    _combinedPromise = _combiner().Progress(v => { }, SynchronizationOption.Synchronous);
                 }
                 else if (_combineType == CombineType.InSetup_ProgressParallel ||
 #endif
@@ -135,10 +135,10 @@ namespace ProtoPromiseTests.Threading
                         break;
 #if PROMISE_PROGRESS
                     case CombineType.Parallel_WithProgress:
-                        parallelActions.Add(() => _combinedPromise = _combiner().Progress(v => { }));
+                        parallelActions.Add(() => _combinedPromise = _combiner().Progress(v => { }, SynchronizationOption.Synchronous));
                         break;
                     case CombineType.InSetup_ProgressParallel:
-                        parallelActions.Add(() => _combinedPromise = _combinedPromise.Progress(v => { }));
+                        parallelActions.Add(() => _combinedPromise = _combinedPromise.Progress(v => { }, SynchronizationOption.Synchronous));
                         break;
 #endif
                 }
@@ -151,7 +151,7 @@ namespace ProtoPromiseTests.Threading
 #if PROMISE_PROGRESS
                     _combineType == CombineType.InSetup_WithProgress)
                 {
-                    _combinedPromise = _combiner().Progress(v => { });
+                    _combinedPromise = _combiner().Progress(v => { }, SynchronizationOption.Synchronous);
                 }
                 else if (_combineType == CombineType.InSetup_ProgressParallel ||
 #endif

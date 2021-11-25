@@ -1320,9 +1320,8 @@ namespace ProtoPromiseTests.Threading
             var cancelationRegistration1 = default(CancelationRegistration);
             var cancelationRegistration2 = default(CancelationRegistration);
 
-            var threadHelper = new ThreadHelper();
-            // Can't use ExecuteParallelActionsWithOffsets since 4^20 would take forever.
-            threadHelper.ExecuteParallelActions(100,
+            // Can't use ExecuteParallelActionsWithOffsets since 3^20 would take forever.
+            new ThreadHelper().ExecuteParallelActions(ThreadHelper.multiExecutionCount,
                  // Setup
                  () =>
                  {

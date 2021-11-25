@@ -131,9 +131,7 @@ namespace Proto.Promises
         /// </summary>
         public YieldInstruction ToYieldInstruction()
         {
-            ValidateOperation(1);
-
-            return Internal.PromiseRef.CallbackHelper.AddYieldInstruction(_target);
+            return _target.ToYieldInstruction();
         }
     }
 

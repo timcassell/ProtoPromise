@@ -108,7 +108,7 @@ namespace ProtoPromiseTests.Threading
                     catch (Exception e)
                     {
                         // Only reporting one exception instead of aggregate.
-                        Interlocked.CompareExchange(ref merger._executionException, e, null);
+                        merger._executionException = e;
                     }
                     // Allow GC to reclaim memory.
                     _autoAction = null;
@@ -132,7 +132,7 @@ namespace ProtoPromiseTests.Threading
         {
             public readonly Barrier _barrier = new Barrier(1);
             volatile public int _currentParticipants = 0;
-            // Only reporting the first exception instead of aggregate.
+            // Only reporting one exception instead of aggregate.
             // This is so we don't have to wait on all actions to complete when 1 has errored, and also so we don't overload the test error output.
             volatile public Exception _executionException = null;
         }
@@ -206,26 +206,23 @@ namespace ProtoPromiseTests.Threading
         public void ExecutePendingParallelActions(TimeSpan timeoutPerAction)
         {
             ThreadMerger merger;
-            int numActions;
             lock (_locker)
             {
                 merger = _threadMerger;
                 _threadMerger = new ThreadMerger();
-                numActions = merger._currentParticipants;
-                merger._barrier.SignalAndWait();
             }
+            int numActions = merger._currentParticipants;
+            merger._barrier.SignalAndWait();
             TimeSpan timeout = TimeSpan.FromTicks(timeoutPerAction.Ticks * numActions);
-            if (!SpinWait.SpinUntil(() => merger._currentParticipants <= 0 || merger._executionException != null, timeout))
-            {
-                if (merger._executionException == null)
-                {
-                    throw new TimeoutException(numActions + " Action(s) timed out after " + timeout + ", there may be a deadlock.");
-                }
-            }
+            bool timedOut = !SpinWait.SpinUntil(() => merger._currentParticipants <= 0 || merger._executionException != null, timeout);
             if (merger._executionException != null)
             {
                 // Preserve the stacktrace.
                 throw new Exception("", merger._executionException);
+            }
+            if (timedOut)
+            {
+                throw new TimeoutException(numActions + " Action(s) timed out after " + timeout + ", there may be a deadlock.");
             }
         }
 
@@ -240,6 +237,17 @@ namespace ProtoPromiseTests.Threading
         {
             setup += () => { };
             teardown += () => { };
+            if (actions.Length <= 1)
+            {
+                setup.Invoke();
+                if (actions.Length == 1)
+                {
+                    actions[0].Invoke();
+                }
+                teardown.Invoke();
+                return;
+            }
+
             int actionCount = actions.Length;
             for (int k = 0; k < repeatCount; ++k)
             {
@@ -274,12 +282,23 @@ namespace ProtoPromiseTests.Threading
         /// <para/>Example: 2 actions with 6 processors, runs each action 3 times in parallel.</param>
         /// <param name="setup">The action to run before each parallel run.</param>
         /// <param name="teardown">The action to run after each parallel run.</param>
-        /// <param name="parallelActions">The actions to run in parallel.</param>
-        public void ExecuteParallelActionsWithOffsets(bool expandToProcessorCount, Action setup, Action teardown, params Action[] parallelActions)
+        /// <param name="actions">The actions to run in parallel.</param>
+        public void ExecuteParallelActionsWithOffsets(bool expandToProcessorCount, Action setup, Action teardown, params Action[] actions)
         {
             setup += () => { };
             teardown += () => { };
-            int actionCount = parallelActions.Length;
+            if (actions.Length <= 1)
+            {
+                setup.Invoke();
+                if (actions.Length == 1)
+                {
+                    actions[0].Invoke();
+                }
+                teardown.Invoke();
+                return;
+            }
+
+            int actionCount = actions.Length;
             int expandCount = expandToProcessorCount ? Math.Max(Environment.ProcessorCount / actionCount, 1) : 1;
 
             foreach (var combo in GenerateCombinations(offsets, actionCount))
@@ -289,7 +308,7 @@ namespace ProtoPromiseTests.Threading
                 {
                     for (int i = 0; i < actionCount; ++i)
                     {
-                        AddParallelAction(parallelActions[i], combo[i]);
+                        AddParallelAction(actions[i], combo[i]);
                     }
                 }
                 ExecutePendingParallelActions();
