@@ -222,6 +222,7 @@ namespace Proto.Promises
                 }
                 else
                 {
+                    SuppressRejection = true; // Don't report rejection if newPromise is already canceled.
                     MaybeDispose();
                 }
             }
@@ -317,15 +318,17 @@ namespace Proto.Promises
 
                 public override void Handle(ref ExecutionScheduler executionScheduler)
                 {
+                    // TODO: refactor to reduce this from 2 virtual calls to 1.
                     ThrowIfInPool(this);
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     bool invokingRejected = false;
+                    bool suppressRejection = false;
                     SetCurrentInvoker(this);
                     try
                     {
                         // valueContainer is released deeper in the call stack, so we only release it in this method if an exception is thrown.
                         // (This is in case it is canceled, the valueContainer will be released from the cancelation.)
-                        Execute(ref executionScheduler, valueContainer, ref invokingRejected);
+                        Execute(ref executionScheduler, valueContainer, ref invokingRejected, ref suppressRejection);
                     }
                     catch (RethrowException e)
                     {
@@ -342,18 +345,18 @@ namespace Proto.Promises
                     }
                     catch (OperationCanceledException e)
                     {
-                        valueContainer.ReleaseAndMaybeAddToUnhandledStack(!invokingRejected);
+                        valueContainer.ReleaseAndMaybeAddToUnhandledStack(!suppressRejection);
                         RejectOrCancelInternal(CreateCancelContainer(ref e), ref executionScheduler);
                     }
                     catch (Exception e)
                     {
-                        valueContainer.ReleaseAndMaybeAddToUnhandledStack(!invokingRejected);
+                        valueContainer.ReleaseAndMaybeAddToUnhandledStack(!suppressRejection);
                         RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this), ref executionScheduler);
                     }
                     ClearCurrentInvoker();
                 }
 
-                protected virtual void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected) { }
+                protected virtual void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection) { }
 
                 internal virtual void ResolveInternal(IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
@@ -557,6 +560,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public override void Handle(ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
                     HandleSelf((IValueContainer) _valueOrPrevious, ref executionScheduler);
                 }
 
@@ -734,7 +738,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     var resolveCallback = _resolver;
                     _resolver = default(TResolver);
@@ -776,7 +780,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_resolver.IsNull)
                     {
@@ -827,7 +831,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     var resolveCallback = _resolver;
                     _resolver = default(TResolver);
@@ -846,6 +850,7 @@ namespace Proto.Promises
                     if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
+                        suppressRejection = true;
                         //rejectCallback.InvokeRejecter(valueContainer, this, ref executionStack);
                         TArgReject arg;
                         if (valueContainer.TryGetValue(out arg))
@@ -887,7 +892,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_resolver.IsNull)
                     {
@@ -913,6 +918,7 @@ namespace Proto.Promises
                     if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
+                        suppressRejection = true;
                         //rejectCallback.InvokeRejecter(valueContainer, this, ref executionStack);
                         TArgReject arg;
                         if (valueContainer.TryGetValue(out arg))
@@ -952,10 +958,11 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     var callback = _continuer;
                     _continuer = default(TContinuer);
+                    suppressRejection = true;
                     callback.Invoke(valueContainer, this, ref executionScheduler);
                 }
             }
@@ -984,7 +991,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_continuer.IsNull)
                     {
@@ -995,6 +1002,7 @@ namespace Proto.Promises
 
                     var callback = _continuer;
                     _continuer = default(TContinuer);
+                    suppressRejection = true;
                     callback.Invoke(valueContainer, this, ref executionScheduler);
                 }
             }
@@ -1023,7 +1031,7 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     var callback = _finalizer;
                     _finalizer = default(TFinalizer);

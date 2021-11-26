@@ -1,4 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL && CSHARP_7_3_OR_NEWER
 
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
@@ -329,4 +329,4 @@ namespace ProtoPromiseTests.Threading
     }
 }
 
-#endif
+#endif // !UNITY_WEBGL && CSHARP_7_3_OR_NEWER

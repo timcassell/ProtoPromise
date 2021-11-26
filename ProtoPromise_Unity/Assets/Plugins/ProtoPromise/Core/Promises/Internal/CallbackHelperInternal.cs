@@ -308,6 +308,7 @@ namespace Proto.Promises
                     // else if (_this._ref.State != Promise.State.Pending) { }
                     else
                     {
+                        // TODO: refactor to reduce this from 2 virtual calls to 1.
                         _this._ref.MarkAwaited(_this.Id);
                         if (cancelationToken.CanBeCanceled)
                         {

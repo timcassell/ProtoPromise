@@ -470,4 +470,4 @@ namespace ProtoPromiseTests.Threading
     }
 }
 
-#endif
+#endif // !UNITY_WEBGL

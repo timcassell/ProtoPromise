@@ -55,8 +55,8 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(owner);
                     RetainAndSetCanceled();
-                    object currentValue = Interlocked.Exchange(ref owner._valueOrPrevious, valueContainer);
                     valueContainer.Retain();
+                    object currentValue = Interlocked.Exchange(ref owner._valueOrPrevious, valueContainer);
                     owner.State = Promise.State.Canceled;
 
 #if CSHARP_7_3_OR_NEWER
@@ -66,8 +66,7 @@ namespace Proto.Promises
                     if (previousValue != null)
 #endif
                     {
-                        // Rejection maybe wasn't caught.
-                        previousValue.ReleaseAndMaybeAddToUnhandledStack(true);
+                        previousValue.Release(); // Just release, don't report rejection.
                     }
 
                     ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
@@ -82,7 +81,6 @@ namespace Proto.Promises
 
                 internal bool TryMakeReady(PromiseSingleAwait owner, IValueContainer valueContainer)
                 {
-                    ThrowIfInPool(owner);
                     Thread.MemoryBarrier();
                     object oldContainer = owner._valueOrPrevious;
                     bool _, isCancelationRequested;
@@ -153,9 +151,10 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner.SuppressRejection = true;
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
@@ -164,16 +163,17 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner.SuppressRejection = true;
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     var resolveCallback = _resolver;
                     if (valueContainer.GetState() == Promise.State.Resolved)
@@ -232,6 +232,8 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
@@ -243,7 +245,6 @@ namespace Proto.Promises
                         WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
-                    owner.SuppressRejection = true;
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueFront(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
@@ -251,6 +252,8 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
@@ -262,13 +265,12 @@ namespace Proto.Promises
                         WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
-                    owner.SuppressRejection = true;
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueBack(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_resolver.IsNull)
                     {
@@ -338,9 +340,10 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner.SuppressRejection = true;
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
@@ -349,16 +352,17 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner.SuppressRejection = true;
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     var resolveCallback = _resolver;
                     var rejectCallback = _rejecter;
@@ -378,6 +382,7 @@ namespace Proto.Promises
                     if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
+                        suppressRejection = true;
                         //rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper, ref executionStack);
                         TArgReject arg;
                         if (valueContainer.TryGetValue(out arg))
@@ -438,6 +443,8 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
@@ -449,7 +456,6 @@ namespace Proto.Promises
                         WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
-                    owner.SuppressRejection = true;
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueFront(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
@@ -457,6 +463,8 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
@@ -468,13 +476,12 @@ namespace Proto.Promises
                         WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
-                    owner.SuppressRejection = true;
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueBack(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_resolver.IsNull)
                     {
@@ -502,6 +509,7 @@ namespace Proto.Promises
                     if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
+                        suppressRejection = true;
                         //rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper, ref executionStack);
                         TArgReject arg;
                         if (valueContainer.TryGetValue(out arg))
@@ -559,9 +567,10 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner.SuppressRejection = true;
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
@@ -570,17 +579,19 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner.SuppressRejection = true;
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
+                    suppressRejection = true;
                     _continuer.Invoke(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                 }
 
@@ -621,6 +632,8 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_continuer.IsNull)
                     {
                         // The returned promise is handling this.
@@ -632,7 +645,6 @@ namespace Proto.Promises
                         WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
-                    owner.SuppressRejection = true;
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueFront(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
@@ -640,6 +652,8 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_continuer.IsNull)
                     {
                         // The returned promise is handling this.
@@ -651,13 +665,12 @@ namespace Proto.Promises
                         WaitWhileProgressFlags(ProgressFlags.Subscribing);
                         return;
                     }
-                    owner.SuppressRejection = true;
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueBack(this);
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_continuer.IsNull)
                     {
@@ -668,6 +681,7 @@ namespace Proto.Promises
 
                     var callback = _continuer;
                     _continuer = default(TContinuer);
+                    suppressRejection = true;
                     callback.Invoke(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                 }
 
@@ -706,9 +720,10 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner.SuppressRejection = true;
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
@@ -717,9 +732,10 @@ namespace Proto.Promises
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
+                    owner.SuppressRejection = true;
                     if (_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        owner.SuppressRejection = true;
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }

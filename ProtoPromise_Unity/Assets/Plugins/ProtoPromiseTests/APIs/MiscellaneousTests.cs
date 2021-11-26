@@ -9,7 +9,7 @@ using Proto.Promises;
 
 namespace ProtoPromiseTests.APIs
 {
-    public class Miscellaneous
+    public class MiscellaneousTests
     {
         [SetUp]
         public void Setup()

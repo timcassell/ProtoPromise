@@ -108,10 +108,11 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     var callback = _continuation;
-#if !PROMISE_DEBUG
+#if PROMISE_DEBUG
+                    SetCurrentInvoker(this);
+#else
                     Dispose();
 #endif
-                    SetCurrentInvoker(this);
                     try
                     {
                         callback.Invoke();
@@ -121,8 +122,8 @@ namespace Proto.Promises
                         // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
                         AddRejectionToUnhandledStack(e, this);
                     }
-                    ClearCurrentInvoker();
 #if PROMISE_DEBUG
+                    ClearCurrentInvoker();
                     Dispose();
 #endif
                 }
@@ -179,7 +180,8 @@ namespace Proto.Promises
                 get
                 {
                     ValidateOperation(1);
-                    return _promise._ref == null || _promise._ref.State != Promise.State.Pending;
+                    var _ref = _promise._ref;
+                    return _ref == null || _ref.State != Promise.State.Pending;
                 }
             }
 
@@ -187,9 +189,10 @@ namespace Proto.Promises
             internal void GetResultVoid()
             {
                 ValidateGetResult(1);
-                if (_promise._ref != null)
+                var _ref = _promise._ref;
+                if (_ref != null)
                 {
-                    _promise._ref.GetResultVoid(_promise.Id);
+                    _ref.GetResultVoid(_promise.Id);
                 }
             }
 
@@ -197,9 +200,10 @@ namespace Proto.Promises
             internal T GetResult()
             {
                 ValidateGetResult(1);
-                return _promise._ref == null
-                    ? _promise.Result
-                    : _promise._ref.GetResult<T>(_promise.Id);
+                var promise = _promise;
+                return promise._ref == null
+                    ? promise.Result
+                    : promise._ref.GetResult<T>(promise.Id);
             }
 
             [MethodImpl(InlineOption)]
@@ -207,12 +211,13 @@ namespace Proto.Promises
             {
                 ValidateArgument(continuation, "continuation", 1);
                 ValidateOperation(1);
-                if (_promise._ref == null)
+                var _ref = _promise._ref;
+                if (_ref == null)
                 {
                     continuation();
                     return;
                 }
-                _promise._ref.OnCompleted(continuation, _promise.Id);
+                _ref.OnCompleted(continuation, _promise.Id);
             }
 
             [MethodImpl(InlineOption)]

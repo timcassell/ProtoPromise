@@ -273,11 +273,7 @@ namespace ProtoPromiseTests.Threading
             [Values] CompleteType completeType,
             // Testing all ProgressTypes takes too long, and they are tested in other tests.
             [Values(ProgressType.Interface)] ProgressType progressType,
-            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground
-#if !UNITY_WEBGL
-                , SynchronizationType.Background
-#endif
-                )] SynchronizationType synchronizationType)
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType synchronizationType)
         {
             int expectedInvokes = completeType == CompleteType.Resolve ? 10 : 0;
             if (subscribePlace == ActionPlace.InSetup)
@@ -439,11 +435,7 @@ namespace ProtoPromiseTests.Threading
             [Values] CompleteType completeType,
             // Testing all ProgressTypes takes too long, and they are tested in other tests.
             [Values(ProgressType.Interface)] ProgressType progressType,
-            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground
-#if !UNITY_WEBGL
-                , SynchronizationType.Background
-#endif
-                )] SynchronizationType synchronizationType)
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType synchronizationType)
         {
             int expectedInvokes = completeType == CompleteType.Resolve ? 10 : 0;
             if (subscribePlace == ActionPlace.InSetup)
@@ -1318,4 +1310,4 @@ namespace ProtoPromiseTests.Threading
     }
 }
 
-#endif
+#endif // !UNITY_WEBGL
