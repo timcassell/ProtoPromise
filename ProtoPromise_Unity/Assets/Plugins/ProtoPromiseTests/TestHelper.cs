@@ -54,7 +54,7 @@ namespace ProtoPromiseTests
                     _uncaughtExceptions.Add(e);
                 }
             };
-            Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All; // Disabled because it makes the tests slow.
+            Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
 #if PROTO_PROMISE_POOL_DISABLE // Are we testing the pool or not? (used for command-line testing)
             Promise.Config.ObjectPoolingEnabled = false;
 #else
@@ -81,7 +81,7 @@ namespace ProtoPromiseTests
             }
             if (exceptions.Length > 0)
             {
-#if false // Set to false to throw all uncaught rejections, leave true to only throw 1 exception to avoid overloading the test error output.
+#if true // Set to false to throw all uncaught rejections, leave true to only throw 1 exception to avoid overloading the test error output.
                 throw exceptions[0];
 #else
                 throw new AggregateException(exceptions);
