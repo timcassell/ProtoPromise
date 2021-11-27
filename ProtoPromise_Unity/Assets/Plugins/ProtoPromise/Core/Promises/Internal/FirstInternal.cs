@@ -111,37 +111,40 @@ namespace Proto.Promises
 
                 public void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler) // IMultiTreeHandleable.Handle
                 {
-                    ThrowIfInPool(this);
+                    // Retain while handling, then release when complete for thread safety.
+                    InterlockedRetainDisregardId();
 
-                    int addWaitCount;
                     if (owner.State != Promise.State.Resolved) // Rejected/Canceled
                     {
                         int remaining = Interlocked.Decrement(ref _firstSmallFields._waitCount);
-                        if (remaining != 1 || Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
+                        if (remaining == 1)
                         {
-                            if (remaining == 0)
+                            if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                             {
-                                MaybeDispose();
+                                valueContainer.Retain();
+                                executionScheduler.ScheduleSynchronous(this);
                             }
-                            return;
                         }
-                        addWaitCount = 0;
+                        else if (remaining == 0)
+                        {
+                            _idsAndRetains.InterlockedTryReleaseComplete();
+                        }
                     }
                     else // Resolved
                     {
-                        if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
+                        if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                         {
-                            if (Interlocked.Decrement(ref _firstSmallFields._waitCount) == 0)
-                            {
-                                MaybeDispose();
-                            }
-                            return;
+                            valueContainer.Retain();
+                            Interlocked.Decrement(ref _firstSmallFields._waitCount);
+                            executionScheduler.ScheduleSynchronous(this);
                         }
-                        addWaitCount = -1;
+                        else if (Interlocked.Decrement(ref _firstSmallFields._waitCount) == 0)
+                        {
+                            _idsAndRetains.InterlockedTryReleaseComplete();
+                        }
                     }
-                    valueContainer.Retain();
-                    Interlocked.Add(ref _firstSmallFields._waitCount, addWaitCount);
-                    executionScheduler.ScheduleSynchronous(this);
+
+                    MaybeDispose();
                 }
 
                 internal int Depth

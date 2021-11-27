@@ -734,7 +734,7 @@ namespace ProtoPromiseTests.Threading
             }
             promise.Forget();
             deferred.Resolve();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveVoidCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -751,7 +751,7 @@ namespace ProtoPromiseTests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveVoidCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -770,7 +770,7 @@ namespace ProtoPromiseTests.Threading
             }
             promise.Forget();
             deferred.Resolve(1);
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveTCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -787,7 +787,7 @@ namespace ProtoPromiseTests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveTCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -806,7 +806,7 @@ namespace ProtoPromiseTests.Threading
             }
             promise.Forget();
             deferred.Reject("Reject");
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectVoidCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -823,7 +823,7 @@ namespace ProtoPromiseTests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectVoidCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -842,7 +842,7 @@ namespace ProtoPromiseTests.Threading
             }
             promise.Forget();
             deferred.Reject("Reject");
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectTCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -859,7 +859,7 @@ namespace ProtoPromiseTests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectTCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -939,7 +939,7 @@ namespace ProtoPromiseTests.Threading
             }
             promise.Forget();
             deferred.Resolve();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -955,7 +955,7 @@ namespace ProtoPromiseTests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -973,7 +973,7 @@ namespace ProtoPromiseTests.Threading
             }
             promise.Forget();
             deferred.Resolve(1);
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -989,7 +989,7 @@ namespace ProtoPromiseTests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -1007,7 +1007,7 @@ namespace ProtoPromiseTests.Threading
             }
             promise.Forget();
             deferred.Reject("Reject");
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -1023,7 +1023,7 @@ namespace ProtoPromiseTests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -1041,7 +1041,7 @@ namespace ProtoPromiseTests.Threading
             }
             promise.Forget();
             deferred.Reject("Reject");
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -1057,7 +1057,7 @@ namespace ProtoPromiseTests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -1076,7 +1076,7 @@ namespace ProtoPromiseTests.Threading
             }
             promise.Forget();
             cancelationSource.Cancel();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
 
             cancelationSource.Dispose();
         }
@@ -1094,7 +1094,7 @@ namespace ProtoPromiseTests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
@@ -1113,7 +1113,7 @@ namespace ProtoPromiseTests.Threading
             }
             promise.Forget();
             cancelationSource.Cancel();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
 
             cancelationSource.Dispose();
         }
@@ -1131,7 +1131,7 @@ namespace ProtoPromiseTests.Threading
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]

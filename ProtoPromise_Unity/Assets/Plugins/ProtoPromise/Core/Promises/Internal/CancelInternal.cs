@@ -55,8 +55,8 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(owner);
                     RetainAndSetCanceled();
-                    valueContainer.Retain();
                     object currentValue = Interlocked.Exchange(ref owner._valueOrPrevious, valueContainer);
+                    valueContainer.Retain();
                     owner.State = Promise.State.Canceled;
 
 #if CSHARP_7_3_OR_NEWER

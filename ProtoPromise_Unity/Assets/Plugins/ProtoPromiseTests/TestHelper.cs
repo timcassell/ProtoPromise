@@ -202,7 +202,7 @@ namespace ProtoPromiseTests
 
         public static readonly double progressEpsilon = 1d / Math.Pow(2d, Promise.Config.ProgressDecimalBits);
 
-        private const int callbacksMultiplier = 3
+        public const int callbacksMultiplier = 3
 #if CSHARP_7_3_OR_NEWER
             + 1
 #endif
