@@ -38,8 +38,7 @@ namespace ProtoPromiseTests.Threading
             var cancelationSource = CancelationSource.New();
             var deferred = default(Promise.Deferred);
 
-            var progressHelper1 = default(ProgressHelper);
-            var progressHelper2 = default(ProgressHelper);
+            var progressHelper = default(ProgressHelper);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(true,
@@ -49,46 +48,24 @@ namespace ProtoPromiseTests.Threading
                     deferred = withCancelationToken
                         ? Promise.NewDeferred(cancelationSource.Token)
                         : Promise.NewDeferred();
-                    progressHelper1 = new ProgressHelper(progressType1, synchronizationType1);
-                    progressHelper2 = new ProgressHelper(progressType2, synchronizationType2);
+                    progressHelper = new ProgressHelper(progressType1, synchronizationType1);
 
                     deferred.Promise
-                        .SubscribeProgress(progressHelper1)
-                        .SubscribeProgress(progressHelper2)
+                        .SubscribeProgressAndAssert(progressHelper, 0f)
                         .Forget();
-                    progressHelper1.AssertCurrentProgress(0f);
-                    progressHelper2.AssertCurrentProgress(0f);
 
-                    if (synchronizationType1 != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Enter(progressHelper1._locker);
-                    }
-                    if (synchronizationType2 != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Enter(progressHelper2._locker);
-                    }
-                    progressHelper1.PrepareForInvoke();
-                    progressHelper2.PrepareForInvoke();
+                    progressHelper.MaybeEnterLock();
+                    progressHelper.PrepareForInvoke();
                 },
                 // Teardown
                 () =>
                 {
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
-                    float progress1 = progressHelper1.GetCurrentProgress(true, true);
-                    float progress2 = progressHelper2.GetCurrentProgress(true, false);
-                    if (synchronizationType1 != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Exit(progressHelper1._locker);
-                    }
-                    if (synchronizationType2 != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Exit(progressHelper2._locker);
-                    }
+                    float progress1 = progressHelper.GetCurrentProgress(true, true);
+                    progressHelper.MaybeExitLock();
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
                     Assert.LessOrEqual(progress1, 0.4f);
-                    Assert.Greater(progress2, 0.2f - TestHelper.progressEpsilon);
-                    Assert.LessOrEqual(progress2, 0.4f);
 
                     deferred.Resolve();
                 },
@@ -112,8 +89,7 @@ namespace ProtoPromiseTests.Threading
             var cancelationSource = CancelationSource.New();
             var deferred = default(Promise<int>.Deferred);
 
-            var progressHelper1 = default(ProgressHelper);
-            var progressHelper2 = default(ProgressHelper);
+            var progressHelper = default(ProgressHelper);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(true,
@@ -123,46 +99,24 @@ namespace ProtoPromiseTests.Threading
                     deferred = withCancelationToken
                         ? Promise.NewDeferred<int>(cancelationSource.Token)
                         : Promise.NewDeferred<int>();
-                    progressHelper1 = new ProgressHelper(progressType1, synchronizationType1);
-                    progressHelper2 = new ProgressHelper(progressType2, synchronizationType2);
+                    progressHelper = new ProgressHelper(progressType1, synchronizationType1);
 
                     deferred.Promise
-                        .SubscribeProgress(progressHelper1)
-                        .SubscribeProgress(progressHelper2)
+                        .SubscribeProgressAndAssert(progressHelper, 0f)
                         .Forget();
-                    progressHelper1.AssertCurrentProgress(0f);
-                    progressHelper2.AssertCurrentProgress(0f);
 
-                    if (synchronizationType1 != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Enter(progressHelper1._locker);
-                    }
-                    if (synchronizationType2 != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Enter(progressHelper2._locker);
-                    }
-                    progressHelper1.PrepareForInvoke();
-                    progressHelper2.PrepareForInvoke();
+                    progressHelper.MaybeEnterLock();
+                    progressHelper.PrepareForInvoke();
                 },
                 // Teardown
                 () =>
                 {
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
-                    float progress1 = progressHelper1.GetCurrentProgress(true, true);
-                    float progress2 = progressHelper2.GetCurrentProgress(true, false);
-                    if (synchronizationType1 != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Exit(progressHelper1._locker);
-                    }
-                    if (synchronizationType2 != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Exit(progressHelper2._locker);
-                    }
+                    float progress1 = progressHelper.GetCurrentProgress(true, true);
+                    progressHelper.MaybeExitLock();
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
                     Assert.LessOrEqual(progress1, 0.4f);
-                    Assert.Greater(progress2, 0.2f - TestHelper.progressEpsilon);
-                    Assert.LessOrEqual(progress2, 0.4f);
 
                     deferred.Resolve(1);
                 },
@@ -592,19 +546,13 @@ namespace ProtoPromiseTests.Threading
                         : Promise.NewDeferred();
                     promise = deferred.Promise;
                     progressHelper = new ProgressHelper(progressType, synchronizationType);
-                    if (synchronizationType != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Enter(progressHelper._locker);
-                    }
+                    progressHelper.MaybeEnterLock();
                 },
                 // Teardown
                 () =>
                 {
                     float progress = progressHelper.GetCurrentProgress(true, true);
-                    if (synchronizationType != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Exit(progressHelper._locker);
-                    }
+                    progressHelper.MaybeExitLock();
                     // Race condition could report 0 instead of expected from background threads.
                     if (synchronizationType == SynchronizationType.Background && progress < expected * 0.5f)
                     {
@@ -618,7 +566,7 @@ namespace ProtoPromiseTests.Threading
                 },
                 // Parallel Actions
                 () => deferred.ReportProgress(expected),
-                () => progressHelper.Subscribe(promise).Forget()
+                () => promise.SubscribeProgress(progressHelper).Forget()
             );
 
             cancelationSource.Dispose();
@@ -647,19 +595,13 @@ namespace ProtoPromiseTests.Threading
                         : Promise.NewDeferred<int>();
                     promise = deferred.Promise;
                     progressHelper = new ProgressHelper(progressType, synchronizationType);
-                    if (synchronizationType != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Enter(progressHelper._locker);
-                    }
+                    progressHelper.MaybeEnterLock();
                 },
                 // Teardown
                 () =>
                 {
                     float progress = progressHelper.GetCurrentProgress(true, true);
-                    if (synchronizationType != SynchronizationType.Synchronous)
-                    {
-                        Monitor.Exit(progressHelper._locker);
-                    }
+                    progressHelper.MaybeExitLock();
                     // Race condition could report 0 instead of expected from background threads.
                     if (synchronizationType == SynchronizationType.Background && progress < expected * 0.5f)
                     {
@@ -673,7 +615,7 @@ namespace ProtoPromiseTests.Threading
                 },
                 // Parallel Actions
                 () => deferred.ReportProgress(expected),
-                () => progressHelper.Subscribe(promise).Forget()
+                () => promise.SubscribeProgress(progressHelper).Forget()
             );
 
             cancelationSource.Dispose();

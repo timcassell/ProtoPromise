@@ -416,17 +416,14 @@ namespace ProtoPromiseTests.APIs
             var deferred4 = Promise.NewDeferred();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            progressHelper.Subscribe(
-                Promise.Sequence(
-                    () => deferred1.Promise,
-                    () => deferred2.Promise,
-                    () => deferred3.Promise,
-                    () => deferred4.Promise
-                )
+            Promise.Sequence(
+                () => deferred1.Promise,
+                () => deferred2.Promise,
+                () => deferred3.Promise,
+                () => deferred4.Promise
             )
+                .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
-
-            progressHelper.AssertCurrentProgress(0f);
 
             progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
             progressHelper.ResolveAndAssertResult(deferred1, 1f / 4f);
@@ -452,18 +449,15 @@ namespace ProtoPromiseTests.APIs
             var deferred4 = Promise.NewDeferred();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            progressHelper.Subscribe(
-                Promise.Sequence(
-                    () => deferred1.Promise,
-                    () => deferred2.Promise,
-                    () => deferred3.Promise,
-                    () => deferred4.Promise
-                )
+            Promise.Sequence(
+                () => deferred1.Promise,
+                () => deferred2.Promise,
+                () => deferred3.Promise,
+                () => deferred4.Promise
             )
+                .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Catch(() => { })
                 .Forget();
-
-            progressHelper.AssertCurrentProgress(0f);
 
             progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
             progressHelper.ResolveAndAssertResult(deferred1, 1f / 4f);
@@ -493,17 +487,14 @@ namespace ProtoPromiseTests.APIs
             var deferred4 = Promise.NewDeferred();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            progressHelper.Subscribe(
-                Promise.Sequence(
-                    () => deferred1.Promise,
-                    () => deferred2.Promise,
-                    () => deferred3.Promise,
-                    () => deferred4.Promise
-                )
+            Promise.Sequence(
+                () => deferred1.Promise,
+                () => deferred2.Promise,
+                () => deferred3.Promise,
+                () => deferred4.Promise
             )
+                .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
-
-            progressHelper.AssertCurrentProgress(0f);
 
             progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
             progressHelper.ResolveAndAssertResult(deferred1, 1f / 4f);

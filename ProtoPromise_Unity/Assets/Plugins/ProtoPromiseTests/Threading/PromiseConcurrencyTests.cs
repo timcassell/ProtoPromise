@@ -342,8 +342,6 @@ namespace ProtoPromiseTests.Threading
             );
             promiseCompleter.MaybeAddParallelAction(parallelActions);
 
-            bool shouldLockProgress = synchronizationType != SynchronizationType.Synchronous;
-
             bool waitForSubscribeSetup = subscribePlace == ActionPlace.InSetup;
             bool waitForReportSetup = subscribePlace == ActionPlace.InSetup && reportPlace == ActionPlace.InSetup;
             Action setupAction = () =>
@@ -354,10 +352,7 @@ namespace ProtoPromiseTests.Threading
                     progressHelpers[i] = new ProgressHelper(progressType, synchronizationType,
                         v => { Interlocked.Increment(ref invokedCount); }
                     );
-                    if (shouldLockProgress)
-                    {
-                        Monitor.Enter(progressHelpers[i]._locker);
-                    }
+                    progressHelpers[i].MaybeEnterLock();
                 }
                 invokedCount = 0;
                 deferred = TestHelper.GetNewDeferredVoid(completeType, out cancelationSource);
@@ -413,10 +408,7 @@ namespace ProtoPromiseTests.Threading
                     // Progress may have been invoked simultaneously, so we can't know what the progress value is here.
                     // We must only WaitForInvoke instead of AssertCurrentProgress.
                     progressHelpers[i].MaybeWaitForInvoke(completeType == CompleteType.Resolve, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
-                    if (shouldLockProgress)
-                    {
-                        Monitor.Exit(progressHelpers[i]._locker);
-                    }
+                    progressHelpers[i].MaybeExitLock();
                 }
                 AssertInvokes();
             };
@@ -504,8 +496,6 @@ namespace ProtoPromiseTests.Threading
             );
             promiseCompleter.MaybeAddParallelAction(parallelActions);
 
-            bool shouldLockProgress = synchronizationType != SynchronizationType.Synchronous;
-
             bool waitForSubscribeSetup = subscribePlace == ActionPlace.InSetup;
             bool waitForReportSetup = subscribePlace == ActionPlace.InSetup && reportPlace == ActionPlace.InSetup;
             Action setupAction = () =>
@@ -516,10 +506,7 @@ namespace ProtoPromiseTests.Threading
                     progressHelpers[i] = new ProgressHelper(progressType, synchronizationType,
                         v => { Interlocked.Increment(ref invokedCount); }
                     );
-                    if (shouldLockProgress)
-                    {
-                        Monitor.Enter(progressHelpers[i]._locker);
-                    }
+                    progressHelpers[i].MaybeEnterLock();
                 }
                 invokedCount = 0;
                 deferred = TestHelper.GetNewDeferredT<int>(completeType, out cancelationSource);
@@ -575,10 +562,7 @@ namespace ProtoPromiseTests.Threading
                     // Progress may have been invoked simultaneously, so we can't know what the progress value is here.
                     // We must only WaitForInvoke instead of AssertCurrentProgress.
                     progressHelpers[i].MaybeWaitForInvoke(completeType == CompleteType.Resolve, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
-                    if (shouldLockProgress)
-                    {
-                        Monitor.Exit(progressHelpers[i]._locker);
-                    }
+                    progressHelpers[i].MaybeExitLock();
                 }
                 AssertInvokes();
             };

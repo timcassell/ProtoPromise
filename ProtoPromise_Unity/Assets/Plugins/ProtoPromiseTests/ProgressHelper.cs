@@ -14,7 +14,7 @@ namespace ProtoPromiseTests
 
     public class ProgressHelper : IProgress<float>
     {
-        public readonly object _locker = new object();
+        private readonly object _locker = new object();
         private readonly ProgressType _progressType;
         private readonly SynchronizationType _synchronizationType;
         private readonly Action<float> _onProgress;
@@ -26,6 +26,22 @@ namespace ProtoPromiseTests
             _progressType = progressType;
             _synchronizationType = synchronizationType;
             _onProgress = onProgress;
+        }
+
+        public void MaybeEnterLock()
+        {
+            if (_synchronizationType == SynchronizationType.Background)
+            {
+                Monitor.Enter(_locker);
+            }
+        }
+
+        public void MaybeExitLock()
+        {
+            if (_synchronizationType == SynchronizationType.Background)
+            {
+                Monitor.Exit(_locker);
+            }
         }
 
         public void PrepareForInvoke()
@@ -73,9 +89,9 @@ namespace ProtoPromiseTests
             }
         }
 
-        public void AssertCurrentProgress(float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan waitTimeout = default(TimeSpan))
+        public void AssertCurrentProgress(float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
-            float currentProgress = GetCurrentProgress(waitForInvoke, executeForeground, waitTimeout);
+            float currentProgress = GetCurrentProgress(waitForInvoke, executeForeground, timeout);
             if (float.IsNaN(expectedProgress))
             {
                 Assert.IsNaN(currentProgress);
@@ -86,72 +102,94 @@ namespace ProtoPromiseTests
             }
         }
 
-        public float GetCurrentProgress(bool waitForInvoke, bool executeForeground, TimeSpan waitTimeout = default(TimeSpan))
+        public float GetCurrentProgress(bool waitForInvoke, bool executeForeground, TimeSpan timeout = default(TimeSpan))
         {
             lock (_locker)
             {
-                MaybeWaitForInvoke(waitForInvoke, executeForeground, waitTimeout);
+                MaybeWaitForInvoke(waitForInvoke, executeForeground, timeout);
                 return _currentProgress;
             }
         }
 
-        public void ReportProgressAndAssertResult(Promise.DeferredBase deferred, float reportValue, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true)
+        public void ReportProgressAndAssertResult(Promise.DeferredBase deferred, float reportValue, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
             lock (_locker)
             {
                 PrepareForInvoke();
                 deferred.ReportProgress(reportValue);
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground);
+                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
         }
 
-        public void RejectAndAssertResult<TReject>(Promise.DeferredBase deferred, TReject reason, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true)
+        public void RejectAndAssertResult<TReject>(Promise.DeferredBase deferred, TReject reason, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
             lock (_locker)
             {
                 PrepareForInvoke();
                 deferred.Reject(reason);
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground);
+                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
         }
 
-        public void CancelAndAssertResult(Promise.DeferredBase deferred, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true)
+        public void CancelAndAssertResult(Promise.DeferredBase deferred, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
             lock (_locker)
             {
                 PrepareForInvoke();
                 deferred.Cancel();
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground);
+                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
         }
 
-        public void CancelAndAssertResult(CancelationSource cancelationSource, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true)
+        public void CancelAndAssertResult(CancelationSource cancelationSource, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
             lock (_locker)
             {
                 PrepareForInvoke();
                 cancelationSource.Cancel();
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground);
+                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
         }
 
-        public void ResolveAndAssertResult(Promise.Deferred deferred, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true)
+        public void ResolveAndAssertResult(Promise.Deferred deferred, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
             lock (_locker)
             {
                 PrepareForInvoke();
                 deferred.Resolve();
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground);
+                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
         }
 
-        public void ResolveAndAssertResult<T>(Promise<T>.Deferred deferred, T result, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true)
+        public void ResolveAndAssertResult<T>(Promise<T>.Deferred deferred, T result, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
             lock (_locker)
             {
                 PrepareForInvoke();
                 deferred.Resolve(result);
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground);
+                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+            }
+        }
+
+        public Promise SubscribeAndAssertCurrentProgress(Promise promise, float expectedProgress, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
+        {
+            lock (_locker)
+            {
+                PrepareForInvoke();
+                promise = Subscribe(promise, cancelationToken);
+                AssertCurrentProgress(expectedProgress, timeout: timeout);
+                return promise;
+            }
+        }
+
+        public Promise<T> SubscribeAndAssertCurrentProgress<T>(Promise<T> promise, float expectedProgress, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
+        {
+            lock (_locker)
+            {
+                PrepareForInvoke();
+                promise = Subscribe(promise, cancelationToken);
+                AssertCurrentProgress(expectedProgress, timeout: timeout);
+                return promise;
             }
         }
 

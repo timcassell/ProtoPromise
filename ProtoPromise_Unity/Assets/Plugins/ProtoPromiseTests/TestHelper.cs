@@ -200,6 +200,16 @@ namespace ProtoPromiseTests
             return progressHelper.Subscribe(promise, cancelationToken);
         }
 
+        public static Promise SubscribeProgressAndAssert(this Promise promise, ProgressHelper progressHelper, float expectedValue, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
+        {
+            return progressHelper.SubscribeAndAssertCurrentProgress(promise, expectedValue, cancelationToken, timeout);
+        }
+
+        public static Promise<T> SubscribeProgressAndAssert<T>(this Promise<T> promise, ProgressHelper progressHelper, float expectedValue, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
+        {
+            return progressHelper.SubscribeAndAssertCurrentProgress(promise, expectedValue, cancelationToken, timeout);
+        }
+
         public static readonly double progressEpsilon = 1d / Math.Pow(2d, Promise.Config.ProgressDecimalBits);
 
         public const int callbacksMultiplier = 3

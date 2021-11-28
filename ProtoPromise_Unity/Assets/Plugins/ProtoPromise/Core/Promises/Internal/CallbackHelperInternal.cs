@@ -88,14 +88,16 @@ namespace Proto.Promises
                     {
                         return new Promise<TResult>(null, ValidIdFromApi, currentDepth + 1, promise.Result);
                     }
-#if !PROMISE_DEBUG
-                    if (promise._ref.State == Promise.State.Resolved)
-                    {
-                        TResult result = ((IValueContainer) promise._ref._valueOrPrevious).GetValue<TResult>();
-                        promise.Forget();
-                        return new Promise<TResult>(null, ValidIdFromApi, currentDepth + 1, result);
-                    }
-#endif
+                    // TODO
+//#if !PROMISE_DEBUG
+//                    if (promise._ref.State == Promise.State.Resolved)
+//                    {
+//                        promise._ref.MarkAwaited(promise.Id);
+//                        TResult result = ((IValueContainer) promise._ref._valueOrPrevious).GetValue<TResult>();
+//                        promise._ref.MaybeDispose();
+//                        return new Promise<TResult>(null, ValidIdFromApi, currentDepth + 1, result);
+//                    }
+//#endif
                     // Normalize progress. Passing a default resolver makes the Execute method adopt the promise's state without attempting to invoke.
                     var newRef = PromiseResolvePromise<TResult, TResult, DelegateResolvePassthrough<TResult>>.GetOrCreate(default(DelegateResolvePassthrough<TResult>), currentDepth + 1);
                     newRef.WaitForWithProgress(promise);

@@ -525,7 +525,8 @@ namespace ProtoPromiseTests.Threading
                     cancelationSource = CancelationSource.New();
                     deferred = Promise.NewDeferred();
                     // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
-                    progressHelper.Subscribe(deferred.Promise, cancelationSource.Token)
+                    deferred.Promise
+                        .SubscribeProgress(progressHelper, cancelationSource.Token)
                         .Finally(() => completed = true) // Make sure it completes.
                         .Forget();
                 },
@@ -572,7 +573,8 @@ namespace ProtoPromiseTests.Threading
                     cancelationSource = CancelationSource.New();
                     deferred = Promise.NewDeferred<int>();
                     // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
-                    progressHelper.Subscribe(deferred.Promise, cancelationSource.Token)
+                    deferred.Promise
+                        .SubscribeProgress(progressHelper, cancelationSource.Token)
                         .Finally(() => completed = true) // Make sure it completes.
                         .Forget();
                 },
@@ -643,7 +645,8 @@ namespace ProtoPromiseTests.Threading
                 // Parallel actions
                 () => cancelationSource.Cancel(),
                 () => deferred.ReportProgress(0.5f),
-                () => progressHelper.Subscribe(promise, cancelationToken)
+                () => promise
+                    .SubscribeProgress(progressHelper, cancelationToken)
                     .Finally(() => completed = true) // Whether the callback is called or not is indeterminable, just make sure it completes.
                     .Forget()
             );
@@ -693,7 +696,8 @@ namespace ProtoPromiseTests.Threading
                 // Parallel actions
                 () => cancelationSource.Cancel(),
                 () => deferred.ReportProgress(0.5f),
-                () => progressHelper.Subscribe(promise, cancelationToken)
+                () => promise
+                    .SubscribeProgress(progressHelper, cancelationToken)
                     .Finally(() => completed = true) // Whether the callback is called or not is indeterminable, just make sure it completes.
                     .Forget()
             );
@@ -720,9 +724,12 @@ namespace ProtoPromiseTests.Threading
                     cancelationSource2 = CancelationSource.New();
                     deferred = Promise.NewDeferred();
                     // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
-                    progressHelper.Subscribe(
-                        deferred.Promise.ThenDuplicate(cancelationSource1.Token).ThenDuplicate().ThenDuplicate(cancelationSource2.Token).ThenDuplicate()
-                    )
+                    deferred.Promise
+                        .ThenDuplicate(cancelationSource1.Token)
+                        .ThenDuplicate()
+                        .ThenDuplicate(cancelationSource2.Token)
+                        .ThenDuplicate()
+                        .SubscribeProgress(progressHelper)
                         .Finally(() => completed = true) // Make sure it completes.
                         .Forget();
                 },
@@ -770,9 +777,12 @@ namespace ProtoPromiseTests.Threading
                     cancelationSource2 = CancelationSource.New();
                     deferred = Promise.NewDeferred<int>();
                     // Whether the callback is called or not is indeterminable, this test is really to make sure nothing explodes.
-                    progressHelper.Subscribe(
-                        deferred.Promise.ThenDuplicate(cancelationSource1.Token).ThenDuplicate().ThenDuplicate(cancelationSource2.Token).ThenDuplicate()
-                    )
+                    deferred.Promise
+                        .ThenDuplicate(cancelationSource1.Token)
+                        .ThenDuplicate()
+                        .ThenDuplicate(cancelationSource2.Token)
+                        .ThenDuplicate()
+                        .SubscribeProgress(progressHelper)
                         .Finally(() => completed = true) // Make sure it completes.
                         .Forget();
                 },
