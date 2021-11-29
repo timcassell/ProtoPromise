@@ -29,10 +29,8 @@ namespace ProtoPromiseTests.Threading
 #if PROMISE_PROGRESS
         [Test]
         public void DeferredReportProgressMayBeCalledConcurrently_void(
-            [Values] ProgressType progressType1,
-            [Values] SynchronizationType synchronizationType1,
-            [Values] ProgressType progressType2,
-            [Values] SynchronizationType synchronizationType2,
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType,
             [Values] bool withCancelationToken)
         {
             var cancelationSource = CancelationSource.New();
@@ -48,7 +46,7 @@ namespace ProtoPromiseTests.Threading
                     deferred = withCancelationToken
                         ? Promise.NewDeferred(cancelationSource.Token)
                         : Promise.NewDeferred();
-                    progressHelper = new ProgressHelper(progressType1, synchronizationType1);
+                    progressHelper = new ProgressHelper(progressType, synchronizationType);
 
                     deferred.Promise
                         .SubscribeProgressAndAssert(progressHelper, 0f)
@@ -80,10 +78,8 @@ namespace ProtoPromiseTests.Threading
 
         [Test]
         public void DeferredReportProgressMayBeCalledConcurrently_T(
-            [Values] ProgressType progressType1,
-            [Values] SynchronizationType synchronizationType1,
-            [Values] ProgressType progressType2,
-            [Values] SynchronizationType synchronizationType2,
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType,
             [Values] bool withCancelationToken)
         {
             var cancelationSource = CancelationSource.New();
@@ -99,7 +95,7 @@ namespace ProtoPromiseTests.Threading
                     deferred = withCancelationToken
                         ? Promise.NewDeferred<int>(cancelationSource.Token)
                         : Promise.NewDeferred<int>();
-                    progressHelper = new ProgressHelper(progressType1, synchronizationType1);
+                    progressHelper = new ProgressHelper(progressType, synchronizationType);
 
                     deferred.Promise
                         .SubscribeProgressAndAssert(progressHelper, 0f)

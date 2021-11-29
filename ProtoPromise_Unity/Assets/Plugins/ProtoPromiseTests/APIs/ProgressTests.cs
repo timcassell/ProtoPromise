@@ -1321,7 +1321,8 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void ProgressMayBeChainSubscribedMultipleTimes_Resolved_void(
             [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
+            // Test is flaky with background
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground)] SynchronizationType synchronizationType)
         {
             Promise promise = Promise.Resolved();
 
@@ -1371,7 +1372,8 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void ProgressMayBeChainSubscribedMultipleTimes_Resolved_T(
             [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
+            // Test is flaky with background
+            [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground)] SynchronizationType synchronizationType)
         {
             Promise<int> promise = Promise.Resolved(1);
 
