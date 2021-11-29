@@ -12,6 +12,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 
 using System;
 using System.Runtime.CompilerServices;
