@@ -39,11 +39,9 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
-            progressHelper.Subscribe(deferred.Promise)
+            deferred.Promise
+                .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
-
-            TestHelper.ExecuteForegroundCallbacks();
-            progressHelper.AssertCurrentProgress(0f);
 
             progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
             progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
@@ -60,11 +58,9 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
-            progressHelper.Subscribe(deferred.Promise)
+            deferred.Promise
+                .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
-
-            TestHelper.ExecuteForegroundCallbacks();
-            progressHelper.AssertCurrentProgress(0f);
 
             progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
             progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
@@ -81,11 +77,9 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
-            progressHelper.Subscribe(deferred.Promise)
+            deferred.Promise
+                .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
-
-            TestHelper.ExecuteForegroundCallbacks();
-            progressHelper.AssertCurrentProgress(0f);
 
             progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
             progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
@@ -102,11 +96,9 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
-            progressHelper.Subscribe(deferred.Promise)
+            deferred.Promise
+                .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
-
-            TestHelper.ExecuteForegroundCallbacks();
-            progressHelper.AssertCurrentProgress(0f);
 
             progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
             progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
@@ -179,8 +171,8 @@ namespace ProtoPromiseTests.APIs
             progressHelper.PrepareForInvoke();
             ExecuteOnThread(() =>
             {
-                progressHelper
-                    .Subscribe(deferred.Promise)
+                deferred.Promise
+                    .SubscribeProgress(progressHelper)
                     .Forget();
             }, threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
             progressHelper.AssertCurrentProgress(0f);
@@ -248,8 +240,8 @@ namespace ProtoPromiseTests.APIs
             progressHelper.PrepareForInvoke();
             ExecuteOnThread(() =>
             {
-                progressHelper
-                    .Subscribe(deferred.Promise)
+                deferred.Promise
+                    .SubscribeProgress(progressHelper)
                     .Forget();
             }, threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
             progressHelper.AssertCurrentProgress(0f);
@@ -343,7 +335,8 @@ namespace ProtoPromiseTests.APIs
             [Values] SynchronizationType synchronizationType)
         {
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            progressHelper.Subscribe(Promise.Rejected("Reject"))
+            Promise.Rejected("Reject")
+                .SubscribeProgress(progressHelper)
                 .Catch(() => { })
                 .Forget();
 
@@ -358,7 +351,8 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            progressHelper.Subscribe(deferred.Promise)
+            deferred.Promise
+                .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Catch(() => { })
                 .Forget();
 
@@ -374,7 +368,8 @@ namespace ProtoPromiseTests.APIs
             [Values] SynchronizationType synchronizationType)
         {
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            progressHelper.Subscribe(Promise<int>.Rejected("Reject"))
+            Promise<int>.Rejected("Reject")
+                .SubscribeProgress(progressHelper)
                 .Catch(() => { })
                 .Forget();
 
@@ -468,7 +463,8 @@ namespace ProtoPromiseTests.APIs
             [Values] SynchronizationType synchronizationType)
         {
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            progressHelper.Subscribe(Promise.Canceled())
+            Promise.Canceled()
+                .SubscribeProgress(progressHelper)
                 .Forget();
 
             progressHelper.AssertCurrentProgress(float.NaN, false);
@@ -520,7 +516,8 @@ namespace ProtoPromiseTests.APIs
             [Values] SynchronizationType synchronizationType)
         {
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            progressHelper.Subscribe(Promise<int>.Canceled())
+            Promise<int>.Canceled()
+                .SubscribeProgress(progressHelper)
                 .Forget();
 
             progressHelper.AssertCurrentProgress(float.NaN, false);
