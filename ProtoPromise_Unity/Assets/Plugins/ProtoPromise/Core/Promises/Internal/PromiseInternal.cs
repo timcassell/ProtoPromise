@@ -1125,11 +1125,9 @@ namespace Proto.Promises
                     {
                         // For debugging. This should never happen.
                         string message = "A PromisePassThrough was garbage collected without it being released."
-#if CSHARP_7_3_OR_NEWER
-                            + $" _retainCounter: {_smallFields._retainCounter}, _index: {_smallFields._index}, _target: {_target}, _owner: {_owner}"
+                            + " _retainCounter: " + _smallFields._retainCounter + ", _index: " + _smallFields._index + ", _target: " + _target + ", _owner: " + _owner
 #if PROMISE_PROGRESS
-                            + $", _reportingProgress: {_smallFields._reportingProgress}, _settingInitialProgress: {_smallFields._settingInitialProgress}, _currentProgress: {_smallFields._currentProgress.ToDouble()}"
-#endif
+                            + ", _reportingProgress: " + _smallFields._reportingProgress + ", _settingInitialProgress: " + _smallFields._settingInitialProgress + ", _currentProgress: " + _smallFields._currentProgress.ToDouble()
 #endif
                             ;
                         AddRejectionToUnhandledStack(new UnreleasedObjectException(message), _target as ITraceable);

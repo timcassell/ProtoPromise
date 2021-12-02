@@ -39,32 +39,32 @@ namespace ProtoPromiseTests
     // These help test all Then/Catch/ContinueWith methods at once.
     public static class TestHelper
     {
-        public static readonly PromiseSynchronizationContext _foregroundContext;
+        public static readonly PromiseSynchronizationContext _foregroundContext = new PromiseSynchronizationContext();
         private static readonly List<Exception> _uncaughtExceptions = new List<Exception>();
 
-        static TestHelper()
-        {
-            // Set the foreground context to execute foreground promise callbacks.
-            Promise.Config.ForegroundContext = _foregroundContext = new PromiseSynchronizationContext();
-            // Set uncaught rejection handler.
-            Promise.Config.UncaughtRejectionHandler = e =>
-            {
-                lock (_uncaughtExceptions)
-                {
-                    _uncaughtExceptions.Add(e);
-                }
-            };
-            Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
-#if PROTO_PROMISE_POOL_DISABLE // Are we testing the pool or not? (used for command-line testing)
-            Promise.Config.ObjectPoolingEnabled = false;
-#else
-            Promise.Config.ObjectPoolingEnabled = true;
-#endif
-        }
-
-        // Just to make sure static constructor is ran.
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void Setup() { }
+        public static void Setup()
+        {
+            if (Promise.Config.ForegroundContext != _foregroundContext)
+            {
+                // Set the foreground context to execute foreground promise callbacks.
+                Promise.Config.ForegroundContext = _foregroundContext;
+                // Set uncaught rejection handler.
+                Promise.Config.UncaughtRejectionHandler = e =>
+                {
+                    lock (_uncaughtExceptions)
+                    {
+                        _uncaughtExceptions.Add(e);
+                    }
+                };
+#if PROTO_PROMISE_POOL_DISABLE // Are we testing the pool or not? (used for command-line testing)
+                Promise.Config.ObjectPoolingEnabled = false;
+#else
+                Promise.Config.ObjectPoolingEnabled = true;
+#endif
+                Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
+            }
+        }
 
         public static void Cleanup()
         {

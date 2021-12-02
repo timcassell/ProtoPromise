@@ -52,6 +52,7 @@ namespace Proto.Promises
 #pragma warning restore CS0612 // Type or member is obsolete
 
 #if UNITY_EDITOR
+                    // TODO: make foreground context work in edit mode also.
                     if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
 #endif
                     {
@@ -66,7 +67,7 @@ namespace Proto.Promises
 
             private static PromiseBehaviour _instance;
 
-            private PromiseSynchronizationContext _syncContext;
+            private readonly PromiseSynchronizationContext _syncContext = new PromiseSynchronizationContext();
             // These must not be readonly.
             private Internal.ValueLinkedStack<UnhandledException> _unhandledExceptions;
             private Internal.SpinLocker _unhandledExceptionsLocker;
@@ -81,7 +82,10 @@ namespace Proto.Promises
             {
                 if (_instance == null)
                 {
-                    Promise.Config.ForegroundContext = _syncContext = new PromiseSynchronizationContext();
+                    Promise.Config.ForegroundContext = _syncContext;
+                    // Intercept uncaught rejections and report them in UpdateRoutine instead of directly sending them to UnityEngine.Debug.LogException
+                    // so that we can minimize the extra stack frames in the logs that we don't care about.
+                    Promise.Config.UncaughtRejectionHandler = HandleRejection;
                 }
             }
 
@@ -96,7 +100,6 @@ namespace Proto.Promises
                 DontDestroyOnLoad(gameObject);
                 gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
                 _instance = this;
-                SetupUncaughtRejectionsIntercept();
                 StartCoroutine(UpdateRoutine());
             }
 
@@ -119,13 +122,6 @@ namespace Proto.Promises
                         _syncContext.Execute(); // Clear out any pending callbacks.
                     }
                 }
-            }
-
-            // Intercept uncaught rejections and report them in UpdateRoutine instead of directly sending them to UnityEngine.Debug.LogException
-            // so that we can minimize the extra stack frames in the logs that we don't care about.
-            private void SetupUncaughtRejectionsIntercept()
-            {
-                Promise.Config.UncaughtRejectionHandler = HandleRejection;
             }
 
             private void HandleRejection(UnhandledException exception)

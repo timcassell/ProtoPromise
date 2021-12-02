@@ -37,8 +37,9 @@ namespace Proto.Promises
             {
                 get
                 {
-                    DeferredInternal<TDeferredRef> _this = this;
-                    return _this._ref != null && _this._deferredId == _this._ref.DeferredId;
+                    var copy = _ref;
+                    var deferredId = _deferredId;
+                    return copy != null && deferredId == copy.DeferredId;
                 }
             }
 
@@ -60,8 +61,9 @@ namespace Proto.Promises
 
             public bool TryResolveVoid()
             {
-                DeferredInternal<TDeferredRef> _this = this;
-                return _this._ref != null && _this._ref.TryResolveVoid(_this._deferredId);
+                var copy = _ref;
+                var deferredId = _deferredId;
+                return copy != null && copy.TryResolveVoid(deferredId);
             }
 
             public void Resolve<T>(ref T value)
@@ -74,8 +76,9 @@ namespace Proto.Promises
 
             public bool TryResolve<T>(ref T value)
             {
-                DeferredInternal<TDeferredRef> _this = this;
-                return _this._ref != null && _this._ref.TryResolve(ref value, _this._deferredId);
+                var copy = _ref;
+                var deferredId = _deferredId;
+                return copy != null && copy.TryResolve(ref value, deferredId);
             }
 
             public void Reject<TReject>(ref TReject reason)
@@ -88,8 +91,9 @@ namespace Proto.Promises
 
             public bool TryReject<TReject>(ref TReject reason)
             {
-                DeferredInternal<TDeferredRef> _this = this;
-                return _this._ref != null && _this._ref.TryReject(ref reason, _this._deferredId, 1);
+                var copy = _ref;
+                var deferredId = _deferredId;
+                return copy != null && copy.TryReject(ref reason, deferredId, 1);
             }
 
             public void Cancel<TCancel>(ref TCancel reason)
@@ -102,8 +106,9 @@ namespace Proto.Promises
 
             public bool TryCancel<TCancel>(ref TCancel reason)
             {
-                DeferredInternal<TDeferredRef> _this = this;
-                return _this._ref != null && _this._ref.TryCancel(ref reason, _this._deferredId);
+                var copy = _ref;
+                var deferredId = _deferredId;
+                return copy != null && copy.TryCancel(ref reason, deferredId);
             }
 
             public void Cancel()
@@ -116,8 +121,9 @@ namespace Proto.Promises
 
             public bool TryCancel()
             {
-                DeferredInternal<TDeferredRef> _this = this;
-                return _this._ref != null && _this._ref.TryCancelVoid(_this._deferredId);
+                var copy = _ref;
+                var deferredId = _deferredId;
+                return copy != null && copy.TryCancelVoid(deferredId);
             }
 
             public void ReportProgress(float progress)
@@ -134,24 +140,27 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
                 return IsValidAndPending;
 #else
-                DeferredInternal<TDeferredRef> _this = this;
-                return _this._ref != null && _this._ref.TryReportProgress(progress, _this._deferredId);
+                var copy = _ref;
+                var deferredId = _deferredId;
+                return copy != null && copy.TryReportProgress(progress, deferredId);
 #endif
             }
 
             public override int GetHashCode()
             {
-                DeferredInternal<TDeferredRef> _this = this;
-                if (_this._ref == null)
+                var copy = _ref;
+                var promiseId = _promiseId;
+                var deferredId = _deferredId;
+                if (copy == null)
                 {
                     return 0;
                 }
                 unchecked
                 {
                     int hash = 17;
-                    hash = hash * 31 + _this._deferredId.GetHashCode();
-                    hash = hash * 31 + _this._promiseId.GetHashCode();
-                    hash = hash * 31 + _this._ref.GetHashCode();
+                    hash = hash * 31 + deferredId.GetHashCode();
+                    hash = hash * 31 + promiseId.GetHashCode();
+                    hash = hash * 31 + copy.GetHashCode();
                     return hash;
                 }
             }
