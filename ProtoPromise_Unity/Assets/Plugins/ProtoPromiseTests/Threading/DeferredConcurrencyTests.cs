@@ -550,7 +550,7 @@ namespace ProtoPromiseTests.Threading
                     float progress = progressHelper.GetCurrentProgress(true, true);
                     progressHelper.MaybeExitLock();
                     // Race condition could report 0 instead of expected from background threads.
-                    if (synchronizationType == SynchronizationType.Background && progress < expected * 0.5f)
+                    if (progress < expected * 0.5f)
                     {
                         Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
                     }
@@ -599,7 +599,7 @@ namespace ProtoPromiseTests.Threading
                     float progress = progressHelper.GetCurrentProgress(true, true);
                     progressHelper.MaybeExitLock();
                     // Race condition could report 0 instead of expected from background threads.
-                    if (synchronizationType == SynchronizationType.Background && progress < expected * 0.5f)
+                    if (progress < expected * 0.5f)
                     {
                         Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
                     }
