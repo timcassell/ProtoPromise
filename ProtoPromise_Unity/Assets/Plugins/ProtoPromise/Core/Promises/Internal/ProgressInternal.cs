@@ -845,42 +845,47 @@ namespace Proto.Promises
 
                 internal override void AddWaiter(ITreeHandleable waiter, ref ExecutionScheduler executionScheduler)
                 {
-                    ThrowIfInPool(this);
-                    // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
-                    _waiter = waiter;
-                    Thread.MemoryBarrier(); // Make sure State and _isPreviousComplete are read after _waiter is written.
-                    if (State != Promise.State.Pending)
-                    {
-                        // Exchange and check for null to handle race condition with HandleWaiter on another thread.
-                        waiter = Interlocked.Exchange(ref _waiter, null);
-                        if (waiter != null)
-                        {
-                            if (_smallProgressFields._isSynchronous)
-                            {
-                                waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
-                            }
-                            else
-                            {
-                                // If this was configured to execute progress on a SynchronizationContext or the ThreadPool, force the waiter to execute on the same context for consistency.
-
-                                // Taking advantage of an implementation detail that MakeReadyFromSettled will only add itself or nothing to the stack, so we can just send it to the context instead.
-                                // This is better than adding a new method to the interface.
-                                ExecutionScheduler overrideScheduler = executionScheduler.GetEmptyCopy();
-                                waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref overrideScheduler);
-                                if (overrideScheduler._handleStack.IsNotEmpty)
-                                {
-                                    executionScheduler.ScheduleOnContext(_synchronizationContext, overrideScheduler._handleStack.Pop());
-                                }
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                                if (overrideScheduler._handleStack.IsNotEmpty)
-                                {
-                                    throw new Exception("This should never happen.");
-                                }
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                    lock (this)
 #endif
+                    {
+                        ThrowIfInPool(this);
+                        // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
+                        _waiter = waiter;
+                        Thread.MemoryBarrier(); // Make sure State and _isPreviousComplete are read after _waiter is written.
+                        if (State != Promise.State.Pending)
+                        {
+                            // Exchange and check for null to handle race condition with HandleWaiter on another thread.
+                            waiter = Interlocked.Exchange(ref _waiter, null);
+                            if (waiter != null)
+                            {
+                                if (_smallProgressFields._isSynchronous)
+                                {
+                                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
+                                }
+                                else
+                                {
+                                    // If this was configured to execute progress on a SynchronizationContext or the ThreadPool, force the waiter to execute on the same context for consistency.
+
+                                    // Taking advantage of an implementation detail that MakeReadyFromSettled will only add itself or nothing to the stack, so we can just send it to the context instead.
+                                    // This is better than adding a new method to the interface.
+                                    ExecutionScheduler overrideScheduler = executionScheduler.GetEmptyCopy();
+                                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref overrideScheduler);
+                                    if (overrideScheduler._handleStack.IsNotEmpty)
+                                    {
+                                        executionScheduler.ScheduleOnContext(_synchronizationContext, overrideScheduler._handleStack.Pop());
+                                    }
+    #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                                    if (overrideScheduler._handleStack.IsNotEmpty)
+                                    {
+                                        throw new Exception("This should never happen.");
+                                    }
+    #endif
+                                }
                             }
                         }
+                        MaybeDispose();
                     }
-                    MaybeDispose();
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)

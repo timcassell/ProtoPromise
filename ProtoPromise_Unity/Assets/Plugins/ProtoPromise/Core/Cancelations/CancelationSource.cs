@@ -103,9 +103,7 @@ namespace Proto.Promises
         {
             get
             {
-                var copy = _ref;
-                var sourceId = _sourceId;
-                return copy != null && copy.SourceId == sourceId;
+                return Internal.CancelationRef.IsValidSource(_ref, _sourceId);
             }
         }
 
@@ -116,9 +114,7 @@ namespace Proto.Promises
         {
             get
             {
-                var copy = _ref;
-                var sourceId = _sourceId;
-                return copy != null && copy.IsSourceCanceled(sourceId);
+                return Internal.CancelationRef.IsSourceCanceled(_ref, _sourceId);
             }
         }
 
@@ -128,9 +124,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel()
         {
-            var copy = _ref;
-            var sourceId = _sourceId;
-            return copy != null && copy.TrySetCanceled(sourceId);
+            return Internal.CancelationRef.TrySetCanceled(_ref, _sourceId);
         }
 
         /// <summary>
@@ -139,9 +133,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel<TCancel>(TCancel reason)
         {
-            var copy = _ref;
-            var sourceId = _sourceId;
-            return copy != null && copy.TrySetCanceled(ref reason, sourceId);
+            return Internal.CancelationRef.TrySetCanceled(ref reason, _ref, _sourceId);
         }
 
         /// <summary>
@@ -174,9 +166,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already disposed, false otherwise.</returns>
         public bool TryDispose()
         {
-            var copy = _ref;
-            var sourceId = _sourceId;
-            return copy != null && copy.TryDispose(sourceId);
+            return Internal.CancelationRef.TryDispose(_ref, _sourceId);
         }
 
         /// <summary>
@@ -207,21 +197,7 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            var copy = _ref;
-            var sourceId = _sourceId;
-            var tokenId = _tokenId;
-            if (copy == null)
-            {
-                return 0;
-            }
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 31 + tokenId.GetHashCode();
-                hash = hash * 31 + sourceId.GetHashCode();
-                hash = hash * 31 + copy.GetHashCode();
-                return hash;
-            }
+            return Internal.CancelationRef.GetHashCode(_ref, _sourceId, _tokenId);
         }
 
         public static bool operator ==(CancelationSource c1, CancelationSource c2)

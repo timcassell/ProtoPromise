@@ -69,7 +69,7 @@ namespace Proto.Promises
 
             private readonly PromiseSynchronizationContext _syncContext = new PromiseSynchronizationContext();
             // These must not be readonly.
-            private Internal.ValueLinkedStack<UnhandledException> _unhandledExceptions;
+            private Internal.ValueLinkedStack<UnhandledException> _unhandledExceptions = new Internal.ValueLinkedStack<UnhandledException>();
             private Internal.SpinLocker _unhandledExceptionsLocker;
 
             [MethodImpl(Internal.InlineOption)]
@@ -118,6 +118,10 @@ namespace Proto.Promises
                         if (Promise.Config.ForegroundContext == _syncContext)
                         {
                             Promise.Config.ForegroundContext = null;
+                        }
+                        if (Promise.Config.UncaughtRejectionHandler == HandleRejection)
+                        {
+                            Promise.Config.UncaughtRejectionHandler = null;
                         }
                         _syncContext.Execute(); // Clear out any pending callbacks.
                     }

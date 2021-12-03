@@ -45,11 +45,10 @@ namespace Proto.Promises
         /// </summary>
         internal void MaybeLinkSourceInternal(Internal.CancelationRef cancelationRef)
         {
-            var copy = _ref;
-            var id = _id;
-            if (copy != null)
+            // No need to copy values for thread-safety here, as this is only called from the `New(CancetionToken)` functions.
+            if (_ref != null)
             {
-                copy.MaybeAddLinkedCancelation(cancelationRef, id);
+                _ref.MaybeAddLinkedCancelation(cancelationRef, _id);
             }
         }
 
@@ -59,17 +58,7 @@ namespace Proto.Promises
         [System.Runtime.CompilerServices.MethodImpl(Internal.InlineOption)]
         internal bool TryRegisterInternal(Internal.ICancelDelegate listener, out CancelationRegistration cancelationRegistration)
         {
-            // Retain for thread safety.
-            var copy = _ref;
-            var id = _id;
-            if (copy == null || !copy.TryRetainInternal(id))
-            {
-                cancelationRegistration = default(CancelationRegistration);
-                return false;
-            }
-            bool success = copy.TryRegister(listener, out cancelationRegistration);
-            copy.ReleaseAfterRetainInternal();
-            return success;
+            return Internal.CancelationRef.TryRegisterInternal(_ref, _id, listener, out cancelationRegistration);
         }
 
         /// <summary>
@@ -80,9 +69,7 @@ namespace Proto.Promises
         {
             get
             {
-                var copy = _ref;
-                var id = _id;
-                return copy != null && copy.TokenId == id;
+                return Internal.CancelationRef.CanTokenBeCanceled(_ref, _id);
             }
         }
 
@@ -93,9 +80,7 @@ namespace Proto.Promises
         {
             get
             {
-                var copy = _ref;
-                var id = _id;
-                return copy != null && copy.IsTokenCanceled(id);
+                return Internal.CancelationRef.IsTokenCanceled(_ref, _id);
             }
         }
 
@@ -105,12 +90,7 @@ namespace Proto.Promises
         /// <exception cref="CancelException"/>
         public void ThrowIfCancelationRequested()
         {
-            var copy = _ref;
-            var id = _id;
-            if (copy != null)
-            {
-                copy.ThrowIfCanceled(id);
-            }
+            Internal.CancelationRef.ThrowIfCanceled(_ref, _id);
         }
 
         /// <summary>
@@ -122,14 +102,7 @@ namespace Proto.Promises
         {
             get
             {
-                var copy = _ref;
-                var id = _id;
-                Type type;
-                if (copy != null && copy.TryGetCanceledType(id, out type))
-                {
-                    return type;
-                }
-                throw new InvalidOperationException("CancelationToken.CancelationValueType: token has not been canceled.", Internal.GetFormattedStacktrace(1));
+                return Internal.CancelationRef.GetCanceledType(_ref, _id);
             }
         }
 
@@ -142,14 +115,7 @@ namespace Proto.Promises
         {
             get
             {
-                var copy = _ref;
-                var id = _id;
-                object value;
-                if (copy != null && copy.TryGetCanceledValue(id, out value))
-                {
-                    return value;
-                }
-                throw new InvalidOperationException("CancelationToken.CancelationValue: token has not been canceled.", Internal.GetFormattedStacktrace(1));
+                return Internal.CancelationRef.GetCanceledValue(_ref, _id);
             }
         }
 
@@ -160,14 +126,7 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public bool TryGetCancelationValueAs<T>(out T value)
         {
-            var copy = _ref;
-            var id = _id;
-            bool didConvert;
-            if (copy != null && copy.TryGetCanceledValueAs(id, out didConvert, out value))
-            {
-                return didConvert;
-            }
-            throw new InvalidOperationException("CancelationToken.TryGetCancelationValueAs: token has not been canceled.", Internal.GetFormattedStacktrace(1));
+            return Internal.CancelationRef.TryGetCanceledValueAs(_ref, _id, out value);
         }
 
         /// <summary>
@@ -180,14 +139,7 @@ namespace Proto.Promises
         public bool TryRegister(Promise.CanceledAction callback, out CancelationRegistration cancelationRegistration)
         {
             ValidateArgument(callback, "callback", 1);
-            var copy = _ref;
-            var id = _id;
-            if (copy == null)
-            {
-                cancelationRegistration = default(CancelationRegistration);
-                return false;
-            }
-            return copy.TryRegister(callback, id, out cancelationRegistration);
+            return Internal.CancelationRef.TryRegister(_ref, _id, callback, out cancelationRegistration);
         }
 
         /// <summary>
@@ -201,14 +153,7 @@ namespace Proto.Promises
         public bool TryRegister<TCapture>(TCapture captureValue, Promise.CanceledAction<TCapture> callback, out CancelationRegistration cancelationRegistration)
         {
             ValidateArgument(callback, "callback", 1);
-            var copy = _ref;
-            var id = _id;
-            if (copy == null)
-            {
-                cancelationRegistration = default(CancelationRegistration);
-                return false;
-            }
-            return copy.TryRegister(ref captureValue, callback, id, out cancelationRegistration);
+            return Internal.CancelationRef.TryRegister(_ref, _id, ref captureValue, callback, out cancelationRegistration);
         }
 
         /// <summary>
@@ -252,9 +197,7 @@ namespace Proto.Promises
         /// </summary>
         public bool TryRetain()
         {
-            var copy = _ref;
-            var id = _id;
-            return copy != null && copy.TryRetainUser(id);
+            return Internal.CancelationRef.TryRetainUser(_ref, _id);
         }
 
         /// <summary>
@@ -277,9 +220,7 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public void Release()
         {
-            var copy = _ref;
-            var id = _id;
-            if (copy == null || !copy.TryReleaseUser(id))
+            if (!Internal.CancelationRef.TryReleaseUser(_ref, _id))
             {
                 throw new InvalidOperationException("CancelationToken.Release: you must call Retain before you call Release.", Internal.GetFormattedStacktrace(1));
             }
@@ -301,19 +242,7 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            var copy = _ref;
-            var id = _id;
-            if (copy == null)
-            {
-                return 0;
-            }
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 31 + id.GetHashCode();
-                hash = hash * 31 + copy.GetHashCode();
-                return hash;
-            }
+            return Internal.CancelationRef.GetHashCode(_ref, 0, _id);
         }
 
         public static bool operator ==(CancelationToken c1, CancelationToken c2)
