@@ -106,7 +106,7 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            return Internal.CancelationRef.GetHashCode(_ref, (int) _order, _id);
+            return Internal.BuildHashCode(_ref, _order.GetHashCode(), _id.GetHashCode());
         }
 
         public static bool operator ==(CancelationRegistration lhs, CancelationRegistration rhs)

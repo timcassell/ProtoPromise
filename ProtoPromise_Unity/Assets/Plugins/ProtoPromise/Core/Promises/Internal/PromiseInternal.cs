@@ -350,18 +350,18 @@ namespace Proto.Promises
                         else
                         {
                             valueContainer.ReleaseAndMaybeAddToUnhandledStack(true);
-                            RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this), ref executionScheduler);
+                            RejectOrCancelInternal(CreateRejectContainer(e, int.MinValue, this), ref executionScheduler);
                         }
                     }
                     catch (OperationCanceledException e)
                     {
                         valueContainer.ReleaseAndMaybeAddToUnhandledStack(!suppressRejection);
-                        RejectOrCancelInternal(CreateCancelContainer(ref e), ref executionScheduler);
+                        RejectOrCancelInternal(CreateCancelContainer(e), ref executionScheduler);
                     }
                     catch (Exception e)
                     {
                         valueContainer.ReleaseAndMaybeAddToUnhandledStack(!suppressRejection);
-                        RejectOrCancelInternal(CreateRejectContainer(ref e, int.MinValue, this), ref executionScheduler);
+                        RejectOrCancelInternal(CreateRejectContainer(e, int.MinValue, this), ref executionScheduler);
                     }
                     ClearCurrentInvoker();
                 }
@@ -682,23 +682,24 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                protected void ResolveDirect()
-                {
-                    ThrowIfInPool(this);
-                    ResolveInternal(ResolveContainerVoid.GetOrCreate());
-                }
-
-                [MethodImpl(InlineOption)]
-                protected void ResolveDirect<T>(ref T value)
+                protected void ResolveDirect<T>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    T value)
                 {
                     ThrowIfInPool(this);
                     ResolveInternal(CreateResolveContainer(value, 0));
                 }
 
-                protected void RejectDirect<TReject>(ref TReject reason, int rejectSkipFrames)
+                protected void RejectDirect<TReject>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TReject reason, int rejectSkipFrames)
                 {
                     ThrowIfInPool(this);
-                    RejectOrCancelInternal(CreateRejectContainer(ref reason, rejectSkipFrames + 1, this));
+                    RejectOrCancelInternal(CreateRejectContainer(reason, rejectSkipFrames + 1, this));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -708,10 +709,14 @@ namespace Proto.Promises
                     RejectOrCancelInternal(CancelContainerVoid.GetOrCreate());
                 }
 
-                protected void CancelDirect<TCancel>(ref TCancel reason)
+                protected void CancelDirect<TCancel>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCancel reason)
                 {
                     ThrowIfInPool(this);
-                    RejectOrCancelInternal(CreateCancelContainer(ref reason));
+                    RejectOrCancelInternal(CreateCancelContainer(reason));
                 }
 
                 public sealed override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }

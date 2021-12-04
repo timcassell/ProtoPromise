@@ -669,7 +669,7 @@ namespace Proto.Promises
                     _cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out _, out isCancelationRequested);
                     if (value >= 0 & !IsComplete & !IsCanceled & !isCancelationRequested)
                     {
-                        CallbackHelper.InvokeAndCatchProgress(ref _progress, value, this);
+                        CallbackHelper.InvokeAndCatchProgress(_progress, value, this);
                     }
                     MaybeDispose();
                 }
@@ -807,7 +807,7 @@ namespace Proto.Promises
                     Promise.State state = valueContainer.GetState();
                     if (state == Promise.State.Resolved & notCanceled)
                     {
-                        CallbackHelper.InvokeAndCatchProgress(ref _progress, 1f, this);
+                        CallbackHelper.InvokeAndCatchProgress(_progress, 1f, this);
                     }
                     State = state; // Set state after callback is executed to make sure it completes before the next waiter begins execution (in another thread).
                     HandleWaiter(valueContainer, ref executionScheduler);
@@ -1221,7 +1221,8 @@ namespace Proto.Promises
 
             partial class DeferredPromiseBase
             {
-                internal bool TryReportProgress(float progress, short deferredId)
+                [MethodImpl(InlineOption)]
+                internal bool TryReportProgress(short deferredId, float progress)
                 {
                     if (!_idsAndRetains.InterlockedTryRetainWithDeferredId(deferredId))
                     {

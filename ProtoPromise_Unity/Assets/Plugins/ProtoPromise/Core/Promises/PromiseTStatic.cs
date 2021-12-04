@@ -416,7 +416,7 @@ namespace Proto.Promises
                 return Internal.CreateResolved(valueContainer);
             }
 
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, valueContainer, (feed, target, index) =>
             {
                 target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 2, completedProgress);
@@ -470,7 +470,7 @@ namespace Proto.Promises
                 return Internal.CreateResolved(valueContainer);
             }
 
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, valueContainer, (feed, target, index) =>
             {
                 target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 3, completedProgress);
@@ -528,7 +528,7 @@ namespace Proto.Promises
                 return Internal.CreateResolved(valueContainer);
             }
 
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, valueContainer, (feed, target, index) =>
             {
                 target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, 4, completedProgress);
@@ -607,7 +607,7 @@ namespace Proto.Promises
                 return Internal.CreateResolved(valueContainer);
             }
 
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref valueContainer, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, valueContainer, (feed, target, index) =>
             {
                 target.value[index] = ((Internal.ResolveContainer<T>) feed).value;
             }, pendingCount, totalCount, completedProgress);

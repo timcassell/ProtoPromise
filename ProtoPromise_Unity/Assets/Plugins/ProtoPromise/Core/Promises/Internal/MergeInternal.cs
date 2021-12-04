@@ -58,10 +58,19 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                public static MergePromise GetOrCreate<T>(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved,
-                    uint pendingAwaits, uint totalAwaits, ulong completedProgress)
+                public static MergePromise GetOrCreate<T>(
+                    ValueLinkedStack<PromisePassThrough> promisePassThroughs,
+
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    T value,
+                    Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved,
+                    uint pendingAwaits,
+                    uint totalAwaits,
+                    ulong completedProgress)
                 {
-                    var promise = MergePromiseT<T>.GetOrCreate(ref value, onPromiseResolved);
+                    var promise = MergePromiseT<T>.GetOrCreate(value, onPromiseResolved);
                     promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
                     return promise;
                 }
@@ -207,12 +216,16 @@ namespace Proto.Promises
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
 
-                    public static MergePromiseT<T> GetOrCreate(ref T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved)
+                    public static MergePromiseT<T> GetOrCreate(
+#if CSHARP_7_3_OR_NEWER
+                        in
+#endif
+                        T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved)
                     {
                         var promise = ObjectPool<ITreeHandleable>.TryTake<MergePromiseT<T>>()
                             ?? new MergePromiseT<T>();
                         promise._onPromiseResolved = onPromiseResolved;
-                        promise._valueContainer = ResolveContainer<T>.GetOrCreate(ref value, 1);
+                        promise._valueContainer = ResolveContainer<T>.GetOrCreate(value, 1);
                         return promise;
                     }
 

@@ -327,11 +327,6 @@ namespace Proto.Promises
                 private int _retainAndCanceled; // 17th bit is canceled, lower 16 bits are retains. This allows us to use Interlocked for both.
             }
 
-            partial class DeferredPromiseVoidCancel : DeferredPromiseVoid
-            {
-                private CancelationRegistration _cancelationRegistration;
-            }
-
             partial class DeferredPromiseCancel<T> : DeferredPromise<T>
             {
                 private CancelationRegistration _cancelationRegistration;

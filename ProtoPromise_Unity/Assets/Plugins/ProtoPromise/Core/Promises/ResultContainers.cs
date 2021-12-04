@@ -120,7 +120,11 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(ref Promise<Internal.VoidResult>.ResultContainer target)
+            internal ResultContainer(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                Promise<Internal.VoidResult>.ResultContainer target)
             {
                 _target = target;
             }
@@ -208,7 +212,11 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(T result)
+            internal ResultContainer(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T result)
             {
                 _valueContainer = null;
                 _result = result;
@@ -325,7 +333,7 @@ namespace Proto.Promises
             public static implicit operator Promise.ResultContainer(ResultContainer rhs)
             {
                 var newContainer = new Promise<Internal.VoidResult>.ResultContainer(rhs._valueContainer, rhs.Id);
-                return new Promise.ResultContainer(ref newContainer);
+                return new Promise.ResultContainer(newContainer);
             }
 
             partial void ValidateCall();

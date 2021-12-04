@@ -53,7 +53,11 @@ namespace Proto.Promises
                 private readonly Promise.CanceledAction<TCapture> _callback;
 
                 [MethodImpl(InlineOption)]
-                internal CancelDelegateToken(ref TCapture capturedValue, Promise.CanceledAction<TCapture> callback)
+                internal CancelDelegateToken(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Promise.CanceledAction<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
@@ -728,18 +732,28 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryRegister<TCapture>(CancelationRef _this, short tokenId, ref TCapture capturedValue, Promise.CanceledAction<TCapture> callback, out CancelationRegistration registration)
+            internal static bool TryRegister<TCapture>(CancelationRef _this, short tokenId,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue,
+                    Promise.CanceledAction<TCapture> callback,
+                    out CancelationRegistration registration)
             {
                 if (_this == null)
                 {
                     registration = default(CancelationRegistration);
                     return false;
                 }
-                return _this.TryRegister(ref capturedValue, callback, tokenId, out registration);
+                return _this.TryRegister(capturedValue, callback, tokenId, out registration);
             }
 
             [MethodImpl(InlineOption)]
-            private bool TryRegister<TCapture>(ref TCapture capturedValue, Promise.CanceledAction<TCapture> callback, short tokenId, out CancelationRegistration registration)
+            private bool TryRegister<TCapture>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Promise.CanceledAction<TCapture> callback, short tokenId, out CancelationRegistration registration)
             {
                 // Retain for thread safety.
                 if (!TryRetainInternal(tokenId))
@@ -761,7 +775,7 @@ namespace Proto.Promises
                         registration = default(CancelationRegistration);
                         return false;
                     }
-                    var cancelDelegate = CancelDelegate<CancelDelegateToken<TCapture>>.GetOrCreate(new CancelDelegateToken<TCapture>(ref capturedValue, callback));
+                    var cancelDelegate = CancelDelegate<CancelDelegateToken<TCapture>>.GetOrCreate(new CancelDelegateToken<TCapture>(capturedValue, callback));
                     return TryRegister(cancelDelegate, out registration);
                 }
                 finally
@@ -882,13 +896,21 @@ namespace Proto.Promises
 
 
             [MethodImpl(InlineOption)]
-            internal static bool TrySetCanceled<T>(ref T reason, CancelationRef _this, short sourceId)
+            internal static bool TrySetCanceled<T>(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T reason, CancelationRef _this, short sourceId)
             {
-                return _this != null && _this.TrySetCanceled(ref reason, sourceId);
+                return _this != null && _this.TrySetCanceled(reason, sourceId);
             }
 
             [MethodImpl(InlineOption)]
-            private bool TrySetCanceled<T>(ref T reason, short sourceId)
+            private bool TrySetCanceled<T>(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T reason, short sourceId)
             {
                 // Retain for thread safety and recursive calls.
                 if (!TryRetainInternal(sourceId))
@@ -897,7 +919,7 @@ namespace Proto.Promises
                 }
                 try
                 {
-                    return _valueContainer == null && TryInvokeCallbacks(CreateCancelContainer(ref reason));
+                    return _valueContainer == null && TryInvokeCallbacks(CreateCancelContainer(reason));
                 }
                 finally
                 {
@@ -1081,22 +1103,6 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
                 ReleaseAfterRetainInternal();
-            }
-
-            internal static int GetHashCode(CancelationRef _this, int sourceId, int tokenId)
-            {
-                if (_this == null)
-                {
-                    return 0;
-                }
-                unchecked
-                {
-                    int hash = 17;
-                    hash = hash * 31 + tokenId.GetHashCode();
-                    hash = hash * 31 + sourceId.GetHashCode();
-                    hash = hash * 31 + _this.GetHashCode();
-                    return hash;
-                }
             }
         }
     }

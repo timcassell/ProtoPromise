@@ -133,7 +133,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel<TCancel>(TCancel reason)
         {
-            return Internal.CancelationRef.TrySetCanceled(ref reason, _ref, _sourceId);
+            return Internal.CancelationRef.TrySetCanceled(reason, _ref, _sourceId);
         }
 
         /// <summary>
@@ -197,7 +197,7 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            return Internal.CancelationRef.GetHashCode(_ref, _sourceId, _tokenId);
+            return Internal.BuildHashCode(_ref, _sourceId.GetHashCode(), _tokenId.GetHashCode());
         }
 
         public static bool operator ==(CancelationSource c1, CancelationSource c2)

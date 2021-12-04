@@ -81,7 +81,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void SetResult()
             {
-                _builder.SetResult();
+                _builder.SetResult(new Internal.VoidResult());
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -228,15 +228,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            public void SetResult()
-            {
-                _promise.SetResult();
-            }
-
-            [MethodImpl(InlineOption)]
             public void SetResult(T result)
             {
-                _promise.SetResult(ref result);
+                _promise.SetResult(result);
             }
 
             [MethodImpl(InlineOption)]
@@ -304,19 +298,7 @@ namespace Proto.Promises
                 _ref.SetException(exception);
             }
 
-            public void SetResult()
-            {
-                if (_ref is null)
-                {
-                    _id = ValidIdFromApi;
-                }
-                else
-                {
-                    _ref.SetResult();
-                }
-            }
-
-            public void SetResult(T result)
+            public void SetResult(in T result)
             {
                 if (_ref is null)
                 {
@@ -325,7 +307,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    _ref.SetResult(ref result);
+                    _ref.SetResult(result);
                 }
             }
 
@@ -385,22 +367,20 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void SetResult()
+            internal void SetResult<T>(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T result)
             {
-                ResolveDirect();
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void SetResult<T>(ref T result)
-            {
-                ResolveDirect(ref result);
+                ResolveDirect(result);
             }
 
             internal void SetException(Exception exception)
             {
                 if (exception is OperationCanceledException)
                 {
-                    CancelDirect(ref exception);
+                    CancelDirect(exception);
                 }
                 else
                 {
@@ -413,7 +393,7 @@ namespace Proto.Promises
 #endif
                         exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
                     }
-                    RejectDirect(ref exception, int.MinValue);
+                    RejectDirect(exception, int.MinValue);
                 }
             }
         }

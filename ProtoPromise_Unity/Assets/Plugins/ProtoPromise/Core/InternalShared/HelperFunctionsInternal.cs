@@ -200,20 +200,26 @@ namespace Proto.Promises
         }
 
         [MethodImpl(InlineOption)]
-        internal static IValueContainer CreateResolveContainer<TValue>(TValue value, int retainCount)
+        internal static IValueContainer CreateResolveContainer<TValue>(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                TValue value, int retainCount)
         {
-            if (typeof(TValue) == typeof(VoidResult))
+            // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
+            if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
             {
                 return ResolveContainerVoid.GetOrCreate();
             }
-            return ResolveContainer<TValue>.GetOrCreate(ref value, retainCount);
+            return ResolveContainer<TValue>.GetOrCreate(value, retainCount);
         }
 
         // IValueContainer.(Try)GetValue<TValue>() must be implemented as extensions instead of interface members, because AOT might not compile the virtual methods when TValue is a value-type.
         [MethodImpl(InlineOption)]
         internal static TValue GetValue<TValue>(this IValueContainer valueContainer)
         {
-            if (typeof(TValue) == typeof(VoidResult))
+            // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
+            if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
             {
                 return default(TValue);
             }
@@ -223,7 +229,8 @@ namespace Proto.Promises
 
         internal static bool TryGetValue<TValue>(this IValueContainer valueContainer, out TValue converted)
         {
-            if (typeof(TValue) == typeof(VoidResult))
+            // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
+            if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
             {
                 converted = default(TValue);
                 return true;
@@ -254,7 +261,11 @@ namespace Proto.Promises
             return false;
         }
 
-        internal static IRejectValueContainer CreateRejectContainer<TReject>(ref TReject reason, int rejectSkipFrames, ITraceable traceable)
+        internal static IRejectValueContainer CreateRejectContainer<TReject>(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                TReject reason, int rejectSkipFrames, ITraceable traceable)
         {
             IRejectValueContainer valueContainer;
 
@@ -262,7 +273,7 @@ namespace Proto.Promises
             Type type = typeof(TReject);
             if (type.IsValueType)
             {
-                valueContainer = RejectionContainer<TReject>.GetOrCreate(ref reason, 0);
+                valueContainer = RejectionContainer<TReject>.GetOrCreate(reason, 0);
             }
             else
             {
@@ -280,18 +291,22 @@ namespace Proto.Promises
                 // If reason is null, behave the same way .Net behaves if you throw null.
                 object o = reason == null ? new NullReferenceException() : (object) reason;
                 // Only need to create one object pool for reference types.
-                valueContainer = RejectionContainer<object>.GetOrCreate(ref o, 0);
+                valueContainer = RejectionContainer<object>.GetOrCreate(o, 0);
             }
             SetCreatedAndRejectedStacktrace(valueContainer, rejectSkipFrames + 1, traceable);
             return valueContainer;
         }
 
-        internal static ICancelValueContainer CreateCancelContainer<TCancel>(ref TCancel reason)
+        internal static ICancelValueContainer CreateCancelContainer<TCancel>(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                TCancel reason)
         {
             ICancelValueContainer cancelValue;
             if (typeof(TCancel).IsValueType)
             {
-                cancelValue = CancelContainer<TCancel>.GetOrCreate(ref reason, 0);
+                cancelValue = CancelContainer<TCancel>.GetOrCreate(reason, 0);
             }
             else
             {
@@ -314,7 +329,7 @@ namespace Proto.Promises
                 {
                     // Only need to create one object pool for reference types.
                     object o = reason;
-                    cancelValue = CancelContainer<object>.GetOrCreate(ref o, 0);
+                    cancelValue = CancelContainer<object>.GetOrCreate(o, 0);
                 }
             }
             return cancelValue;
@@ -404,5 +419,21 @@ namespace Proto.Promises
             bool unregistered = cancelationRegistration.TryUnregister(out isCanceling);
             return unregistered | !isCanceling;
         }
-    }
-}
+
+        internal static int BuildHashCode(object _ref, int hashcode1, int hashcode2)
+        {
+            if (_ref == null)
+            {
+                return 0;
+            }
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + _ref.GetHashCode();
+                hash = hash * 31 + hashcode1;
+                hash = hash * 31 + hashcode2;
+                return hash;
+            }
+        }
+    } // class Internal
+} // namespace Proto.Promises

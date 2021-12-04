@@ -74,7 +74,11 @@ namespace Proto.Promises
                 }
             }
 
-            internal static RejectionContainer<T> GetOrCreate(ref T value, int retainCount)
+            internal static RejectionContainer<T> GetOrCreate(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T value, int retainCount)
             {
                 var container = ObjectPool<RejectionContainer<T>>.TryTake<RejectionContainer<T>>()
                     ?? new RejectionContainer<T>();
@@ -248,7 +252,11 @@ namespace Proto.Promises
             }
 #endif
 
-            internal static CancelContainer<T> GetOrCreate(ref T value, int retainCount)
+            internal static CancelContainer<T> GetOrCreate(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T value, int retainCount)
             {
                 var container = ObjectPool<CancelContainer<T>>.TryTake<CancelContainer<T>>()
                     ?? new CancelContainer<T>();
@@ -411,19 +419,17 @@ namespace Proto.Promises
             }
 #endif
 
-            internal static ResolveContainer<T> GetOrCreate(ref T value, int retainCount)
+            internal static ResolveContainer<T> GetOrCreate(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T value, int retainCount)
             {
                 var container = ObjectPool<ResolveContainer<T>>.TryTake<ResolveContainer<T>>()
                     ?? new ResolveContainer<T>();
                 container.value = value;
                 container._retainCounter = retainCount;
                 return container;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal static ResolveContainer<T> GetOrCreate(T value, int retainCount)
-            {
-                return GetOrCreate(ref value, retainCount);
             }
 
             public Promise.State GetState()

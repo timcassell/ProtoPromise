@@ -224,8 +224,7 @@ namespace Proto.Promises
 
             public IRejectValueContainer ToContainer(ITraceable traceable)
             {
-                T value = Value;
-                var rejection = CreateRejectContainer(ref value, int.MinValue, traceable);
+                var rejection = CreateRejectContainer(Value, int.MinValue, traceable);
 #if PROMISE_DEBUG
                 rejection.SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
 #endif

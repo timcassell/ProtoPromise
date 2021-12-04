@@ -136,7 +136,7 @@ namespace Proto.Promises
                             synchronizationContext = Promise.Config.BackgroundContext;
                             goto default;
                         }
-                        default: // ContinuationOption.Explicit
+                        default: // SynchronizationOption.Explicit
                         {
                             newPromise = _this._ref == null
                                 ? ConfiguredPromise.GetOrCreate(false, synchronizationContext)
@@ -198,7 +198,13 @@ namespace Proto.Promises
                 }
 
 #if PROMISE_PROGRESS
-                internal static void InvokeAndCatchProgress<TProgress>(ref TProgress progress, float value, ITraceable traceable)
+                internal static void InvokeAndCatchProgress<TProgress>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TProgress progress,
+                    float value,
+                    ITraceable traceable)
                     where TProgress : IProgress<float>
                 {
                     SetCurrentInvoker(traceable);
@@ -214,7 +220,15 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddProgress<TResult, TProgress>(Promise<TResult> _this, TProgress progress, CancelationToken cancelationToken, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext)
+                internal static Promise<TResult> AddProgress<TResult, TProgress>(
+                    Promise<TResult> _this,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TProgress progress,
+                    CancelationToken cancelationToken,
+                    SynchronizationOption invokeOption,
+                    SynchronizationContext synchronizationContext)
                     where TProgress : IProgress<float>
                 {
                     if (cancelationToken.IsCancelationRequested)
@@ -229,14 +243,14 @@ namespace Proto.Promises
                         {
                             if (_this._ref == null)
                             {
-                                InvokeAndCatchProgress(ref progress, 1, null);
+                                InvokeAndCatchProgress(progress, 1, null);
                                 return new Promise<TResult>(null, ValidIdFromApi, _this.Depth, _this.Result);
                             }
                             // TODO:
 //#if !PROMISE_DEBUG
 //                            else if (_this._ref.State == Promise.State.Resolved)
 //                            {
-//                                InvokeAndCatchProgress(ref progress, 1, null);
+//                                InvokeAndCatchProgress(progress, 1, null);
 //                            }
 //#endif
                             break;

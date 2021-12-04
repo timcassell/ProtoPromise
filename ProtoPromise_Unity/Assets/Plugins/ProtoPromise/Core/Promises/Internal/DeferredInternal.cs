@@ -12,182 +12,6 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
-#endif
-        internal partial struct DeferredInternal<TDeferredRef> where TDeferredRef : PromiseRef.DeferredPromiseBase
-        {
-            internal readonly TDeferredRef _ref;
-            internal readonly short _promiseId;
-            internal readonly short _deferredId;
-
-            [MethodImpl(InlineOption)]
-            public Promise GetPromiseVoid()
-            {
-                return new Promise(_ref, _promiseId, 0);
-            }
-
-            [MethodImpl(InlineOption)]
-            public Promise<T> GetPromise<T>()
-            {
-                return new Promise<T>(_ref, _promiseId, 0);
-            }
-
-            public bool IsValidAndPending
-            {
-                get
-                {
-                    var copy = _ref;
-                    var deferredId = _deferredId;
-                    return copy != null && deferredId == copy.DeferredId;
-                }
-            }
-
-            [MethodImpl(InlineOption)]
-            internal DeferredInternal(TDeferredRef deferredRef, short promiseId, short deferredId)
-            {
-                _ref = deferredRef;
-                _promiseId = promiseId;
-                _deferredId = deferredId;
-            }
-
-            public void ResolveVoid()
-            {
-                if (!TryResolveVoid())
-                {
-                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", GetFormattedStacktrace(1));
-                }
-            }
-
-            public bool TryResolveVoid()
-            {
-                var copy = _ref;
-                var deferredId = _deferredId;
-                return copy != null && copy.TryResolveVoid(deferredId);
-            }
-
-            public void Resolve<T>(ref T value)
-            {
-                if (!TryResolve(ref value))
-                {
-                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", GetFormattedStacktrace(1));
-                }
-            }
-
-            public bool TryResolve<T>(ref T value)
-            {
-                var copy = _ref;
-                var deferredId = _deferredId;
-                return copy != null && copy.TryResolve(ref value, deferredId);
-            }
-
-            public void Reject<TReject>(ref TReject reason)
-            {
-                if (!TryReject(ref reason))
-                {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", GetFormattedStacktrace(1));
-                }
-            }
-
-            public bool TryReject<TReject>(ref TReject reason)
-            {
-                var copy = _ref;
-                var deferredId = _deferredId;
-                return copy != null && copy.TryReject(ref reason, deferredId, 1);
-            }
-
-            public void Cancel<TCancel>(ref TCancel reason)
-            {
-                if (!TryCancel(ref reason))
-                {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", GetFormattedStacktrace(1));
-                }
-            }
-
-            public bool TryCancel<TCancel>(ref TCancel reason)
-            {
-                var copy = _ref;
-                var deferredId = _deferredId;
-                return copy != null && copy.TryCancel(ref reason, deferredId);
-            }
-
-            public void Cancel()
-            {
-                if (!TryCancel())
-                {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", GetFormattedStacktrace(1));
-                }
-            }
-
-            public bool TryCancel()
-            {
-                var copy = _ref;
-                var deferredId = _deferredId;
-                return copy != null && copy.TryCancelVoid(deferredId);
-            }
-
-            public void ReportProgress(float progress)
-            {
-                if (!TryReportProgress(progress))
-                {
-                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid.", GetFormattedStacktrace(1));
-                }
-            }
-
-            public bool TryReportProgress(float progress)
-            {
-                ValidateProgress(progress, 1);
-#if !PROMISE_PROGRESS
-                return IsValidAndPending;
-#else
-                var copy = _ref;
-                var deferredId = _deferredId;
-                return copy != null && copy.TryReportProgress(progress, deferredId);
-#endif
-            }
-
-            public override int GetHashCode()
-            {
-                var copy = _ref;
-                var promiseId = _promiseId;
-                var deferredId = _deferredId;
-                if (copy == null)
-                {
-                    return 0;
-                }
-                unchecked
-                {
-                    int hash = 17;
-                    hash = hash * 31 + deferredId.GetHashCode();
-                    hash = hash * 31 + promiseId.GetHashCode();
-                    hash = hash * 31 + copy.GetHashCode();
-                    return hash;
-                }
-            }
-
-            public override bool Equals(object obj)
-            {
-#if CSHARP_7_3_OR_NEWER
-                return obj is DeferredInternal<TDeferredRef> deferred && this == deferred;
-#else
-                return obj is DeferredInternal<TDeferredRef> && this == (DeferredInternal<TDeferredRef>) obj;
-#endif
-            }
-
-            public static bool operator ==(DeferredInternal<TDeferredRef> lhs, DeferredInternal<TDeferredRef> rhs)
-            {
-                return lhs._ref == rhs._ref
-                    & lhs._deferredId == rhs._deferredId
-                    & lhs._promiseId == rhs._promiseId;
-            }
-
-            [MethodImpl(InlineOption)]
-            public static bool operator !=(DeferredInternal<TDeferredRef> lhs, DeferredInternal<TDeferredRef> rhs)
-            {
-                return !(lhs == rhs);
-            }
-        }
-
         partial class PromiseRef
         {
 
@@ -213,6 +37,11 @@ namespace Proto.Promises
                     }
                 }
 
+                internal static bool GetIsValidAndPending(DeferredPromiseBase _this, short deferredId)
+                {
+                    return _this != null && _this.DeferredId == deferredId;
+                }
+
                 protected virtual bool TryUnregisterCancelation() { return true; }
 
                 protected bool TryIncrementDeferredIdAndUnregisterCancelation(short deferredId)
@@ -221,49 +50,61 @@ namespace Proto.Promises
                         && TryUnregisterCancelation(); // If TryUnregisterCancelation returns false, it means the CancelationSource was canceled.
                 }
 
-                [MethodImpl(InlineOption)]
-                internal bool TryResolveVoid(short deferredId)
+                internal static bool TryReject<TReject>(DeferredPromiseBase _this, short deferredId,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TReject reason, int rejectSkipFrames)
                 {
-                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
-                    {
-                        ResolveDirect();
-                        return true;
-                    }
-                    return false;
+                    return _this != null && _this.TryReject(deferredId, reason, 1);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal bool TryResolve<T>(ref T value, short deferredId)
+                private bool TryReject<TReject>(short deferredId,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TReject reason, int rejectSkipFrames)
                 {
                     if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
-                        ResolveDirect(ref value);
+                        RejectDirect(reason, rejectSkipFrames + 1);
                         return true;
                     }
                     return false;
                 }
 
-                internal bool TryReject<TReject>(ref TReject reason, short deferredId, int rejectSkipFrames)
+                internal static bool TryCancel<TCancel>(DeferredPromiseBase _this, short deferredId,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCancel reason)
+                {
+                    return _this != null && _this.TryCancel(deferredId, reason);
+                }
+
+                [MethodImpl(InlineOption)]
+                private bool TryCancel<TCancel>(short deferredId,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCancel reason)
                 {
                     if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
-                        RejectDirect(ref reason, rejectSkipFrames + 1);
+                        CancelDirect(reason);
                         return true;
                     }
                     return false;
                 }
 
-                internal bool TryCancel<TCancel>(ref TCancel reason, short deferredId)
+                internal static bool TryCancelVoid(DeferredPromiseBase _this, short deferredId)
                 {
-                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
-                    {
-                        CancelDirect(ref reason);
-                        return true;
-                    }
-                    return false;
+                    return _this != null && _this.TryCancelVoid(deferredId);
                 }
 
-                internal bool TryCancelVoid(short deferredId)
+                [MethodImpl(InlineOption)]
+                private bool TryCancelVoid(short deferredId)
                 {
                     if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
@@ -281,40 +122,20 @@ namespace Proto.Promises
                     _idsAndRetains.InterlockedIncrementDeferredId();
                     RejectOrCancelInternal(valueContainer);
                 }
+
+                internal static bool TryReportProgress(DeferredPromiseBase _this, short deferredId, float progress)
+                {
+                    ValidateProgress(progress, 1);
+#if !PROMISE_PROGRESS
+                    return GetIsValidAndPending(_this, deferredId);
+#else
+                    return _this != null && _this.TryReportProgress(deferredId, progress);
+#endif
+                }
             }
 
             // The only purpose of this is to cast the ref when converting a DeferredBase to a Deferred(<T>) to avoid extra checks.
             // Otherwise, DeferredPromise<T> would be unnecessary and this would be implemented in the base class.
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal class DeferredPromiseVoid : DeferredPromiseBase
-            {
-                protected DeferredPromiseVoid() { }
-
-                protected override void Dispose()
-                {
-                    base.Dispose();
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
-                }
-
-                // Used for child to call base dispose without repooling for both types.
-                // This is necessary because C# doesn't allow `base.base.Dispose()`.
-                [MethodImpl(InlineOption)]
-                protected void SuperDispose()
-                {
-                    base.Dispose();
-                }
-
-                internal static DeferredPromiseVoid GetOrCreate()
-                {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromiseVoid>()
-                        ?? new DeferredPromiseVoid();
-                    promise.Reset();
-                    return promise;
-                }
-            }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
@@ -343,43 +164,31 @@ namespace Proto.Promises
                     promise.Reset();
                     return promise;
                 }
-            }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+                [MethodImpl(InlineOption)]
+                internal static bool TryResolve(DeferredPromise<T> _this, short deferredId,
+#if CSHARP_7_3_OR_NEWER
+                    in
 #endif
-            internal sealed partial class DeferredPromiseVoidCancel : DeferredPromiseVoid, ICancelDelegate
-            {
-                private DeferredPromiseVoidCancel() { }
-
-                protected override void Dispose()
+                    T value)
                 {
-                    SuperDispose();
-                    _cancelationRegistration = default(CancelationRegistration);
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    return _this != null && _this.TryResolve(deferredId, value);
                 }
 
-                internal static DeferredPromiseVoidCancel GetOrCreate(CancelationToken cancelationToken)
+                [MethodImpl(InlineOption)]
+                private bool TryResolve(short deferredId,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    T value)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromiseVoidCancel>()
-                        ?? new DeferredPromiseVoidCancel();
-                    promise.Reset();
-                    cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
-                    return promise;
+                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                    {
+                        ResolveDirect(value);
+                        return true;
+                    }
+                    return false;
                 }
-
-                protected override bool TryUnregisterCancelation()
-                {
-                    ThrowIfInPool(this);
-                    return TryUnregisterAndIsNotCanceling(ref _cancelationRegistration);
-                }
-
-                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
-                {
-                    CancelFromToken(valueContainer);
-                }
-
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

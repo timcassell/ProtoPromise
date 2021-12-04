@@ -11,6 +11,7 @@
 
             internal interface IDelegate<TArg, TResult>
             {
+                // TODO: add `in` modifier to arg in C#7.
                 TResult Invoke(TArg arg);
                 bool IsNull { get; }
             }

@@ -44,6 +44,11 @@ namespace Proto.Promises
         {
             static partial void ValidateArgument(object arg, string argName, int skipFrames);
             partial void ValidateReturn(Promise other);
+
+            partial class DeferredPromiseBase
+            {
+                static partial void ValidateProgress(float progress, int skipFrames);
+            }
         }
 
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames);
@@ -357,6 +362,14 @@ namespace Proto.Promises
                     ExchangePassthroughs(ref _passThroughs, borrower, _locker);
                 }
             }
+
+            partial class DeferredPromiseBase
+            {
+                static partial void ValidateProgress(float progress, int skipFrames)
+                {
+                    ValidateProgressValue(progress, skipFrames + 1);
+                }
+            }
         }
 #else // PROMISE_DEBUG
         internal static long InvokeId
@@ -375,17 +388,6 @@ namespace Proto.Promises
             return null;
         }
 #endif // PROMISE_DEBUG
-
-        internal partial struct DeferredInternal<TDeferredRef>
-        {
-            static partial void ValidateProgress(float progress, int skipFrames);
-#if PROMISE_DEBUG
-            static partial void ValidateProgress(float progress, int skipFrames)
-            {
-                ValidateProgressValue(progress, skipFrames + 1);
-            }
-#endif
-        }
     } // class Internal
 
     partial struct Promise

@@ -153,7 +153,7 @@ namespace Proto.Promises
         public bool TryRegister<TCapture>(TCapture captureValue, Promise.CanceledAction<TCapture> callback, out CancelationRegistration cancelationRegistration)
         {
             ValidateArgument(callback, "callback", 1);
-            return Internal.CancelationRef.TryRegister(_ref, _id, ref captureValue, callback, out cancelationRegistration);
+            return Internal.CancelationRef.TryRegister(_ref, _id, captureValue, callback, out cancelationRegistration);
         }
 
         /// <summary>
@@ -242,7 +242,7 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            return Internal.CancelationRef.GetHashCode(_ref, 0, _id);
+            return Internal.BuildHashCode(_ref, _id.GetHashCode(), 0);
         }
 
         public static bool operator ==(CancelationToken c1, CancelationToken c2)

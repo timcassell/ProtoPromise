@@ -662,7 +662,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 if (index == 0)
                 {
@@ -692,7 +692,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 if (index == 0)
                 {
@@ -728,7 +728,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
@@ -765,7 +765,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
@@ -807,7 +807,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
@@ -849,7 +849,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
@@ -896,7 +896,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
@@ -943,7 +943,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
@@ -995,7 +995,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
@@ -1047,7 +1047,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
@@ -1104,7 +1104,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
@@ -1161,7 +1161,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
@@ -1223,7 +1223,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
