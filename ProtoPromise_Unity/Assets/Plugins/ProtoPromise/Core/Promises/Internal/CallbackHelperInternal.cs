@@ -139,7 +139,7 @@ namespace Proto.Promises
                         default: // SynchronizationOption.Explicit
                         {
                             newPromise = _this._ref == null
-                                ? ConfiguredPromise.GetOrCreate(false, synchronizationContext)
+                                ? ConfiguredPromise.GetOrCreateFromNull(false, synchronizationContext, _this.Result)
                                 : _this._ref.GetConfigured(_this.Id, synchronizationContext);
                             break;
                         }

@@ -23,7 +23,7 @@ jobs:
           command: |
             $ResultsFile = "$pwd/dotnet-test-results-<<parameters.runtime>>-<<parameters.config>>.xml"
             dotnet test -c <<parameters.config>> -f <<parameters.runtime>> -nodereuse:false --logger:"junit;LogFilePath=$ResultsFile" -p:ExtraDefineConstants=PROTO_PROMISE_<<parameters.poolType>>
-          no_output_timeout: 120m
+          no_output_timeout: 150m
 
       - store_test_results:
           path: dotnet-test-results-<<parameters.runtime>>-<<parameters.config>>.xml

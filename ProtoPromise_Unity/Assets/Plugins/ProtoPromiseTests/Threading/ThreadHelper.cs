@@ -162,6 +162,18 @@ namespace ProtoPromiseTests.Threading
             ExecutePendingParallelActions();
         }
 
+        public void ExecuteSynchronousOrOnThread(Action action, bool synchronous)
+        {
+            if (synchronous)
+            {
+                action();
+            }
+            else
+            {
+                ExecuteSingleAction(action);
+            }
+        }
+
         /// <summary>
         /// Add an action to be run in parallel.
         /// </summary>

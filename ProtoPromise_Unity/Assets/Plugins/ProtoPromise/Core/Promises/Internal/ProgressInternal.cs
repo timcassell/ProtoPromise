@@ -851,6 +851,7 @@ namespace Proto.Promises
                     {
                         ThrowIfInPool(this);
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
+                        Thread.MemoryBarrier();
                         _waiter = waiter;
                         Thread.MemoryBarrier(); // Make sure State and _isPreviousComplete are read after _waiter is written.
                         if (State != Promise.State.Pending)

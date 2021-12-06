@@ -198,6 +198,7 @@ namespace Proto.Promises
             {
                 if (_valueOrPrevious != null)
                 {
+                    // TODO: pass bool to ReleaseAndAddToUnhandledStack instead of branch.
                     if (SuppressRejection)
                     {
                         ((IValueContainer) _valueOrPrevious).Release();
@@ -222,9 +223,14 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    SuppressRejection = true; // Don't report rejection if newPromise is already canceled.
-                    MaybeDispose();
+                    OnHookupFailedFromCancel();
                 }
+            }
+
+            protected virtual void OnHookupFailedFromCancel()
+            {
+                SuppressRejection = true; // Don't report rejection if newPromise is already canceled.
+                MaybeDispose();
             }
 
             private void HookupNewPromise(PromiseRef newPromise)
@@ -297,6 +303,7 @@ namespace Proto.Promises
                     {
                         ThrowIfInPool(this);
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
+                        Thread.MemoryBarrier();
                         _waiter = waiter;
                         Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
                         if (State != Promise.State.Pending)
@@ -547,7 +554,6 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                [MethodImpl(InlineOption)]
                 internal static ConfiguredPromise GetOrCreate(bool isSynchronous, SynchronizationContext synchronizationContext)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<ConfiguredPromise>()
@@ -556,6 +562,19 @@ namespace Proto.Promises
                     promise._synchronizationContext = synchronizationContext;
                     promise._isSynchronous = isSynchronous;
                     promise._isPreviousComplete = false;
+                    return promise;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static ConfiguredPromise GetOrCreateFromNull<TResult>(bool isSynchronous, SynchronizationContext synchronizationContext,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TResult result)
+                {
+                    var promise = GetOrCreate(isSynchronous, synchronizationContext);
+                    promise._valueOrPrevious = CreateResolveContainer(result, 1);
+                    promise._isPreviousComplete = true;
                     return promise;
                 }
 
@@ -576,26 +595,48 @@ namespace Proto.Promises
 
                 internal override void AddWaiter(ITreeHandleable waiter, ref ExecutionScheduler executionScheduler)
                 {
-                    ThrowIfInPool(this);
-                    // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
-                    _waiter = waiter;
-                    Thread.MemoryBarrier(); // Make sure State and _isPreviousComplete are read after _waiter is written.
-                    if (State != Promise.State.Pending)
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                    lock (this)
+#endif
                     {
-                        // Exchange and check for null to handle race condition with HandleWaiter on another thread.
-                        waiter = Interlocked.Exchange(ref _waiter, null);
-                        if (waiter != null)
+                        ThrowIfInPool(this);
+                        // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
+                        Thread.MemoryBarrier();
+                        _waiter = waiter;
+                        Thread.MemoryBarrier(); // Make sure State and _isPreviousComplete are read after _waiter is written.
+                        if (State != Promise.State.Pending)
                         {
-                            waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
+                            // Exchange and check for null to handle race condition with HandleWaiter on another thread.
+                            waiter = Interlocked.Exchange(ref _waiter, null);
+                            if (waiter != null)
+                            {
+                                waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
+                            }
                         }
+                        else if (_isPreviousComplete)
+                        {
+                            if (_isSynchronous)
+                            {
+                                executionScheduler.ScheduleSynchronous(this);
+                                //AddToHandleQueueFront(this);
+                            }
+                            else
+                            {
+                                executionScheduler.ScheduleOnContext(_synchronizationContext, this);
+                            }
+                        }
+                        MaybeDispose();
                     }
-                    // It is only possible to not be pending here if this is configured to run synchronously.
-                    // But it is still possible to be pending here either way, so we need to check.
-                    else if (!_isSynchronous & _isPreviousComplete)
+                }
+
+                protected override void OnHookupFailedFromCancel()
+                {
+                    Thread.MemoryBarrier();
+                    if (_isPreviousComplete)
                     {
-                        executionScheduler.ScheduleOnContext(_synchronizationContext, this);
+                        _idsAndRetains.InterlockedTryReleaseComplete();
                     }
-                    MaybeDispose();
+                    base.OnHookupFailedFromCancel();
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -604,17 +645,25 @@ namespace Proto.Promises
                     owner.SuppressRejection = true;
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
+                    Thread.MemoryBarrier();
                     _isPreviousComplete = true;
                     Thread.MemoryBarrier(); // Make sure _waiter is read after _isPreviousComplete is written.
-                    // If not synchronous, leave pending until this is awaited or forgotten.
-                    if (_isSynchronous)
+                    // Leave pending until this is awaited or forgotten.
+                    if (_waiter != null)
+                    {
+                        if (_isSynchronous)
+                        {
+                            executionScheduler.ScheduleSynchronous(this);
+                            //AddToHandleQueueFront(this);
+                        }
+                        else
+                        {
+                            executionScheduler.ScheduleOnContext(_synchronizationContext, this);
+                        }
+                    }
+                    else if (WasAwaitedOrForgotten)
                     {
                         executionScheduler.ScheduleSynchronous(this);
-                        //AddToHandleQueueFront(this);
-                    }
-                    else if (_waiter != null)
-                    {
-                        executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                     }
                     WaitWhileProgressFlags(ProgressFlags.Subscribing);
                 }
@@ -626,12 +675,7 @@ namespace Proto.Promises
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     _isPreviousComplete = true;
-                    // If not synchronous, leave pending until this is awaited or forgotten.
-                    if (_isSynchronous)
-                    {
-                        State = valueContainer.GetState();
-                        _idsAndRetains.InterlockedTryReleaseComplete();
-                    }
+                    // Leave pending until this is awaited or forgotten.
                 }
             }
 

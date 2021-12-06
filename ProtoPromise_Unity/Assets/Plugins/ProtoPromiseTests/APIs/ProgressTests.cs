@@ -108,83 +108,41 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.Dispose();
         }
 
-        private static void ExecuteOnThread(Action action, ThreadHelper threadHelper, bool synchronous)
-        {
-            if (synchronous)
-            {
-                action();
-            }
-            else
-            {
-                threadHelper.ExecuteSingleAction(action);
-            }
-        }
-
         [Test]
         public void OnProgressWillBeInvokedOnTheCorrectSynchronizationContext_void(
             [Values] ProgressType progressType,
             [Values] SynchronizationType synchronizationCallbackType,
-            [Values(SynchronizationOption.Foreground
+            [Values(SynchronizationType.Foreground
 #if !UNITY_WEBGL
-                , SynchronizationOption.Background
+                , SynchronizationType.Background
 #endif
-            )] SynchronizationOption synchronizationReportType)
+            )] SynchronizationType synchronizationReportType)
         {
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
             var deferred = Promise.NewDeferred();
 
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationCallbackType, v =>
-            {
-                switch (synchronizationCallbackType)
-                {
-                    case SynchronizationType.Foreground:
-                    case SynchronizationType.Explicit:
-                    {
-                        Assert.AreEqual(foregroundThread, Thread.CurrentThread);
-                        return;
-                    }
-                    case SynchronizationType.Background:
-                    {
-                        Assert.AreNotEqual(foregroundThread, Thread.CurrentThread);
-                        Assert.IsTrue(Thread.CurrentThread.IsBackground);
-                        return;
-                    }
-                    case SynchronizationType.Synchronous:
-                    {
-                        if (synchronizationReportType == SynchronizationOption.Foreground)
-                        {
-                            goto case SynchronizationType.Foreground;
-                        }
-                        if (synchronizationReportType == SynchronizationOption.Background)
-                        {
-                            goto case SynchronizationType.Background;
-                        }
-                        break;
-                    }
-                }
-                throw new Exception();
-            });
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationCallbackType, v => TestHelper.AssertCallbackContext(synchronizationCallbackType, synchronizationReportType, foregroundThread));
 
             progressHelper.MaybeEnterLock();
             progressHelper.PrepareForInvoke();
-            ExecuteOnThread(() =>
+            threadHelper.ExecuteSynchronousOrOnThread(() =>
             {
                 deferred.Promise
                     .SubscribeProgress(progressHelper)
                     .Forget();
-            }, threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            }, synchronizationReportType == SynchronizationType.Foreground);
             progressHelper.AssertCurrentProgress(0f);
 
             progressHelper.PrepareForInvoke();
-            ExecuteOnThread(() => deferred.ReportProgress(0.5f),
-                threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            threadHelper.ExecuteSynchronousOrOnThread(() => deferred.ReportProgress(0.5f),
+                synchronizationReportType == SynchronizationType.Foreground);
             progressHelper.AssertCurrentProgress(0.5f);
 
             progressHelper.PrepareForInvoke();
-            ExecuteOnThread(() => deferred.Resolve(),
-                threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            threadHelper.ExecuteSynchronousOrOnThread(() => deferred.Resolve(),
+                synchronizationReportType == SynchronizationType.Foreground);
             progressHelper.AssertCurrentProgress(1f);
             progressHelper.MaybeExitLock();
         }
@@ -193,67 +151,37 @@ namespace ProtoPromiseTests.APIs
         public void OnProgressWillBeInvokedOnTheCorrectSynchronizationContext_T(
             [Values] ProgressType progressType,
             [Values] SynchronizationType synchronizationCallbackType,
-            [Values(SynchronizationOption.Foreground
+            [Values(SynchronizationType.Foreground
 #if !UNITY_WEBGL
-                , SynchronizationOption.Background
+                , SynchronizationType.Background
 #endif
-            )] SynchronizationOption synchronizationReportType)
+            )] SynchronizationType synchronizationReportType)
         {
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
             var deferred = Promise.NewDeferred<int>();
 
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationCallbackType, v =>
-            {
-                switch (synchronizationCallbackType)
-                {
-                    case SynchronizationType.Foreground:
-                    case SynchronizationType.Explicit:
-                    {
-                        Assert.AreEqual(foregroundThread, Thread.CurrentThread);
-                        return;
-                    }
-                    case SynchronizationType.Background:
-                    {
-                        Assert.AreNotEqual(foregroundThread, Thread.CurrentThread);
-                        Assert.IsTrue(Thread.CurrentThread.IsBackground);
-                        return;
-                    }
-                    case SynchronizationType.Synchronous:
-                    {
-                        if (synchronizationReportType == SynchronizationOption.Foreground)
-                        {
-                            goto case SynchronizationType.Foreground;
-                        }
-                        if (synchronizationReportType == SynchronizationOption.Background)
-                        {
-                            goto case SynchronizationType.Background;
-                        }
-                        break;
-                    }
-                }
-                throw new Exception();
-            });
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationCallbackType, v => TestHelper.AssertCallbackContext(synchronizationCallbackType, synchronizationReportType, foregroundThread));
 
             progressHelper.MaybeEnterLock();
             progressHelper.PrepareForInvoke();
-            ExecuteOnThread(() =>
+            threadHelper.ExecuteSynchronousOrOnThread(() =>
             {
                 deferred.Promise
                     .SubscribeProgress(progressHelper)
                     .Forget();
-            }, threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            }, synchronizationReportType == SynchronizationType.Foreground);
             progressHelper.AssertCurrentProgress(0f);
 
             progressHelper.PrepareForInvoke();
-            ExecuteOnThread(() => deferred.ReportProgress(0.5f),
-                threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            threadHelper.ExecuteSynchronousOrOnThread(() => deferred.ReportProgress(0.5f),
+                synchronizationReportType == SynchronizationType.Foreground);
             progressHelper.AssertCurrentProgress(0.5f);
 
             progressHelper.PrepareForInvoke();
-            ExecuteOnThread(() => deferred.Resolve(1),
-                threadHelper, synchronizationReportType == SynchronizationOption.Foreground);
+            threadHelper.ExecuteSynchronousOrOnThread(() => deferred.Resolve(1),
+                synchronizationReportType == SynchronizationType.Foreground);
             progressHelper.AssertCurrentProgress(1f);
             progressHelper.MaybeExitLock();
         }

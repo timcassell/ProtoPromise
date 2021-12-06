@@ -31,6 +31,9 @@ namespace Proto.Promises
         // This is used to optimize foreground synchronization so that multiple promises can use a single SynchronizationContext.Post call.
         volatile internal static SynchronizationHandler _foregroundSynchronizationHandler;
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
         internal sealed partial class SynchronizationHandler : ILinked<ITreeHandleable>
         {
             private static readonly SendOrPostCallback _synchronizationContextCallback = ExecuteFromContext;
@@ -85,6 +88,9 @@ namespace Proto.Promises
             partial void TakeProgress(ref ValueLinkedQueue<IProgressInvokable> progressStack);
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
         internal
 #if CSHARP_7_3_OR_NEWER
             ref // Force to use only on the CPU stack.
