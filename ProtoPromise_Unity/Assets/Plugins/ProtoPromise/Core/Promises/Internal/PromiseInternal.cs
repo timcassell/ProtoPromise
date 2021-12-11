@@ -89,15 +89,8 @@ namespace Proto.Promises
                 }
                 if (State != Promise.State.Pending & _valueOrPrevious != null)
                 {
-                    if (SuppressRejection)
-                    {
-                        ((IValueContainer) _valueOrPrevious).Release();
-                    }
-                    else
-                    {
-                        // Rejection maybe wasn't caught.
-                        ((IValueContainer) _valueOrPrevious).ReleaseAndAddToUnhandledStack();
-                    }
+                    // Rejection maybe wasn't caught.
+                    ((IValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack(!SuppressRejection);
                 }
             }
 
@@ -183,6 +176,9 @@ namespace Proto.Promises
                 // 1 retain for state, 1 retain for await/forget.
                 _idsAndRetains.InterlockedRetainDisregardId(2, true);
                 SetCreatedStacktrace(this, 3);
+#if PROMISE_PROGRESS
+                _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.All);
+#endif
             }
 
             protected void MaybeDispose()
@@ -198,21 +194,10 @@ namespace Proto.Promises
             {
                 if (_valueOrPrevious != null)
                 {
-                    // TODO: pass bool to ReleaseAndAddToUnhandledStack instead of branch.
-                    if (SuppressRejection)
-                    {
-                        ((IValueContainer) _valueOrPrevious).Release();
-                    }
-                    else
-                    {
-                        // Rejection maybe wasn't caught.
-                        ((IValueContainer) _valueOrPrevious).ReleaseAndAddToUnhandledStack();
-                    }
+                    // Rejection maybe wasn't caught.
+                    ((IValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack(!SuppressRejection);
                     _valueOrPrevious = null;
                 }
-#if PROMISE_PROGRESS
-                _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.All);
-#endif
             }
 
             private void HookupNewCancelablePromise(PromiseRef newPromise)
@@ -457,7 +442,11 @@ namespace Proto.Promises
                         _progressAndLocker._branchLocker.Enter();
                         if (State == Promise.State.Pending)
                         {
+#if PROTO_PROMISE_DEVELOPER_MODE
+                            _nextBranches.Enqueue(waiter);
+#else
                             _nextBranches.Push(waiter);
+#endif
                             _progressAndLocker._branchLocker.Exit();
                             MaybeDispose();
                             return;
@@ -484,8 +473,12 @@ namespace Proto.Promises
                 private void HandleBranches(IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     _progressAndLocker._branchLocker.Enter();
+#if PROTO_PROMISE_DEVELOPER_MODE
+                    var branches = _nextBranches.MoveElementsToStack();
+#else
                     var branches = _nextBranches;
                     _nextBranches = new ValueLinkedStack<ITreeHandleable>();
+#endif
                     _progressAndLocker._branchLocker.Exit();
                     while (branches.IsNotEmpty)
                     {
@@ -562,6 +555,7 @@ namespace Proto.Promises
                     promise._synchronizationContext = synchronizationContext;
                     promise._isSynchronous = isSynchronous;
                     promise._isPreviousComplete = false;
+                    promise._wasHookupFailed = false;
                     return promise;
                 }
 
@@ -631,7 +625,8 @@ namespace Proto.Promises
 
                 protected override void OnHookupFailedFromCancel()
                 {
-                    Thread.MemoryBarrier();
+                    _wasHookupFailed = true;
+                    Thread.MemoryBarrier(); // Make sure _isPreviousComplete is read after _wasHookupFailed is written.
                     if (_isPreviousComplete)
                     {
                         _idsAndRetains.InterlockedTryReleaseComplete();
@@ -639,6 +634,7 @@ namespace Proto.Promises
                     base.OnHookupFailedFromCancel();
                 }
 
+                // TODO: Transition state to complete when this is created from Promise.GetAwaiter().
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
@@ -661,7 +657,7 @@ namespace Proto.Promises
                             executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                         }
                     }
-                    else if (WasAwaitedOrForgotten)
+                    else if (_wasHookupFailed)
                     {
                         executionScheduler.ScheduleSynchronous(this);
                     }

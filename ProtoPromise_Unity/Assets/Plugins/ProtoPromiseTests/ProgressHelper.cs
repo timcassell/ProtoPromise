@@ -82,7 +82,7 @@ namespace ProtoPromiseTests
                         }
                         if (!Monitor.Wait(_locker, waitTimeout))
                         {
-                            throw new TimeoutException();
+                            throw new TimeoutException("Progress was not invoked after " + waitTimeout);
                         }
                     }
                 }

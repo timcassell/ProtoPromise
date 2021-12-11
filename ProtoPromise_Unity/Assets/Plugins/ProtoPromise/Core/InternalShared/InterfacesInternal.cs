@@ -24,7 +24,6 @@ namespace Proto.Promises
             Type ValueType { get; }
             object Value { get; }
 
-            void ReleaseAndAddToUnhandledStack();
             void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd);
         }
 

@@ -346,7 +346,7 @@ namespace ProtoPromiseTests
         public const int cancelVoidCallbacks = (72 + 8 + 8) * 2 * callbacksMultiplier;
         public const int cancelTCallbacks = (72 + 8 + 8) * 2 * callbacksMultiplier;
 
-        private static IEnumerable<Promise> GetTestablePromises(Promise preservedPromise)
+        public static IEnumerable<Promise> GetTestablePromises(Promise preservedPromise)
         {
             // This helps to test several different kinds of promises to make sure they all work with the same API.
             yield return preservedPromise;
@@ -378,7 +378,7 @@ namespace ProtoPromiseTests
 #endif
         }
 
-        private static IEnumerable<Promise<T>> GetTestablePromises<T>(Promise<T> preservedPromise)
+        public static IEnumerable<Promise<T>> GetTestablePromises<T>(Promise<T> preservedPromise)
         {
             // This helps to test several different kinds of promises to make sure they all work with the same API.
             yield return preservedPromise;

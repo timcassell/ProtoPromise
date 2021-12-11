@@ -208,6 +208,7 @@ namespace Proto.Promises
                 private SynchronizationContext _synchronizationContext;
                 private bool _isSynchronous;
                 volatile private bool _isPreviousComplete;
+                volatile private bool _wasHookupFailed;
             }
 
             partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
@@ -231,7 +232,11 @@ namespace Proto.Promises
 #endif
                 }
 
+#if PROTO_PROMISE_DEVELOPER_MODE // Must use a queue instead of a stack in developer mode so that the ExecutionSchedule.ScheduleSynchronous can invoke immediately and still be in proper order.
+                private ValueLinkedQueue<ITreeHandleable> _nextBranches = new ValueLinkedQueue<ITreeHandleable>();
+#else
                 private ValueLinkedStack<ITreeHandleable> _nextBranches = new ValueLinkedStack<ITreeHandleable>();
+#endif
                 private ProgressAndLocker _progressAndLocker;
 
 #if PROMISE_PROGRESS

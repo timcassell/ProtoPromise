@@ -114,21 +114,10 @@ namespace Proto.Promises
 
             public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
-                ThrowIfInPool(this);
-                if (ReleaseInternal())
+                if (shouldAdd)
                 {
-                    if (shouldAdd)
-                    {
-                        AddUnhandledException(ToException());
-                    }
-                    Dispose();
+                    AddUnhandledException(ToException());
                 }
-            }
-
-            public void ReleaseAndAddToUnhandledStack()
-            {
-                ThrowIfInPool(this);
-                AddUnhandledException(ToException());
                 Release();
             }
 
@@ -155,6 +144,7 @@ namespace Proto.Promises
 
             private UnhandledException ToException()
             {
+                ThrowIfInPool(this);
 #if PROMISE_DEBUG
                 string innerStacktrace = _rejectedStackTrace == null ? null : FormatStackTrace(new System.Diagnostics.StackTrace[1] { _rejectedStackTrace });
 #else
@@ -305,11 +295,6 @@ namespace Proto.Promises
                 Release();
             }
 
-            public void ReleaseAndAddToUnhandledStack()
-            {
-                Release();
-            }
-
             private void Dispose()
             {
                 _value = default(T);
@@ -358,7 +343,6 @@ namespace Proto.Promises
             public void Retain() { }
             public void Release() { }
             public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
-            public void ReleaseAndAddToUnhandledStack() { }
 
             Exception IThrowable.GetException()
             {
@@ -472,11 +456,6 @@ namespace Proto.Promises
                 Release();
             }
 
-            public void ReleaseAndAddToUnhandledStack()
-            {
-                Release();
-            }
-
             private void Dispose()
             {
                 value = default(T);
@@ -510,7 +489,6 @@ namespace Proto.Promises
             public void Retain() { }
             public void Release() { }
             public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
-            public void ReleaseAndAddToUnhandledStack() { }
         }
     }
 }

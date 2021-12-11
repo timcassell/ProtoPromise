@@ -159,7 +159,7 @@ namespace ProtoPromiseTests.Threading
         public void ExecuteSingleAction(Action action)
         {
             AddParallelAction(action);
-            ExecutePendingParallelActions();
+            ExecutePendingParallelActions(TimeSpan.FromMilliseconds(-1)); // Infinite timeout
         }
 
         public void ExecuteSynchronousOrOnThread(Action action, bool synchronous)
@@ -201,20 +201,15 @@ namespace ProtoPromiseTests.Threading
         }
 
         /// <summary>
-        /// Runs the pending actions in parallel, attempting to run them in lock-step, with a default timeoutPerAction value of 1 second.
-        /// Throws a <see cref="TimeoutException"/> if (the number of actions) seconds is exceeded.
-        /// </summary>
-        public void ExecutePendingParallelActions()
-        {
-            ExecutePendingParallelActions(TimeSpan.FromSeconds(1));
-        }
-
-        /// <summary>
         /// Runs the pending actions in parallel, attempting to run them in lock-step.
-        /// Throws a <see cref="TimeoutException"/> if <paramref name="timeoutPerAction"/> times the number of actions is exceeded.
+        /// Throws a <see cref="TimeoutException"/> if <paramref name="timeoutPerAction"/> times the number of actions is exceeded (default 1).
         /// </summary>
-        public void ExecutePendingParallelActions(TimeSpan timeoutPerAction)
+        public void ExecutePendingParallelActions(TimeSpan timeoutPerAction = default(TimeSpan))
         {
+            if (timeoutPerAction == default(TimeSpan))
+            {
+                timeoutPerAction = TimeSpan.FromSeconds(1);
+            }
             ThreadMerger merger;
             lock (_locker)
             {

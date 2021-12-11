@@ -93,7 +93,11 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void ScheduleProgressSynchronous(IProgressInvokable progress)
             {
+#if PROTO_PROMISE_DEVELOPER_MODE // Helps to see full causality trace with internal stacktraces in exceptions (may cause StackOverflowException if the chain is very long).
+                progress.Invoke(ref this);
+#else
                 _progressQueue.Enqueue(progress);
+#endif
             }
 
             internal void ScheduleProgressOnContext(SynchronizationContext synchronizationContext, IProgressInvokable progress)
@@ -101,7 +105,13 @@ namespace Proto.Promises
                 if (_synchronizationHandler != null && _synchronizationHandler._context == synchronizationContext)
                 {
                     // We're scheduling to the context that is currently executing, just place it on the queue instead of going through the context.
-                    _progressQueue.Enqueue(progress);
+                    ScheduleProgressSynchronous(progress);
+                    return;
+                }
+                if (synchronizationContext == null)
+                {
+                    // If there is no context, send it to the ThreadPool.
+                    ThreadPool.QueueUserWorkItem(_progressThreadPoolCallback, progress);
                     return;
                 }
                 SynchronizationHandler foregroundHandler = _foregroundSynchronizationHandler;
@@ -111,13 +121,7 @@ namespace Proto.Promises
                     foregroundHandler.PostProgress(progress);
                     return;
                 }
-                if (synchronizationContext != null)
-                {
-                    synchronizationContext.Post(_progressSynchronizationContextCallback, progress);
-                    return;
-                }
-                // If there is no context, send it to the ThreadPool.
-                ThreadPool.QueueUserWorkItem(_progressThreadPoolCallback, progress);
+                synchronizationContext.Post(_progressSynchronizationContextCallback, progress);
             }
 
             private static void ExecuteProgressFromContext(object state)
@@ -456,23 +460,24 @@ namespace Proto.Promises
                     Interlocked.CompareExchange(ref _value, negated, current);
                 }
 
-                internal void InterlockedMaybeMakeNegativeIfWholeIsNotGreater()
+                internal void InterlockedMakeNegativeIfOtherWholeIsGreater(Fixed32 other)
                 {
-                    // Try to make negative, only retry if the updated whole value is not greater than the old whole value.
-                    int current = _value;
-                    int oldWholePart = current & PositiveMask;
-                Retry:
-                    int negated = current | ~PositiveMask;
-                    if (Interlocked.CompareExchange(ref _value, negated, current) != current)
+                    Thread.MemoryBarrier();
+                    int otherWholePart = other.PositiveWholePart;
+                    int oldWholePart = PositiveWholePart;
+                    int current;
+                    int negated;
+                    do
                     {
-                        int newValue = _value;
-                        int newWholePart = _value & PositiveMask;
-                        if (newWholePart <= oldWholePart)
+                        current = _value;
+                        int currentWholePart = (current & PositiveMask) >> Promise.Config.ProgressDecimalBits; // Make positive before comparing.
+                        // If other whole is less than or equal, or if the updated whole is greater than the old whole, do nothing.
+                        if (otherWholePart <= currentWholePart | oldWholePart < currentWholePart)
                         {
-                            current = newValue;
-                            goto Retry;
+                            return;
                         }
-                    }
+                        negated = current | ~PositiveMask;
+                    } while (Interlocked.CompareExchange(ref _value, negated, current) != current);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -584,7 +589,7 @@ namespace Proto.Promises
                 void SetInitialProgress(PromiseRef sender, Promise.State state, Fixed32 progress, ref ExecutionScheduler executionScheduler);
                 void SetProgress(PromiseRef sender, Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler);
                 void ResolveOrSetProgress(PromiseRef sender, Fixed32 progress, ref ExecutionScheduler executionScheduler);
-                void CancelProgress();
+                void MaybeCancelProgress(Fixed32 progress);
                 void Retain();
             }
 
@@ -770,10 +775,10 @@ namespace Proto.Promises
                         && (_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0; // Was not already in progress queue?
                 }
 
-                void IProgressListener.CancelProgress()
+                void IProgressListener.MaybeCancelProgress(Fixed32 progress)
                 {
                     ThrowIfInPool(this);
-                    _smallProgressFields._currentProgress.InterlockedMaybeMakeNegativeIfWholeIsNotGreater();
+                    _smallProgressFields._currentProgress.InterlockedMakeNegativeIfOtherWholeIsGreater(progress);
                     MaybeDispose();
                 }
 
@@ -963,7 +968,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            progressListener.CancelProgress();
+                            progressListener.MaybeCancelProgress(progress);
                         }
                     }
                 }
@@ -1068,9 +1073,9 @@ namespace Proto.Promises
                     }
                     WaitWhileProgressFlags(ProgressFlags.Reporting | ProgressFlags.SettingInitial);
 
+                    Fixed32 progress = _progressAndLocker._depthAndProgress.GetIncrementedWholeTruncated();
                     if (state == Promise.State.Resolved)
                     {
-                        Fixed32 progress = _progressAndLocker._depthAndProgress.GetIncrementedWholeTruncated();
                         do
                         {
                             progressListeners.Pop().ResolveOrSetProgress(this, progress, ref executionScheduler);
@@ -1080,7 +1085,7 @@ namespace Proto.Promises
 
                     do
                     {
-                        progressListeners.Pop().CancelProgress();
+                        progressListeners.Pop().MaybeCancelProgress(progress);
                     } while (progressListeners.IsNotEmpty);
                 }
 
@@ -1094,9 +1099,9 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressListener.CancelProgress()
+                void IProgressListener.MaybeCancelProgress(Fixed32 progress)
                 {
-                    _progressAndLocker._currentProgress.InterlockedMaybeMakeNegativeIfWholeIsNotGreater();
+                    _progressAndLocker._currentProgress.InterlockedMakeNegativeIfOtherWholeIsGreater(progress);
                     MaybeDispose();
                 }
 
@@ -1400,7 +1405,7 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
-                void IProgressListener.CancelProgress()
+                void IProgressListener.MaybeCancelProgress(Fixed32 progress)
                 {
                     _progressFields._depthAndProgress.InterlockedMaybeMakeNegativeIfDecimalIsNotGreater();
                     MaybeDispose();
@@ -1483,9 +1488,9 @@ namespace Proto.Promises
                     Release();
                 }
 
-                void IProgressListener.CancelProgress()
+                void IProgressListener.MaybeCancelProgress(Fixed32 progress)
                 {
-                    _smallFields._currentProgress.InterlockedMaybeMakeNegativeIfWholeIsNotGreater();
+                    _smallFields._currentProgress.InterlockedMakeNegativeIfOtherWholeIsGreater(progress);
                     Release();
                 }
 

@@ -1253,6 +1253,9 @@ namespace Proto.Promises
             return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, promise.Depth);
         }
 
+        // TODO: Synchronization options for Promise(<T>).New()
+        // TODO: Promise.Run(Action/Func<Promise>, SynchronizationOption)
+
         /// <summary>
         /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise"/>.
         /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,

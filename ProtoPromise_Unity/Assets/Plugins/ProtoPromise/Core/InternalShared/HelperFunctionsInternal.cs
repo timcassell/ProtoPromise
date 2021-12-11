@@ -164,7 +164,11 @@ namespace Proto.Promises
             internal void ScheduleSynchronous(ITreeHandleable handleable)
             {
                 AssertNotExecutingProgress();
+#if PROTO_PROMISE_DEVELOPER_MODE // Helps to see full causality trace with internal stacktraces in exceptions (may cause StackOverflowException if the chain is very long).
+                handleable.Handle(ref this);
+#else
                 _handleStack.Push(handleable);
+#endif
             }
 
             internal void ScheduleOnContext(SynchronizationContext synchronizationContext, ITreeHandleable handleable)
@@ -173,7 +177,7 @@ namespace Proto.Promises
                 if (_synchronizationHandler != null && _synchronizationHandler._context == synchronizationContext)
                 {
                     // We're scheduling to the context that is currently executing, just place it on the stack instead of going through the context.
-                    _handleStack.Push(handleable);
+                    ScheduleSynchronous(handleable);
                     return;
                 }
                 ScheduleOnContextStatic(synchronizationContext, handleable);

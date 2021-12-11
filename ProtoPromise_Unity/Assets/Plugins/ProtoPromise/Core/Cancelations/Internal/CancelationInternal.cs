@@ -162,7 +162,6 @@ namespace Proto.Promises
                 object IValueContainer.Value { get { throw new System.InvalidOperationException(); } }
                 Exception IThrowable.GetException() { throw new System.InvalidOperationException(); }
                 Promise.State IValueContainer.GetState() { throw new System.InvalidOperationException(); }
-                void IValueContainer.ReleaseAndAddToUnhandledStack() { throw new System.InvalidOperationException(); }
                 void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { throw new System.InvalidOperationException(); }
 
             }

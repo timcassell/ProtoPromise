@@ -18,11 +18,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        public sealed class UnhandledExceptionInternal : UnhandledException, IRejectionToContainer, IRejectValueContainer, ICantHandleException
+        internal sealed class UnhandledExceptionInternal : UnhandledException, IRejectionToContainer, IRejectValueContainer, ICantHandleException
         {
-            private int _retainCounter;
-
-            public UnhandledExceptionInternal(object value, Type valueType, string message, string stackTrace, Exception innerException) :
+            internal UnhandledExceptionInternal(object value, Type valueType, string message, string stackTrace, Exception innerException) :
                 base(value, valueType, message, stackTrace, innerException)
             { }
 
@@ -31,43 +29,16 @@ namespace Proto.Promises
                 return Promise.State.Rejected;
             }
 
-            void IValueContainer.Retain()
-            {
-                int _;
-                // Don't let counter wrap around past 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, 1, -1, out _))
-                {
-                    throw new OverflowException();
-                }
-            }
+            void IValueContainer.Retain() { }
 
-            void IValueContainer.Release()
-            {
-                int _;
-                // Don't let counter go below 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out _))
-                {
-                    throw new OverflowException(); // This should never happen, but checking just in case.
-                }
-            }
+            void IValueContainer.Release() { }
 
             void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
-                int newValue;
-                // Don't let counter go below 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
-                {
-                    throw new OverflowException(); // This should never happen, but checking just in case.
-                }
-                if (newValue == 0 & shouldAdd)
+                if (shouldAdd)
                 {
                     AddUnhandledException(this);
                 }
-            }
-
-            void IValueContainer.ReleaseAndAddToUnhandledStack()
-            {
-                AddUnhandledException(this);
             }
 
             Exception IThrowable.GetException()
@@ -93,11 +64,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        public sealed class CanceledExceptionInternal<T> : CanceledException, ICancelValueContainer, ICancelationToContainer
+        internal sealed class CanceledExceptionInternal<T> : CanceledException, ICancelValueContainer, ICancelationToContainer
         {
             private readonly T _value;
 
-            public CanceledExceptionInternal(T value, string message) : base(message)
+            internal CanceledExceptionInternal(T value, string message) : base(message)
             {
                 _value = value;
             }
@@ -131,7 +102,6 @@ namespace Proto.Promises
             void IValueContainer.Retain() { }
             void IValueContainer.Release() { }
             void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
-            void IValueContainer.ReleaseAndAddToUnhandledStack() { }
 
             Exception IThrowable.GetException()
             {
@@ -147,13 +117,13 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        public sealed class CanceledExceptionInternalVoid : CanceledException, ICancelValueContainer, ICancelationToContainer
+        internal sealed class CanceledExceptionInternalVoid : CanceledException, ICancelValueContainer, ICancelationToContainer
         {
 #if !PROMISE_DEBUG
             private static readonly CanceledExceptionInternalVoid _instance = new CanceledExceptionInternalVoid("Operation was canceled without a reason.");
 #endif
 
-            public static CanceledExceptionInternalVoid GetOrCreate()
+            internal static CanceledExceptionInternalVoid GetOrCreate()
             {
 #if PROMISE_DEBUG
                 return new CanceledExceptionInternalVoid("Operation was canceled without a reason."); // Don't re-use instance in DEBUG mode so users can read its stacktrace on any thread.
@@ -162,7 +132,7 @@ namespace Proto.Promises
 #endif
             }
 
-            public CanceledExceptionInternalVoid(string message) : base(message) { }
+            private CanceledExceptionInternalVoid(string message) : base(message) { }
 
             public override Type ValueType { get { return null; } }
 
@@ -182,7 +152,6 @@ namespace Proto.Promises
             void IValueContainer.Retain() { }
             void IValueContainer.Release() { }
             void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
-            void IValueContainer.ReleaseAndAddToUnhandledStack() { }
 
             Exception IThrowable.GetException()
             {
@@ -198,11 +167,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        public sealed class RejectionException : Exception
+        internal sealed class RejectionException : Exception
         {
             private readonly string _stackTrace;
 
-            public RejectionException(string message, string stackTrace, Exception innerException) : base(message, innerException)
+            internal RejectionException(string message, string stackTrace, Exception innerException) : base(message, innerException)
             {
                 _stackTrace = stackTrace;
             }
@@ -213,11 +182,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        public sealed class RejectExceptionInternal<T> : RejectException, IRejectionToContainer, ICantHandleException
+        internal sealed class RejectExceptionInternal<T> : RejectException, IRejectionToContainer, ICantHandleException
         {
             public T Value { get; private set; }
 
-            public RejectExceptionInternal(T value)
+            internal RejectExceptionInternal(T value)
             {
                 Value = value;
             }
