@@ -41,11 +41,6 @@ namespace Proto.Promises
             }
         }
 
-        static partial void _SetCreatedStacktrace(ITraceable traceable, int skipFrames);
-        static partial void _SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable);
-        static partial void _SetCurrentInvoker(ITraceable current);
-        static partial void _ClearCurrentInvoker();
-#if PROMISE_DEBUG
         private static readonly System.Threading.Thread _initialThread = System.Threading.Thread.CurrentThread;
 
         public static void ValidateThreadAccess(int skipFrames, bool warn = true)
@@ -62,6 +57,12 @@ namespace Proto.Promises
                 temp.Invoke(message);
             }
         }
+
+        static partial void _SetCreatedStacktrace(ITraceable traceable, int skipFrames);
+        static partial void _SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable);
+        static partial void _SetCurrentInvoker(ITraceable current);
+        static partial void _ClearCurrentInvoker();
+#if PROMISE_DEBUG
 
         static partial void _SetCreatedStacktrace(ITraceable traceable, int skipFrames)
         {
