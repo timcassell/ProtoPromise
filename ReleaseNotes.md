@@ -1,5 +1,9 @@
 # Release Notes
 
+## v 1.0.3 - December 11, 2021
+
+- Fixed a compile error when building with IL2CPP runtime.
+
 ## v 1.0.2 - January 2, 2021
 
 - Fixed uncaught rejections not being reported from reused promise objects.

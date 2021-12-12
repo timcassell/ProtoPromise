@@ -13,9 +13,9 @@ Also check out the [C# Asynchronous Benchmarks](https://github.com/timcassell/CS
 
 ## Latest Updates
 
-### v 1.0.2 - January 2, 2021
+### v 1.0.3 - December 11, 2021
 
-- Fixed uncaught rejections not being reported from reused promise objects.
+- Fixed a compile error when building with IL2CPP runtime.
 
 See [Release Notes](https://github.com/timcassell/ProtoPromise/blob/master/ReleaseNotes.md) for the full changelog.
 
