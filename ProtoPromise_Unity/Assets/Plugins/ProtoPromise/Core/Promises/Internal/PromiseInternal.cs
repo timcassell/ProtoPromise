@@ -104,7 +104,7 @@ namespace Proto.Promises
             {
                 IncrementId(promiseId);
                 WasAwaitedOrForgotten = true;
-                MaybeDispose();
+                OnForgetOrHookupFailed();
             }
 
             private void IncrementId(short promiseId)
@@ -210,13 +210,13 @@ namespace Proto.Promises
                 else
                 {
                     newPromise._idsAndRetains.InterlockedTryReleaseComplete();
-                    OnHookupFailedFromCancel();
+                    SuppressRejection = true; // Don't report rejection if newPromise is already canceled.
+                    OnForgetOrHookupFailed();
                 }
             }
 
-            protected virtual void OnHookupFailedFromCancel()
+            protected virtual void OnForgetOrHookupFailed()
             {
-                SuppressRejection = true; // Don't report rejection if newPromise is already canceled.
                 MaybeDispose();
             }
 
@@ -557,7 +557,7 @@ namespace Proto.Promises
                     promise._synchronizationContext = synchronizationContext;
                     promise._isSynchronous = isSynchronous;
                     promise._isPreviousComplete = false;
-                    promise._wasHookupFailed = false;
+                    promise._wasForgottenOrHookupFailed = false;
                     return promise;
                 }
 
@@ -625,15 +625,15 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void OnHookupFailedFromCancel()
+                protected override void OnForgetOrHookupFailed()
                 {
-                    _wasHookupFailed = true;
+                    _wasForgottenOrHookupFailed = true;
                     Thread.MemoryBarrier(); // Make sure _isPreviousComplete is read after _wasHookupFailed is written.
                     if (_isPreviousComplete)
                     {
                         _idsAndRetains.InterlockedTryReleaseComplete();
                     }
-                    base.OnHookupFailedFromCancel();
+                    base.OnForgetOrHookupFailed();
                 }
 
                 // TODO: Transition state to complete when this is created from Promise.GetAwaiter() and _isPreviousComplete and _isSynchronous are true.
@@ -659,7 +659,7 @@ namespace Proto.Promises
                             executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                         }
                     }
-                    else if (_wasHookupFailed | WasAwaitedOrForgotten)
+                    else if (_wasForgottenOrHookupFailed)
                     {
                         executionScheduler.ScheduleSynchronous(this);
                     }

@@ -30,7 +30,9 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
+                    // Don't throw if in pool, just return either way.
+                    // If it's in the pool, it means the promise was canceled, and it will check the cancelation before using the value.
+                    //ThrowIfInPool(this);
                     return value;
                 }
             }
@@ -39,7 +41,9 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
+                    // Don't throw if in pool, just return either way.
+                    // If it's in the pool, it means the promise was canceled, and it will check the cancelation before using the value.
+                    //ThrowIfInPool(this);
                     return value;
                 }
             }
@@ -48,7 +52,9 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ThrowIfInPool(this);
+                    // Don't throw if in pool, just return either way.
+                    // If it's in the pool, it means the promise was canceled, and it will check the cancelation before using the value.
+                    //ThrowIfInPool(this);
                     Type type = typeof(T);
                     if (type.IsValueType)
                     {

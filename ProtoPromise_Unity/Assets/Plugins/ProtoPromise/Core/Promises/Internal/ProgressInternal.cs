@@ -63,6 +63,7 @@ namespace Proto.Promises
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 _isExecutingProgress = true; // This is only used on the CPU stack, so we never need to set this back to false.
+#endif
 
                 // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
                 IProgressInvokable lastExecuted = null;
@@ -80,19 +81,9 @@ namespace Proto.Promises
                 }
                 catch (Exception e)
                 {
-                    // This should never happen, this is only necessary to debug internal code.
+                    // This should never happen.
                     AddRejectionToUnhandledStack(e, lastExecuted as ITraceable);
                 }
-#else
-                while (_progressQueue.IsNotEmpty)
-                {
-                    ValueLinkedStack<IProgressInvokable> executionStack = _progressQueue.MoveElementsToStack();
-                    do
-                    {
-                        executionStack.Pop().Invoke(ref this);
-                    } while (executionStack.IsNotEmpty);
-                }
-#endif
             }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -148,11 +139,7 @@ namespace Proto.Promises
             private static void ExecuteProgressFromContext(object state)
             {
                 ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 executionScheduler.ScheduleProgressSynchronous((IProgressInvokable) state);
-#else
-                ((IProgressInvokable) state).Invoke(ref executionScheduler);
-#endif
                 executionScheduler.ExecuteProgress();
             }
         }

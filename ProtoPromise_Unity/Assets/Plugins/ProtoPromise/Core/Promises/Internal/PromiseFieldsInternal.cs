@@ -208,7 +208,7 @@ namespace Proto.Promises
                 private SynchronizationContext _synchronizationContext;
                 private bool _isSynchronous;
                 volatile private bool _isPreviousComplete;
-                volatile private bool _wasHookupFailed;
+                volatile private bool _wasForgottenOrHookupFailed;
             }
 
             partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
