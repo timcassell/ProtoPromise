@@ -294,6 +294,7 @@ namespace Proto.Promises
                 private const int DecimalMask = (1 << Promise.Config.ProgressDecimalBits) - 1;
                 private const int WholeMask = ~DecimalMask;
                 private const int PositiveMask = ~(1 << 31);
+                private const int MaxWholeValue = -(1 << Promise.Config.ProgressDecimalBits) & PositiveMask;
 
                 // Negative bit is used as a flag for progress to know if it's suspended.
                 // This is necessary to update the value and the flag atomically without a lock.
@@ -533,13 +534,16 @@ namespace Proto.Promises
 
                 internal Fixed32 GetIncrementedWholeTruncated()
                 {
-#if PROMISE_DEBUG
-                    checked
-#endif
+                    int newValue = (_value & WholeMask & PositiveMask) + (1 << Promise.Config.ProgressDecimalBits);
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    // MaxWholeValue allows some promises to start with -1 depth so that the next await will increment it to 0,
+                    // but still throws in general use if the promise chain gets too long.
+                    if (newValue >= MaxWholeValue)
                     {
-                        int newValue = (_value & WholeMask & PositiveMask) + (1 << Promise.Config.ProgressDecimalBits);
-                        return new Fixed32(newValue, true);
+                        throw new System.ArgumentOutOfRangeException();
                     }
+#endif
+                    return new Fixed32(newValue, true);
                 }
             }
 

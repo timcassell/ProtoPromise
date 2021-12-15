@@ -18,36 +18,104 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        internal sealed class RejectionContainer<T> : ILinked<RejectionContainer<T>>, IRejectValueContainer, IValueContainer<T>, IRejectionToContainer, ICantHandleException
+        internal abstract class ValueContainer<T> : IValueContainer, IValueContainer<T>, ITraceable
         {
-            RejectionContainer<T> ILinked<RejectionContainer<T>>.Next { get; set; }
+#if PROMISE_DEBUG
+            CausalityTrace ITraceable.Trace { get; set; }
+#endif
+            private int _retainCounter;
+            public T value;
 
             public T Value
             {
-                get { return _value; }
+                get
+                {
+                    ThrowIfInPool(this);
+                    return value;
+                }
             }
 
             object IValueContainer.Value
             {
-                get { return _value; }
+                get
+                {
+                    ThrowIfInPool(this);
+                    return value;
+                }
             }
 
             Type IValueContainer.ValueType
             {
                 get
                 {
+                    ThrowIfInPool(this);
                     Type type = typeof(T);
                     if (type.IsValueType)
                     {
                         return type;
                     }
-                    object temp = _value;
+                    object temp = value;
                     return temp == null ? type : temp.GetType();
                 }
             }
 
-            private int _retainCounter;
-            private T _value;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            ~ValueContainer()
+            {
+                if (_retainCounter != 0)
+                {
+                    // For debugging. This should never happen.
+                    string message = "A " + GetType() + " was garbage collected without it being released. _retainCounter: " + _retainCounter + ", value: " + value;
+                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                }
+            }
+#endif
+
+            public virtual void Retain()
+            {
+                ThrowIfInPool(this);
+                int _;
+                // Don't let counter wrap around past 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, 1, -1, out _))
+                {
+                    throw new OverflowException();
+                }
+            }
+
+            protected bool TryReleaseComplete()
+            {
+                ThrowIfInPool(this);
+                int newValue;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                // Don't let counter go below 0.
+                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
+                {
+                    throw new OverflowException(); // This should never happen, but checking just in case.
+                }
+#else
+                newValue = System.Threading.Interlocked.Decrement(ref _retainCounter);
+#endif
+                return newValue == 0;
+            }
+
+            public abstract void Release();
+
+            protected void Reset(int retainCount)
+            {
+                _retainCounter = retainCount;
+                SetCreatedStacktrace(this, 2);
+            }
+
+            public abstract Promise.State GetState();
+            public abstract void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd);
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
+        internal sealed class RejectionContainer<T> : ValueContainer<T>, ILinked<RejectionContainer<T>>, IRejectValueContainer, IRejectionToContainer, ICantHandleException
+        {
+            RejectionContainer<T> ILinked<RejectionContainer<T>>.Next { get; set; }
 
 #if PROMISE_DEBUG
             System.Diagnostics.StackTrace _rejectedStackTrace;
@@ -64,16 +132,6 @@ namespace Proto.Promises
 
             private RejectionContainer() { }
 
-            ~RejectionContainer()
-            {
-                if (_retainCounter != 0)
-                {
-                    // For debugging. This should never happen.
-                    string message = "A RejectionContainer was garbage collected without it being released. _retainCounter: " + _retainCounter + ", _value: " + _value;
-                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), null);
-                }
-            }
-
             internal static RejectionContainer<T> GetOrCreate(
 #if CSHARP_7_3_OR_NEWER
                 in
@@ -82,37 +140,26 @@ namespace Proto.Promises
             {
                 var container = ObjectPool<RejectionContainer<T>>.TryTake<RejectionContainer<T>>()
                     ?? new RejectionContainer<T>();
-                container._value = value;
-                container._retainCounter = retainCount;
+                container.value = value;
+                container.Reset(retainCount);
                 return container;
             }
 
-            public Promise.State GetState()
+            public override Promise.State GetState()
             {
                 return Promise.State.Rejected;
             }
 
-            public void Retain()
+            public override void Release()
             {
                 ThrowIfInPool(this);
-                int _;
-                // Don't let counter wrap around past 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, 1, -1, out _))
-                {
-                    throw new OverflowException();
-                }
-            }
-
-            public void Release()
-            {
-                ThrowIfInPool(this);
-                if (ReleaseInternal())
+                if (TryReleaseComplete())
                 {
                     Dispose();
                 }
             }
 
-            public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            public override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
                 if (shouldAdd)
                 {
@@ -121,24 +168,13 @@ namespace Proto.Promises
                 Release();
             }
 
-            private bool ReleaseInternal()
-            {
-                int newValue;
-                // Don't let counter go below 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
-                {
-                    throw new OverflowException(); // This should never happen, but checking just in case.
-                }
-                return newValue == 0;
-            }
-
             private void Dispose()
             {
 #if PROMISE_DEBUG
                 _rejectedStackTrace = null;
                 _stackTraces = null;
 #endif
-                _value = default(T);
+                value = default(T);
                 ObjectPool<RejectionContainer<T>>.MaybeRepool(this);
             }
 
@@ -198,49 +234,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        internal sealed class CancelContainer<T> : ILinked<CancelContainer<T>>, ICancelValueContainer, IValueContainer<T>, ICancelationToContainer
+        internal sealed class CancelContainer<T> : ValueContainer<T>, ILinked<CancelContainer<T>>, ICancelValueContainer, ICancelationToContainer
         {
             CancelContainer<T> ILinked<CancelContainer<T>>.Next { get; set; }
 
-            private int _retainCounter;
-            private T _value;
-            public T Value
-            {
-                get { return _value; }
-            }
-
-            object IValueContainer.Value
-            {
-                get { return _value; }
-            }
-
-            Type IValueContainer.ValueType
-            {
-                get
-                {
-                    Type type = typeof(T);
-                    if (type.IsValueType)
-                    {
-                        return type;
-                    }
-                    object temp = _value;
-                    return temp == null ? type : temp.GetType();
-                }
-            }
-
             private CancelContainer() { }
-
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            ~CancelContainer()
-            {
-                if (_retainCounter != 0)
-                {
-                    // For debugging. This should never happen.
-                    string message = "A CancelContainer was garbage collected without it being released. _retainCounter: " + _retainCounter + ", _value: " + _value;
-                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), null);
-                }
-            }
-#endif
 
             internal static CancelContainer<T> GetOrCreate(
 #if CSHARP_7_3_OR_NEWER
@@ -250,64 +248,42 @@ namespace Proto.Promises
             {
                 var container = ObjectPool<CancelContainer<T>>.TryTake<CancelContainer<T>>()
                     ?? new CancelContainer<T>();
-                container._value = value;
-                container._retainCounter = retainCount;
+                container.value = value;
+                container.Reset(retainCount);
                 return container;
             }
 
-            public Promise.State GetState()
+            public override Promise.State GetState()
             {
                 return Promise.State.Canceled;
             }
 
-            public void Retain()
+            public override void Release()
             {
-                ThrowIfInPool(this);
-                int _;
-                // Don't let counter wrap around past 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, 1, -1, out _))
-                {
-                    throw new OverflowException();
-                }
-            }
-
-            public void Release()
-            {
-                ThrowIfInPool(this);
-                int newValue;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                // Don't let counter go below 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
-                {
-                    throw new OverflowException(); // This should never happen, but checking just in case.
-                }
-#else
-                newValue = System.Threading.Interlocked.Decrement(ref _retainCounter);
-#endif
-                if (newValue == 0)
+                if (TryReleaseComplete())
                 {
                     Dispose();
                 }
             }
 
-            public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            public override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
                 Release();
             }
 
             private void Dispose()
             {
-                _value = default(T);
+                value = default(T);
                 ObjectPool<CancelContainer<T>>.MaybeRepool(this);
             }
 
             Exception IThrowable.GetException()
             {
                 ThrowIfInPool(this);
-                Type type = typeof(T).IsValueType ? typeof(T) : _value.GetType();
-                string message = "Operation was canceled with a reason, type: " + type + ", value: " + _value.ToString();
+                Type type = typeof(T).IsValueType ? typeof(T) : value.GetType();
+                string message = "Operation was canceled with a reason, type: " + type + ", value: " + value.ToString();
 
-                return new CanceledExceptionInternal<T>(_value, message);
+                return new CanceledExceptionInternal<T>(value, message);
             }
 
             ICancelValueContainer ICancelationToContainer.ToContainer()
@@ -317,32 +293,103 @@ namespace Proto.Promises
             }
         }
 
+        internal interface IConstructor<T>
+        {
+            T Construct();
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        internal sealed class CancelContainerVoid : ICancelValueContainer, ICancelationToContainer
+        internal abstract class SingletonValueContainer<TValueContainer, TConstructor> : ValueContainer<VoidResult>, IValueContainer
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            , ILinked<TValueContainer>
+#endif
+            where TValueContainer : SingletonValueContainer<TValueContainer, TConstructor>
+            where TConstructor : struct, IConstructor<TValueContainer>
         {
+            // This is to help with internal debugging. When not debugging, a single instance can be reused for efficiency.
+
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            TValueContainer ILinked<TValueContainer>.Next { get; set; }
+#else
             // We can reuse the same object.
-            private static readonly CancelContainerVoid _instance = new CancelContainerVoid();
+            private static readonly TValueContainer _instance = default(TConstructor).Construct();
+#endif
 
-            object IValueContainer.Value { get { return null; } }
-
-            Type IValueContainer.ValueType { get { return null; } }
-
-            [MethodImpl(InlineOption)]
-            internal static CancelContainerVoid GetOrCreate()
+            object IValueContainer.Value
             {
-                return _instance;
+                get
+                {
+                    ThrowIfInPool(this);
+                    return null;
+                }
+            }
+            Type IValueContainer.ValueType
+            {
+                get
+                {
+                    ThrowIfInPool(this);
+                    return null;
+                }
             }
 
-            public Promise.State GetState()
+            protected static TValueContainer GetOrCreateBase(int retainCount)
+            {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                var container = ObjectPool<TValueContainer>.TryTake<TValueContainer>()
+                    ?? default(TConstructor).Construct();
+                container.Reset(retainCount);
+                return container;
+#else
+                return _instance;
+#endif
+            }
+
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            public override void Release()
+            {
+                if (TryReleaseComplete())
+                {
+                    ObjectPool<TValueContainer>.MaybeRepool((TValueContainer) this);
+                }
+            }
+
+            public override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            {
+                Release();
+            }
+#else
+            public override void Retain() { }
+            public override void Release() { }
+            public override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
+#endif
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
+        internal sealed class CancelContainerVoid : SingletonValueContainer<CancelContainerVoid, CancelContainerVoid.Constructor>, ICancelValueContainer, ICancelationToContainer
+        {
+            internal struct Constructor : IConstructor<CancelContainerVoid>
+            {
+                [MethodImpl(InlineOption)]
+                public CancelContainerVoid Construct()
+                {
+                    return new CancelContainerVoid();
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal static CancelContainerVoid GetOrCreate(int retainCount)
+            {
+                return GetOrCreateBase(retainCount);
+            }
+
+            public override Promise.State GetState()
             {
                 return Promise.State.Canceled;
             }
-
-            public void Retain() { }
-            public void Release() { }
-            public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
 
             Exception IThrowable.GetException()
             {
@@ -358,50 +405,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        internal sealed class ResolveContainer<T> : ILinked<ResolveContainer<T>>, IValueContainer, IValueContainer<T>
+        internal sealed class ResolveContainer<T> : ValueContainer<T>, ILinked<ResolveContainer<T>>
         {
             ResolveContainer<T> ILinked<ResolveContainer<T>>.Next { get; set; }
 
-            private int _retainCounter;
-            internal T value;
-
-            T IValueContainer<T>.Value
-            {
-                get { return value; }
-            }
-
-            object IValueContainer.Value
-            {
-                get { return value; }
-            }
-
-            Type IValueContainer.ValueType
-            {
-                get
-                {
-                    Type type = typeof(T);
-                    if (type.IsValueType)
-                    {
-                        return type;
-                    }
-                    object temp = value;
-                    return temp == null ? type : temp.GetType();
-                }
-            }
-
             private ResolveContainer() { }
-
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            ~ResolveContainer()
-            {
-                if (_retainCounter != 0)
-                {
-                    // For debugging. This should never happen.
-                    string message = "A ResolveContainer was garbage collected without it being released. _retainCounter: " + _retainCounter + ", value: " + value;
-                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), null);
-                }
-            }
-#endif
 
             internal static ResolveContainer<T> GetOrCreate(
 #if CSHARP_7_3_OR_NEWER
@@ -412,46 +420,25 @@ namespace Proto.Promises
                 var container = ObjectPool<ResolveContainer<T>>.TryTake<ResolveContainer<T>>()
                     ?? new ResolveContainer<T>();
                 container.value = value;
-                container._retainCounter = retainCount;
+                container.Reset(retainCount);
                 return container;
             }
 
-            public Promise.State GetState()
+            public override Promise.State GetState()
             {
                 return Promise.State.Resolved;
             }
 
-            public void Retain()
+            public override void Release()
             {
                 ThrowIfInPool(this);
-                int _;
-                // Don't let counter wrap around past 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, 1, -1, out _))
-                {
-                    throw new OverflowException();
-                }
-            }
-
-            public void Release()
-            {
-                ThrowIfInPool(this);
-                int newValue;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                // Don't let counter go below 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
-                {
-                    throw new OverflowException(); // This should never happen, but checking just in case.
-                }
-#else
-                newValue = System.Threading.Interlocked.Decrement(ref _retainCounter);
-#endif
-                if (newValue == 0)
+                if (TryReleaseComplete())
                 {
                     Dispose();
                 }
             }
 
-            public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            public override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
                 Release();
             }
@@ -466,29 +453,27 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        internal sealed class ResolveContainerVoid : IValueContainer
+        internal sealed class ResolveContainerVoid : SingletonValueContainer<ResolveContainerVoid, ResolveContainerVoid.Constructor>
         {
-            // We can reuse the same object.
-            private static readonly ResolveContainerVoid _instance = new ResolveContainerVoid();
-
-            object IValueContainer.Value { get { return null; } }
-
-            Type IValueContainer.ValueType { get { return null; } }
-
-            [MethodImpl(InlineOption)]
-            internal static ResolveContainerVoid GetOrCreate()
+            internal struct Constructor : IConstructor<ResolveContainerVoid>
             {
-                return _instance;
+                [MethodImpl(InlineOption)]
+                public ResolveContainerVoid Construct()
+                {
+                    return new ResolveContainerVoid();
+                }
             }
 
-            public Promise.State GetState()
+            [MethodImpl(InlineOption)]
+            internal static ResolveContainerVoid GetOrCreate(int retainCount)
+            {
+                return GetOrCreateBase(retainCount);
+            }
+
+            public override Promise.State GetState()
             {
                 return Promise.State.Resolved;
             }
-
-            public void Retain() { }
-            public void Release() { }
-            public void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
         }
     }
 }

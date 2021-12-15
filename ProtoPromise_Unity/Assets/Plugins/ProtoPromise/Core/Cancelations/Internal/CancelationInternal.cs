@@ -885,7 +885,7 @@ namespace Proto.Promises
                 }
                 try
                 {
-                    return _valueContainer == null && TryInvokeCallbacks(CancelContainerVoid.GetOrCreate());
+                    return _valueContainer == null && TryInvokeCallbacks(CancelContainerVoid.GetOrCreate(0));
                 }
                 finally
                 {

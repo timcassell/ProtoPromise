@@ -202,12 +202,14 @@ namespace Proto.Promises
 
             private void HookupNewCancelablePromise(PromiseRef newPromise)
             {
+                // If _valueOrPrevious is not null, it means newPromise was already canceled from the token.
                 if (Interlocked.CompareExchange(ref newPromise._valueOrPrevious, this, null) == null)
                 {
                     HookupNewWaiter(newPromise);
                 }
                 else
                 {
+                    newPromise._idsAndRetains.InterlockedTryReleaseComplete();
                     OnHookupFailedFromCancel();
                 }
             }
@@ -634,7 +636,7 @@ namespace Proto.Promises
                     base.OnHookupFailedFromCancel();
                 }
 
-                // TODO: Transition state to complete when this is created from Promise.GetAwaiter().
+                // TODO: Transition state to complete when this is created from Promise.GetAwaiter() and _isPreviousComplete and _isSynchronous are true.
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
@@ -657,7 +659,7 @@ namespace Proto.Promises
                             executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                         }
                     }
-                    else if (_wasHookupFailed)
+                    else if (_wasHookupFailed | WasAwaitedOrForgotten)
                     {
                         executionScheduler.ScheduleSynchronous(this);
                     }
@@ -746,7 +748,7 @@ namespace Proto.Promises
                 protected void CancelDirect()
                 {
                     ThrowIfInPool(this);
-                    RejectOrCancelInternal(CancelContainerVoid.GetOrCreate());
+                    RejectOrCancelInternal(CancelContainerVoid.GetOrCreate(0));
                 }
 
                 protected void CancelDirect<TCancel>(

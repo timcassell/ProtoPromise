@@ -312,6 +312,7 @@ namespace Proto.Promises
                         if (cancelationToken.IsCancelationRequested)
                         {
                             promise = CancelablePromiseResolve<TArg, TResult, TResolver>.GetOrCreate(resolver, cancelationToken);
+                            promise._idsAndRetains.InterlockedTryReleaseComplete();
                             //Interlocked.CompareExchange(ref promise._valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null);
                             //AddToHandleQueueBack(promise);
                         }
@@ -351,6 +352,7 @@ namespace Proto.Promises
                         if (cancelationToken.IsCancelationRequested)
                         {
                             promise = CancelablePromiseResolvePromise<TArg, TResult, TResolver>.GetOrCreate(resolver, cancelationToken, nextDepth);
+                            promise._idsAndRetains.InterlockedTryReleaseComplete();
                         }
                         else
                         {
@@ -384,6 +386,7 @@ namespace Proto.Promises
                         if (cancelationToken.IsCancelationRequested)
                         {
                             promise = CancelablePromiseContinue<TContinuer>.GetOrCreate(resolver, cancelationToken);
+                            promise._idsAndRetains.InterlockedTryReleaseComplete();
                         }
                         else
                         {
@@ -418,6 +421,7 @@ namespace Proto.Promises
                         if (cancelationToken.IsCancelationRequested)
                         {
                             promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken, nextDepth);
+                            promise._idsAndRetains.InterlockedTryReleaseComplete();
                         }
                         else
                         {
@@ -455,6 +459,7 @@ namespace Proto.Promises
                         if (cancelationToken.IsCancelationRequested)
                         {
                             promise = CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            promise._idsAndRetains.InterlockedTryReleaseComplete();
                         }
                         else
                         {
@@ -490,6 +495,7 @@ namespace Proto.Promises
                         if (cancelationToken.IsCancelationRequested)
                         {
                             promise = CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
+                            promise._idsAndRetains.InterlockedTryReleaseComplete();
                         }
                         else
                         {

@@ -92,6 +92,7 @@ namespace ProtoPromiseTests
             ExecuteForegroundCallbacks();
             GC.Collect();
             GC.WaitForPendingFinalizers();
+            GC.Collect();
             ExecuteForegroundCallbacks();
 
             Exception[] exceptions;

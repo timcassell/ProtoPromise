@@ -50,7 +50,7 @@ namespace Proto.Promises
                     base.Dispose();
                 }
 
-                public static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
+                internal static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<MergePromise>()
                         ?? new MergePromise();
@@ -58,7 +58,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                public static MergePromise GetOrCreate<T>(
+                internal static MergePromise GetOrCreate<T>(
                     ValueLinkedStack<PromisePassThrough> promisePassThroughs,
 
 #if CSHARP_7_3_OR_NEWER
@@ -161,8 +161,9 @@ namespace Proto.Promises
                         int remaining = Interlocked.Decrement(ref _waitCount);
                         if (remaining == 1)
                         {
-                            if (Interlocked.CompareExchange(ref _valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null) == null)
+                            if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                             {
+                                valueContainer.Retain();
                                 executionScheduler.ScheduleSynchronous(this);
                             }
                         }
@@ -216,7 +217,7 @@ namespace Proto.Promises
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
 
-                    public static MergePromiseT<T> GetOrCreate(
+                    internal static MergePromiseT<T> GetOrCreate(
 #if CSHARP_7_3_OR_NEWER
                         in
 #endif

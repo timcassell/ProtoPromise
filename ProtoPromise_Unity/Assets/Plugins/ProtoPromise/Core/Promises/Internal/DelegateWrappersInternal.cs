@@ -372,7 +372,7 @@ namespace Proto.Promises
                 {
                     _callback.Invoke(new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionScheduler);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(0), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -459,7 +459,7 @@ namespace Proto.Promises
                 {
                     _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionScheduler);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(0), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1018,7 +1018,7 @@ namespace Proto.Promises
                 {
                     _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionScheduler);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(0), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1117,7 +1117,7 @@ namespace Proto.Promises
                 {
                     _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(), ref executionScheduler);
+                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate(0), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]

@@ -29,10 +29,20 @@ namespace ProtoPromiseTests.APIs
 
         private static IEnumerable<TestCaseData> GetArgs(CompleteType[] completeTypes)
         {
-            SynchronizationType[] synchronizationTypes = new SynchronizationType[]
+            // Make sure we're testing all wait types on the first await.
+            SynchronizationType[] firstWaitTypes = new SynchronizationType[]
             {
                 SynchronizationType.Synchronous,
-                //SynchronizationType.Foreground, // Ignore foreground to reduce number of tests, testing explicit is the same.
+                SynchronizationType.Foreground,
+#if !UNITY_WEBGL
+                SynchronizationType.Background,
+#endif
+                SynchronizationType.Explicit
+            };
+            SynchronizationType[] secondWaitTypes = new SynchronizationType[]
+            {
+                SynchronizationType.Synchronous,
+                //SynchronizationType.Foreground, // Ignore foreground on second await to reduce number of tests, testing explicit is effectively the same due to the implementation.
 #if !UNITY_WEBGL
                 SynchronizationType.Background,
 #endif
@@ -54,8 +64,8 @@ namespace ProtoPromiseTests.APIs
             foreach (CompleteType secondCompleteType in secondCompleteTypes)
             foreach (bool isFirstComplete in alreadyCompletes)
             foreach (bool isSecondComplete in alreadyCompletes)
-            foreach (SynchronizationType firstWaitType in synchronizationTypes)
-            foreach (SynchronizationType secondWaitType in synchronizationTypes)
+            foreach (SynchronizationType firstWaitType in firstWaitTypes)
+            foreach (SynchronizationType secondWaitType in secondWaitTypes)
             foreach (SynchronizationType firstReportType in isFirstComplete ? foregroundOnlyReportType : reportTypes)
             {
                 var secondReportTypes = !isSecondComplete
@@ -91,6 +101,7 @@ namespace ProtoPromiseTests.APIs
                 CompleteType.Resolve,
                 CompleteType.Reject,
                 CompleteType.Cancel
+                //, CompleteType.CancelFromToken // Ignore CancelFromToken to reduce number of tests.
             });
         }
 

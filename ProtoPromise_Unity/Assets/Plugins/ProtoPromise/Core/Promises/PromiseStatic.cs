@@ -451,7 +451,20 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Sequence<TEnumerator>(CancelationToken cancelationToken, TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
         {
-            return Internal.PromiseRef.CreateSequence(promiseFuncs, cancelationToken);
+            ValidateArgument(promiseFuncs, "promiseFuncs", 2);
+
+            if (!promiseFuncs.MoveNext())
+            {
+                return Internal.CreateResolved();
+            }
+
+            // Invoke funcs and normalize the progress.
+            Promise promise = new Promise(null, Internal.ValidIdFromApi, -1);
+            do
+            {
+                promise = promise.Then(promiseFuncs.Current, cancelationToken);
+            } while (promiseFuncs.MoveNext());
+            return promise;
         }
 
         /// <summary>

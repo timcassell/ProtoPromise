@@ -219,7 +219,7 @@ namespace Proto.Promises
             // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
             if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
             {
-                return ResolveContainerVoid.GetOrCreate();
+                return ResolveContainerVoid.GetOrCreate(retainCount);
             }
             return ResolveContainer<TValue>.GetOrCreate(value, retainCount);
         }
@@ -333,7 +333,7 @@ namespace Proto.Promises
                 else if (reason == null || reason is OperationCanceledException)
                 {
                     // Use void container instead of wrapping OperationCanceledException, or if reason is null.
-                    cancelValue = CancelContainerVoid.GetOrCreate();
+                    cancelValue = CancelContainerVoid.GetOrCreate(0);
                 }
                 else
                 {
