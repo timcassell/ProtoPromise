@@ -104,7 +104,7 @@ jobs:
         with:
           name: "unity-test-results-${{ matrix.buildTarget }}-${{ matrix.scriptingRuntime }}-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.pooling }}"
           path: "*_junit.xml"
-          reporter: jest-junit
+          reporter: java-junit
 
       - uses: actions/upload-artifact@v2
         if: always()

@@ -202,6 +202,8 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
+        private readonly TimeSpan timeout = TimeSpan.FromSeconds(1);
+
         // promise
         //     .Then(() => otherPromise.WaitAsync(SynchronizationOption))
         //     .Then(() => ...)
@@ -363,9 +365,9 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, TimeSpan.FromSeconds(expectedFirstInvokes)))
+                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, timeout))
                 {
-                    Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedFirstInvokes) + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
+                    Assert.Fail("Timed out after " + timeout + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
                 }
             }
 
@@ -379,9 +381,9 @@ namespace ProtoPromiseTests.APIs
                     // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
                     TestHelper.ExecuteForegroundCallbacks();
                     return secondInvokeCounter == expectedSecondInvokes;
-                }, TimeSpan.FromSeconds(expectedSecondInvokes)))
+                }, timeout))
             {
-                Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedSecondInvokes) + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
+                Assert.Fail("Timed out after " + timeout + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
             }
 
             firstPromise.Forget();
@@ -539,9 +541,9 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, TimeSpan.FromSeconds(expectedFirstInvokes)))
+                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, timeout))
                 {
-                    Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedFirstInvokes) + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
+                    Assert.Fail("Timed out after " + timeout + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
                 }
             }
 
@@ -555,9 +557,9 @@ namespace ProtoPromiseTests.APIs
                     // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
                     TestHelper.ExecuteForegroundCallbacks();
                     return secondInvokeCounter == expectedSecondInvokes;
-                }, TimeSpan.FromSeconds(expectedSecondInvokes)))
+                }, timeout))
             {
-                Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedSecondInvokes) + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
+                Assert.Fail("Timed out after " + timeout + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
             }
 
             firstPromise.Forget();
@@ -650,9 +652,9 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, TimeSpan.FromSeconds(expectedFirstInvokes)))
+                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, timeout))
                 {
-                    Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedFirstInvokes) + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
+                    Assert.Fail("Timed out after " + timeout + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
                 }
             }
 
@@ -666,9 +668,9 @@ namespace ProtoPromiseTests.APIs
                     // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
                     TestHelper.ExecuteForegroundCallbacks();
                     return secondInvokeCounter == expectedSecondInvokes;
-                }, TimeSpan.FromSeconds(expectedSecondInvokes)))
+                }, timeout))
             {
-                Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedSecondInvokes) + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
+                Assert.Fail("Timed out after " + timeout + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
             }
 
             firstPromise.Forget();
@@ -761,9 +763,9 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, TimeSpan.FromSeconds(expectedFirstInvokes)))
+                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, timeout))
                 {
-                    Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedFirstInvokes) + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
+                    Assert.Fail("Timed out after " + timeout + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
                 }
             }
 
@@ -777,9 +779,9 @@ namespace ProtoPromiseTests.APIs
                     // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
                     TestHelper.ExecuteForegroundCallbacks();
                     return secondInvokeCounter == expectedSecondInvokes;
-                }, TimeSpan.FromSeconds(expectedSecondInvokes)))
+                }, timeout))
             {
-                Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedSecondInvokes) + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
+                Assert.Fail("Timed out after " + timeout + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
             }
 
             firstPromise.Forget();
@@ -845,9 +847,9 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, TimeSpan.FromSeconds(expectedInvokes)))
+                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, timeout))
                 {
-                    Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedInvokes) + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
+                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
                 }
             }
 
@@ -912,9 +914,9 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, TimeSpan.FromSeconds(expectedInvokes)))
+                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, timeout))
                 {
-                    Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedInvokes) + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
+                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
                 }
             }
 
@@ -979,9 +981,9 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, TimeSpan.FromSeconds(expectedInvokes)))
+                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, timeout))
                 {
-                    Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedInvokes) + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
+                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
                 }
             }
 
@@ -1046,9 +1048,9 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, TimeSpan.FromSeconds(expectedInvokes)))
+                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, timeout))
                 {
-                    Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedInvokes) + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
+                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
                 }
             }
 
@@ -1144,9 +1146,9 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedInvokes, TimeSpan.FromSeconds(expectedInvokes)))
+                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedInvokes, timeout))
                 {
-                    Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedInvokes) + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
+                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
                 }
             }
 
@@ -1160,9 +1162,9 @@ namespace ProtoPromiseTests.APIs
                     // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise being awaited.
                     TestHelper.ExecuteForegroundCallbacks();
                     return secondInvokeCounter == expectedInvokes;
-                }, TimeSpan.FromSeconds(expectedInvokes)))
+                }, timeout))
             {
-                Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedInvokes) + ", expectedInvokes: " + expectedInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
+                Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
             }
 
             firstPromise.Forget();
@@ -1258,9 +1260,9 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedInvokes, TimeSpan.FromSeconds(expectedInvokes)))
+                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedInvokes, timeout))
                 {
-                    Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedInvokes) + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
+                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
                 }
             }
 
@@ -1274,9 +1276,9 @@ namespace ProtoPromiseTests.APIs
                     // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise being awaited.
                     TestHelper.ExecuteForegroundCallbacks();
                     return secondInvokeCounter == expectedInvokes;
-                }, TimeSpan.FromSeconds(expectedInvokes)))
+                }, timeout))
             {
-                Assert.Fail("Timed out after " + TimeSpan.FromSeconds(expectedInvokes) + ", expectedInvokes: " + expectedInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
+                Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
             }
 
             firstPromise.Forget();
