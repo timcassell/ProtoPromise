@@ -149,10 +149,28 @@ namespace Proto.Promises
 
             internal void Execute()
             {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
+                ITreeHandleable lastExecuted = null;
+                try
+                {
+                    while (_handleStack.IsNotEmpty)
+                    {
+                        lastExecuted = _handleStack.Pop();
+                        lastExecuted.Handle(ref this);
+                    }
+                }
+                catch (Exception e)
+                {
+                    // This should never happen, this is only necessary to debug internal code.
+                    AddRejectionToUnhandledStack(e, lastExecuted as ITraceable);
+                }
+#else
                 while (_handleStack.IsNotEmpty)
                 {
                     _handleStack.Pop().Handle(ref this);
                 }
+#endif
                 ExecuteProgressPartial();
                 MaybeReportUnhandledRejections();
             }
@@ -204,7 +222,11 @@ namespace Proto.Promises
             private static void ExecuteFromContext(object state)
             {
                 ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                executionScheduler.ScheduleSynchronous((ITreeHandleable) state);
+#else
                 ((ITreeHandleable) state).Handle(ref executionScheduler);
+#endif
                 executionScheduler.Execute();
             }
         }
