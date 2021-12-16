@@ -215,7 +215,7 @@ namespace Proto.Promises
             private static void ExecuteFromContext(object state)
             {
                 ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
-                executionScheduler.ScheduleSynchronous((ITreeHandleable) state);
+                executionScheduler._handleStack.Push((ITreeHandleable) state);
                 executionScheduler.Execute();
             }
         }

@@ -50,31 +50,51 @@ namespace Proto.Promises
             internal short Id
             {
                 [MethodImpl(InlineOption)]
-                get { return _idsAndRetains._promiseId; }
+                get { return _smallFields._promiseId; }
             }
 
             internal Promise.State State
             {
                 [MethodImpl(InlineOption)]
-                get { return _smallFields._stateAndFlags._state; }
+                get { return _smallFields._state; }
                 [MethodImpl(InlineOption)]
-                private set { _smallFields._stateAndFlags._state = value; }
+                private set { _smallFields._state = value; }
             }
 
+            // TODO: SuppressRejection can be set simultaneously with WasAwaitedOrForgotten when the promise is awaited (not forgotten).
             private bool SuppressRejection
             {
                 [MethodImpl(InlineOption)]
-                get { return _smallFields._stateAndFlags._suppressRejection; }
+                get { return _smallFields.AreFlagsSet(PromiseFlags.SuppressRejection); }
                 [MethodImpl(InlineOption)]
-                set { _smallFields._stateAndFlags._suppressRejection = value; }
+                set
+                {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    if (!value)
+                    {
+                        throw new System.InvalidOperationException("Cannot unset SuppressRejection via the property.");
+                    }
+#endif
+                    _smallFields.InterlockedSetFlags(PromiseFlags.SuppressRejection);
+                }
             }
 
+            // TODO: WasAwaitedOrForgotten can be set simultaneously with IncrementDeferredId or Retain when the promise is awaited or forgotten.
             private bool WasAwaitedOrForgotten
             {
                 [MethodImpl(InlineOption)]
-                get { return _smallFields._stateAndFlags._wasAwaitedOrForgotten; }
+                get { return _smallFields.AreFlagsSet(PromiseFlags.WasAwaitedOrForgotten); }
                 [MethodImpl(InlineOption)]
-                set { _smallFields._stateAndFlags._wasAwaitedOrForgotten = value; }
+                set
+                {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    if (!value)
+                    {
+                        throw new System.InvalidOperationException("Cannot unset WasAwaitedOrForgotten via the property.");
+                    }
+#endif
+                    _smallFields.InterlockedSetFlags(PromiseFlags.WasAwaitedOrForgotten);
+                }
             }
 
             private PromiseRef() { }
@@ -109,7 +129,7 @@ namespace Proto.Promises
 
             private void IncrementId(short promiseId)
             {
-                if (!_idsAndRetains.InterlockedTryIncrementPromiseId(promiseId))
+                if (!_smallFields.InterlockedTryIncrementPromiseId(promiseId))
                 {
                     // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
                     // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
@@ -121,7 +141,7 @@ namespace Proto.Promises
 
             private void InterlockedRetainInternal(short promiseId)
             {
-                if (!_idsAndRetains.InterlockedTryRetain(promiseId))
+                if (!_smallFields.InterlockedTryRetain(promiseId))
                 {
                     // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
                     // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
@@ -135,7 +155,7 @@ namespace Proto.Promises
             protected void InterlockedRetainDisregardId()
             {
                 ThrowIfInPool(this);
-                _idsAndRetains.InterlockedRetainDisregardId();
+                _smallFields.InterlockedRetainDisregardId();
             }
 
             internal void MarkAwaitedAndMaybeDispose(short promiseId, bool suppressRejection)
@@ -153,7 +173,7 @@ namespace Proto.Promises
                 _valueOrPrevious = valueContainer;
                 executionScheduler.ScheduleSynchronous(this);
                 //AddToHandleQueueFront(this);
-                WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                WaitWhileProgressFlags(PromiseFlags.Subscribing);
             }
 
             void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -164,27 +184,19 @@ namespace Proto.Promises
                 _valueOrPrevious = valueContainer;
                 executionScheduler.ScheduleSynchronous(this);
                 //AddToHandleQueueBack(this);
-                WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                WaitWhileProgressFlags(PromiseFlags.Subscribing);
             }
 
             protected void Reset()
             {
-                State = Promise.State.Pending;
-                SuppressRejection = false;
-                WasAwaitedOrForgotten = false;
-                // Set retain counter to 2 without changing the Id.
-                // 1 retain for state, 1 retain for await/forget.
-                _idsAndRetains.InterlockedRetainDisregardId(2, true);
+                _smallFields.Reset();
                 SetCreatedStacktrace(this, 3);
-#if PROMISE_PROGRESS
-                _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.All);
-#endif
             }
 
             protected void MaybeDispose()
             {
                 ThrowIfInPool(this);
-                if (_idsAndRetains.InterlockedTryReleaseComplete())
+                if (_smallFields.InterlockedTryReleaseComplete())
                 {
                     Dispose();
                 }
@@ -209,7 +221,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    newPromise._idsAndRetains.InterlockedTryReleaseComplete();
+                    newPromise._smallFields.InterlockedTryReleaseComplete();
                     SuppressRejection = true; // Don't report rejection if newPromise is already canceled.
                     OnForgetOrHookupFailed();
                 }
@@ -631,7 +643,7 @@ namespace Proto.Promises
                     Thread.MemoryBarrier(); // Make sure _isPreviousComplete is read after _wasHookupFailed is written.
                     if (_isPreviousComplete)
                     {
-                        _idsAndRetains.InterlockedTryReleaseComplete();
+                        _smallFields.InterlockedTryReleaseComplete();
                     }
                     base.OnForgetOrHookupFailed();
                 }
@@ -663,7 +675,7 @@ namespace Proto.Promises
                     {
                         executionScheduler.ScheduleSynchronous(this);
                     }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -1273,13 +1285,13 @@ namespace Proto.Promises
                 void ITreeHandleable.Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
             } // PromisePassThrough
 
-            private partial struct IdRetain
+            partial struct SmallFields
             {
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTryIncrementPromiseId(short promiseId)
                 {
                     Thread.MemoryBarrier();
-                    IdRetain initialValue = default(IdRetain), newValue;
+                    SmallFields initialValue = default(SmallFields), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
@@ -1301,7 +1313,7 @@ namespace Proto.Promises
                 internal bool InterlockedTryIncrementDeferredId(short deferredId)
                 {
                     Thread.MemoryBarrier();
-                    IdRetain initialValue = default(IdRetain), newValue;
+                    SmallFields initialValue = default(SmallFields), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
@@ -1323,7 +1335,7 @@ namespace Proto.Promises
                 internal void InterlockedIncrementDeferredId()
                 {
                     Thread.MemoryBarrier();
-                    IdRetain initialValue = default(IdRetain), newValue;
+                    SmallFields initialValue = default(SmallFields), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
@@ -1339,12 +1351,12 @@ namespace Proto.Promises
                 internal bool InterlockedTryRetain(short promiseId)
                 {
                     Thread.MemoryBarrier();
-                    IdRetain initialValue = default(IdRetain), newValue;
+                    SmallFields initialValue = default(SmallFields), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
                         // Make sure id matches and we're not overflowing.
-                        if (initialValue._promiseId != promiseId | initialValue._retains == uint.MaxValue) // Use a single branch for fast-path.
+                        if (initialValue._promiseId != promiseId | initialValue._retains == ushort.MaxValue) // Use a single branch for fast-path.
                         {
                             // If either check fails, see which failed.
                             if (initialValue._promiseId != promiseId)
@@ -1366,12 +1378,12 @@ namespace Proto.Promises
                 internal bool InterlockedTryRetainWithDeferredId(short deferredId)
                 {
                     Thread.MemoryBarrier();
-                    IdRetain initialValue = default(IdRetain), newValue;
+                    SmallFields initialValue = default(SmallFields), newValue;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
                         // Make sure id matches and we're not overflowing.
-                        if (initialValue._deferredId != deferredId | initialValue._retains == uint.MaxValue) // Use a single branch for fast-path.
+                        if (initialValue._deferredId != deferredId | initialValue._retains == ushort.MaxValue) // Use a single branch for fast-path.
                         {
                             // If either check fails, see which failed.
                             if (initialValue._deferredId != deferredId)
@@ -1389,63 +1401,94 @@ namespace Proto.Promises
                     return true;
                 }
 
+                [MethodImpl(InlineOption)]
                 internal bool InterlockedTryReleaseComplete()
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    Thread.MemoryBarrier();
-                    IdRetain initialValue = default(IdRetain), newValue;
-                    do
-                    {
-                        initialValue._longValue = Interlocked.Read(ref _longValue);
-                        newValue = initialValue;
-                        checked
-                        {
-                            --newValue._retains;
-                        }
-                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
-                    return newValue._retains == 0;
-#else
                     unchecked
                     {
-                        return InterlockedRetainDisregardId((uint) -1) == 0;
+                        // Adding -1 casted to ushort works the same as subtracting 1.
+                        return InterlockedRetainDisregardId((ushort) -1) == 0;
                     }
-#endif
                 }
 
-                internal uint InterlockedRetainDisregardId(uint retains = 1, bool shouldBeZero = false)
+                internal ushort InterlockedRetainDisregardId(ushort retains = 1)
                 {
-                    Thread.MemoryBarrier();
-                    IdRetain initialValue = default(IdRetain), newValue;
-                    do
+                    unchecked
                     {
-                        initialValue._longValue = Interlocked.Read(ref _longValue);
-                        newValue = initialValue;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                        if (newValue._retains == 0)
+                        Thread.MemoryBarrier();
+                        SmallFields initialValue = default(SmallFields), newValue;
+                        do
                         {
-                            if (!shouldBeZero)
+                            initialValue._longValue = Interlocked.Read(ref _longValue);
+                            newValue = initialValue;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                            bool adding = (short) retains > 0;
+                            if (newValue._retains == 0 && adding)
                             {
                                 throw new System.InvalidOperationException("Cannot retain after full release");
                             }
-                        }
-                        else
-                        {
-                            if (shouldBeZero)
+                            // We add ushort to subtract, so we do manual overflow checking.
+                            if ((adding && newValue._retains > (ushort) (ushort.MaxValue - retains))
+                                || (!adding && newValue._retains < (ushort) (ushort.MinValue - retains)))
                             {
-                                throw new System.InvalidOperationException("Expected 0 retains, actual retains: " + newValue._retains);
+                                throw new OverflowException();
                             }
-                        }
-                        checked
-#else
-                        unchecked
 #endif
-                        {
                             newValue._retains += retains;
-                        }
-                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
-                    return newValue._retains;
+                        } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                        return newValue._retains;
+                    }
                 }
-            } // IdRetain
+
+                [MethodImpl(InlineOption)]
+                internal void Reset()
+                {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    if (_retains != 0)
+                    {
+                        throw new System.InvalidOperationException("Expected 0 retains, actual retains: " + _retains);
+                    }
+#endif
+                    _state = Promise.State.Pending;
+                    _flags = PromiseFlags.None;
+                    // Set retain counter to 2.
+                    // 1 retain for state, 1 retain for await/forget.
+                    _retains = 2;
+                }
+
+                internal PromiseFlags InterlockedSetFlags(PromiseFlags progressFlags)
+                {
+                    Thread.MemoryBarrier();
+                    SmallFields initialValue = default(SmallFields), newValue;
+                    do
+                    {
+                        initialValue._longValue = Interlocked.Read(ref _longValue);
+                        newValue = initialValue;
+                        newValue._flags |= progressFlags;
+                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    return initialValue._flags;
+                }
+
+                internal PromiseFlags InterlockedUnsetFlags(PromiseFlags progressFlags)
+                {
+                    Thread.MemoryBarrier();
+                    SmallFields initialValue = default(SmallFields), newValue;
+                    PromiseFlags unsetFlags = ~progressFlags;
+                    do
+                    {
+                        initialValue._longValue = Interlocked.Read(ref _longValue);
+                        newValue = initialValue;
+                        newValue._flags &= unsetFlags;
+                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
+                    return initialValue._flags;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal bool AreFlagsSet(PromiseFlags progressFlags)
+                {
+                    return (_flags & progressFlags) != 0;
+                }
+            } // SmallFields
 
             internal static void MaybeMarkAwaitedAndDispose(Promise promise, bool suppressRejection)
             {

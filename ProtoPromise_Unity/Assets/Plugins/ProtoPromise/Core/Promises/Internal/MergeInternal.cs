@@ -145,7 +145,7 @@ namespace Proto.Promises
                         {
                             if (Interlocked.Decrement(ref _waitCount) == 0)
                             {
-                                _idsAndRetains.InterlockedTryReleaseComplete();
+                                _smallFields.InterlockedTryReleaseComplete();
                             }
                         }
                         else
@@ -169,7 +169,7 @@ namespace Proto.Promises
                         }
                         else if (remaining == 0)
                         {
-                            _idsAndRetains.InterlockedTryReleaseComplete();
+                            _smallFields.InterlockedTryReleaseComplete();
                         }
                     }
                     MaybeDispose();
@@ -242,7 +242,7 @@ namespace Proto.Promises
                             {
                                 if (Interlocked.Decrement(ref _waitCount) == 0)
                                 {
-                                    _idsAndRetains.InterlockedTryReleaseComplete();
+                                    _smallFields.InterlockedTryReleaseComplete();
                                 }
                             }
                             else
@@ -268,7 +268,7 @@ namespace Proto.Promises
                             }
                             else if (remaining == 0)
                             {
-                                _idsAndRetains.InterlockedTryReleaseComplete();
+                                _smallFields.InterlockedTryReleaseComplete();
                             }
                         }
                         MaybeDispose();
@@ -341,7 +341,7 @@ namespace Proto.Promises
                 private void IncrementProgress(uint amount, ref ExecutionScheduler executionScheduler)
                 {
                     _unscaledProgress.InterlockedIncrement(amount);
-                    if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
+                    if ((_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();
                         executionScheduler.ScheduleProgressSynchronous(this);
@@ -351,7 +351,7 @@ namespace Proto.Promises
                 void IProgressInvokable.Invoke(ref ExecutionScheduler executionScheduler)
                 {
                     var progress = CurrentProgress();
-                    _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
+                    _smallFields.InterlockedUnsetFlags(PromiseFlags.InProgressQueue);
                     ReportProgress(progress, ref executionScheduler);
                     MaybeDispose();
                 }

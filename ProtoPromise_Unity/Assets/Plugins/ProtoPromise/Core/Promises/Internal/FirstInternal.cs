@@ -127,7 +127,7 @@ namespace Proto.Promises
                         }
                         else if (remaining == 0)
                         {
-                            _idsAndRetains.InterlockedTryReleaseComplete();
+                            _smallFields.InterlockedTryReleaseComplete();
                         }
                     }
                     else // Resolved
@@ -140,7 +140,7 @@ namespace Proto.Promises
                         }
                         else if (Interlocked.Decrement(ref _firstSmallFields._waitCount) == 0)
                         {
-                            _idsAndRetains.InterlockedTryReleaseComplete();
+                            _smallFields.InterlockedTryReleaseComplete();
                         }
                     }
 
@@ -204,7 +204,7 @@ namespace Proto.Promises
                     var newAmount = new Fixed32(senderAmount.ToDouble() * (_firstSmallFields._depthAndProgress.WholePart + 1) / (double) (ownerAmount.WholePart + 1));
                     if (_firstSmallFields._currentProgress.InterlockedTrySetIfGreater(newAmount))
                     {
-                        if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
+                        if ((_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {
                             InterlockedRetainDisregardId();
                             executionScheduler.ScheduleProgressSynchronous(this);
@@ -217,7 +217,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
                     var progress = _firstSmallFields._currentProgress;
-                    _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
+                    _smallFields.InterlockedUnsetFlags(PromiseFlags.InProgressQueue);
                     ReportProgress(progress, ref executionScheduler);
                     MaybeDispose();
                 }

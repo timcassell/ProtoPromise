@@ -23,7 +23,7 @@ namespace Proto.Promises
                 internal short DeferredId
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _idsAndRetains._deferredId; }
+                    get { return _smallFields._deferredId; }
                 }
 
                 protected DeferredPromiseBase() { }
@@ -46,7 +46,7 @@ namespace Proto.Promises
 
                 protected bool TryIncrementDeferredIdAndUnregisterCancelation(short deferredId)
                 {
-                    return _idsAndRetains.InterlockedTryIncrementDeferredId(deferredId)
+                    return _smallFields.InterlockedTryIncrementDeferredId(deferredId)
                         && TryUnregisterCancelation(); // If TryUnregisterCancelation returns false, it means the CancelationSource was canceled.
                 }
 
@@ -119,7 +119,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     // A simple increment is sufficient.
                     // If the CancelationSource was canceled before the Deferred was completed, even if the Deferred was completed before the cancelation was invoked, the cancelation takes precedence.
-                    _idsAndRetains.InterlockedIncrementDeferredId();
+                    _smallFields.InterlockedIncrementDeferredId();
                     RejectOrCancelInternal(valueContainer);
                 }
 

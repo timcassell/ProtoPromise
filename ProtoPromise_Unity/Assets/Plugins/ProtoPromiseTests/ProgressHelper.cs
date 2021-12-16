@@ -30,7 +30,7 @@ namespace ProtoPromiseTests
 
         public void MaybeEnterLock()
         {
-            if (_synchronizationType == SynchronizationType.Background)
+            if (_synchronizationType == TestHelper.backgroundType)
             {
                 Monitor.Enter(_locker);
             }
@@ -38,7 +38,7 @@ namespace ProtoPromiseTests
 
         public void MaybeExitLock()
         {
-            if (_synchronizationType == SynchronizationType.Background)
+            if (_synchronizationType == TestHelper.backgroundType)
             {
                 Monitor.Exit(_locker);
             }

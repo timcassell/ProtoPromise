@@ -158,7 +158,7 @@ namespace Proto.Promises
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -170,7 +170,7 @@ namespace Proto.Promises
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
@@ -242,12 +242,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         return;
                     }
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueFront(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -262,12 +262,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         return;
                     }
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueBack(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
@@ -347,7 +347,7 @@ namespace Proto.Promises
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -359,7 +359,7 @@ namespace Proto.Promises
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
@@ -453,12 +453,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         return;
                     }
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueFront(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -473,12 +473,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         return;
                     }
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueBack(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
@@ -574,7 +574,7 @@ namespace Proto.Promises
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -586,7 +586,7 @@ namespace Proto.Promises
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
@@ -642,12 +642,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         return;
                     }
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueFront(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -662,12 +662,12 @@ namespace Proto.Promises
                     }
                     else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
                     {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         return;
                     }
                     executionScheduler.ScheduleSynchronous(this);
                     //AddToHandleQueueBack(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
@@ -727,7 +727,7 @@ namespace Proto.Promises
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueFront(this);
                     }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -739,7 +739,7 @@ namespace Proto.Promises
                         executionScheduler.ScheduleSynchronous(this);
                         //AddToHandleQueueBack(this);
                     }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 public override void Handle(ref ExecutionScheduler executionScheduler)

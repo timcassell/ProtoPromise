@@ -139,63 +139,58 @@ namespace Proto.Promises
 
         partial class PromiseRef
         {
+            [Flags]
+            private enum PromiseFlags : byte
+            {
+                None = 0,
+
+                // Don't change the layout, very important for InterlockedSetSubscribedIfSecondPrevious().
+                SuppressRejection = 1 << 0,
+                WasAwaitedOrForgotten = 1 << 1,
+                // For progress below
+                SecondPrevious = 1 << 2,
+                SelfSubscribed = 1 << 3,
+                InProgressQueue = 1 << 4,
+                Subscribing = 1 << 5,
+                Reporting = 1 << 6,
+                SettingInitial = 1 << 7,
+
+                All = byte.MaxValue
+            }
+
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
 #endif
 
             private ITreeHandleable _next;
             volatile private object _valueOrPrevious;
-            private IdRetain _idsAndRetains = new IdRetain(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
-            private SmallFields _smallFields;
+            private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
 
             [StructLayout(LayoutKind.Explicit)]
-            private partial struct IdRetain
+            private partial struct SmallFields
             {
-                [FieldOffset(0)]
-                internal short _promiseId;
-                // TODO: use [FieldOffset(2)] for depth to utilize the byte space for non-deferred promises.
-                [FieldOffset(2)]
-                internal short _deferredId;
-                [FieldOffset(4)]
-                private uint _retains;
-                // We can check Id and retain/release atomically.
+                // long value with [FieldOffset(0)] allows us to use Interlocked to set fields atomically without consuming more memory than necessary.
                 [FieldOffset(0)]
                 private long _longValue;
+                [FieldOffset(0)]
+                volatile internal Promise.State _state;
+                [FieldOffset(1)]
+                volatile private PromiseFlags _flags;
+                [FieldOffset(2)]
+                private ushort _retains;
+                [FieldOffset(4)]
+                internal short _promiseId;
+                // TODO: use [FieldOffset(6)] for depth to utilize the byte space for non-deferred promises.
+                [FieldOffset(6)]
+                internal short _deferredId;
 
                 [MethodImpl(InlineOption)]
-                internal IdRetain(short initialId)
+                internal SmallFields(short initialId)
                 {
-                    this = default(IdRetain);
+                    this = default(SmallFields);
                     _promiseId = initialId;
                     _deferredId = initialId;
                 }
-            } // IdRetain
-
-            // TODO: move flags and state into IdRetain struct, shrink _retains to ushort.
-            // Add previousState enum.
-            private partial struct SmallFields
-            {
-                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
-                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                internal StateAndFlags _stateAndFlags;
-
-                [StructLayout(LayoutKind.Explicit)]
-                internal partial struct StateAndFlags
-                {
-                    [FieldOffset(0)]
-                    volatile internal Promise.State _state;
-                    [FieldOffset(1)]
-                    volatile internal bool _suppressRejection;
-                    [FieldOffset(2)]
-                    volatile internal bool _wasAwaitedOrForgotten;
-#if PROMISE_PROGRESS
-                    [FieldOffset(3)]
-                    volatile private ProgressFlags _progressFlags;
-                    // int value with [FieldOffset(0)] allows us to use Interlocked to set the flags without consuming more memory than necessary.
-                    [FieldOffset(0)]
-                    volatile private int _intValue;
-#endif
-                } // StateAndFlags
             } // SmallFields
 
             partial class PromiseSingleAwait : PromiseRef

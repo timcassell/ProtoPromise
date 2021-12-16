@@ -183,7 +183,7 @@ namespace Proto.Promises
                     var newAmount = new Fixed32(senderAmount.ToDouble() * (_raceSmallFields._depthAndProgress.WholePart + 1) / (double) (ownerAmount.WholePart + 1));
                     if (_raceSmallFields._currentProgress.InterlockedTrySetIfGreater(newAmount))
                     {
-                        if ((_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
+                        if ((_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {
                             InterlockedRetainDisregardId();
                             executionScheduler.ScheduleProgressSynchronous(this);
@@ -196,7 +196,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
                     var progress = _raceSmallFields._currentProgress;
-                    _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
+                    _smallFields.InterlockedUnsetFlags(PromiseFlags.InProgressQueue);
                     ReportProgress(progress, ref executionScheduler);
                     MaybeDispose();
                 }

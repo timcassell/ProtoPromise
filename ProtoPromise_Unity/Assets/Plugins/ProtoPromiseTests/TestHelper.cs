@@ -60,6 +60,8 @@ namespace ProtoPromiseTests
     // These help test all Then/Catch/ContinueWith methods at once.
     public static class TestHelper
     {
+        public const SynchronizationType backgroundType = (SynchronizationType) 2;
+
         public static readonly PromiseSynchronizationContext _foregroundContext = new PromiseSynchronizationContext();
         private static readonly List<Exception> _uncaughtExceptions = new List<Exception>();
 
@@ -103,7 +105,7 @@ namespace ProtoPromiseTests
             }
             if (exceptions.Length > 0)
             {
-#if true // Set to false to throw all uncaught rejections, leave true to only throw 1 exception to avoid overloading the test error output.
+#if false // Set to false to throw all uncaught rejections, leave true to only throw 1 exception to avoid overloading the test error output.
                 throw exceptions[0];
 #else
                 throw new AggregateException(exceptions);
@@ -268,7 +270,7 @@ namespace ProtoPromiseTests
                     Assert.AreEqual(foregroundThread, Thread.CurrentThread);
                     return;
                 }
-                case SynchronizationType.Background:
+                case backgroundType:
                 {
                     Assert.AreNotEqual(foregroundThread, Thread.CurrentThread);
                     Assert.IsTrue(Thread.CurrentThread.IsBackground);
@@ -280,9 +282,9 @@ namespace ProtoPromiseTests
                     {
                         goto case SynchronizationType.Foreground;
                     }
-                    if (invokeContext == SynchronizationType.Background)
+                    if (invokeContext == backgroundType)
                     {
-                        goto case SynchronizationType.Background;
+                        goto case backgroundType;
                     }
                     break;
                 }
