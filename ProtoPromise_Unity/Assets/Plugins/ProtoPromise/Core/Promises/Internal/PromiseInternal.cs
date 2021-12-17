@@ -158,13 +158,6 @@ namespace Proto.Promises
                 _smallFields.InterlockedRetainDisregardId();
             }
 
-            internal void MarkAwaitedAndMaybeDispose(short promiseId, bool suppressRejection)
-            {
-                MarkAwaited(promiseId);
-                SuppressRejection |= suppressRejection;
-                MaybeDispose();
-            }
-
             void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
             {
                 ThrowIfInPool(this);
@@ -1490,11 +1483,22 @@ namespace Proto.Promises
                 }
             } // SmallFields
 
-            internal static void MaybeMarkAwaitedAndDispose(Promise promise, bool suppressRejection)
+            internal static void MaybeMarkAwaitedAndSuppressRejectionAndDispose(PromiseRef promise, short id)
             {
-                if (promise._target._ref != null)
+                if (promise != null)
                 {
-                    promise._target._ref.MarkAwaitedAndMaybeDispose(promise._target.Id, suppressRejection);
+                    promise.MarkAwaited(id);
+                    promise.SuppressRejection = true;
+                    promise.MaybeDispose();
+                }
+            }
+
+            internal static void MaybeMarkAwaitedAndDispose(PromiseRef promise, short id)
+            {
+                if (promise != null)
+                {
+                    promise.MarkAwaited(id);
+                    promise.MaybeDispose();
                 }
             }
         } // PromiseRef

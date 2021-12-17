@@ -19,8 +19,8 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             if (promise1._target._ref == null | promise2._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id);
                 return Internal.CreateResolved();
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -43,9 +43,9 @@ namespace Proto.Promises
             ValidateArgument(promise3, "promise3", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id);
                 return Internal.CreateResolved();
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -70,10 +70,10 @@ namespace Proto.Promises
             ValidateArgument(promise4, "promise4", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, false);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id);
                 return Internal.CreateResolved();
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -129,7 +129,7 @@ namespace Proto.Promises
                     {
                         p = promises.Current;
                         ValidateElement(p, "promises", 1);
-                        Internal.PromiseRef.MaybeMarkAwaitedAndDispose(p, false);
+                        Internal.PromiseRef.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id);
                     }
                     // Repool any created passthroughs.
                     foreach (var passthrough in passThroughs)
@@ -211,8 +211,8 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             if (promise1._target._ref == null | promise2._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise1._target._ref, promise1._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise2._target._ref, promise2._target.Id);
                 return Internal.CreateResolved();
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -235,9 +235,9 @@ namespace Proto.Promises
             ValidateArgument(promise3, "promise3", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise1._target._ref, promise1._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise2._target._ref, promise2._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise3._target._ref, promise3._target.Id);
                 return Internal.CreateResolved();
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -262,10 +262,10 @@ namespace Proto.Promises
             ValidateArgument(promise4, "promise4", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, true);
+                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise1._target._ref, promise1._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise2._target._ref, promise2._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise3._target._ref, promise3._target.Id);
+                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise4._target._ref, promise4._target.Id);
                 return Internal.CreateResolved();
             }
             passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -321,7 +321,7 @@ namespace Proto.Promises
                     {
                         p = promises.Current;
                         ValidateElement(p, "promises", 1);
-                        Internal.PromiseRef.MaybeMarkAwaitedAndDispose(p, true);
+                        Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(p._target._ref, p._target.Id);
                     }
                     // Repool any created passthroughs.
                     foreach (var passthrough in passThroughs)

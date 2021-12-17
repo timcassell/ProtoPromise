@@ -292,7 +292,9 @@ namespace Proto.Promises
                 {
                     if (prev == this)
                     {
-                        _ref.MarkAwaitedAndMaybeDispose(other._target.Id, true);
+                        _ref.MarkAwaited(other._target.Id);
+                        _ref.SuppressRejection = true;
+                        _ref.MaybeDispose();
                         while (passThroughs.Count > 0)
                         {
                             passThroughs.Pop().Release();
