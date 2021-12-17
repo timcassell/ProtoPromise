@@ -214,9 +214,18 @@ namespace Proto.Promises
 
             private static void ExecuteFromContext(object state)
             {
-                ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
-                executionScheduler._handleStack.Push((ITreeHandleable) state);
-                executionScheduler.Execute();
+                // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
+                try
+                {
+                    ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+                    ((ITreeHandleable) state).Handle(ref executionScheduler);
+                    executionScheduler.Execute();
+                }
+                catch (Exception e)
+                {
+                    // This should never happen.
+                    AddRejectionToUnhandledStack(e, state as ITraceable);
+                }
             }
         }
 

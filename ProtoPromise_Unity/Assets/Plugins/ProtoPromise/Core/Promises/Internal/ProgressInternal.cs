@@ -138,9 +138,18 @@ namespace Proto.Promises
 
             private static void ExecuteProgressFromContext(object state)
             {
-                ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
-                executionScheduler._progressQueue.Enqueue((IProgressInvokable) state);
-                executionScheduler.ExecuteProgress();
+                // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
+                try
+                {
+                    ExecutionScheduler executionScheduler = new ExecutionScheduler(false);
+                    ((IProgressInvokable) state).Invoke(ref executionScheduler);
+                    executionScheduler.ExecuteProgress();
+                }
+                catch (Exception e)
+                {
+                    // This should never happen.
+                    AddRejectionToUnhandledStack(e, state as ITraceable);
+                }
             }
         }
 #endif // PROMISE_PROGRESS
