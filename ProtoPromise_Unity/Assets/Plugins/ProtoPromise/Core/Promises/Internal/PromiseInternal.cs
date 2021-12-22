@@ -197,12 +197,13 @@ namespace Proto.Promises
 
             protected virtual void Dispose()
             {
-                if (_valueOrPrevious != null)
+                if (State == Promise.State.Pending)
                 {
-                    // Rejection maybe wasn't caught.
-                    ((IValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack(!SuppressRejection);
-                    _valueOrPrevious = null;
+                    throw new InvalidOperationException("Promise disposed while pending.");
                 }
+                // Rejection maybe wasn't caught.
+                ((IValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack(!SuppressRejection);
+                _valueOrPrevious = null;
             }
 
             private void HookupNewCancelablePromise(PromiseRef newPromise)
