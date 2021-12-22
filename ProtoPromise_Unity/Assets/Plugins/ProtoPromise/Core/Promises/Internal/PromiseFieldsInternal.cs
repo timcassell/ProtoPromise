@@ -267,29 +267,29 @@ namespace Proto.Promises
             }
 
             #region Non-cancelable Promises
-            partial class PromiseResolve<TArg, TResult, TResolver> : PromiseSingleAwait
-                where TResolver : IDelegate<TArg, TResult>
+            partial class PromiseResolve<TResolver> : PromiseSingleAwait
+                where TResolver : IDelegateResolve
             {
                 private TResolver _resolver;
             }
 
-            partial class PromiseResolvePromise<TArg, TResult, TResolver> : PromiseWaitPromise
-                where TResolver : IDelegate<TArg, Promise<TResult>>
+            partial class PromiseResolvePromise<TResolver> : PromiseWaitPromise
+                where TResolver : IDelegateResolvePromise
             {
                 private TResolver _resolver;
             }
 
-            partial class PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseSingleAwait
-                where TResolver : IDelegate<TArgResolve, TResult>
-                where TRejecter : IDelegate<TArgReject, TResult>
+            partial class PromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait
+                where TResolver : IDelegateResolve
+                where TRejecter : IDelegateReject
             {
                 private TResolver _resolver;
                 private TRejecter _rejecter;
             }
 
-            partial class PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseWaitPromise
-                where TResolver : IDelegate<TArgResolve, Promise<TResult>>
-                where TRejecter : IDelegate<TArgReject, Promise<TResult>>
+            partial class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
+                where TResolver : IDelegateResolvePromise
+                where TRejecter : IDelegateRejectPromise
             {
                 private TResolver _resolver;
                 private TRejecter _rejecter;
@@ -332,32 +332,32 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
             }
 
-            partial class CancelablePromiseResolve<TArg, TResult, TResolver> : PromiseSingleAwait
-                where TResolver : IDelegate<TArg, TResult>
+            partial class CancelablePromiseResolve<TResolver> : PromiseSingleAwait
+                where TResolver : IDelegateResolve
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
             }
 
-            partial class CancelablePromiseResolvePromise<TArg, TResult, TResolver> : PromiseWaitPromise
-                where TResolver : IDelegate<TArg, Promise<TResult>>
+            partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise
+                where TResolver : IDelegateResolvePromise
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
             }
 
-            partial class CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseSingleAwait
-                where TResolver : IDelegate<TArgResolve, TResult>
-                where TRejecter : IDelegate<TArgReject, TResult>
+            partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait
+                where TResolver : IDelegateResolve
+                where TRejecter : IDelegateReject
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
                 private TRejecter _rejecter;
             }
 
-            partial class CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseWaitPromise
-                where TResolver : IDelegate<TArgResolve, Promise<TResult>>
-                where TRejecter : IDelegate<TArgReject, Promise<TResult>>
+            partial class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
+                where TResolver : IDelegateResolvePromise
+                where TRejecter : IDelegateRejectPromise
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;

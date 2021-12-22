@@ -29,10 +29,53 @@ namespace Proto.Promises
 
         partial class PromiseRef
         {
+            // NOTE: `where TResolver : IDelegate<TArg, TResult>` is much cleaner, but doesn't play well with AOT compilation (IL2CPP), making these repeated functions unfortunately necessary.
+            // IDelegate<TArg, TResult> actually works properly with IL2CPP in Unity 2021.2, so we may switch to that implementation if we decide to drop support for older Unity versions (possibly when Unity finally adopts .Net 5+ runtime).
+
             private static class Invoker<TArg, TResult>
             {
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, Promise<TArg> resolved) where TDelegate : IDelegate<TArg, Promise<TResult>>
+                internal static Promise<TResult> InvokeCallbackDirect(Delegate<TArg, TResult> resolver, Promise<TArg> resolved)
+                {
+                    try
+                    {
+                        TResult result = resolver.Invoke(resolved.Result);
+                        return new Promise<TResult>(null, ValidIdFromApi, resolved.Depth, result);
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        var promise = Promise<TResult>.Canceled(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
+                    }
+                    catch (Exception e)
+                    {
+                        var promise = Promise<TResult>.Rejected(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeCallbackDirect<TCapture>(DelegateCapture<TCapture, TArg, TResult> resolver, Promise<TArg> resolved)
+                {
+                    try
+                    {
+                        TResult result = resolver.Invoke(resolved.Result);
+                        return new Promise<TResult>(null, ValidIdFromApi, resolved.Depth, result);
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        var promise = Promise<TResult>.Canceled(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
+                    }
+                    catch (Exception e)
+                    {
+                        var promise = Promise<TResult>.Rejected(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeCallbackAndAdoptDirect(DelegatePromise<TArg, TResult> resolver, Promise<TArg> resolved)
                 {
                     try
                     {
@@ -51,12 +94,89 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> InvokeCallbackDirect<TDelegate>(TDelegate resolver, Promise<TArg> resolved) where TDelegate : IDelegate<TArg, TResult>
+                internal static Promise<TResult> InvokeCallbackAndAdoptDirect<TCapture>(DelegatePromiseCapture<TCapture, TArg, TResult> resolver, Promise<TArg> resolved)
+                {
+                    try
+                    {
+                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        var promise = Promise<TResult>.Canceled(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                    }
+                    catch (Exception e)
+                    {
+                        var promise = Promise<TResult>.Rejected(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeCallbackDirect(DelegateContinue<TArg, TResult> resolver, Promise<TArg> resolved)
                 {
                     try
                     {
                         TResult result = resolver.Invoke(resolved.Result);
                         return new Promise<TResult>(null, ValidIdFromApi, resolved.Depth, result);
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        var promise = Promise<TResult>.Canceled(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
+                    }
+                    catch (Exception e)
+                    {
+                        var promise = Promise<TResult>.Rejected(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeCallbackDirect<TCapture>(DelegateContinueCapture<TCapture, TArg, TResult> resolver, Promise<TArg> resolved)
+                {
+                    try
+                    {
+                        TResult result = resolver.Invoke(resolved.Result);
+                        return new Promise<TResult>(null, ValidIdFromApi, resolved.Depth, result);
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        var promise = Promise<TResult>.Canceled(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
+                    }
+                    catch (Exception e)
+                    {
+                        var promise = Promise<TResult>.Rejected(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeCallbackAndAdoptDirect(DelegateContinuePromise<TArg, TResult> resolver, Promise<TArg> resolved)
+                {
+                    try
+                    {
+                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        var promise = Promise<TResult>.Canceled(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                    }
+                    catch (Exception e)
+                    {
+                        var promise = Promise<TResult>.Rejected(e);
+                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeCallbackAndAdoptDirect<TCapture>(DelegateContinuePromiseCapture<TCapture, TArg, TResult> resolver, Promise<TArg> resolved)
+                {
+                    try
+                    {
+                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
                     }
                     catch (OperationCanceledException e)
                     {
@@ -70,6 +190,8 @@ namespace Proto.Promises
                     }
                 }
             }
+
+            // This helps reduce typed out generics.
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
@@ -99,7 +221,7 @@ namespace Proto.Promises
 //                    }
 //#endif
                     // Normalize progress. Passing a default resolver makes the Execute method adopt the promise's state without attempting to invoke.
-                    var newRef = PromiseResolvePromise<TResult, TResult, DelegateResolvePassthrough<TResult>>.GetOrCreate(default(DelegateResolvePassthrough<TResult>), currentDepth + 1);
+                    var newRef = PromiseResolvePromise<DelegateResolvePassthrough>.GetOrCreate(default(DelegateResolvePassthrough), currentDepth + 1);
                     newRef.WaitForWithProgress(promise);
                     return new Promise<TResult>(newRef, newRef.Id, currentDepth + 1);
 #endif
@@ -148,15 +270,611 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddFinally<TFinally, TResult>(Promise<TResult> _this, TFinally finalizer)
-                    where TFinally : IDelegateSimple, IDelegate<TResult, TResult>
+                internal static Promise<TResult> AddResolve<TArg, TResult>(Promise<TArg> _this, Delegate<TArg, TResult> resolver, CancelationToken cancelationToken)
+                {
+                    PromiseRef promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolve<Delegate<TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                            //Interlocked.CompareExchange(ref promise._valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null);
+                            //AddToHandleQueueBack(promise);
+                        }
+                        else
+                        {
+                            return Invoker<TArg, TResult>.InvokeCallbackDirect(resolver, _this);
+                        }
+                    }
+                    // TODO: sync callback if ref-backed and already complete in RELEASE mode only.
+                    // else if (_this._ref.State != Promise.State.Pending) { }
+                    else
+                    {
+                        // TODO: refactor to reduce this from 2 virtual calls to 1.
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolve<Delegate<TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolve<Delegate<TArg, TResult>>.GetOrCreate(resolver);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddResolveWait<TArg, TResult>(Promise<TArg> _this, DelegatePromise<TArg, TResult> resolver, CancelationToken cancelationToken)
+                {
+                    int nextDepth = GetNextDepth(_this.Depth);
+                    PromiseWaitPromise promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolvePromise<DelegatePromise<TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArg, TResult>.InvokeCallbackAndAdoptDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolvePromise<DelegatePromise<TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolvePromise<DelegatePromise<TArg, TResult>>.GetOrCreate(resolver, nextDepth);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddResolve<TCapture, TArg, TResult>(Promise<TArg> _this, DelegateCapture<TCapture, TArg, TResult> resolver, CancelationToken cancelationToken)
+                {
+                    PromiseRef promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolve<DelegateCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                            //Interlocked.CompareExchange(ref promise._valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null);
+                            //AddToHandleQueueBack(promise);
+                        }
+                        else
+                        {
+                            return Invoker<TArg, TResult>.InvokeCallbackDirect(resolver, _this);
+                        }
+                    }
+                    // TODO: sync callback if ref-backed and already complete in RELEASE mode only.
+                    // else if (_this._ref.State != Promise.State.Pending) { }
+                    else
+                    {
+                        // TODO: refactor to reduce this from 2 virtual calls to 1.
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolve<DelegateCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolve<DelegateCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddResolveWait<TCapture, TArg, TResult>(Promise<TArg> _this, DelegatePromiseCapture<TCapture, TArg, TResult> resolver, CancelationToken cancelationToken)
+                {
+                    int nextDepth = GetNextDepth(_this.Depth);
+                    PromiseWaitPromise promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolvePromise<DelegatePromiseCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArg, TResult>.InvokeCallbackAndAdoptDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolvePromise<DelegatePromiseCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolvePromise<DelegatePromiseCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, nextDepth);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
+                }
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddResolveReject<TArgResolve, TDelegateReject, TResult>(Promise<TArgResolve> _this,
+                    Delegate<TArgResolve, TResult> resolver,
+                    TDelegateReject rejecter,
+                    CancelationToken cancelationToken)
+                    where TDelegateReject : IDelegateReject
+                {
+                    PromiseRef promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolveReject<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArgResolve, TResult>.InvokeCallbackDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolveReject<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolveReject<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddResolveReject<TCaptureResolve, TArgResolve, TDelegateReject, TResult>(Promise<TArgResolve> _this,
+                    DelegateCapture<TCaptureResolve, TArgResolve, TResult> resolver,
+                    TDelegateReject rejecter,
+                    CancelationToken cancelationToken)
+                    where TDelegateReject : IDelegateReject
+                {
+                    PromiseRef promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolveReject<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArgResolve, TResult>.InvokeCallbackDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolveReject<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolveReject<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddResolveRejectWait<TArgResolve, TDelegateReject, TResult>(Promise<TArgResolve> _this,
+                    Delegate<TArgResolve, TResult> resolver,
+                    TDelegateReject rejecter,
+                    CancelationToken cancelationToken)
+                    where TDelegateReject : IDelegateRejectPromise
+                {
+                    int nextDepth = GetNextDepth(_this.Depth);
+                    PromiseWaitPromise promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolveRejectPromise<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArgResolve, TResult>.InvokeCallbackDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolveRejectPromise<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolveRejectPromise<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, nextDepth);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddResolveRejectWait<TCaptureResolve, TArgResolve, TDelegateReject, TResult>(Promise<TArgResolve> _this,
+                    DelegateCapture<TCaptureResolve, TArgResolve, TResult> resolver,
+                    TDelegateReject rejecter,
+                    CancelationToken cancelationToken)
+                    where TDelegateReject : IDelegateRejectPromise
+                {
+                    int nextDepth = GetNextDepth(_this.Depth);
+                    PromiseWaitPromise promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolveRejectPromise<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArgResolve, TResult>.InvokeCallbackDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolveRejectPromise<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolveRejectPromise<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, nextDepth);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddResolveRejectWait<TArgResolve, TDelegateReject, TResult>(Promise<TArgResolve> _this,
+                    DelegatePromise<TArgResolve, TResult> resolver,
+                    TDelegateReject rejecter,
+                    CancelationToken cancelationToken)
+                    where TDelegateReject : IDelegateRejectPromise
+                {
+                    int nextDepth = GetNextDepth(_this.Depth);
+                    PromiseWaitPromise promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolveRejectPromise<DelegatePromise<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArgResolve, TResult>.InvokeCallbackAndAdoptDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolveRejectPromise<DelegatePromise<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolveRejectPromise<DelegatePromise<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, nextDepth);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddResolveRejectWait<TCaptureResolve, TArgResolve, TDelegateReject, TResult>(Promise<TArgResolve> _this,
+                    DelegatePromiseCapture<TCaptureResolve, TArgResolve, TResult> resolver,
+                    TDelegateReject rejecter,
+                    CancelationToken cancelationToken)
+                    where TDelegateReject : IDelegateRejectPromise
+                {
+                    int nextDepth = GetNextDepth(_this.Depth);
+                    PromiseWaitPromise promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolveRejectPromise<DelegatePromiseCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArgResolve, TResult>.InvokeCallbackAndAdoptDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolveRejectPromise<DelegatePromiseCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolveRejectPromise<DelegatePromiseCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, nextDepth);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddResolveReject<TDelegateReject, TResult>(Promise<TResult> _this,
+                    DelegateResolvePassthrough resolver,
+                    TDelegateReject rejecter,
+                    CancelationToken cancelationToken)
+                    where TDelegateReject : IDelegateReject
+                {
+                    PromiseRef promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolveReject<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return _this;
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolveReject<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolveReject<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddResolveRejectWait<TDelegateReject, TResult>(Promise<TResult> _this,
+                    DelegateResolvePassthrough resolver,
+                    TDelegateReject rejecter,
+                    CancelationToken cancelationToken)
+                    where TDelegateReject : IDelegateRejectPromise
+                {
+                    int nextDepth = GetNextDepth(_this.Depth);
+                    PromiseWaitPromise promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseResolveRejectPromise<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return new Promise<TResult>(_this._ref, _this.Id, nextDepth);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseResolveRejectPromise<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseResolveRejectPromise<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, nextDepth);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddContinue<TArg, TResult>(Promise<TArg> _this, DelegateContinue<TArg, TResult> resolver, CancelationToken cancelationToken)
+                {
+                    PromiseRef promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseContinue<DelegateContinue<TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArg, TResult>.InvokeCallbackDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseContinue<DelegateContinue<TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseContinue<DelegateContinue<TArg, TResult>>.GetOrCreate(resolver);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddContinueWait<TArg, TResult>(Promise<TArg> _this, DelegateContinuePromise<TArg, TResult> resolver, CancelationToken cancelationToken)
+                {
+                    int nextDepth = GetNextDepth(_this.Depth);
+                    PromiseWaitPromise promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseContinuePromise<DelegateContinuePromise<TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArg, TResult>.InvokeCallbackAndAdoptDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseContinuePromise<DelegateContinuePromise<TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseContinuePromise<DelegateContinuePromise<TArg, TResult>>.GetOrCreate(resolver, nextDepth);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddContinue<TCapture, TArg, TResult>(Promise<TArg> _this, DelegateContinueCapture<TCapture, TArg, TResult> resolver, CancelationToken cancelationToken)
+                {
+                    PromiseRef promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseContinue<DelegateContinueCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArg, TResult>.InvokeCallbackDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseContinue<DelegateContinueCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseContinue<DelegateContinueCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddContinueWait<TCapture, TArg, TResult>(Promise<TArg> _this, DelegateContinuePromiseCapture<TCapture, TArg, TResult> resolver, CancelationToken cancelationToken)
+                {
+                    int nextDepth = GetNextDepth(_this.Depth);
+                    PromiseWaitPromise promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseContinuePromise<DelegateContinuePromiseCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return Invoker<TArg, TResult>.InvokeCallbackAndAdoptDirect(resolver, _this);
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseContinuePromise<DelegateContinuePromiseCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseContinuePromise<DelegateContinuePromiseCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, nextDepth);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddFinally<TResult>(Promise<TResult> _this, Action onFinally)
                 {
                     if (_this._ref == null)
                     {
-                        return Invoker<TResult, TResult>.InvokeCallbackDirect(finalizer, _this);
+                        var p = Invoker<VoidResult, VoidResult>.InvokeCallbackDirect(DelegateWrapper.Create(onFinally), _this.AsPromise()._target);
+                        return new Promise<TResult>(p._ref, p.Id, p.Depth, _this.Result);
                     }
                     _this._ref.MarkAwaited(_this.Id);
-                    PromiseRef promise = PromiseFinally<TFinally>.GetOrCreate(finalizer);
+                    PromiseRef promise = PromiseFinally<DelegateFinally>.GetOrCreate(new DelegateFinally(onFinally));
+                    _this._ref.HookupNewPromise(promise);
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddFinally<TCapture, TResult>(Promise<TResult> _this,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Action<TCapture> onFinally)
+                {
+                    if (_this._ref == null)
+                    {
+                        var p = Invoker<VoidResult, VoidResult>.InvokeCallbackDirect(DelegateWrapper.Create(capturedValue, onFinally), _this.AsPromise()._target);
+                        return new Promise<TResult>(p._ref, p.Id, p.Depth, _this.Result);
+                    }
+                    _this._ref.MarkAwaited(_this.Id);
+                    PromiseRef promise = PromiseFinally<DelegateCaptureFinally<TCapture>>.GetOrCreate(new DelegateCaptureFinally<TCapture>(capturedValue, onFinally));
                     _this._ref.HookupNewPromise(promise);
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
@@ -292,233 +1010,7 @@ namespace Proto.Promises
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
 #endif
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            // This helps reduce typed out generics.
-            // The C# compiler does not use generic constraints for automatic type inference, so the class must be made generic instead.
-            // <TArg, TResult, TDelegate>(TDelegate arg) where TDelegate : IDelegate<TArg, TResult>
-            internal static class CallbackHelper2<TArg, TResult>
-            {
-                [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddResolve<TResolver>(Promise<TArg> _this, TResolver resolver, CancelationToken cancelationToken)
-                    where TResolver : IDelegate<TArg, TResult>
-                {
-                    PromiseRef promise;
-                    if (_this._ref == null)
-                    {
-                        if (cancelationToken.IsCancelationRequested)
-                        {
-                            promise = CancelablePromiseResolve<TArg, TResult, TResolver>.GetOrCreate(resolver, cancelationToken);
-                            promise._smallFields.InterlockedTryReleaseComplete();
-                            //Interlocked.CompareExchange(ref promise._valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null);
-                            //AddToHandleQueueBack(promise);
-                        }
-                        else
-                        {
-                            return Invoker<TArg, TResult>.InvokeCallbackDirect(resolver, _this);
-                        }
-                    }
-                    // TODO: sync callback if ref-backed and already complete in RELEASE mode only.
-                    // else if (_this._ref.State != Promise.State.Pending) { }
-                    else
-                    {
-                        // TODO: refactor to reduce this from 2 virtual calls to 1.
-                        _this._ref.MarkAwaited(_this.Id);
-                        if (cancelationToken.CanBeCanceled)
-                        {
-                            promise = CancelablePromiseResolve<TArg, TResult, TResolver>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
-                        }
-                        else
-                        {
-                            promise = PromiseResolve<TArg, TResult, TResolver>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
-                        }
-                    }
-                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddResolveWait<TResolver>(Promise<TArg> _this, TResolver resolver, CancelationToken cancelationToken)
-                    where TResolver : IDelegate<TArg, Promise<TResult>>
-                {
-                    int nextDepth = CallbackHelper.GetNextDepth(_this.Depth);
-                    PromiseWaitPromise promise;
-                    if (_this._ref == null)
-                    {
-                        if (cancelationToken.IsCancelationRequested)
-                        {
-                            promise = CancelablePromiseResolvePromise<TArg, TResult, TResolver>.GetOrCreate(resolver, cancelationToken, nextDepth);
-                            promise._smallFields.InterlockedTryReleaseComplete();
-                        }
-                        else
-                        {
-                            return Invoker<TArg, TResult>.InvokeCallbackAndAdoptDirect(resolver, _this);
-                        }
-                    }
-                    else
-                    {
-                        _this._ref.MarkAwaited(_this.Id);
-                        if (cancelationToken.CanBeCanceled)
-                        {
-                            promise = CancelablePromiseResolvePromise<TArg, TResult, TResolver>.GetOrCreate(resolver, cancelationToken, nextDepth);
-                            _this._ref.HookupNewCancelablePromise(promise);
-                        }
-                        else
-                        {
-                            promise = PromiseResolvePromise<TArg, TResult, TResolver>.GetOrCreate(resolver, nextDepth);
-                            _this._ref.HookupNewPromise(promise);
-                        }
-                    }
-                    return new Promise<TResult>(promise, promise.Id, nextDepth);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddContinue<TContinuer>(Promise<TArg> _this, TContinuer resolver, CancelationToken cancelationToken)
-                    where TContinuer : IDelegateContinue, IDelegate<TArg, TResult>
-                {
-                    PromiseRef promise;
-                    if (_this._ref == null)
-                    {
-                        if (cancelationToken.IsCancelationRequested)
-                        {
-                            promise = CancelablePromiseContinue<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            promise._smallFields.InterlockedTryReleaseComplete();
-                        }
-                        else
-                        {
-                            return Invoker<TArg, TResult>.InvokeCallbackDirect(resolver, _this);
-                        }
-                    }
-                    else
-                    {
-                        _this._ref.MarkAwaited(_this.Id);
-                        if (cancelationToken.CanBeCanceled)
-                        {
-                            promise = CancelablePromiseContinue<TContinuer>.GetOrCreate(resolver, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
-                        }
-                        else
-                        {
-                            promise = PromiseContinue<TContinuer>.GetOrCreate(resolver);
-                            _this._ref.HookupNewPromise(promise);
-                        }
-                    }
-                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddContinueWait<TContinuer>(Promise<TArg> _this, TContinuer resolver, CancelationToken cancelationToken)
-                    where TContinuer : IDelegateContinuePromise, IDelegate<TArg, Promise<TResult>>
-                {
-                    int nextDepth = CallbackHelper.GetNextDepth(_this.Depth);
-                    PromiseWaitPromise promise;
-                    if (_this._ref == null)
-                    {
-                        if (cancelationToken.IsCancelationRequested)
-                        {
-                            promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken, nextDepth);
-                            promise._smallFields.InterlockedTryReleaseComplete();
-                        }
-                        else
-                        {
-                            return Invoker<TArg, TResult>.InvokeCallbackAndAdoptDirect(resolver, _this);
-                        }
-                    }
-                    else
-                    {
-                        _this._ref.MarkAwaited(_this.Id);
-                        if (cancelationToken.CanBeCanceled)
-                        {
-                            promise = CancelablePromiseContinuePromise<TContinuer>.GetOrCreate(resolver, cancelationToken, nextDepth);
-                            _this._ref.HookupNewCancelablePromise(promise);
-                        }
-                        else
-                        {
-                            promise = PromiseContinuePromise<TContinuer>.GetOrCreate(resolver, nextDepth);
-                            _this._ref.HookupNewPromise(promise);
-                        }
-                    }
-                    return new Promise<TResult>(promise, promise.Id, nextDepth);
-                }
-            } // CallbackHelper<TArg, TResult>
-
-            internal static class CallbackHelper3<TArgResolve, TArgReject, TResult>
-            {
-                [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddResolveReject<TResolver, TRejecter>(Promise<TArgResolve> _this, TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
-                    where TResolver : IDelegate<TArgResolve, TResult>
-                    where TRejecter : IDelegate<TArgReject, TResult>
-                {
-                    PromiseRef promise;
-                    if (_this._ref == null)
-                    {
-                        if (cancelationToken.IsCancelationRequested)
-                        {
-                            promise = CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            promise._smallFields.InterlockedTryReleaseComplete();
-                        }
-                        else
-                        {
-                            return Invoker<TArgResolve, TResult>.InvokeCallbackDirect(resolver, _this);
-                        }
-                    }
-                    else
-                    {
-                        _this._ref.MarkAwaited(_this.Id);
-                        if (cancelationToken.CanBeCanceled)
-                        {
-                            promise = CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken);
-                            _this._ref.HookupNewCancelablePromise(promise);
-                        }
-                        else
-                        {
-                            promise = PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter);
-                            _this._ref.HookupNewPromise(promise);
-                        }
-                    }
-                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddResolveRejectWait<TResolver, TRejecter>(Promise<TArgResolve> _this, TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
-                    where TResolver : IDelegate<TArgResolve, Promise<TResult>>
-                    where TRejecter : IDelegate<TArgReject, Promise<TResult>>
-                {
-                    int nextDepth = CallbackHelper.GetNextDepth(_this.Depth);
-                    PromiseWaitPromise promise;
-                    if (_this._ref == null)
-                    {
-                        if (cancelationToken.IsCancelationRequested)
-                        {
-                            promise = CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
-                            promise._smallFields.InterlockedTryReleaseComplete();
-                        }
-                        else
-                        {
-                            return Invoker<TArgResolve, TResult>.InvokeCallbackAndAdoptDirect(resolver, _this);
-                        }
-                    }
-                    else
-                    {
-                        _this._ref.MarkAwaited(_this.Id);
-                        if (cancelationToken.CanBeCanceled)
-                        {
-                            promise = CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
-                            _this._ref.HookupNewCancelablePromise(promise);
-                        }
-                        else
-                        {
-                            promise = PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>.GetOrCreate(resolver, rejecter, nextDepth);
-                            _this._ref.HookupNewPromise(promise);
-                        }
-                    }
-                    return new Promise<TResult>(promise, promise.Id, nextDepth);
-                }
-            } // CallbackHelper<TArgResolve, TArgReject, TResult>
+            } // CallbackHelper
         } // PromiseRef
     } // Internal
 }

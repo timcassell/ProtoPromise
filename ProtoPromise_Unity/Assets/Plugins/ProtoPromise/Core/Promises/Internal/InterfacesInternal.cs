@@ -9,11 +9,29 @@
                 void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
             }
 
-            internal interface IDelegate<TArg, TResult>
+            internal interface IDelegateResolve
             {
-                // TODO: add `in` modifier to arg in C#7.
-                TResult Invoke(TArg arg);
+                void InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
+                void InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
+            }
+
+            internal interface IDelegateResolvePromise
+            {
+                void InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler);
+                void InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
                 bool IsNull { get; }
+            }
+
+            internal interface IDelegateReject
+            {
+                void InvokeRejecter(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
+            }
+
+            internal interface IDelegateRejectPromise
+            {
+                void InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegateContinue
@@ -24,8 +42,8 @@
 
             internal interface IDelegateContinuePromise
             {
-                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
-                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
+                void Invoke(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler);
+                void Invoke(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
                 bool IsNull { get; }
             }
         }

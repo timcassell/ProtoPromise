@@ -244,7 +244,7 @@ namespace Proto.Promises
                 _valueContainer = valueContainer;
                 _result = result;
 #if PROMISE_DEBUG
-                _id = Internal.InvokeId;
+                _id = id;
 #endif
             }
 

@@ -779,16 +779,16 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseResolve<TArg, TResult, TResolver> : PromiseSingleAwait
-                where TResolver : IDelegate<TArg, TResult>
+            private sealed partial class PromiseResolve<TResolver> : PromiseSingleAwait
+                where TResolver : IDelegateResolve
             {
                 private PromiseResolve() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolve<TArg, TResult, TResolver> GetOrCreate(TResolver resolver)
+                internal static PromiseResolve<TResolver> GetOrCreate(TResolver resolver)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolve<TArg, TResult, TResolver>>()
-                        ?? new PromiseResolve<TArg, TResult, TResolver>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolve<TResolver>>()
+                        ?? new PromiseResolve<TResolver>();
                     promise.Reset();
                     promise._resolver = resolver;
                     return promise;
@@ -806,31 +806,34 @@ namespace Proto.Promises
                     _resolver = default(TResolver);
                     if (valueContainer.GetState() == Promise.State.Resolved)
                     {
-                        //resolveCallback.InvokeResolver(valueContainer, this, ref executionStack);
-                        TArg arg = valueContainer.GetValue<TArg>();
-                        TResult result = resolveCallback.Invoke(arg);
-                        valueContainer.Release();
-                        ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
-                        return;
+                        resolveCallback.InvokeResolver(valueContainer, this, ref executionScheduler);
+                        //TArg arg = valueContainer.GetValue<TArg>();
+                        //TResult result = resolveCallback.Invoke(arg);
+                        //valueContainer.Release();
+                        //ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                        //return;
                     }
-                    RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                    valueContainer.Release();
+                    else
+                    {
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        valueContainer.Release();
+                    }
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseResolvePromise<TArg, TResult, TResolver> : PromiseWaitPromise
-                where TResolver : IDelegate<TArg, Promise<TResult>>
+            private sealed partial class PromiseResolvePromise<TResolver> : PromiseWaitPromise
+                where TResolver : IDelegateResolvePromise
             {
                 private PromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolvePromise<TArg, TResult, TResolver> GetOrCreate(TResolver resolver, int depth)
+                internal static PromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, int depth)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolvePromise<TArg, TResult, TResolver>>()
-                        ?? new PromiseResolvePromise<TArg, TResult, TResolver>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolvePromise<TResolver>>()
+                        ?? new PromiseResolvePromise<TResolver>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
                     return promise;
@@ -855,32 +858,35 @@ namespace Proto.Promises
                     _resolver = default(TResolver);
                     if (valueContainer.GetState() == Promise.State.Resolved)
                     {
-                        //resolveCallback.InvokeResolver(valueContainer, this, ref executionStack);
-                        TArg arg = valueContainer.GetValue<TArg>();
-                        Promise<TResult> result = resolveCallback.Invoke(arg);
-                        WaitFor(result, ref executionScheduler);
-                        valueContainer.Release();
-                        return;
+                        resolveCallback.InvokeResolver(valueContainer, this, ref executionScheduler);
+                        //TArg arg = valueContainer.GetValue<TArg>();
+                        //Promise<TResult> result = resolveCallback.Invoke(arg);
+                        //WaitFor(result, ref executionScheduler);
+                        //valueContainer.Release();
+                        //return;
                     }
-                    RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                    valueContainer.Release();
+                    else
+                    {
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        valueContainer.Release();
+                    }
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseSingleAwait
-                where TResolver : IDelegate<TArgResolve, TResult>
-                where TRejecter : IDelegate<TArgReject, TResult>
+            private sealed partial class PromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait
+                where TResolver : IDelegateResolve
+                where TRejecter : IDelegateReject
             {
                 private PromiseResolveReject() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
+                internal static PromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter>>()
-                        ?? new PromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolveReject<TResolver, TRejecter>>()
+                        ?? new PromiseResolveReject<TResolver, TRejecter>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -902,46 +908,49 @@ namespace Proto.Promises
                     Promise.State state = valueContainer.GetState();
                     if (state == Promise.State.Resolved)
                     {
-                        //resolveCallback.InvokeResolver(valueContainer, this, ref executionStack);
-                        TArgResolve arg = valueContainer.GetValue<TArgResolve>();
-                        TResult result = resolveCallback.Invoke(arg);
-                        valueContainer.Release();
-                        ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
-                        return;
+                        resolveCallback.InvokeResolver(valueContainer, this, ref executionScheduler);
+                        //TArgResolve arg = valueContainer.GetValue<TArgResolve>();
+                        //TResult result = resolveCallback.Invoke(arg);
+                        //valueContainer.Release();
+                        //ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                        //return;
                     }
-                    if (state == Promise.State.Rejected)
+                    else if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
                         suppressRejection = true;
-                        //rejectCallback.InvokeRejecter(valueContainer, this, ref executionStack);
-                        TArgReject arg;
-                        if (valueContainer.TryGetValue(out arg))
-                        {
-                            TResult result = rejectCallback.Invoke(arg);
-                            valueContainer.Release();
-                            ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
-                            return;
-                        }
+                        rejectCallback.InvokeRejecter(valueContainer, this, ref executionScheduler);
+                        //TArgReject arg;
+                        //if (valueContainer.TryGetValue(out arg))
+                        //{
+                        //    TResult result = rejectCallback.Invoke(arg);
+                        //    valueContainer.Release();
+                        //    ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                        //    return;
+                        //}
                     }
-                    RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                    valueContainer.Release();
+                    else
+                    {
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        valueContainer.Release();
+                    }
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseWaitPromise
-                where TResolver : IDelegate<TArgResolve, Promise<TResult>>
-                where TRejecter : IDelegate<TArgReject, Promise<TResult>>
+            private sealed partial class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
+                where TResolver : IDelegateResolvePromise
+                where TRejecter : IDelegateRejectPromise
             {
                 private PromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, int depth)
+                internal static PromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, int depth)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>>()
-                        ?? new PromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseResolveRejectPromise<TResolver, TRejecter>>()
+                        ?? new PromiseResolveRejectPromise<TResolver, TRejecter>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -970,29 +979,32 @@ namespace Proto.Promises
                     Promise.State state = valueContainer.GetState();
                     if (state == Promise.State.Resolved)
                     {
-                        //resolveCallback.InvokeResolver(valueContainer, this, ref executionStack);
-                        TArgResolve arg = valueContainer.GetValue<TArgResolve>();
-                        Promise<TResult> result = resolveCallback.Invoke(arg);
-                        WaitFor(result, ref executionScheduler);
-                        valueContainer.Release();
-                        return;
+                        resolveCallback.InvokeResolver(valueContainer, this, ref executionScheduler);
+                        //TArgResolve arg = valueContainer.GetValue<TArgResolve>();
+                        //Promise<TResult> result = resolveCallback.Invoke(arg);
+                        //WaitFor(result, ref executionScheduler);
+                        //valueContainer.Release();
+                        //return;
                     }
-                    if (state == Promise.State.Rejected)
+                    else if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
                         suppressRejection = true;
-                        //rejectCallback.InvokeRejecter(valueContainer, this, ref executionStack);
-                        TArgReject arg;
-                        if (valueContainer.TryGetValue(out arg))
-                        {
-                            Promise<TResult> result = rejectCallback.Invoke(arg);
-                            WaitFor(result, ref executionScheduler);
-                            valueContainer.Release();
-                            return;
-                        }
+                        rejectCallback.InvokeRejecter(valueContainer, this, ref executionScheduler);
+                        //TArgReject arg;
+                        //if (valueContainer.TryGetValue(out arg))
+                        //{
+                        //    Promise<TResult> result = rejectCallback.Invoke(arg);
+                        //    WaitFor(result, ref executionScheduler);
+                        //    valueContainer.Release();
+                        //    return;
+                        //}
                     }
-                    RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                    valueContainer.Release();
+                    else
+                    {
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        valueContainer.Release();
+                    }
                 }
             }
 

@@ -125,16 +125,16 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolve<TArg, TResult, TResolver> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
-                where TResolver : IDelegate<TArg, TResult>
+            private sealed partial class CancelablePromiseResolve<TResolver> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
+                where TResolver : IDelegateResolve
             {
                 private CancelablePromiseResolve() { }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolve<TArg, TResult, TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
+                internal static CancelablePromiseResolve<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolve<TArg, TResult, TResolver>>()
-                        ?? new CancelablePromiseResolve<TArg, TResult, TResolver>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolve<TResolver>>()
+                        ?? new CancelablePromiseResolve<TResolver>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -178,17 +178,17 @@ namespace Proto.Promises
                     var resolveCallback = _resolver;
                     if (valueContainer.GetState() == Promise.State.Resolved)
                     {
-                        //resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionStack);
-                        TArg arg = valueContainer.GetValue<TArg>();
-                        if (_cancelationHelper.TryUnregister(this))
-                        {
-                            TResult result = resolveCallback.Invoke(arg);
-                            valueContainer.Release();
-                            ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
-                        }
-                        return;
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
+                        //TArg arg = valueContainer.GetValue<TArg>();
+                        //if (_cancelationHelper.TryUnregister(this))
+                        //{
+                        //    TResult result = resolveCallback.Invoke(arg);
+                        //    valueContainer.Release();
+                        //    ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                        //}
+                        //return;
                     }
-                    if (_cancelationHelper.TryUnregister(this))
+                    else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
@@ -206,16 +206,16 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolvePromise<TArg, TResult, TResolver> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
-                where TResolver : IDelegate<TArg, Promise<TResult>>
+            private sealed partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
+                where TResolver : IDelegateResolvePromise
             {
                 private CancelablePromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolvePromise<TArg, TResult, TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken, int depth)
+                internal static CancelablePromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken, int depth)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolvePromise<TArg, TResult, TResolver>>()
-                        ?? new CancelablePromiseResolvePromise<TArg, TResult, TResolver>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolvePromise<TResolver>>()
+                        ?? new CancelablePromiseResolvePromise<TResolver>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -283,17 +283,17 @@ namespace Proto.Promises
                     _resolver = default(TResolver);
                     if (valueContainer.GetState() == Promise.State.Resolved)
                     {
-                        //resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionStack);
-                        TArg arg = valueContainer.GetValue<TArg>();
-                        if (_cancelationHelper.TryUnregister(this))
-                        {
-                            Promise<TResult> result = resolveCallback.Invoke(arg);
-                            WaitFor(result, ref executionScheduler);
-                            valueContainer.Release();
-                        }
-                        return;
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
+                        //TArg arg = valueContainer.GetValue<TArg>();
+                        //if (_cancelationHelper.TryUnregister(this))
+                        //{
+                        //    Promise<TResult> result = resolveCallback.Invoke(arg);
+                        //    WaitFor(result, ref executionScheduler);
+                        //    valueContainer.Release();
+                        //}
+                        //return;
                     }
-                    if (_cancelationHelper.TryUnregister(this))
+                    else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
@@ -311,17 +311,17 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
-                where TResolver : IDelegate<TArgResolve, TResult>
-                where TRejecter : IDelegate<TArgReject, TResult>
+            private sealed partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
+                where TResolver : IDelegateResolve
+                where TRejecter : IDelegateReject
             {
                 private CancelablePromiseResolveReject() { }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
+                internal static CancelablePromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter>>()
-                        ?? new CancelablePromiseResolveReject<TArgResolve, TResult, TResolver, TArgReject, TRejecter>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolveReject<TResolver, TRejecter>>()
+                        ?? new CancelablePromiseResolveReject<TResolver, TRejecter>();
                     promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -369,34 +369,34 @@ namespace Proto.Promises
                     Promise.State state = valueContainer.GetState();
                     if (state == Promise.State.Resolved)
                     {
-                        //resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionStack);
-                        TArgResolve arg = valueContainer.GetValue<TArgResolve>();
-                        if (_cancelationHelper.TryUnregister(this))
-                        {
-                            TResult result = resolveCallback.Invoke(arg);
-                            valueContainer.Release();
-                            ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
-                        }
-                        return;
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
+                        //TArgResolve arg = valueContainer.GetValue<TArgResolve>();
+                        //if (_cancelationHelper.TryUnregister(this))
+                        //{
+                        //    TResult result = resolveCallback.Invoke(arg);
+                        //    valueContainer.Release();
+                        //    ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                        //}
+                        //return;
                     }
-                    if (state == Promise.State.Rejected)
+                    else if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
                         suppressRejection = true;
-                        //rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper, ref executionStack);
-                        TArgReject arg;
-                        if (valueContainer.TryGetValue(out arg))
-                        {
-                            if (_cancelationHelper.TryUnregister(this))
-                            {
-                                TResult result = rejectCallback.Invoke(arg);
-                                valueContainer.Release();
-                                ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
-                            }
-                            return;
-                        }
+                        rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
+                        //TArgReject arg;
+                        //if (valueContainer.TryGetValue(out arg))
+                        //{
+                        //    if (_cancelationHelper.TryUnregister(this))
+                        //    {
+                        //        TResult result = rejectCallback.Invoke(arg);
+                        //        valueContainer.Release();
+                        //        ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                        //    }
+                        //    return;
+                        //}
                     }
-                    if (_cancelationHelper.TryUnregister(this))
+                    else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
@@ -414,17 +414,17 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
-                where TResolver : IDelegate<TArgResolve, Promise<TResult>>
-                where TRejecter : IDelegate<TArgReject, Promise<TResult>>
+            private sealed partial class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
+                where TResolver : IDelegateResolvePromise
+                where TRejecter : IDelegateRejectPromise
             {
                 private CancelablePromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken, int depth)
+                internal static CancelablePromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken, int depth)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>>()
-                        ?? new CancelablePromiseResolveRejectPromise<TArgResolve, TResult, TResolver, TArgReject, TRejecter>();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>>()
+                        ?? new CancelablePromiseResolveRejectPromise<TResolver, TRejecter>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -496,34 +496,34 @@ namespace Proto.Promises
                     Promise.State state = valueContainer.GetState();
                     if (state == Promise.State.Resolved)
                     {
-                        //resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionStack);
-                        TArgResolve arg = valueContainer.GetValue<TArgResolve>();
-                        if (_cancelationHelper.TryUnregister(this))
-                        {
-                            Promise<TResult> result = resolveCallback.Invoke(arg);
-                            WaitFor(result, ref executionScheduler);
-                            valueContainer.Release();
-                        }
-                        return;
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
+                        //TArgResolve arg = valueContainer.GetValue<TArgResolve>();
+                        //if (_cancelationHelper.TryUnregister(this))
+                        //{
+                        //    Promise<TResult> result = resolveCallback.Invoke(arg);
+                        //    WaitFor(result, ref executionScheduler);
+                        //    valueContainer.Release();
+                        //}
+                        //return;
                     }
-                    if (state == Promise.State.Rejected)
+                    else if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
                         suppressRejection = true;
-                        //rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper, ref executionStack);
-                        TArgReject arg;
-                        if (valueContainer.TryGetValue(out arg))
-                        {
-                            if (_cancelationHelper.TryUnregister(this))
-                            {
-                                Promise<TResult> result = rejectCallback.Invoke(arg);
-                                WaitFor(result, ref executionScheduler);
-                                valueContainer.Release();
-                            }
-                            return;
-                        }
+                        rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
+                        //TArgReject arg;
+                        //if (valueContainer.TryGetValue(out arg))
+                        //{
+                        //    if (_cancelationHelper.TryUnregister(this))
+                        //    {
+                        //        Promise<TResult> result = rejectCallback.Invoke(arg);
+                        //        WaitFor(result, ref executionScheduler);
+                        //        valueContainer.Release();
+                        //    }
+                        //    return;
+                        //}
                     }
-                    if (_cancelationHelper.TryUnregister(this))
+                    else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
