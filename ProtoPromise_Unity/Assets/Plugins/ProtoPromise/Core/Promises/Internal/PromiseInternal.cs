@@ -562,7 +562,7 @@ namespace Proto.Promises
                     promise.Reset();
                     promise._synchronizationContext = synchronizationContext;
                     promise._isSynchronous = isSynchronous;
-                    promise._isPreviousComplete = false;
+                    promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.None;
                     promise._wasForgottenOrHookupFailed = false;
                     return promise;
                 }
@@ -576,7 +576,7 @@ namespace Proto.Promises
                 {
                     var promise = GetOrCreate(isSynchronous, synchronizationContext);
                     promise._valueOrPrevious = CreateResolveContainer(result, 1);
-                    promise._isPreviousComplete = true;
+                    promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.MakeReady;
                     return promise;
                 }
 
@@ -602,10 +602,10 @@ namespace Proto.Promises
 #endif
                     {
                         ThrowIfInPool(this);
+                        ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.AddWaiter);
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
-                        Thread.MemoryBarrier();
                         _waiter = waiter;
-                        Thread.MemoryBarrier(); // Make sure State and _isPreviousComplete are read after _waiter is written.
+                        Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
                         if (State != Promise.State.Pending)
                         {
                             // Exchange and check for null to handle race condition with HandleWaiter on another thread.
@@ -615,7 +615,7 @@ namespace Proto.Promises
                                 waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
                             }
                         }
-                        else if (_isPreviousComplete)
+                        else if (previousScheduleType == ScheduleMethod.MakeReady)
                         {
                             if (_isSynchronous)
                             {
@@ -634,26 +634,25 @@ namespace Proto.Promises
                 protected override void OnForgetOrHookupFailed()
                 {
                     _wasForgottenOrHookupFailed = true;
-                    Thread.MemoryBarrier(); // Make sure _isPreviousComplete is read after _wasHookupFailed is written.
-                    if (_isPreviousComplete)
+                    Thread.MemoryBarrier(); // Make sure _mostRecentPotentialScheduleMethod is read after _wasForgottenOrHookupFailed is written.
+                    if ((ScheduleMethod) _mostRecentPotentialScheduleMethod == ScheduleMethod.MakeReady)
                     {
                         _smallFields.InterlockedTryReleaseComplete();
                     }
                     base.OnForgetOrHookupFailed();
                 }
 
-                // TODO: Transition state to complete when this is created from Promise.GetAwaiter() and _isPreviousComplete and _isSynchronous are true.
+                // TODO: Transition state to complete when this is created from Promise.GetAwaiter() and _isSynchronous is true and previous was already complete.
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     owner.SuppressRejection = true;
+                    ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.MakeReady);
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     Thread.MemoryBarrier();
-                    _isPreviousComplete = true;
-                    Thread.MemoryBarrier(); // Make sure _waiter is read after _isPreviousComplete is written.
                     // Leave pending until this is awaited or forgotten.
-                    if (_waiter != null)
+                    if (previousScheduleType == ScheduleMethod.AddWaiter)
                     {
                         if (_isSynchronous)
                         {
@@ -678,7 +677,7 @@ namespace Proto.Promises
                     owner.SuppressRejection = true;
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
-                    _isPreviousComplete = true;
+                    Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.MakeReady);
                     // Leave pending until this is awaited or forgotten.
                 }
             }

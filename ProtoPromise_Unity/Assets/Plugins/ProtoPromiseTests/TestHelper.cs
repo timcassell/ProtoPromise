@@ -105,7 +105,7 @@ namespace ProtoPromiseTests
             }
             if (exceptions.Length > 0)
             {
-#if false // Set to false to throw all uncaught rejections, leave true to only throw 1 exception to avoid overloading the test error output.
+#if true // Set to false to throw all uncaught rejections, set to true to only throw 1 exception to avoid overloading the test error output.
                 throw exceptions[0];
 #else
                 throw new AggregateException(exceptions);

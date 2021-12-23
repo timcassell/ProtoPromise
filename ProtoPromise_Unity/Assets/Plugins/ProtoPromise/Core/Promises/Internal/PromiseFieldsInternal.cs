@@ -200,10 +200,17 @@ namespace Proto.Promises
 
             partial class ConfiguredPromise : PromiseSingleAwait
             {
+                private enum ScheduleMethod : int
+                {
+                    None,
+                    AddWaiter,
+                    MakeReady
+                }
+
                 private SynchronizationContext _synchronizationContext;
                 private bool _isSynchronous;
-                volatile private bool _isPreviousComplete;
                 volatile private bool _wasForgottenOrHookupFailed;
+                volatile private int _mostRecentPotentialScheduleMethod; // ScheduleMethod casted to int for Interlocked.
             }
 
             partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
