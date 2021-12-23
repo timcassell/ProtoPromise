@@ -72,10 +72,7 @@ namespace Proto.Promises
                     ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
                     owner.HandleWaiter(valueContainer, ref executionScheduler);
                     owner.HandleProgressListener(Promise.State.Canceled, ref executionScheduler);
-                    if (Release())
-                    {
-                        owner.MaybeDispose();
-                    }
+                    MaybeReleaseComplete(owner);
                     executionScheduler.Execute();
                 }
 
@@ -97,14 +94,11 @@ namespace Proto.Promises
                             valueContainer.Release();
                         }
                     }
-                    if (Release())
-                    {
-                        owner.MaybeDispose();
-                    }
+                    MaybeReleaseComplete(owner);
                     return false;
                 }
 
-                internal bool TryUnregister(PromiseRef owner)
+                internal bool TryUnregister(PromiseSingleAwait owner)
                 {
                     ThrowIfInPool(owner);
                     bool isCanceling;
@@ -119,6 +113,15 @@ namespace Proto.Promises
                         return false;
                     }
                     return !isCanceling;
+                }
+
+                internal void MaybeReleaseComplete(PromiseSingleAwait owner)
+                {
+                    // This is called in HookupNewCancelablePromise when SetCanceled has set the _valueOrPrevious, so this may also be racing with that function on another thread.
+                    if (Release())
+                    {
+                        owner.MaybeDispose();
+                    }
                 }
             }
 
@@ -147,6 +150,11 @@ namespace Proto.Promises
                     _cancelationHelper = default(CancelationHelper);
                     _resolver = default(TResolver);
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                protected override void OnHookupFailed()
+                {
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -228,6 +236,11 @@ namespace Proto.Promises
                     _cancelationHelper = default(CancelationHelper);
                     _resolver = default(TResolver);
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                protected override void OnHookupFailed()
+                {
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -338,6 +351,11 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
+                protected override void OnHookupFailed()
+                {
+                    _cancelationHelper.MaybeReleaseComplete(this);
+                }
+
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
@@ -439,6 +457,11 @@ namespace Proto.Promises
                     _resolver = default(TResolver);
                     _rejecter = default(TRejecter);
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                protected override void OnHookupFailed()
+                {
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -565,6 +588,11 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
+                protected override void OnHookupFailed()
+                {
+                    _cancelationHelper.MaybeReleaseComplete(this);
+                }
+
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
@@ -628,6 +656,11 @@ namespace Proto.Promises
                     _cancelationHelper = default(CancelationHelper);
                     _continuer = default(TContinuer);
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                protected override void OnHookupFailed()
+                {
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
@@ -716,6 +749,11 @@ namespace Proto.Promises
                 {
                     base.Dispose();
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                protected override void OnHookupFailed()
+                {
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)

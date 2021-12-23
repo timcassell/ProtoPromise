@@ -197,10 +197,12 @@ namespace Proto.Promises
 
             protected virtual void Dispose()
             {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 if (State == Promise.State.Pending)
                 {
                     throw new System.InvalidOperationException("Promise disposed while pending.");
                 }
+#endif
                 // Rejection maybe wasn't caught.
                 ((IValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack(!SuppressRejection);
                 _valueOrPrevious = null;
@@ -215,11 +217,14 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    newPromise._smallFields.InterlockedTryReleaseComplete();
+                    newPromise.OnHookupFailed();
                     SuppressRejection = true; // Don't report rejection if newPromise is already canceled.
                     OnForgetOrHookupFailed();
                 }
             }
+
+            // This is only overloaded by cancelable promises.
+            protected virtual void OnHookupFailed() { throw new System.InvalidOperationException(); }
 
             protected virtual void OnForgetOrHookupFailed()
             {
