@@ -200,7 +200,7 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -305,7 +305,7 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -408,7 +408,7 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -535,7 +535,7 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -600,7 +600,7 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -690,7 +690,7 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -782,7 +782,7 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
         } // PromiseRef
     } // Internal

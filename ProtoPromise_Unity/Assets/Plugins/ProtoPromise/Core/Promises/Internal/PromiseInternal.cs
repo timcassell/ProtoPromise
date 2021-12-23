@@ -199,7 +199,7 @@ namespace Proto.Promises
             {
                 if (State == Promise.State.Pending)
                 {
-                    throw new InvalidOperationException("Promise disposed while pending.");
+                    throw new System.InvalidOperationException("Promise disposed while pending.");
                 }
                 // Rejection maybe wasn't caught.
                 ((IValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack(!SuppressRejection);
