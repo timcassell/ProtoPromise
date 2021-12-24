@@ -31,7 +31,6 @@ namespace Proto.Promises
         {
             void Handle(ref ExecutionScheduler executionScheduler);
             void MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler);
-            void MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler);
         }
 
         internal interface IProgressInvokable : ILinked<IProgressInvokable>

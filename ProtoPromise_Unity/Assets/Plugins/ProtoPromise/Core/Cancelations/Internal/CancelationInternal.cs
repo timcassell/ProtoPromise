@@ -188,10 +188,7 @@ namespace Proto.Promises
 
                 internal IdsAndRetains(short initialId)
                 {
-                    _longValue = 0;
-                    _internalRetains = 0;
-                    _userRetains = 0;
-                    _totalRetains = 0;
+                    this = default(IdsAndRetains);
                     _tokenId = initialId;
                     _sourceId = initialId;
                 }

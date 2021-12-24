@@ -132,14 +132,6 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     executionScheduler.ScheduleSynchronous(this);
-                    //AddToHandleQueueFront(this);
-                }
-
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    executionScheduler.ScheduleSynchronous(this);
-                    //AddToHandleQueueBack(this);
                 }
             }
         }

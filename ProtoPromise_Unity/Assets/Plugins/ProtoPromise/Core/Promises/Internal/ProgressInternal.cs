@@ -671,7 +671,6 @@ namespace Proto.Promises
                             {
                                 executionScheduler.ScheduleProgressOnContext(_synchronizationContext, this);
                             }
-                            //AddToBackOfProgressQueue(this);
                         }
                     }
                 }
@@ -711,7 +710,6 @@ namespace Proto.Promises
                                 {
                                     executionScheduler.ScheduleProgressOnContext(_synchronizationContext, this);
                                 }
-                                //AddToBackOfProgressQueue(this);
                             }
                             break;
                         }
@@ -727,7 +725,6 @@ namespace Proto.Promises
                                 {
                                     executionScheduler.ScheduleProgressOnContext(_synchronizationContext, this);
                                 }
-                                //AddToBackOfProgressQueue(this);
                                 break; // Break instead of InterlockedRetainDisregardId().
                             }
                             MaybeDispose();
@@ -840,16 +837,16 @@ namespace Proto.Promises
                             {
                                 if (_smallProgressFields._isSynchronous)
                                 {
-                                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
+                                    waiter.MakeReady(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
                                 }
                                 else
                                 {
                                     // If this was configured to execute progress on a SynchronizationContext or the ThreadPool, force the waiter to execute on the same context for consistency.
 
-                                    // Taking advantage of an implementation detail that MakeReadyFromSettled will only add itself or nothing to the stack, so we can just send it to the context instead.
+                                    // Taking advantage of an implementation detail that MakeReady will only add itself or nothing to the stack, so we can just send it to the context instead.
                                     // This is better than adding a new method to the interface.
                                     ExecutionScheduler overrideScheduler = executionScheduler.GetEmptyCopy();
-                                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref overrideScheduler);
+                                    waiter.MakeReady(this, (IValueContainer) _valueOrPrevious, ref overrideScheduler);
                                     if (overrideScheduler._handleStack.IsNotEmpty)
                                     {
                                         executionScheduler.ScheduleOnContext(_synchronizationContext, overrideScheduler._handleStack.Pop());
@@ -882,25 +879,7 @@ namespace Proto.Promises
                     {
                         executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                     }
-                    //AddToHandleQueueFront(this);
                     WaitWhileProgressFlags(PromiseFlags.Subscribing);
-                }
-
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    IsComplete = true;
-                    owner.SuppressRejection = true;
-                    valueContainer.Retain();
-                    _valueOrPrevious = valueContainer;
-                    if (_smallProgressFields._isSynchronous)
-                    {
-                        executionScheduler.ScheduleSynchronous(this);
-                    }
-                    else
-                    {
-                        executionScheduler.ScheduleOnContext(_synchronizationContext, this);
-                    }
                 }
             } // PromiseProgress<TProgress>
 

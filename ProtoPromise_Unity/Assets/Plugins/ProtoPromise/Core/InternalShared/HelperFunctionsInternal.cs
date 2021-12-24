@@ -109,6 +109,7 @@ namespace Proto.Promises
 #endif
 #endif
 
+            [MethodImpl(InlineOption)]
             internal ExecutionScheduler(SynchronizationHandler synchronizationHandler, ValueLinkedStack<ITreeHandleable> handleStack, ValueLinkedQueue<IProgressInvokable> progressQueue)
             {
                 _handleStack = handleStack;
@@ -121,8 +122,10 @@ namespace Proto.Promises
 #endif
             }
 
+            [MethodImpl(InlineOption)]
             internal ExecutionScheduler(bool forHandleables) : this(null, !forHandleables) { }
 
+            [MethodImpl(InlineOption)]
             private ExecutionScheduler(SynchronizationHandler synchronizationHandler, bool isExecutingProgress)
             {
                 _handleStack = new ValueLinkedStack<ITreeHandleable>();

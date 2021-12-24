@@ -227,19 +227,23 @@ namespace Proto.Promises
 #endif
                 }
 
+                internal static Promise<TResult> Duplicate<TResult>(Promise<TResult> _this)
+                {
+                    if (_this._ref == null)
+                    {
+                        return _this;
+                    }
+                    var newRef = _this._ref.GetDuplicate(_this.Id);
+                    return new Promise<TResult>(newRef, newRef.Id, _this.Depth, _this.Result);
+                }
+
                 internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext)
                 {
-                    PromiseRef newPromise;
                     switch (continuationOption)
                     {
                         case SynchronizationOption.Synchronous:
                         {
-                            if (_this._ref == null)
-                            {
-                                return _this;
-                            }
-                            newPromise = _this._ref.GetDuplicate(_this.Id);
-                            break;
+                            return Duplicate(_this);
                         }
                         case SynchronizationOption.Foreground:
                         {
@@ -260,13 +264,12 @@ namespace Proto.Promises
                         }
                         default: // SynchronizationOption.Explicit
                         {
-                            newPromise = _this._ref == null
+                            var newRef = _this._ref == null
                                 ? ConfiguredPromise.GetOrCreateFromNull(false, synchronizationContext, _this.Result)
                                 : _this._ref.GetConfigured(_this.Id, synchronizationContext);
-                            break;
+                            return new Promise<TResult>(newRef, newRef.Id, _this.Depth, _this.Result);
                         }
                     }
-                    return new Promise<TResult>(newPromise, newPromise.Id, _this.Depth, _this.Result);
                 }
 
                 [MethodImpl(InlineOption)]

@@ -104,10 +104,10 @@ namespace Proto.Promises
         /// <para/>Preserved promises are unsafe to return from public APIs. Use <see cref="Duplicate"/> to get a <see cref="Promise{T}"/> that is publicly safe.
         /// <para/><see cref="Duplicate"/> is safe to call even if you are unsure if <see cref="this"/> is preserved.
         /// </summary>
-        [MethodImpl(Internal.InlineOption)]
         public Promise<T> Duplicate()
         {
-            return WaitAsync(SynchronizationOption.Synchronous);
+            ValidateOperation(1);
+            return Internal.PromiseRef.CallbackHelper.Duplicate(this);
         }
 
         /// <summary>

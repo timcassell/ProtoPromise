@@ -165,18 +165,6 @@ namespace Proto.Promises
                 valueContainer.Retain();
                 _valueOrPrevious = valueContainer;
                 executionScheduler.ScheduleSynchronous(this);
-                //AddToHandleQueueFront(this);
-                WaitWhileProgressFlags(PromiseFlags.Subscribing);
-            }
-
-            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
-            {
-                ThrowIfInPool(this);
-                owner.SuppressRejection = true;
-                valueContainer.Retain();
-                _valueOrPrevious = valueContainer;
-                executionScheduler.ScheduleSynchronous(this);
-                //AddToHandleQueueBack(this);
                 WaitWhileProgressFlags(PromiseFlags.Subscribing);
             }
 
@@ -310,7 +298,7 @@ namespace Proto.Promises
                             waiter = Interlocked.Exchange(ref _waiter, null);
                             if (waiter != null)
                             {
-                                waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
+                                waiter.MakeReady(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
                             }
                         }
                         MaybeDispose();
@@ -466,7 +454,7 @@ namespace Proto.Promises
                         }
                         _progressAndLocker._branchLocker.Exit();
                     }
-                    waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
+                    waiter.MakeReady(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
                     MaybeDispose();
                 }
 
@@ -617,7 +605,7 @@ namespace Proto.Promises
                             waiter = Interlocked.Exchange(ref _waiter, null);
                             if (waiter != null)
                             {
-                                waiter.MakeReadyFromSettled(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
+                                waiter.MakeReady(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
                             }
                         }
                         else if (previousScheduleType == ScheduleMethod.MakeReady)
@@ -674,16 +662,6 @@ namespace Proto.Promises
                         executionScheduler.ScheduleSynchronous(this);
                     }
                     WaitWhileProgressFlags(PromiseFlags.Subscribing);
-                }
-
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    owner.SuppressRejection = true;
-                    valueContainer.Retain();
-                    _valueOrPrevious = valueContainer;
-                    Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.MakeReady);
-                    // Leave pending until this is awaited or forgotten.
                 }
             }
 
@@ -1243,15 +1221,6 @@ namespace Proto.Promises
                 }
 
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    _owner = null;
-                    WaitWhileProgressIsBusy();
-                    _target.Handle(owner, valueContainer, this, ref executionScheduler);
-                    Release();
-                }
-
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     _owner = null;
