@@ -243,11 +243,6 @@ namespace Proto.Promises
                 Settle(valueContainer);
             }
 
-            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
-            {
-                Settle(valueContainer);
-            }
-
             void ITreeHandleable.Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
         }
     }
