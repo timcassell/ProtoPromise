@@ -255,13 +255,16 @@ namespace ProtoPromiseTests.Threading
         }
 
         [Test]
-        public void Then_PromiseMayBeResolvedAndAwaitedAndCallbackCanceledConcurrently_void()
+        public void Then_PromiseMayBeResolvedAndAwaitedAndCallbackCanceledConcurrently_void(
+            [Values] ConfigureAwaitType configureAwaitType)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
             var cancelationToken = default(CancelationToken);
             var promise = default(Promise);
             bool completed = false;
+
+            Thread foregroundThread = Thread.CurrentThread;
 
             var resolveActions = TestHelper.ResolveActionsVoidWithCancelation(() => { });
             var thenActions = TestHelper.ThenActionsVoidWithCancelation(() => { }, null);
@@ -282,27 +285,45 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
+                        TestHelper.ExecuteForegroundCallbacks();
                         cancelationSource.Dispose();
-                        Assert.IsTrue(completed);
+                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
+                        {
+                            Assert.IsTrue(completed);
+                        }
+                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
+                        {
+                            throw new TimeoutException();
+                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
                     () => deferred.Resolve(),
-                    () => action(promise, cancelationToken)
-                        .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
+                    () => action(promise.ConfigureAwait(configureAwaitType), cancelationToken)
+                        .Finally(() =>
+                        {
+                            TestHelper.AssertCallbackContext(
+                                configureAwaitType == ConfigureAwaitType.Foreground || configureAwaitType == ConfigureAwaitType.Explicit ? SynchronizationType.Synchronous : TestHelper.backgroundType,
+                                SynchronizationType.Background,
+                                foregroundThread);
+                            completed = true; // State of the promise is indeterminable, just make sure it completes.
+                        })
                         .Forget()
                 );
             }
         }
 
         [Test]
-        public void Then_PromiseMayBeResolvedAndAwaitedAndCallbackCanceledConcurrently_T()
+        public void Then_PromiseMayBeResolvedAndAwaitedAndCallbackCanceledConcurrently_T(
+            [Values] ConfigureAwaitType configureAwaitType)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
             var cancelationToken = default(CancelationToken);
             var promise = default(Promise<int>);
             bool completed = false;
+
+            Thread foregroundThread = Thread.CurrentThread;
 
             var resolveActions = TestHelper.ResolveActionsWithCancelation<int>(v => { });
             var thenActions = TestHelper.ThenActionsWithCancelation<int>(v => { }, null);
@@ -323,21 +344,37 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
+                        TestHelper.ExecuteForegroundCallbacks();
                         cancelationSource.Dispose();
-                        Assert.IsTrue(completed);
+                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
+                        {
+                            Assert.IsTrue(completed);
+                        }
+                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
+                        {
+                            throw new TimeoutException();
+                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
                     () => deferred.Resolve(1),
-                    () => action(promise, cancelationToken)
-                        .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
+                    () => action(promise.ConfigureAwait(configureAwaitType), cancelationToken)
+                        .Finally(() =>
+                        {
+                            TestHelper.AssertCallbackContext(
+                                configureAwaitType == ConfigureAwaitType.Foreground || configureAwaitType == ConfigureAwaitType.Explicit ? SynchronizationType.Synchronous : TestHelper.backgroundType,
+                                SynchronizationType.Background,
+                                foregroundThread);
+                            completed = true; // State of the promise is indeterminable, just make sure it completes.
+                        })
                         .Forget()
                 );
             }
         }
 
         [Test]
-        public void Catch_PromiseMayBeRejectedAndAwaitedAndCallbackCanceledConcurrently_void()
+        public void Catch_PromiseMayBeRejectedAndAwaitedAndCallbackCanceledConcurrently_void(
+            [Values] ConfigureAwaitType configureAwaitType)
         {
             int rejection = 1;
 
@@ -346,6 +383,8 @@ namespace ProtoPromiseTests.Threading
             var cancelationToken = default(CancelationToken);
             var promise = default(Promise);
             bool completed = false;
+
+            Thread foregroundThread = Thread.CurrentThread;
 
             var catchActions = TestHelper.CatchActionsVoidWithCancelation(() => { });
             var thenActions = TestHelper.ThenActionsVoidWithCancelation(null, () => { });
@@ -366,21 +405,37 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
+                        TestHelper.ExecuteForegroundCallbacks();
                         cancelationSource.Dispose();
-                        Assert.IsTrue(completed);
+                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
+                        {
+                            Assert.IsTrue(completed);
+                        }
+                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
+                        {
+                            throw new TimeoutException();
+                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
                     () => deferred.Reject(rejection),
-                    () => action(promise, cancelationToken)
-                        .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
+                    () => action(promise.ConfigureAwait(configureAwaitType), cancelationToken)
+                        .Finally(() =>
+                        {
+                            TestHelper.AssertCallbackContext(
+                                configureAwaitType == ConfigureAwaitType.Foreground || configureAwaitType == ConfigureAwaitType.Explicit ? SynchronizationType.Synchronous : TestHelper.backgroundType,
+                                SynchronizationType.Background,
+                                foregroundThread);
+                            completed = true; // State of the promise is indeterminable, just make sure it completes.
+                        })
                         .Forget()
                 );
             }
         }
 
         [Test]
-        public void Catch_PromiseMayBeRejectedAndAwaitedAndCallbackCanceledConcurrently_T()
+        public void Catch_PromiseMayBeRejectedAndAwaitedAndCallbackCanceledConcurrently_T(
+            [Values] ConfigureAwaitType configureAwaitType)
         {
             int rejection = 1;
 
@@ -389,6 +444,8 @@ namespace ProtoPromiseTests.Threading
             var cancelationToken = default(CancelationToken);
             var promise = default(Promise<int>);
             bool completed = false;
+
+            Thread foregroundThread = Thread.CurrentThread;
 
             var catchActions = TestHelper.CatchActionsWithCancelation<int>(() => { });
             var thenActions = TestHelper.ThenActionsWithCancelation<int>(null, () => { });
@@ -409,27 +466,45 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
+                        TestHelper.ExecuteForegroundCallbacks();
                         cancelationSource.Dispose();
-                        Assert.IsTrue(completed);
+                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
+                        {
+                            Assert.IsTrue(completed);
+                        }
+                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
+                        {
+                            throw new TimeoutException();
+                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
                     () => deferred.Reject(rejection),
-                    () => action(promise, cancelationToken)
-                        .Finally(() => completed = true) // State of the promise is indeterminable, just make sure it completes.
+                    () => action(promise.ConfigureAwait(configureAwaitType), cancelationToken)
+                        .Finally(() =>
+                        {
+                            TestHelper.AssertCallbackContext(
+                                configureAwaitType == ConfigureAwaitType.Foreground || configureAwaitType == ConfigureAwaitType.Explicit ? SynchronizationType.Synchronous : TestHelper.backgroundType,
+                                SynchronizationType.Background,
+                                foregroundThread);
+                            completed = true; // State of the promise is indeterminable, just make sure it completes.
+                        })
                         .Forget()
                 );
             }
         }
 
         [Test]
-        public void CatchCancelation_PromiseMayBeCanceledAndAwaitedAndCallbackCanceledConcurrently_void()
+        public void CatchCancelation_PromiseMayBeCanceledAndAwaitedAndCallbackCanceledConcurrently_void(
+            [Values] ConfigureAwaitType configureAwaitType)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
             var cancelationToken = default(CancelationToken);
             var promise = default(Promise);
             bool completed = false;
+
+            Thread foregroundThread = Thread.CurrentThread;
 
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
@@ -450,27 +525,45 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
+                        TestHelper.ExecuteForegroundCallbacks();
                         cancelationSource.Dispose();
-                        Assert.IsTrue(completed);
+                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
+                        {
+                            Assert.IsTrue(completed);
+                        }
+                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
+                        {
+                            throw new TimeoutException();
+                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
                     () => deferred.Cancel(1),
-                    () => action(promise, cancelationToken)
-                        .Finally(() => completed = true) // Make sure it completes.
+                    () => action(promise.ConfigureAwait(configureAwaitType), cancelationToken)
+                        .Finally(() =>
+                        {
+                            TestHelper.AssertCallbackContext(
+                                configureAwaitType == ConfigureAwaitType.Foreground || configureAwaitType == ConfigureAwaitType.Explicit ? SynchronizationType.Synchronous : TestHelper.backgroundType,
+                                SynchronizationType.Background,
+                                foregroundThread);
+                            completed = true; // State of the promise is indeterminable, just make sure it completes.
+                        })
                         .Forget()
                 );
             }
         }
 
         [Test]
-        public void CatchCancelation_PromiseMayBeCanceledAndAwaitedAndCallbackCanceledConcurrently_T()
+        public void CatchCancelation_PromiseMayBeCanceledAndAwaitedAndCallbackCanceledConcurrently_T(
+            [Values] ConfigureAwaitType configureAwaitType)
         {
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
             var cancelationToken = default(CancelationToken);
             var promise = default(Promise<int>);
             bool completed = false;
+
+            Thread foregroundThread = Thread.CurrentThread;
 
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise<int>, CancelationToken, Promise<int>>[]
@@ -491,14 +584,29 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
+                        TestHelper.ExecuteForegroundCallbacks();
                         cancelationSource.Dispose();
-                        Assert.IsTrue(completed);
+                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
+                        {
+                            Assert.IsTrue(completed);
+                        }
+                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
+                        {
+                            throw new TimeoutException();
+                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
                     () => deferred.Cancel(1),
-                    () => action(promise, cancelationToken)
-                        .Finally(() => completed = true) // Make sure it completes.
+                    () => action(promise.ConfigureAwait(configureAwaitType), cancelationToken)
+                        .Finally(() =>
+                        {
+                            TestHelper.AssertCallbackContext(
+                                configureAwaitType == ConfigureAwaitType.Foreground || configureAwaitType == ConfigureAwaitType.Explicit ? SynchronizationType.Synchronous : TestHelper.backgroundType,
+                                SynchronizationType.Background,
+                                foregroundThread);
+                            completed = true; // State of the promise is indeterminable, just make sure it completes.
+                        })
                         .Forget()
                 );
             }

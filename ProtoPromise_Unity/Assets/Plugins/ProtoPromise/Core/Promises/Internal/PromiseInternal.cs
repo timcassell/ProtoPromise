@@ -555,7 +555,7 @@ namespace Proto.Promises
                     promise.Reset();
                     promise._synchronizationContext = synchronizationContext;
                     promise._isSynchronous = isSynchronous;
-                    promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.None;
+                    promise._markedForSchedule = 0;
                     promise._wasForgottenOrHookupFailed = false;
                     return promise;
                 }
@@ -569,7 +569,7 @@ namespace Proto.Promises
                 {
                     var promise = GetOrCreate(isSynchronous, synchronizationContext);
                     promise._valueOrPrevious = CreateResolveContainer(result, 1);
-                    promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.MakeReady;
+                    promise._markedForSchedule = 1;
                     return promise;
                 }
 
@@ -595,10 +595,10 @@ namespace Proto.Promises
 #endif
                     {
                         ThrowIfInPool(this);
-                        ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.AddWaiter);
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
                         _waiter = waiter;
-                        Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
+                        Thread.MemoryBarrier(); // Interlocked is a full fence on x86, but isn't guaranteed full fence on older ARM, so explicit full fence here.
+                        bool wasMarkedForSchedule = Interlocked.Exchange(ref _markedForSchedule, 1) == 1;
                         if (State != Promise.State.Pending)
                         {
                             // Exchange and check for null to handle race condition with HandleWaiter on another thread.
@@ -608,7 +608,7 @@ namespace Proto.Promises
                                 waiter.MakeReady(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
                             }
                         }
-                        else if (previousScheduleType == ScheduleMethod.MakeReady)
+                        else if (wasMarkedForSchedule)
                         {
                             if (_isSynchronous)
                             {
@@ -626,10 +626,11 @@ namespace Proto.Promises
 
                 protected override void OnForgetOrHookupFailed()
                 {
+                    ThrowIfInPool(this);
                     _wasForgottenOrHookupFailed = true;
-                    Thread.MemoryBarrier(); // Make sure _mostRecentPotentialScheduleMethod is read after _wasForgottenOrHookupFailed is written.
-                    if ((ScheduleMethod) _mostRecentPotentialScheduleMethod == ScheduleMethod.MakeReady)
+                    if (Interlocked.Exchange(ref _markedForSchedule, 1) == 1)
                     {
+                        State = ((IValueContainer) _valueOrPrevious).GetState();
                         _smallFields.InterlockedTryReleaseComplete();
                     }
                     base.OnForgetOrHookupFailed();
@@ -640,12 +641,12 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     owner.SuppressRejection = true;
-                    ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.MakeReady);
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
-                    Thread.MemoryBarrier();
+                    Thread.MemoryBarrier(); // Interlocked is a full fence on x86, but isn't guaranteed full fence on older ARM, so explicit full fence here.
+                    bool wasMarkedForSchedule = Interlocked.Exchange(ref _markedForSchedule, 1) == 1;
                     // Leave pending until this is awaited or forgotten.
-                    if (previousScheduleType == ScheduleMethod.AddWaiter)
+                    if (wasMarkedForSchedule)
                     {
                         if (_isSynchronous)
                         {
