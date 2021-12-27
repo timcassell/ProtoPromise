@@ -135,29 +135,29 @@ namespace Proto.Promises
 
     partial class Internal
     {
+        [Flags]
+        internal enum PromiseFlags : byte
+        {
+            None = 0,
+
+            // Don't change the layout, very important for InterlockedSetSubscribedIfSecondPrevious().
+            SuppressRejection = 1 << 0,
+            WasAwaitedOrForgotten = 1 << 1,
+            // For progress below
+            SecondPrevious = 1 << 2,
+            SelfSubscribed = 1 << 3,
+            InProgressQueue = 1 << 4,
+            Subscribing = 1 << 5,
+            Reporting = 1 << 6,
+            SettingInitial = 1 << 7,
+
+            All = byte.MaxValue
+        }
+
         internal struct VoidResult { }
 
         partial class PromiseRef
         {
-            [Flags]
-            private enum PromiseFlags : byte
-            {
-                None = 0,
-
-                // Don't change the layout, very important for InterlockedSetSubscribedIfSecondPrevious().
-                SuppressRejection = 1 << 0,
-                WasAwaitedOrForgotten = 1 << 1,
-                // For progress below
-                SecondPrevious = 1 << 2,
-                SelfSubscribed = 1 << 3,
-                InProgressQueue = 1 << 4,
-                Subscribing = 1 << 5,
-                Reporting = 1 << 6,
-                SettingInitial = 1 << 7,
-
-                All = byte.MaxValue
-            }
-
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
 #endif
@@ -200,10 +200,17 @@ namespace Proto.Promises
 
             partial class ConfiguredPromise : PromiseSingleAwait
             {
+                private enum ScheduleMethod : int
+                {
+                    None,
+                    MakeReady,
+                    AddWaiter,
+                    OnForgetOrHookupFailed
+                }
+
                 private SynchronizationContext _synchronizationContext;
                 private bool _isSynchronous;
-                volatile private bool _wasForgottenOrHookupFailed;
-                volatile private int _markedForSchedule; // This is to make sure this is only scheduled once, even if multiple threads are racing.
+                volatile private int _mostRecentPotentialScheduleMethod; // ScheduleMethod casted to int for Interlocked. This is to make sure this is only scheduled once, even if multiple threads are racing.
             }
 
             partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait

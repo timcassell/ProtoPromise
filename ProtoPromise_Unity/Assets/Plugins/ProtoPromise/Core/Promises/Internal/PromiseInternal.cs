@@ -61,7 +61,6 @@ namespace Proto.Promises
                 private set { _smallFields._state = value; }
             }
 
-            // TODO: SuppressRejection can be set simultaneously with WasAwaitedOrForgotten when the promise is awaited (not forgotten).
             private bool SuppressRejection
             {
                 [MethodImpl(InlineOption)]
@@ -79,22 +78,10 @@ namespace Proto.Promises
                 }
             }
 
-            // TODO: WasAwaitedOrForgotten can be set simultaneously with IncrementDeferredId or Retain when the promise is awaited or forgotten.
             private bool WasAwaitedOrForgotten
             {
                 [MethodImpl(InlineOption)]
                 get { return _smallFields.AreFlagsSet(PromiseFlags.WasAwaitedOrForgotten); }
-                [MethodImpl(InlineOption)]
-                set
-                {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (!value)
-                    {
-                        throw new System.InvalidOperationException("Cannot unset WasAwaitedOrForgotten via the property.");
-                    }
-#endif
-                    _smallFields.InterlockedSetFlags(PromiseFlags.WasAwaitedOrForgotten);
-                }
             }
 
             private PromiseRef() { }
@@ -114,22 +101,20 @@ namespace Proto.Promises
                 }
             }
 
-            protected virtual void MarkAwaited(short promiseId)
+            protected virtual void MarkAwaited(short promiseId, PromiseFlags flags)
             {
-                IncrementId(promiseId);
-                WasAwaitedOrForgotten = true;
+                IncrementIdAndSetFlags(promiseId, flags);
             }
 
             internal void Forget(short promiseId)
             {
-                IncrementId(promiseId);
-                WasAwaitedOrForgotten = true;
+                IncrementIdAndSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten);
                 OnForgetOrHookupFailed();
             }
 
-            private void IncrementId(short promiseId)
+            private void IncrementIdAndSetFlags(short promiseId, PromiseFlags flags)
             {
-                if (!_smallFields.InterlockedTryIncrementPromiseId(promiseId))
+                if (!_smallFields.InterlockedTryIncrementPromiseIdAndSetFlags(promiseId, flags))
                 {
                     // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
                     // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
@@ -139,9 +124,9 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
             }
 
-            private void InterlockedRetainInternal(short promiseId)
+            private void InterlockedRetainAndSetFlagsInternal(short promiseId, PromiseFlags flags)
             {
-                if (!_smallFields.InterlockedTryRetain(promiseId))
+                if (!_smallFields.InterlockedTryRetainAndSetFlags(promiseId, flags))
                 {
                     // Public APIs do a simple validation check in DEBUG mode, this is an extra thread-safe validation in case the same object is concurrently used and/or forgotten at the same time.
                     // This is left in RELEASE mode because concurrency issues can be very difficult to track down, and might not show up in DEBUG mode.
@@ -161,7 +146,6 @@ namespace Proto.Promises
             void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
             {
                 ThrowIfInPool(this);
-                owner.SuppressRejection = true;
                 valueContainer.Retain();
                 _valueOrPrevious = valueContainer;
                 executionScheduler.ScheduleSynchronous(this);
@@ -206,7 +190,6 @@ namespace Proto.Promises
                 else
                 {
                     newPromise.OnHookupFailed();
-                    SuppressRejection = true; // Don't report rejection if newPromise is already canceled.
                     OnForgetOrHookupFailed();
                 }
             }
@@ -250,7 +233,7 @@ namespace Proto.Promises
 
             internal PromiseRef GetPreserved(short promiseId, int depth)
             {
-                MarkAwaited(promiseId);
+                MarkAwaited(promiseId, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
                 var newPromise = PromiseMultiAwait.GetOrCreate(depth);
                 HookupNewPromise(newPromise);
                 return newPromise;
@@ -258,7 +241,7 @@ namespace Proto.Promises
 
             internal virtual ConfiguredPromise GetConfigured(short promiseId, SynchronizationContext synchronizationContext)
             {
-                MarkAwaited(promiseId);
+                MarkAwaited(promiseId, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
                 var newPromise = ConfiguredPromise.GetOrCreate(false, synchronizationContext);
                 HookupNewPromise(newPromise);
                 return newPromise;
@@ -277,7 +260,7 @@ namespace Proto.Promises
             {
                 internal sealed override PromiseRef GetDuplicate(short promiseId)
                 {
-                    IncrementId(promiseId);
+                    IncrementIdAndSetFlags(promiseId, PromiseFlags.None);
                     return this;
                 }
 
@@ -401,7 +384,7 @@ namespace Proto.Promises
                 {
                     if (!WasAwaitedOrForgotten)
                     {
-                        WasAwaitedOrForgotten = true; // Stop base finalizer from adding an extra exception.
+                        _smallFields.InterlockedSetFlags(PromiseFlags.WasAwaitedOrForgotten); // Stop base finalizer from adding an extra exception.
                         string message = "A preserved Promise's resources were garbage collected without it being forgotten. You must call Forget() on each preserved promise when you are finished with it.";
                         AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
                     }
@@ -422,14 +405,14 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                protected override void MarkAwaited(short promiseId)
+                protected override void MarkAwaited(short promiseId, PromiseFlags flags)
                 {
-                    InterlockedRetainInternal(promiseId);
+                    InterlockedRetainAndSetFlagsInternal(promiseId, flags);
                 }
 
                 internal override PromiseRef GetDuplicate(short promiseId)
                 {
-                    MarkAwaited(promiseId);
+                    MarkAwaited(promiseId, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
                     var newPromise = ConfiguredPromise.GetOrCreate(true, null);
                     HookupNewPromise(newPromise);
                     return newPromise;
@@ -485,14 +468,6 @@ namespace Proto.Promises
                     {
                         branches.Pop().MakeReady(this, valueContainer, ref executionScheduler);
                     }
-
-                    //// TODO: keeping this code around for when background threaded tasks are implemented.
-                    //ValueLinkedQueue<ITreeHandleable> handleQueue = new ValueLinkedQueue<ITreeHandleable>();
-                    //while (_nextBranches.IsNotEmpty)
-                    //{
-                    //    _nextBranches.Pop().MakeReady(this, valueContainer, ref handleQueue);
-                    //}
-                    //AddToHandleQueueFront(ref handleQueue);
                 }
             }
 
@@ -555,8 +530,7 @@ namespace Proto.Promises
                     promise.Reset();
                     promise._synchronizationContext = synchronizationContext;
                     promise._isSynchronous = isSynchronous;
-                    promise._markedForSchedule = 0;
-                    promise._wasForgottenOrHookupFailed = false;
+                    promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.None;
                     return promise;
                 }
 
@@ -569,13 +543,13 @@ namespace Proto.Promises
                 {
                     var promise = GetOrCreate(isSynchronous, synchronizationContext);
                     promise._valueOrPrevious = CreateResolveContainer(result, 1);
-                    promise._markedForSchedule = 1;
+                    promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.MakeReady;
                     return promise;
                 }
 
                 internal override ConfiguredPromise GetConfigured(short promiseId, SynchronizationContext synchronizationContext)
                 {
-                    IncrementId(promiseId);
+                    IncrementIdAndSetFlags(promiseId, PromiseFlags.None);
                     _isSynchronous = false;
                     _synchronizationContext = synchronizationContext;
                     return this;
@@ -597,8 +571,7 @@ namespace Proto.Promises
                         ThrowIfInPool(this);
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
                         _waiter = waiter;
-                        Thread.MemoryBarrier(); // Interlocked is a full fence on x86, but isn't guaranteed full fence on older ARM, so explicit full fence here.
-                        bool wasMarkedForSchedule = Interlocked.Exchange(ref _markedForSchedule, 1) == 1;
+                        ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.AddWaiter);
                         if (State != Promise.State.Pending)
                         {
                             // Exchange and check for null to handle race condition with HandleWaiter on another thread.
@@ -608,12 +581,11 @@ namespace Proto.Promises
                                 waiter.MakeReady(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
                             }
                         }
-                        else if (wasMarkedForSchedule)
+                        else if (previousScheduleType == ScheduleMethod.MakeReady)
                         {
                             if (_isSynchronous)
                             {
                                 executionScheduler.ScheduleSynchronous(this);
-                                //AddToHandleQueueFront(this);
                             }
                             else
                             {
@@ -627,8 +599,7 @@ namespace Proto.Promises
                 protected override void OnForgetOrHookupFailed()
                 {
                     ThrowIfInPool(this);
-                    _wasForgottenOrHookupFailed = true;
-                    if (Interlocked.Exchange(ref _markedForSchedule, 1) == 1)
+                    if ((ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForgetOrHookupFailed) == ScheduleMethod.MakeReady)
                     {
                         State = ((IValueContainer) _valueOrPrevious).GetState();
                         _smallFields.InterlockedTryReleaseComplete();
@@ -640,25 +611,22 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    owner.SuppressRejection = true;
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
-                    Thread.MemoryBarrier(); // Interlocked is a full fence on x86, but isn't guaranteed full fence on older ARM, so explicit full fence here.
-                    bool wasMarkedForSchedule = Interlocked.Exchange(ref _markedForSchedule, 1) == 1;
+                    ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.MakeReady);
                     // Leave pending until this is awaited or forgotten.
-                    if (wasMarkedForSchedule)
+                    if (previousScheduleType == ScheduleMethod.AddWaiter)
                     {
                         if (_isSynchronous)
                         {
                             executionScheduler.ScheduleSynchronous(this);
-                            //AddToHandleQueueFront(this);
                         }
                         else
                         {
                             executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                         }
                     }
-                    else if (_wasForgottenOrHookupFailed)
+                    else if (previousScheduleType == ScheduleMethod.OnForgetOrHookupFailed)
                     {
                         executionScheduler.ScheduleSynchronous(this);
                     }
@@ -683,7 +651,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _ref.MarkAwaited(other.Id);
+                        _ref.MarkAwaited(other.Id, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
                         _valueOrPrevious = _ref;
                         SubscribeProgressToOther(_ref, other.Depth, ref executionScheduler);
                         _ref.AddWaiter(this, ref executionScheduler);
@@ -1192,10 +1160,10 @@ namespace Proto.Promises
                     }
                 }
 
-                internal static PromisePassThrough GetOrCreate(Promise owner, int index)
+                internal static PromisePassThrough GetOrCreate(Promise owner, int index, PromiseFlags ownerSetFlags)
                 {
                     // owner._ref is checked for nullity before passing into this.
-                    owner._target._ref.MarkAwaited(owner._target.Id);
+                    owner._target._ref.MarkAwaited(owner._target.Id, ownerSetFlags);
                     var passThrough = ObjectPool<PromisePassThrough>.TryTake<PromisePassThrough>()
                         ?? new PromisePassThrough();
                     passThrough._owner = owner._target._ref;
@@ -1268,7 +1236,7 @@ namespace Proto.Promises
             partial struct SmallFields
             {
                 [MethodImpl(InlineOption)]
-                internal bool InterlockedTryIncrementPromiseId(short promiseId)
+                internal bool InterlockedTryIncrementPromiseIdAndSetFlags(short promiseId, PromiseFlags flags)
                 {
                     Thread.MemoryBarrier();
                     SmallFields initialValue = default(SmallFields), newValue;
@@ -1285,6 +1253,7 @@ namespace Proto.Promises
                         {
                             ++newValue._promiseId;
                         }
+                        newValue._flags |= flags;
                     } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                     return true;
                 }
@@ -1328,7 +1297,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal bool InterlockedTryRetain(short promiseId)
+                internal bool InterlockedTryRetainAndSetFlags(short promiseId, PromiseFlags flags)
                 {
                     Thread.MemoryBarrier();
                     SmallFields initialValue = default(SmallFields), newValue;
@@ -1350,6 +1319,7 @@ namespace Proto.Promises
                         {
                             ++newValue._retains;
                         }
+                        newValue._flags |= flags;
                     } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                     return true;
                 }
@@ -1436,7 +1406,7 @@ namespace Proto.Promises
                     _retains = 2;
                 }
 
-                internal PromiseFlags InterlockedSetFlags(PromiseFlags progressFlags)
+                internal PromiseFlags InterlockedSetFlags(PromiseFlags flags)
                 {
                     Thread.MemoryBarrier();
                     SmallFields initialValue = default(SmallFields), newValue;
@@ -1444,16 +1414,16 @@ namespace Proto.Promises
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
                         newValue = initialValue;
-                        newValue._flags |= progressFlags;
+                        newValue._flags |= flags;
                     } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                     return initialValue._flags;
                 }
 
-                internal PromiseFlags InterlockedUnsetFlags(PromiseFlags progressFlags)
+                internal PromiseFlags InterlockedUnsetFlags(PromiseFlags flags)
                 {
                     Thread.MemoryBarrier();
                     SmallFields initialValue = default(SmallFields), newValue;
-                    PromiseFlags unsetFlags = ~progressFlags;
+                    PromiseFlags unsetFlags = ~flags;
                     do
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
@@ -1464,73 +1434,67 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal bool AreFlagsSet(PromiseFlags progressFlags)
+                internal bool AreFlagsSet(PromiseFlags flags)
                 {
-                    return (_flags & progressFlags) != 0;
+                    return (_flags & flags) != 0;
                 }
             } // SmallFields
 
-            internal static void MaybeMarkAwaitedAndSuppressRejectionAndDispose(PromiseRef promise, short id)
+            internal static void MaybeMarkAwaitedAndDispose(PromiseRef promise, short id, PromiseFlags flags)
             {
                 if (promise != null)
                 {
-                    promise.MarkAwaited(id);
-                    promise.SuppressRejection = true;
-                    promise.MaybeDispose();
-                }
-            }
-
-            internal static void MaybeMarkAwaitedAndDispose(PromiseRef promise, short id)
-            {
-                if (promise != null)
-                {
-                    promise.MarkAwaited(id);
+                    promise.MarkAwaited(id, flags);
                     promise.MaybeDispose();
                 }
             }
         } // PromiseRef
 
-        internal static uint PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index)
+        [MethodImpl(InlineOption)]
+        internal static void MaybeMarkAwaitedAndDispose(PromiseRef promise, short id, PromiseFlags flags)
+        {
+            PromiseRef.MaybeMarkAwaitedAndDispose(promise, id, flags);
+        }
+
+        internal static uint PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, PromiseFlags flags)
         {
             if (promise._target._ref != null)
             {
-                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index));
+                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
                 return 1;
             }
             return 0;
         }
 
-        internal static uint PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ulong completedProgress)
+        internal static uint PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ulong completedProgress, PromiseFlags flags)
         {
             if (promise._target._ref != null)
             {
-                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index));
+                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
                 return 1;
             }
-            // TODO: store depthAndProgress in Promise structs.
             ++completedProgress;
             return 0;
         }
 
-        internal static uint PrepareForMulti<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index)
+        internal static uint PrepareForMulti<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, PromiseFlags flags)
         {
             if (promise._ref != null)
             {
-                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index));
+                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
                 return 1;
             }
             value = promise.Result;
             return 0;
         }
 
-        internal static uint PrepareForMulti<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ulong completedProgress)
+        internal static uint PrepareForMulti<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ulong completedProgress, PromiseFlags flags)
         {
             if (promise._ref != null)
             {
-                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index));
+                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
                 return 1;
             }
-            // TODO: store depthAndProgress in Promise structs.
             ++completedProgress;
             value = promise.Result;
             return 0;

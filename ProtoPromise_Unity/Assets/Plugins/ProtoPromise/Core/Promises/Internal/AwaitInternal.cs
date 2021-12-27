@@ -21,21 +21,19 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void GetResultVoid(short promiseId)
             {
-                IncrementId(promiseId);
+                IncrementIdAndSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
 #if PROMISE_DEBUG
                 if (State == Promise.State.Pending)
                 {
                     throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
                 }
 #endif
-                WasAwaitedOrForgotten = true;
                 if (State == Promise.State.Resolved)
                 {
                     MaybeDispose();
                     return;
                 }
                 // Throw unhandled exception or canceled exception.
-                SuppressRejection = true;
                 Exception exception = ((IThrowable) _valueOrPrevious).GetException();
                 MaybeDispose();
                 throw exception;
@@ -44,14 +42,13 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal T GetResult<T>(short promiseId)
             {
-                IncrementId(promiseId);
+                IncrementIdAndSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
 #if PROMISE_DEBUG
                 if (State == Promise.State.Pending)
                 {
                     throw new InvalidOperationException("PromiseAwaiter<T>.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
                 }
 #endif
-                WasAwaitedOrForgotten = true;
                 if (State == Promise.State.Resolved)
                 {
                     T result = ((ResolveContainer<T>) _valueOrPrevious).value;
@@ -59,7 +56,6 @@ namespace Proto.Promises
                     return result;
                 }
                 // Throw unhandled exception or canceled exception.
-                SuppressRejection = true;
                 Exception exception = ((IThrowable) _valueOrPrevious).GetException();
                 MaybeDispose();
                 throw exception;
@@ -68,8 +64,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, short promiseId)
             {
-                // TODO: handle when synchronous callbacks are implemented
-                InterlockedRetainInternal(promiseId);
+                InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
                 HookupNewWaiter(AwaiterRef.GetOrCreate(continuation));
             }
 

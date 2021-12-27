@@ -31,7 +31,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         yieldInstruction = YieldInstruction<T>.GetOrCreate(null, Promise.State.Pending);
                         _this._ref.HookupNewWaiter(yieldInstruction);
                     }

@@ -295,7 +295,7 @@ namespace Proto.Promises
                     else
                     {
                         // TODO: refactor to reduce this from 2 virtual calls to 1.
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolve<Delegate<TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
@@ -329,7 +329,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<DelegatePromise<TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
@@ -367,7 +367,7 @@ namespace Proto.Promises
                     else
                     {
                         // TODO: refactor to reduce this from 2 virtual calls to 1.
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolve<DelegateCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
@@ -401,7 +401,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolvePromise<DelegatePromiseCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
@@ -437,7 +437,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveReject<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
@@ -474,7 +474,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveReject<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
@@ -512,7 +512,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
@@ -550,7 +550,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
@@ -588,7 +588,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<DelegatePromise<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
@@ -626,7 +626,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<DelegatePromiseCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
@@ -663,7 +663,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveReject<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
@@ -701,7 +701,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseResolveRejectPromise<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, nextDepth);
@@ -734,7 +734,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinue<DelegateContinue<TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
@@ -768,7 +768,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<DelegateContinuePromise<TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
@@ -801,7 +801,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinue<DelegateContinueCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
@@ -835,7 +835,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _this._ref.MarkAwaited(_this.Id);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
                             promise = CancelablePromiseContinuePromise<DelegateContinuePromiseCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken, nextDepth);
@@ -858,7 +858,7 @@ namespace Proto.Promises
                         var p = Invoker<VoidResult, VoidResult>.InvokeCallbackDirect(DelegateWrapper.Create(onFinally), _this.AsPromise()._target);
                         return new Promise<TResult>(p._ref, p.Id, p.Depth, _this.Result);
                     }
-                    _this._ref.MarkAwaited(_this.Id);
+                    _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                     PromiseRef promise = PromiseFinally<DelegateFinally>.GetOrCreate(new DelegateFinally(onFinally));
                     _this._ref.HookupNewPromise(promise);
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
@@ -876,7 +876,7 @@ namespace Proto.Promises
                         var p = Invoker<VoidResult, VoidResult>.InvokeCallbackDirect(DelegateWrapper.Create(capturedValue, onFinally), _this.AsPromise()._target);
                         return new Promise<TResult>(p._ref, p.Id, p.Depth, _this.Result);
                     }
-                    _this._ref.MarkAwaited(_this.Id);
+                    _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                     PromiseRef promise = PromiseFinally<DelegateCaptureFinally<TCapture>>.GetOrCreate(new DelegateCaptureFinally<TCapture>(capturedValue, onFinally));
                     _this._ref.HookupNewPromise(promise);
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
@@ -892,7 +892,7 @@ namespace Proto.Promises
                     }
 
                     PromiseRef promise;
-                    _this._ref.MarkAwaited(_this.Id);
+                    _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                     if (cancelationToken.CanBeCanceled)
                     {
                         promise = CancelablePromiseCancel<TCanceler>.GetOrCreate(canceler, cancelationToken);
@@ -1007,7 +1007,7 @@ namespace Proto.Promises
                         }
                     }
 
-                    _this._ref.MarkAwaited(_this.Id);
+                    _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                     promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken, _this.Depth, invokeOption == SynchronizationOption.Synchronous, synchronizationContext);
                     _this._ref.HookupNewPromiseWithProgress(promise, _this.Depth);
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);

@@ -138,7 +138,6 @@ namespace Proto.Promises
                     // Retain while handling, then release when complete for thread safety.
                     InterlockedRetainDisregardId();
 
-                    owner.SuppressRejection = true;
                     if (owner.State != Promise.State.Resolved) // Rejected/Canceled
                     {
                         if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
@@ -235,7 +234,6 @@ namespace Proto.Promises
                         // Retain while handling, then release when complete for thread safety.
                         InterlockedRetainDisregardId();
 
-                        owner.SuppressRejection = true;
                         if (owner.State != Promise.State.Resolved) // Rejected/Canceled
                         {
                             if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)

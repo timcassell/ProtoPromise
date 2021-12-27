@@ -868,7 +868,6 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     IsComplete = true;
-                    owner.SuppressRejection = true;
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     if (_smallProgressFields._isSynchronous)
@@ -1234,7 +1233,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     var _ref = other._ref;
-                    _ref.MarkAwaited(other.Id);
+                    _ref.MarkAwaited(other.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                     _valueOrPrevious = _ref;
 
                     ExecutionScheduler executionScheduler = new ExecutionScheduler(true);

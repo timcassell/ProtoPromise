@@ -64,7 +64,6 @@ namespace Proto.Promises
                     while (promisePassThroughs.IsNotEmpty)
                     {
                         var passThrough = promisePassThroughs.Pop();
-                        passThrough.Owner.SuppressRejection = true;
 #if PROMISE_DEBUG
                         passThrough.Retain();
                         lock (promise._locker)
@@ -80,7 +79,6 @@ namespace Proto.Promises
                             while (promisePassThroughs.IsNotEmpty)
                             {
                                 var p = promisePassThroughs.Pop();
-                                p.Owner.SuppressRejection = true;
                                 p.Owner.MaybeDispose();
                                 p.Release();
                                 --addCount;

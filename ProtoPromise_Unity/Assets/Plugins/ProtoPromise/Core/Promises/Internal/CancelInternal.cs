@@ -186,7 +186,6 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    owner.SuppressRejection = true;
                     _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
@@ -247,7 +246,6 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    owner.SuppressRejection = true;
                     _cancelationHelper.MaybeMakeReady(this, _resolver.IsNull, valueContainer, ref executionScheduler);
                 }
 
@@ -319,7 +317,6 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    owner.SuppressRejection = true;
                     _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
@@ -391,7 +388,6 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    owner.SuppressRejection = true;
                     _cancelationHelper.MaybeMakeReady(this, _resolver.IsNull, valueContainer, ref executionScheduler);
                 }
 
@@ -468,7 +464,6 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    owner.SuppressRejection = true;
                     _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
@@ -521,7 +516,6 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    owner.SuppressRejection = true;
                     _cancelationHelper.MaybeMakeReady(this, _continuer.IsNull, valueContainer, ref executionScheduler);
                 }
 
@@ -581,7 +575,6 @@ namespace Proto.Promises
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    owner.SuppressRejection = true;
                     _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 

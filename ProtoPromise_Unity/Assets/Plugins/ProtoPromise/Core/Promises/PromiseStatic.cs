@@ -19,12 +19,12 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             if (promise1._target._ref == null | promise2._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 2);
             return new Promise(promise, promise.Id, promise.Depth);
@@ -43,14 +43,14 @@ namespace Proto.Promises
             ValidateArgument(promise3, "promise3", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 3);
             return new Promise(promise, promise.Id, promise.Depth);
@@ -70,16 +70,16 @@ namespace Proto.Promises
             ValidateArgument(promise4, "promise4", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3, Internal.PromiseFlags.WasAwaitedOrForgotten));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 4);
             return new Promise(promise, promise.Id, promise.Depth);
@@ -122,14 +122,14 @@ namespace Proto.Promises
             {
                 var p = promises.Current;
                 ValidateElement(p, "promises", 1);
-                if (Internal.PrepareForMulti(p, ref passThroughs, i++) == 0)
+                if (Internal.PrepareForMulti(p, ref passThroughs, i++, Internal.PromiseFlags.WasAwaitedOrForgotten) == 0)
                 {
                     // Validate and release remaining elements.
                     while (promises.MoveNext())
                     {
                         p = promises.Current;
                         ValidateElement(p, "promises", 1);
-                        Internal.PromiseRef.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id);
+                        Internal.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
                     }
                     // Repool any created passthroughs.
                     foreach (var passthrough in passThroughs)
@@ -211,12 +211,12 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             if (promise1._target._ref == null | promise2._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise1._target._ref, promise1._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise2._target._ref, promise2._target.Id);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 2);
             return new Promise(promise, promise.Id, promise.Depth);
@@ -235,14 +235,14 @@ namespace Proto.Promises
             ValidateArgument(promise3, "promise3", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise1._target._ref, promise1._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise2._target._ref, promise2._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise3._target._ref, promise3._target.Id);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 3);
             return new Promise(promise, promise.Id, promise.Depth);
@@ -262,16 +262,16 @@ namespace Proto.Promises
             ValidateArgument(promise4, "promise4", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise1._target._ref, promise1._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise2._target._ref, promise2._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise3._target._ref, promise3._target.Id);
-                Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(promise4._target._ref, promise4._target.Id);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 4);
             return new Promise(promise, promise.Id, promise.Depth);
@@ -314,14 +314,14 @@ namespace Proto.Promises
             {
                 var p = promises.Current;
                 ValidateElement(p, "promises", 1);
-                if (Internal.PrepareForMulti(p, ref passThroughs, i++) == 0)
+                if (Internal.PrepareForMulti(p, ref passThroughs, i++, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection) == 0)
                 {
                     // Validate and release remaining elements.
                     while (promises.MoveNext())
                     {
                         p = promises.Current;
                         ValidateElement(p, "promises", 1);
-                        Internal.PromiseRef.MaybeMarkAwaitedAndSuppressRejectionAndDispose(p._target._ref, p._target.Id);
+                        Internal.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                     }
                     // Repool any created passthroughs.
                     foreach (var passthrough in passThroughs)
@@ -478,9 +478,9 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -501,11 +501,11 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -526,13 +526,13 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -577,7 +577,7 @@ namespace Proto.Promises
             {
                 var p = promises.Current;
                 ValidateElement(p, "promises", 1);
-                pendingCount += Internal.PrepareForMulti(p, ref passThroughs, i++, ref completedProgress);
+                pendingCount += Internal.PrepareForMulti(p, ref passThroughs, i++, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 ++totalCount;
             }
 
@@ -667,9 +667,9 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -697,9 +697,9 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -731,11 +731,11 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -768,11 +768,11 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -808,13 +808,13 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -850,13 +850,13 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -895,15 +895,15 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -942,15 +942,15 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -992,17 +992,17 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise6, "promise6", 1);
-            pendingCount += Internal.PrepareForMulti(promise6, ref passThroughs, 5, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise6, ref passThroughs, 5, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -1044,17 +1044,17 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise6, "promise6", 1);
-            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -1099,19 +1099,19 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise6, "promise6", 1);
-            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise7, "promise7", 1);
-            pendingCount += Internal.PrepareForMulti(promise7, ref passThroughs, 6, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise7, ref passThroughs, 6, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -1156,19 +1156,19 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise6, "promise6", 1);
-            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise7, "promise7", 1);
-            pendingCount += Internal.PrepareForMulti(promise7, ref value.Item7, ref passThroughs, 6, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise7, ref value.Item7, ref passThroughs, 6, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
@@ -1216,21 +1216,21 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise6, "promise6", 1);
-            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise7, "promise7", 1);
-            pendingCount += Internal.PrepareForMulti(promise7, ref value.Item7, ref passThroughs, 6, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise7, ref value.Item7, ref passThroughs, 6, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise8, "promise8", 1);
-            pendingCount += Internal.PrepareForMulti(promise8, ref passThroughs, 7, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise8, ref passThroughs, 7, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {

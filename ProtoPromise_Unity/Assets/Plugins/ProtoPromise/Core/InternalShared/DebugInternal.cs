@@ -292,8 +292,7 @@ namespace Proto.Promises
                 {
                     if (prev == this)
                     {
-                        _ref.MarkAwaited(other._target.Id);
-                        _ref.SuppressRejection = true;
+                        _ref.MarkAwaited(other._target.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         _ref.MaybeDispose();
                         while (passThroughs.Count > 0)
                         {
