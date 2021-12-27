@@ -6,29 +6,37 @@ name: Unity Builds
 on: [pull_request]
 
 jobs:
-  unity-tests:
+  unity-build:
     runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
       matrix:
         # Disabled Standalone and WebGL as they do not work in a docker image.
-        buildTarget: [StandaloneLinux64, WebGL]
+        buildTarget: [Standalone, WebGL, Android]
         scriptingRuntime: [Net3.5, Net4.x]
         scriptingBackend: [Mono, IL2CPP]
         mode: [Release, Debug]
         progress: [Progress_Enabled, Progress_Disabled]
         
-        # WebGL only supports IL2CPP
         exclude:
+            # unity-builder does not support standalone IL2CPP builds older than Unity 2020.
+          - buildTarget: Standalone
+            scriptingBackend: IL2CPP
+            # WebGL only supports IL2CPP
           - buildTarget: WebGL
             scriptingBackend: Mono
 
         include:
-          - buildTarget: StandaloneLinux64
+          - buildTarget: Standalone
+            targetPlatform: StandaloneLinux64
             buildTargetId: 1
           - buildTarget: WebGL
+            targetPlatform: WebGL
             buildTargetId: 13
+          - buildTarget: Android
+            targetPlatform: Android
+            buildTargetId: 7
 
           - mode: Release
             modeSymbol: PROTO_PROMISE_DEBUG_DISABLE
@@ -72,7 +80,7 @@ jobs:
           sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
           BackendOriginal="  scriptingBackend: {}"
-          BackendReplace="  scriptingBackend: \\n    Standalone: ${{ matrix.scriptingBackendId }}"
+          BackendReplace="  scriptingBackend: \\n    ${{ matrix.buildTarget }}: ${{ matrix.scriptingBackendId }}"
           sed -i "{s/$BackendOriginal/$BackendReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
       - name: Build Project
@@ -81,7 +89,8 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}
         with:
           projectPath: ProtoPromise_Unity
-          targetPlatform: ${{ matrix.buildTarget }}
+          targetPlatform: ${{ matrix.targetPlatform }}
+          buildMethod: UnityBuilderAction.BuildScript.Build
           allowDirtyBuild: true
 
       - uses: actions/upload-artifact@v2
