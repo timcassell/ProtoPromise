@@ -74,14 +74,6 @@ jobs:
           BackendReplace="  scriptingBackend: \\n    Standalone: ${{ matrix.scriptingBackendId }}"
           sed -i "{s/$BackendOriginal/$BackendReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
-      - uses: actions/cache@v2
-        with:
-          path: ProtoPromise_Unity/Library
-          key: Library-ProtoPromise-${{ matrix.buildTarget }}-${{ matrix.scriptingRuntime }}-${{ matrix.scriptingBackend }}-${{ matrix.mode }}-${{ matrix.progress }}
-          restore-keys: |
-            Library-ProtoPromise_Unity-
-            Library-
-
       - name: Build Project
         uses: game-ci/unity-builder@v2
         env:
@@ -89,6 +81,7 @@ jobs:
         with:
           projectPath: ProtoPromise_Unity
           targetPlatform: ${{ matrix.buildTarget }}
+          allowDirtyBuild: true
 
       - uses: actions/upload-artifact@v2
         with:
