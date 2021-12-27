@@ -587,19 +587,18 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void OnCanceledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode()
         {
-            // TODO: WaitAsync
-            Assert.Pass();
-
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
             bool canceled = false;
             deferred.Promise
+                .WaitAsync(SynchronizationOption.Foreground)
                 .CatchCancelation(e => canceled = true)
                 .Forget();
             cancelationSource.Cancel("Cancel value");
             Assert.False(canceled);
 
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.True(canceled);
 
             cancelationSource.Dispose();

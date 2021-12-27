@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 
 namespace Proto.Promises.Threading
@@ -137,10 +139,28 @@ namespace Proto.Promises.Threading
                 {
                     break;
                 }
+
+                // Catch all exceptions and continue executing callbacks until all are exhausted, then if there are any, throw all exceptions wrapped in AggregateException.
+                List<Exception> exceptions = null;
                 do
                 {
-                    syncStack.Pop().Invoke();
+                    try
+                    {
+                        syncStack.Pop().Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        if (exceptions == null)
+                        {
+                            exceptions = new List<Exception>();
+                        }
+                        exceptions.Add(e);
+                    }
                 } while (syncStack.IsNotEmpty);
+                if (exceptions != null)
+                {
+                    throw new AggregateException(exceptions).Flatten();
+                }
             }
         }
     }

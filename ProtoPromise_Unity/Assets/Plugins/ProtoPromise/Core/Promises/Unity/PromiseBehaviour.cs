@@ -138,10 +138,19 @@ namespace Proto.Promises
             // Execute SynchronizationContext callback in Coroutine rather than in Update.
             private IEnumerator UpdateRoutine()
             {
+                // We end up missing the first frame here, but that's not a big deal.
                 while (true)
                 {
                     yield return null;
-                    _syncContext.Execute();
+                    try
+                    {
+                        _syncContext.Execute();
+                    }
+                    // In case someone clears `Promise.Config.UncaughtRejectionHandler`, we catch the AggregateException here and log it so that the coroutine won't stop.
+                    catch (System.AggregateException e)
+                    {
+                        Debug.LogException(e);
+                    }
 
                     // Pop and pass to UnityEngine.Debug here so Unity won't add extra stackframes that we don't care about.
                     _unhandledExceptionsLocker.Enter();

@@ -73,19 +73,41 @@ namespace Proto.Promises
             public const int ProgressDecimalBits = 13; // Must be const. Allowing this to change at runtime could mess up progress in flight.
 
             [Obsolete("Use ObjectPoolingEnabled instead.")]
-            public static PoolType ObjectPooling { get { return _objectPoolingEnabled ? PoolType.All : PoolType.None; } set { _objectPoolingEnabled = value != PoolType.None; } }
+            public static PoolType ObjectPooling 
+            {
+                get { return _objectPoolingEnabled ? PoolType.All : PoolType.None; }
+                set { _objectPoolingEnabled = value != PoolType.None; }
+            }
 
             volatile private static bool _objectPoolingEnabled = true; // Enabled by default.
-            public static bool ObjectPoolingEnabled { get { return _objectPoolingEnabled; } set { _objectPoolingEnabled = value; } }
+            public static bool ObjectPoolingEnabled
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return _objectPoolingEnabled; } 
+                [MethodImpl(Internal.InlineOption)]
+                set { _objectPoolingEnabled = value; } 
+            }
 
             /// <summary>
             /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
             /// </summary>
 #if PROMISE_DEBUG
-            public static TraceLevel DebugCausalityTracer { get { return _debugCausalityTracer; } set { _debugCausalityTracer = value; } }
+            public static TraceLevel DebugCausalityTracer
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return _debugCausalityTracer; }
+                [MethodImpl(Internal.InlineOption)]
+                set { _debugCausalityTracer = value; }
+            }
             volatile private static TraceLevel _debugCausalityTracer = TraceLevel.Rejections;
 #else
-            public static TraceLevel DebugCausalityTracer { get { return default(TraceLevel); } set { } }
+            public static TraceLevel DebugCausalityTracer
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return default(TraceLevel); }
+                [MethodImpl(Internal.InlineOption)]
+                set { }
+            }
 #endif
 
             // Used so that libraries can have a ProtoPromise dependency without forcing progress enabled/disabled on those libraries' users.
@@ -109,12 +131,10 @@ namespace Proto.Promises
             /// </summary>
             public static Action<UnhandledException> UncaughtRejectionHandler
             {
+                [MethodImpl(Internal.InlineOption)]
                 get { return _uncaughtRejectionHandler; }
-                set
-                {
-                    _uncaughtRejectionHandler = value;
-                    Internal.MaybeReportUnhandledRejections(value);
-                }
+                [MethodImpl(Internal.InlineOption)]
+                set { _uncaughtRejectionHandler = value; }
             }
             volatile private static Action<UnhandledException> _uncaughtRejectionHandler;
 
@@ -123,6 +143,7 @@ namespace Proto.Promises
             /// </summary>
             public static SynchronizationContext ForegroundContext
             {
+                [MethodImpl(Internal.InlineOption)]
                 get { return _foregroundContext; }
                 set
                 {
@@ -137,7 +158,9 @@ namespace Proto.Promises
             /// </summary>
             public static SynchronizationContext BackgroundContext
             {
+                [MethodImpl(Internal.InlineOption)]
                 get { return _backgroundContext; }
+                [MethodImpl(Internal.InlineOption)]
                 set { _backgroundContext = value; }
             }
             volatile private static SynchronizationContext _backgroundContext;

@@ -14,6 +14,7 @@
 #pragma warning disable IDE0044 // Add readonly modifier
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -405,18 +406,11 @@ namespace Proto.Promises
             AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, type, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
         }
 
-        [MethodImpl(InlineOption)]
         internal static void MaybeReportUnhandledRejections()
         {
-            // If Promise.Config.UncaughtRejectionHandler is not set, unhandled rejections will continue to pile up until it is set.
-            MaybeReportUnhandledRejections(Promise.Config.UncaughtRejectionHandler);
-        }
-
-        internal static void MaybeReportUnhandledRejections(Action<UnhandledException> handler)
-        {
-            if (handler == null)
+            // Quick check to see if there are any unhandled rejections without entering the lock.
+            if (_unhandledExceptions.IsEmpty)
             {
-                // TODO: throw in background thread instead of letting them pile up.
                 return;
             }
 
@@ -425,9 +419,38 @@ namespace Proto.Promises
             _unhandledExceptions = new ValueLinkedStack<UnhandledException>();
             _unhandledExceptionsLocker.Exit();
 
-            while (unhandledExceptions.IsNotEmpty)
+            if (unhandledExceptions.IsEmpty)
             {
-                handler.Invoke(unhandledExceptions.Pop());
+                return;
+            }
+
+            // If the handler exists, send each UnhandledException to it individually.
+            Action<UnhandledException> handler = Promise.Config.UncaughtRejectionHandler;
+            if (handler != null)
+            {
+                do
+                {
+                    handler.Invoke(unhandledExceptions.Pop());
+                } while (unhandledExceptions.IsNotEmpty);
+                return;
+            }
+
+            // Otherwise, throw an AggregateException in the ForegroundContext if it exists, or background if it doesn't.
+            List<Exception> exceptions = new List<Exception>();
+            do
+            {
+                exceptions.Add(unhandledExceptions.Pop());
+            } while (unhandledExceptions.IsNotEmpty);
+
+            AggregateException aggregateException = new AggregateException(exceptions);
+            SynchronizationContext synchronizationContext = Promise.Config.ForegroundContext ?? Promise.Config.BackgroundContext;
+            if (synchronizationContext != null)
+            {
+                synchronizationContext.Post(e => { throw (AggregateException) e; }, aggregateException);
+            }
+            else
+            {
+                ThreadPool.QueueUserWorkItem(e => { throw (AggregateException) e; }, aggregateException);
             }
         }
 
