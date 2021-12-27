@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable CS0618 // Type or member is obsolete
 
 using System;
 using System.Runtime.CompilerServices;
