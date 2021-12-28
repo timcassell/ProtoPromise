@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -145,55 +146,37 @@ namespace Proto.Promises
             return new Promise(promise, promise.Id, promise.Depth);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2)
         {
             return Promise<T>.Race(promise1, promise2);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             return Promise<T>.Race(promise1, promise2, promise3);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             return Promise<T>.Race(promise1, promise2, promise3, promise4);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T>(params Promise<T>[] promises)
         {
             return Promise<T>.Race(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
         {
             return Promise<T>.Race(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.Race(promises);
@@ -337,55 +320,37 @@ namespace Proto.Promises
             return new Promise(promise, promise.Id, promise.Depth);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2)
         {
             return Promise<T>.First(promise1, promise2);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             return Promise<T>.First(promise1, promise2, promise3);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             return Promise<T>.First(promise1, promise2, promise3, promise4);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T>(params Promise<T>[] promises)
         {
             return Promise<T>.First(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T>(IEnumerable<Promise<T>> promises)
         {
             return Promise<T>.First(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.First(promises);
@@ -589,67 +554,43 @@ namespace Proto.Promises
             return new Promise(promise, promise.Id, promise.Depth);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
         {
             return Promise<T>.All(promise1, promise2, valueContainer);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
         {
             return Promise<T>.All(promise1, promise2, promise3, valueContainer);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
         {
             return Promise<T>.All(promise1, promise2, promise3, promise4, valueContainer);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/> when they have all resolved.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T>(params Promise<T>[] promises)
         {
             return Promise<T>.All(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/>s when they have all resolved.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises)
         {
             return Promise<T>.All(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/>s when they have all resolved.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.All(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve with <paramref name="valueContainer"/> where the values are in the same order as <paramref name="promises"/> when they have all resolved.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> AllNonAlloc<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.AllNonAlloc(promises, valueContainer);
@@ -679,7 +620,7 @@ namespace Proto.Promises
             {
                 if (index == 0)
                 {
-                    target.value = ((Internal.ResolveContainer<T1>) feed).value;
+                    target.value = feed.GetValue<T1>();
                 }
             }, pendingCount, 2, completedProgress);
             return new Promise<T1>(promise, promise.Id, promise.Depth);
@@ -709,11 +650,11 @@ namespace Proto.Promises
             {
                 if (index == 0)
                 {
-                    target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                    target.value.Item1 = feed.GetValue<T1>();
                 }
                 else
                 {
-                    target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                    target.value.Item2 = feed.GetValue<T2>();
                 }
             }, pendingCount, 2, completedProgress);
             return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, promise.Depth);
@@ -746,10 +687,10 @@ namespace Proto.Promises
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                 }
             }, pendingCount, 3, completedProgress);
@@ -783,13 +724,13 @@ namespace Proto.Promises
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                 }
             }, pendingCount, 3, completedProgress);
@@ -825,13 +766,13 @@ namespace Proto.Promises
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                 }
             }, pendingCount, 4, completedProgress);
@@ -867,16 +808,16 @@ namespace Proto.Promises
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                 }
             }, pendingCount, 4, completedProgress);
@@ -914,16 +855,16 @@ namespace Proto.Promises
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                 }
             }, pendingCount, 5, completedProgress);
@@ -961,19 +902,19 @@ namespace Proto.Promises
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                 }
             }, pendingCount, 5, completedProgress);
@@ -1013,19 +954,19 @@ namespace Proto.Promises
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                 }
             }, pendingCount, 6, completedProgress);
@@ -1065,22 +1006,22 @@ namespace Proto.Promises
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = feed.GetValue<T6>();
                         break;
                 }
             }, pendingCount, 6, completedProgress);
@@ -1122,22 +1063,22 @@ namespace Proto.Promises
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = feed.GetValue<T6>();
                         break;
                 }
             }, pendingCount, 7, completedProgress);
@@ -1179,25 +1120,25 @@ namespace Proto.Promises
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = feed.GetValue<T6>();
                         break;
                     case 6:
-                        target.value.Item7 = ((Internal.ResolveContainer<T7>) feed).value;
+                        target.value.Item7 = feed.GetValue<T7>();
                         break;
                 }
             }, pendingCount, 7, completedProgress);
@@ -1241,109 +1182,358 @@ namespace Proto.Promises
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = feed.GetValue<T6>();
                         break;
                     case 6:
-                        target.value.Item7 = ((Internal.ResolveContainer<T7>) feed).value;
+                        target.value.Item7 = feed.GetValue<T7>();
                         break;
                 }
             }, pendingCount, 8, completedProgress);
             return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, promise.Depth);
         }
 
-        // TODO: Synchronization options for Promise(<T>).New()
-        // TODO: Promise.Run(Action/Func<Promise>, SynchronizationOption)
-
-        /// <summary>
-        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
-        /// or rejected with that <see cref="Exception"/>.
-        /// </summary>
-		public static Promise New(Action<Deferred> resolver)
+        private static Promise SwitchToContext(SynchronizationOption synchronizationOption)
         {
-            Deferred deferred = Deferred.New();
-            Internal.CreateResolved()
-                .Finally(ValueTuple.Create(deferred, resolver), cv =>
-                {
-                    Deferred def = cv.Item1;
-                    try
-                    {
-                        cv.Item2.Invoke(def);
-                    }
-                    catch (OperationCanceledException e)
-                    {
-                        def.TryCancel(e); // Don't rethrow cancelation.
-                    }
-                    catch (Exception e)
-                    {
-                        if (!def.TryReject(e)) throw;
-                    }
-                });
-            return deferred.Promise;
+            return Internal.CreateResolved()
+                .WaitAsync(synchronizationOption);
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Promise{T}.Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Promise{T}.Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
-        /// or rejected with that <see cref="Exception"/>.
+        /// Returns a new <see cref="Promise"/> that will resolve on the foreground context.
         /// </summary>
-		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver)
+        public static Promise SwitchToForeground()
         {
-            return Promise<T>.New(resolver);
+            return SwitchToContext(SynchronizationOption.Foreground);
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with <paramref name="captureValue"/> and a <see cref="Deferred"/> that controls the state of the <see cref="Promise"/>.
+        /// Returns a new <see cref="Promise"/> that will resolve on the background context.
+        /// </summary>
+        public static Promise SwitchToBackground()
+        {
+            return SwitchToContext(SynchronizationOption.Background);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/> that will resolve on the provided <paramref name="synchronizationContext"/>
+        /// </summary>
+        public static Promise SwitchToContext(SynchronizationContext synchronizationContext)
+        {
+            return Internal.CreateResolved()
+                .WaitAsync(synchronizationContext);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise"/>.
+        /// You may provide a <paramref name="synchronizationOption"/> to control the context on which the <paramref name="resolver"/> is invoked.
         /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
         /// or rejected with that <see cref="Exception"/>.
         /// </summary>
-        public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver)
+		public static Promise New(Action<Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
         {
             Deferred deferred = Deferred.New();
-            Internal.CreateResolved()
-                .Finally(ValueTuple.Create(deferred, resolver, captureValue), cv =>
+            Run(ValueTuple.Create(deferred, resolver), cv =>
+            {
+                Deferred def = cv.Item1;
+                try
                 {
-                    Deferred def = cv.Item1;
-                    try
-                    {
-                        cv.Item2.Invoke(cv.Item3, def);
-                    }
-                    catch (OperationCanceledException e)
-                    {
-                        def.TryCancel(e); // Don't rethrow cancelation.
-                    }
-                    catch (Exception e)
-                    {
-                        if (!def.TryReject(e)) throw;
-                    }
-                })
+                    cv.Item2.Invoke(def);
+                }
+                catch (OperationCanceledException e)
+                {
+                    def.TryCancel(e); // Don't rethrow cancelation.
+                }
+                catch (Exception e)
+                {
+                    if (!def.TryReject(e)) throw;
+                }
+            }, synchronizationOption)
                 .Forget();
             return deferred.Promise;
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with <paramref name="captureValue"/> and a <see cref="Promise{T}.Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Promise{T}.Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise"/> on the provided <paramref name="synchronizationContext"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
         /// or rejected with that <see cref="Exception"/>.
         /// </summary>
-        public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver)
+		public static Promise New(Action<Deferred> resolver, SynchronizationContext synchronizationContext)
         {
-            return Promise<T>.New(captureValue, resolver);
+            Deferred deferred = Deferred.New();
+            Run(ValueTuple.Create(deferred, resolver), cv =>
+            {
+                Deferred def = cv.Item1;
+                try
+                {
+                    cv.Item2.Invoke(def);
+                }
+                catch (OperationCanceledException e)
+                {
+                    def.TryCancel(e); // Don't rethrow cancelation.
+                }
+                catch (Exception e)
+                {
+                    if (!def.TryReject(e)) throw;
+                }
+            }, synchronizationContext)
+                .Forget();
+            return deferred.Promise;
+        }
+
+        [Obsolete("Prefer Promise<T>.New()")]
+		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
+        {
+            return Promise<T>.New(resolver, synchronizationOption);
+        }
+
+        [Obsolete("Prefer Promise<T>.New()")]
+        public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver, SynchronizationContext synchronizationContext)
+        {
+            return Promise<T>.New(resolver, synchronizationContext);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked with <paramref name="captureValue"/> and a <see cref="Deferred"/> that controls the state of the <see cref="Promise"/>.
+        /// You may provide a <paramref name="synchronizationOption"/> to control the context on which the <paramref name="resolver"/> is invoked.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// or rejected with that <see cref="Exception"/>.
+        /// </summary>
+        public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
+        {
+            Deferred deferred = Deferred.New();
+            Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
+            {
+                Deferred def = cv.Item1;
+                try
+                {
+                    cv.Item2.Invoke(cv.Item3, def);
+                }
+                catch (OperationCanceledException e)
+                {
+                    def.TryCancel(e); // Don't rethrow cancelation.
+                }
+                catch (Exception e)
+                {
+                    if (!def.TryReject(e)) throw;
+                }
+            }, synchronizationOption)
+                .Forget();
+            return deferred.Promise;
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked with <paramref name="captureValue"/> and a <see cref="Deferred"/> that controls the state of the <see cref="Promise"/> on the provided <paramref name="synchronizationContext"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// or rejected with that <see cref="Exception"/>.
+        /// </summary>
+        public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationContext synchronizationContext)
+        {
+            Deferred deferred = Deferred.New();
+            Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
+            {
+                Deferred def = cv.Item1;
+                try
+                {
+                    cv.Item2.Invoke(cv.Item3, def);
+                }
+                catch (OperationCanceledException e)
+                {
+                    def.TryCancel(e); // Don't rethrow cancelation.
+                }
+                catch (Exception e)
+                {
+                    if (!def.TryReject(e)) throw;
+                }
+            }, synchronizationContext)
+                .Forget();
+            return deferred.Promise;
+        }
+
+        [Obsolete("Prefer Promise<T>.New()")]
+        public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
+        {
+            return Promise<T>.New(captureValue, resolver, synchronizationOption);
+        }
+
+        [Obsolete("Prefer Promise<T>.New()")]
+        public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver, SynchronizationContext synchronizationContext)
+        {
+            return Promise<T>.New(captureValue, resolver, synchronizationContext);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="action"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise"/> that will be resolved when the <paramref name="action"/> returns successfully.
+        /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run(Action action, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Finally(action);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="action"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise"/> that will be resolved when the <paramref name="action"/> returns successfully.
+        /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Finally(captureValue, action);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="action"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise"/> that will be resolved when the <paramref name="action"/> returns successfully.
+        /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run(Action action, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Finally(action);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="action"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise"/> that will be resolved when the <paramref name="action"/> returns successfully.
+        /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Finally(captureValue, action);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise{T}"/> that will be resolved with the value returned by the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<T>(Func<T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise{T}"/> that will be resolved with the value returned by the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(captureValue, function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise{T}"/> that will be resolved with the value returned by the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<T>(Func<T> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise{T}"/> that will be resolved with the value returned by the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(captureValue, function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise"/> that will adopt the state of the <see cref="Promise"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run(Func<Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise"/> that will adopt the state of the <see cref="Promise"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(captureValue, function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise"/> that will adopt the state of the <see cref="Promise"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run(Func<Promise> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise"/> that will adopt the state of the <see cref="Promise"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(captureValue, function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise{T}"/> that will adopt the state of the <see cref="Promise{T}"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise{T}"/> that will adopt the state of the <see cref="Promise{T}"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(captureValue, function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise{T}"/> that will adopt the state of the <see cref="Promise{T}"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise{T}"/> that will adopt the state of the <see cref="Promise{T}"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(captureValue, function);
         }
 
         /// <summary>
@@ -1372,9 +1562,7 @@ namespace Proto.Promises
             return deferred.Promise;
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that is already rejected with <paramref name="reason"/>.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Rejected<TReject>(TReject reason)")]
         public static Promise<T> Rejected<T, TReject>(TReject reason)
         {
             return Promise<T>.Rejected(reason);
@@ -1408,9 +1596,7 @@ namespace Proto.Promises
             return Promise<T>.Canceled();
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that is already canceled with <paramref name="reason"/>.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Canceled<TCancel>(TCancel reason)")]
         public static Promise<T> Canceled<T, TCancel>(TCancel reason)
         {
             return Promise<T>.Canceled(reason);

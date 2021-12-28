@@ -248,7 +248,6 @@ namespace Proto.Promises
             return ResolveContainer<TValue>.GetOrCreate(value, retainCount);
         }
 
-        // IValueContainer.(Try)GetValue<TValue>() must be implemented as extensions instead of interface members, because AOT might not compile the virtual methods when TValue is a value-type.
         [MethodImpl(InlineOption)]
         internal static TValue GetValue<TValue>(this IValueContainer valueContainer)
         {
@@ -261,6 +260,7 @@ namespace Proto.Promises
             return ((ResolveContainer<TValue>) valueContainer).value;
         }
 
+        // IValueContainer.TryGetValue<TValue>() must be implemented as an extension instead of interface member, because AOT might not compile the virtual method when TValue is a value-type.
         internal static bool TryGetValue<TValue>(this IValueContainer valueContainer, out TValue converted)
         {
             // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.

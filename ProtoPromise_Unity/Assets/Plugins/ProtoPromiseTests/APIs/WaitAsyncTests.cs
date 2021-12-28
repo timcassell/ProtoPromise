@@ -140,68 +140,6 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        private static void BuildPromise<TReject>(CompleteType completeType, bool isAlreadyComplete, TReject reason, out Promise.Deferred deferred, out CancelationSource cancelationSource, out Promise promise)
-        {
-            if (!isAlreadyComplete)
-            {
-                deferred = TestHelper.GetNewDeferredVoid(completeType, out cancelationSource);
-                promise = deferred.Promise;
-                return;
-            }
-
-            deferred = default(Promise.Deferred);
-            cancelationSource = default(CancelationSource);
-            switch (completeType)
-            {
-                case CompleteType.Resolve:
-                {
-                    promise = Promise.Resolved();
-                    break;
-                }
-                case CompleteType.Reject:
-                {
-                    promise = Promise.Rejected(reason);
-                    break;
-                }
-                default:
-                {
-                    promise = Promise.Canceled();
-                    break;
-                }
-            }
-        }
-
-        private static void BuildPromise<T, TReject>(CompleteType completeType, bool isAlreadyComplete, T value, TReject reason, out Promise<T>.Deferred deferred, out CancelationSource cancelationSource, out Promise<T> promise)
-        {
-            if (!isAlreadyComplete)
-            {
-                deferred = TestHelper.GetNewDeferredT<T>(completeType, out cancelationSource);
-                promise = deferred.Promise;
-                return;
-            }
-
-            deferred = default(Promise<T>.Deferred);
-            cancelationSource = default(CancelationSource);
-            switch (completeType)
-            {
-                case CompleteType.Resolve:
-                {
-                    promise = Promise.Resolved(value);
-                    break;
-                }
-                case CompleteType.Reject:
-                {
-                    promise = Promise<T>.Rejected(reason);
-                    break;
-                }
-                default:
-                {
-                    promise = Promise<T>.Canceled();
-                    break;
-                }
-            }
-        }
-
         private readonly TimeSpan timeout = TimeSpan.FromSeconds(1);
 
         // promise
@@ -230,17 +168,14 @@ namespace ProtoPromiseTests.APIs
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
-            CancelationSource firstCancelationSource;
-            Promise.Deferred firstDeferred;
-            Promise firstPromise;
-            CancelationSource secondCancelationSource;
-            Promise<int>.Deferred secondDeferred;
-            Promise<int> secondPromise;
-
             string rejectReason = "Fail";
 
-            BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectReason, out firstDeferred, out firstCancelationSource, out firstPromise);
-            BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource, out secondPromise);
+            CancelationSource firstCancelationSource;
+            Promise.Deferred firstDeferred;
+            CancelationSource secondCancelationSource;
+            Promise<int>.Deferred secondDeferred;
+            Promise firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectReason, out firstDeferred, out firstCancelationSource);
+            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();
@@ -406,17 +341,14 @@ namespace ProtoPromiseTests.APIs
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
-            CancelationSource firstCancelationSource;
-            Promise<int>.Deferred firstDeferred;
-            Promise<int> firstPromise;
-            CancelationSource secondCancelationSource;
-            Promise<int>.Deferred secondDeferred;
-            Promise<int> secondPromise;
-
             string rejectReason = "Fail";
 
-            BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectReason, out firstDeferred, out firstCancelationSource, out firstPromise);
-            BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource, out secondPromise);
+            CancelationSource firstCancelationSource;
+            Promise<int>.Deferred firstDeferred;
+            CancelationSource secondCancelationSource;
+            Promise<int>.Deferred secondDeferred;
+            Promise<int> firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectReason, out firstDeferred, out firstCancelationSource);
+            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();
@@ -582,17 +514,14 @@ namespace ProtoPromiseTests.APIs
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
-            CancelationSource firstCancelationSource;
-            Promise.Deferred firstDeferred;
-            Promise firstPromise;
-            CancelationSource secondCancelationSource;
-            Promise<int>.Deferred secondDeferred;
-            Promise<int> secondPromise;
-
             string rejectReason = "Fail";
 
-            BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectReason, out firstDeferred, out firstCancelationSource, out firstPromise);
-            BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource, out secondPromise);
+            CancelationSource firstCancelationSource;
+            Promise.Deferred firstDeferred;
+            CancelationSource secondCancelationSource;
+            Promise<int>.Deferred secondDeferred;
+            Promise firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectReason, out firstDeferred, out firstCancelationSource);
+            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();
@@ -693,17 +622,14 @@ namespace ProtoPromiseTests.APIs
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
-            CancelationSource firstCancelationSource;
-            Promise<int>.Deferred firstDeferred;
-            Promise<int> firstPromise;
-            CancelationSource secondCancelationSource;
-            Promise<int>.Deferred secondDeferred;
-            Promise<int> secondPromise;
-
             string rejectReason = "Fail";
 
-            BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectReason, out firstDeferred, out firstCancelationSource, out firstPromise);
-            BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource, out secondPromise);
+            CancelationSource firstCancelationSource;
+            Promise<int>.Deferred firstDeferred;
+            CancelationSource secondCancelationSource;
+            Promise<int>.Deferred secondDeferred;
+            Promise<int> firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectReason, out firstDeferred, out firstCancelationSource);
+            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();
@@ -800,13 +726,11 @@ namespace ProtoPromiseTests.APIs
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
-            CancelationSource cancelationSource;
-            Promise.Deferred deferred;
-            Promise promise;
-
             string rejectReason = "Fail";
 
-            BuildPromise(completeType, isAlreadyComplete, rejectReason, out deferred, out cancelationSource, out promise);
+            CancelationSource cancelationSource;
+            Promise.Deferred deferred;
+            Promise promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejectReason, out deferred, out cancelationSource);
 
             promise = promise.Preserve();
 
@@ -867,13 +791,11 @@ namespace ProtoPromiseTests.APIs
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
-            CancelationSource cancelationSource;
-            Promise<int>.Deferred deferred;
-            Promise<int> promise;
-
             string rejectReason = "Fail";
 
-            BuildPromise(completeType, isAlreadyComplete, 1, rejectReason, out deferred, out cancelationSource, out promise);
+            CancelationSource cancelationSource;
+            Promise<int>.Deferred deferred;
+            Promise<int> promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, 1, rejectReason, out deferred, out cancelationSource);
 
             promise = promise.Preserve();
 
@@ -934,13 +856,11 @@ namespace ProtoPromiseTests.APIs
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
-            CancelationSource cancelationSource;
-            Promise.Deferred deferred;
-            Promise promise;
-
             string rejectReason = "Fail";
 
-            BuildPromise(completeType, isAlreadyComplete, rejectReason, out deferred, out cancelationSource, out promise);
+            CancelationSource cancelationSource;
+            Promise.Deferred deferred;
+            Promise promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejectReason, out deferred, out cancelationSource);
 
             promise = promise.Preserve();
 
@@ -1001,13 +921,11 @@ namespace ProtoPromiseTests.APIs
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
-            CancelationSource cancelationSource;
-            Promise<int>.Deferred deferred;
-            Promise<int> promise;
-
             string rejectReason = "Fail";
 
-            BuildPromise(completeType, isAlreadyComplete, 1, rejectReason, out deferred, out cancelationSource, out promise);
+            CancelationSource cancelationSource;
+            Promise<int>.Deferred deferred;
+            Promise<int> promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, 1, rejectReason, out deferred, out cancelationSource);
 
             promise = promise.Preserve();
 
@@ -1073,17 +991,14 @@ namespace ProtoPromiseTests.APIs
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
-            CancelationSource firstCancelationSource;
-            Promise.Deferred firstDeferred;
-            Promise firstPromise;
-            CancelationSource secondCancelationSource;
-            Promise.Deferred secondDeferred;
-            Promise secondPromise;
-
             string rejectReason = "Fail";
 
-            BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectReason, out firstDeferred, out firstCancelationSource, out firstPromise);
-            BuildPromise(secondCompleteType, isSecondAlreadyComplete, rejectReason, out secondDeferred, out secondCancelationSource, out secondPromise);
+            CancelationSource firstCancelationSource;
+            Promise.Deferred firstDeferred;
+            CancelationSource secondCancelationSource;
+            Promise.Deferred secondDeferred;
+            Promise firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectReason, out firstDeferred, out firstCancelationSource);
+            Promise secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, rejectReason, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();
@@ -1187,17 +1102,14 @@ namespace ProtoPromiseTests.APIs
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
-            CancelationSource firstCancelationSource;
-            Promise<int>.Deferred firstDeferred;
-            Promise<int> firstPromise;
-            CancelationSource secondCancelationSource;
-            Promise<int>.Deferred secondDeferred;
-            Promise<int> secondPromise;
-
             string rejectReason = "Fail";
 
-            BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectReason, out firstDeferred, out firstCancelationSource, out firstPromise);
-            BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource, out secondPromise);
+            CancelationSource firstCancelationSource;
+            Promise<int>.Deferred firstDeferred;
+            CancelationSource secondCancelationSource;
+            Promise<int>.Deferred secondDeferred;
+            Promise<int> firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectReason, out firstDeferred, out firstCancelationSource);
+            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();

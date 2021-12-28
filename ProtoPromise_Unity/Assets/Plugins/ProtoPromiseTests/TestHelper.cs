@@ -204,6 +204,60 @@ namespace ProtoPromiseTests
             return Promise<T>.NewDeferred();
         }
 
+        public static Promise BuildPromise<TReject>(CompleteType completeType, bool isAlreadyComplete, TReject reason, out Promise.Deferred deferred, out CancelationSource cancelationSource)
+        {
+            if (!isAlreadyComplete)
+            {
+                deferred = GetNewDeferredVoid(completeType, out cancelationSource);
+                return deferred.Promise;
+            }
+
+            deferred = default(Promise.Deferred);
+            cancelationSource = default(CancelationSource);
+            switch (completeType)
+            {
+                case CompleteType.Resolve:
+                {
+                    return Promise.Resolved();
+                }
+                case CompleteType.Reject:
+                {
+                    return Promise.Rejected(reason);
+                }
+                default:
+                {
+                    return Promise.Canceled();
+                }
+            }
+        }
+
+        public static Promise<T> BuildPromise<T, TReject>(CompleteType completeType, bool isAlreadyComplete, T value, TReject reason, out Promise<T>.Deferred deferred, out CancelationSource cancelationSource)
+        {
+            if (!isAlreadyComplete)
+            {
+                deferred = GetNewDeferredT<T>(completeType, out cancelationSource);
+                return deferred.Promise;
+            }
+
+            deferred = default(Promise<T>.Deferred);
+            cancelationSource = default(CancelationSource);
+            switch (completeType)
+            {
+                case CompleteType.Resolve:
+                {
+                    return Promise.Resolved(value);
+                }
+                case CompleteType.Reject:
+                {
+                    return Promise<T>.Rejected(reason);
+                }
+                default:
+                {
+                    return Promise<T>.Canceled();
+                }
+            }
+        }
+
         public static Promise ThenDuplicate(this Promise promise, CancelationToken cancelationToken = default(CancelationToken))
         {
             return promise.Then(() => { }, cancelationToken);

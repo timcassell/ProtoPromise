@@ -1551,7 +1551,7 @@ namespace ProtoPromiseTests.APIs
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return Promise.Race(extraPromise, promise.ThenDuplicate().ThenDuplicate()).Catch(() => 1);
+                return Promise<int>.Race(extraPromise, promise.ThenDuplicate().ThenDuplicate()).Catch(() => 1);
             };
 
             TestAction<Promise> onCallbackAdded = (ref Promise p) =>
@@ -1653,7 +1653,7 @@ namespace ProtoPromiseTests.APIs
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return Promise.Race(promise.ThenDuplicate().ThenDuplicate(), extraPromise).Catch(() => 1);
+                return Promise<int>.Race(promise.ThenDuplicate().ThenDuplicate(), extraPromise).Catch(() => 1);
             };
 
             TestAction<Promise> onCallbackAdded = (ref Promise p) =>
@@ -1757,7 +1757,7 @@ namespace ProtoPromiseTests.APIs
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return Promise.First(promise.ThenDuplicate().ThenDuplicate(), extraPromise).Catch(() => 1);
+                return Promise<int>.First(promise.ThenDuplicate().ThenDuplicate(), extraPromise).Catch(() => 1);
             };
 
             TestAction<Promise> onCallbackAdded = (ref Promise p) =>
@@ -1859,7 +1859,7 @@ namespace ProtoPromiseTests.APIs
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return Promise.First(extraPromise, promise.ThenDuplicate().ThenDuplicate()).Catch(() => 1);
+                return Promise<int>.First(extraPromise, promise.ThenDuplicate().ThenDuplicate()).Catch(() => 1);
             };
 
             TestAction<Promise> onCallbackAdded = (ref Promise p) =>
@@ -1963,7 +1963,7 @@ namespace ProtoPromiseTests.APIs
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return Promise.All(promise.ThenDuplicate().ThenDuplicate(), extraPromise)
+                return Promise<int>.All(promise.ThenDuplicate().ThenDuplicate(), extraPromise)
                     .Catch(() => { })
                     .Then(() => 1);
             };
@@ -2068,7 +2068,7 @@ namespace ProtoPromiseTests.APIs
             Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
             {
                 promise.Catch(catcher).Forget();
-                return Promise.All(extraPromise, promise.ThenDuplicate().ThenDuplicate())
+                return Promise<int>.All(extraPromise, promise.ThenDuplicate().ThenDuplicate())
                     .Catch(() => { })
                     .Then(() => 1);
             };

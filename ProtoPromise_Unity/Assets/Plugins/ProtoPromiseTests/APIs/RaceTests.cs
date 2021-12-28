@@ -55,7 +55,7 @@ namespace ProtoPromiseTests.APIs
 
             bool resolved = false;
 
-            Promise.Race(deferred1.Promise, deferred2.Promise)
+            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
                 .Then(i =>
                 {
                     Assert.AreEqual(5, i);
@@ -104,7 +104,7 @@ namespace ProtoPromiseTests.APIs
 
             bool resolved = false;
 
-            Promise.Race(deferred1.Promise, deferred2.Promise)
+            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
                 .Then(i =>
                 {
                     Assert.AreEqual(5, i);
@@ -156,7 +156,7 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
             string expected = "Error";
 
-            Promise.Race(deferred1.Promise, deferred2.Promise)
+            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
                 .Catch((string rej) =>
                 {
                     Assert.AreEqual(expected, rej);
@@ -208,7 +208,7 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
             string expected = "Error";
 
-            Promise.Race(deferred1.Promise, deferred2.Promise)
+            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
                 .Catch((string rej) =>
                 {
                     Assert.AreEqual(expected, rej);
@@ -264,7 +264,7 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
             string expected = "Cancel";
 
-            Promise.Race(deferred1.Promise, deferred2.Promise)
+            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
                 .CatchCancelation(reason =>
                 {
                     Assert.AreEqual(expected, reason.Value);
@@ -320,7 +320,7 @@ namespace ProtoPromiseTests.APIs
 
             bool invoked = false;
 
-            Promise.Race(deferred1.Promise, deferred2.Promise)
+            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
                 .CatchCancelation(reason =>
                 {
                     Assert.IsNull(reason.ValueType);
@@ -378,7 +378,7 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
             string expected = "Cancel";
 
-            Promise.Race(deferred1.Promise, deferred2.Promise)
+            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
                 .CatchCancelation(reason =>
                 {
                     Assert.AreEqual(expected, reason.Value);
@@ -434,7 +434,7 @@ namespace ProtoPromiseTests.APIs
 
             bool invoked = false;
 
-            Promise.Race(deferred1.Promise, deferred2.Promise)
+            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
                 .CatchCancelation(reason =>
                 {
                     Assert.IsNull(reason.ValueType);
@@ -487,7 +487,7 @@ namespace ProtoPromiseTests.APIs
             var deferred2 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.Race(deferred1.Promise, deferred2.Promise)
+            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
                 .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
 
@@ -525,7 +525,7 @@ namespace ProtoPromiseTests.APIs
             var deferred1 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.Race(deferred1.Promise, Promise.Resolved(1))
+            Promise<int>.Race(deferred1.Promise, Promise.Resolved(1))
                 .SubscribeProgressAndAssert(progressHelper, 1f)
                 .Forget();
 
@@ -568,7 +568,7 @@ namespace ProtoPromiseTests.APIs
             var deferred2 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.Race(
+            Promise<int>.Race(
                 deferred1.Promise.ThenDuplicate(),
                 deferred2.Promise.ThenDuplicate()
             )
@@ -640,7 +640,7 @@ namespace ProtoPromiseTests.APIs
             var deferred4 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.Race(
+            Promise<int>.Race(
                 deferred1.Promise
                     .Then(() => deferred3.Promise),
                 deferred2.Promise
@@ -712,7 +712,7 @@ namespace ProtoPromiseTests.APIs
             var deferred2 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.Race(
+            Promise<int>.Race(
                 deferred1.Promise
                     .Then(x => Promise.Resolved(x)),
                 deferred2.Promise
@@ -766,7 +766,7 @@ namespace ProtoPromiseTests.APIs
             var deferred2 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.Race(deferred1.Promise, deferred2.Promise)
+            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
                 .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Catch(() => { })
                 .Forget();
@@ -815,7 +815,7 @@ namespace ProtoPromiseTests.APIs
             var deferred2 = Promise.NewDeferred<int>(cancelationSource1.Token);
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.Race(deferred1.Promise, deferred2.Promise)
+            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
                 .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
 
@@ -890,7 +890,7 @@ namespace ProtoPromiseTests.APIs
             var cancelationSource = CancelationSource.New();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.Race(
+            Promise<int>.Race(
                 // Make first and second promise chains the same length
                 deferred1.Promise
                     .Then(x => Promise.Resolved(x))

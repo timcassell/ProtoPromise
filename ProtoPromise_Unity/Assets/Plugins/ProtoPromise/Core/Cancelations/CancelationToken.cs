@@ -256,9 +256,9 @@ namespace Proto.Promises
         }
 
         // Calls to this get compiled away in RELEASE mode
-        static partial void ValidateArgument(object arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
-        static partial void ValidateArgument(object arg, string argName, int skipFrames)
+        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
         {
             Internal.ValidateArgument(arg, argName, skipFrames + 1);
         }

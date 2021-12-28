@@ -53,7 +53,7 @@ namespace ProtoPromiseTests.APIs
 
             bool invoked = false;
 
-            Promise.All(deferred1.Promise, deferred2.Promise)
+            Promise<int>.All(deferred1.Promise, deferred2.Promise)
                 .Then(values =>
                 {
                     invoked = true;
@@ -91,7 +91,7 @@ namespace ProtoPromiseTests.APIs
         {
             bool invoked = false;
 
-            Promise.All(Enumerable.Empty<Promise<int>>())
+            Promise<int>.All(Enumerable.Empty<Promise<int>>())
                 .Then(v =>
                 {
                     invoked = true;
@@ -120,7 +120,7 @@ namespace ProtoPromiseTests.APIs
         {
             bool invoked = false;
 
-            Promise.All(Promise.Resolved(1), Promise.Resolved(2))
+            Promise<int>.All(Promise.Resolved(1), Promise.Resolved(2))
                 .Then(v => { invoked = true; })
                 .Forget();
 
@@ -158,7 +158,7 @@ namespace ProtoPromiseTests.APIs
 
             bool errored = false;
 
-            Promise.All(deferred1.Promise, deferred2.Promise)
+            Promise<int>.All(deferred1.Promise, deferred2.Promise)
                 .Then(
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     (string e) => { errored = true; })
@@ -204,7 +204,7 @@ namespace ProtoPromiseTests.APIs
 
             bool errored = false;
 
-            Promise.All(deferred1.Promise, deferred2.Promise)
+            Promise<int>.All(deferred1.Promise, deferred2.Promise)
                 .Then(
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     (string e) => { errored = true; })
@@ -265,7 +265,7 @@ namespace ProtoPromiseTests.APIs
 
             bool errored = false;
 
-            Promise.All(promise1, promise2)
+            Promise<int>.All(promise1, promise2)
                 .Then(
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     (string e) => { errored = true; })
@@ -333,7 +333,7 @@ namespace ProtoPromiseTests.APIs
             var promise1 = deferred.Promise.Preserve();
             var promise2 = Promise<int>.Rejected(rejection).Preserve();
 
-            Promise.All(promise1, promise2)
+            Promise<int>.All(promise1, promise2)
                 .Then(
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     (string ex) =>
@@ -343,7 +343,7 @@ namespace ProtoPromiseTests.APIs
                     })
                 .Forget();
 
-            Promise.All(promise2, promise1)
+            Promise<int>.All(promise2, promise1)
                 .Then(
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     (string ex) =>
@@ -399,7 +399,7 @@ namespace ProtoPromiseTests.APIs
 
             bool canceled = false;
 
-            Promise.All(deferred1.Promise, deferred2.Promise)
+            Promise<int>.All(deferred1.Promise, deferred2.Promise)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
                 .CatchCancelation(e => { canceled = true; })
                 .Forget();
@@ -449,7 +449,7 @@ namespace ProtoPromiseTests.APIs
 
             bool canceled = false;
 
-            Promise.All(deferred1.Promise, deferred2.Promise)
+            Promise<int>.All(deferred1.Promise, deferred2.Promise)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
                 .CatchCancelation(e => { canceled = true; })
                 .Forget();
@@ -504,7 +504,7 @@ namespace ProtoPromiseTests.APIs
 
             bool canceled = false;
 
-            Promise.All(deferred1.Promise, deferred2.Promise)
+            Promise<int>.All(deferred1.Promise, deferred2.Promise)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
                 .CatchCancelation(e => { canceled = true; })
                 .Forget();
@@ -567,7 +567,7 @@ namespace ProtoPromiseTests.APIs
             var promise1 = deferred.Promise.Preserve();
             var promise2 = Promise<int>.Canceled(cancelation).Preserve();
 
-            Promise.All(promise1, promise2)
+            Promise<int>.All(promise1, promise2)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
                 .CatchCancelation(ex =>
                 {
@@ -576,7 +576,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            Promise.All(promise2, promise1)
+            Promise<int>.All(promise2, promise1)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
                 .CatchCancelation(ex =>
                 {
@@ -633,7 +633,7 @@ namespace ProtoPromiseTests.APIs
             var deferred4 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.All(deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise)
+            Promise<int>.All(deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise)
                 .SubscribeProgressAndAssert(progressHelper, 0f / 4f)
                 .Forget();
 
@@ -684,7 +684,7 @@ namespace ProtoPromiseTests.APIs
             var deferred4 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.All(deferred1.Promise, Promise.Resolved(1), deferred3.Promise, deferred4.Promise)
+            Promise<int>.All(deferred1.Promise, Promise.Resolved(1), deferred3.Promise, deferred4.Promise)
                 .SubscribeProgressAndAssert(progressHelper, 1f / 4f)
                 .Forget();
 
@@ -727,7 +727,7 @@ namespace ProtoPromiseTests.APIs
             var deferred2 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.All(deferred1.Promise.ThenDuplicate(), deferred2.Promise.ThenDuplicate())
+            Promise<int>.All(deferred1.Promise.ThenDuplicate(), deferred2.Promise.ThenDuplicate())
                 .SubscribeProgressAndAssert(progressHelper, 0f / 2f)
                 .Forget();
 
@@ -780,7 +780,7 @@ namespace ProtoPromiseTests.APIs
             var deferred4 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.All(
+            Promise<int>.All(
                 deferred1.Promise.Then(v => deferred3.Promise),
                 deferred2.Promise.Then(v => deferred4.Promise)
             )
@@ -832,7 +832,7 @@ namespace ProtoPromiseTests.APIs
             var deferred2 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.All(
+            Promise<int>.All(
                 deferred1.Promise.Then(x => Promise.Resolved(x)),
                 deferred2.Promise.Then(x => Promise.Resolved(x))
             )
@@ -881,7 +881,7 @@ namespace ProtoPromiseTests.APIs
             var deferred3 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.All(deferred1.Promise, deferred2.Promise, deferred3.Promise)
+            Promise<int>.All(deferred1.Promise, deferred2.Promise, deferred3.Promise)
                 .SubscribeProgressAndAssert(progressHelper, 0f / 3f)
                 .Catch(() => { })
                 .Forget();
@@ -934,7 +934,7 @@ namespace ProtoPromiseTests.APIs
             var deferred3 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.All(deferred1.Promise, deferred2.Promise, deferred3.Promise)
+            Promise<int>.All(deferred1.Promise, deferred2.Promise, deferred3.Promise)
                 .SubscribeProgressAndAssert(progressHelper, 0f / 3f)
                 .Forget();
 
@@ -1007,7 +1007,7 @@ namespace ProtoPromiseTests.APIs
             var cancelationSource = CancelationSource.New();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.All(
+            Promise<int>.All(
                 // Make first and second promise chains the same length
                 deferred1.Promise
                     .Then(x => Promise.Resolved(x))

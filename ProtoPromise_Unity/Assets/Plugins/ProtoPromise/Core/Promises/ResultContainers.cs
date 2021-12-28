@@ -296,7 +296,7 @@ namespace Proto.Promises
                     ValidateCall();
                     ValidateResolved();
                     return _valueContainer != null
-                        ? ((Internal.ResolveContainer<T>) _valueContainer).value
+                        ? _valueContainer.GetValue<T>()
                         : _result;
                 }
             }

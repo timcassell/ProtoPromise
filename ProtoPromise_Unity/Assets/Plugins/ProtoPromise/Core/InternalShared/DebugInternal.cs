@@ -42,7 +42,6 @@ namespace Proto.Promises
         // Calls to these get compiled away in RELEASE mode
         partial class PromiseRef
         {
-            static partial void ValidateArgument(object arg, string argName, int skipFrames);
             partial void ValidateReturn(Promise other);
 
             partial class DeferredPromiseBase
@@ -123,7 +122,7 @@ namespace Proto.Promises
             return FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
         }
 
-        internal static void ValidateArgument(object arg, string argName, int skipFrames)
+        internal static void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
         {
             if (arg == null)
             {
@@ -204,6 +203,8 @@ namespace Proto.Promises
             void SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces);
         }
 
+        // TODO: make sure causality traces are still formatted properly with synchronous callbacks.
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
@@ -260,11 +261,6 @@ namespace Proto.Promises
 
         partial class PromiseRef
         {
-            static partial void ValidateArgument(object arg, string argName, int skipFrames)
-            {
-                Internal.ValidateArgument(arg, argName, skipFrames + 1);
-            }
-
             partial void ValidateReturn(Promise other)
             {
                 if (!other.IsValid)
@@ -395,7 +391,7 @@ namespace Proto.Promises
     {
         // Calls to these get compiled away in RELEASE mode
         partial void ValidateOperation(int skipFrames);
-        static partial void ValidateArgument(object arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
         static partial void ValidateArgument(Promise arg, string argName, int skipFrames);
         static partial void ValidateElement(Promise promise, string argName, int skipFrames);
 
@@ -405,7 +401,7 @@ namespace Proto.Promises
             Internal.ValidateOperation(this, skipFrames + 1);
         }
 
-        static partial void ValidateArgument(object arg, string argName, int skipFrames)
+        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
         {
             Internal.ValidateArgument(arg, argName, skipFrames + 1);
         }
@@ -440,7 +436,7 @@ namespace Proto.Promises
     {
         // Calls to these get compiled away in RELEASE mode
         partial void ValidateOperation(int skipFrames);
-        static partial void ValidateArgument(object arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
         static partial void ValidateArgument(Promise<T> arg, string argName, int skipFrames);
         static partial void ValidateElement(Promise<T> promise, string argName, int skipFrames);
 #if PROMISE_DEBUG
@@ -449,7 +445,7 @@ namespace Proto.Promises
             Internal.ValidateOperation(this, skipFrames + 1);
         }
 
-        static partial void ValidateArgument(object arg, string argName, int skipFrames)
+        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
         {
             Internal.ValidateArgument(arg, argName, skipFrames + 1);
         }

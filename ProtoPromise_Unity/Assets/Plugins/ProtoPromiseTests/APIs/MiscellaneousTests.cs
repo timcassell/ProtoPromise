@@ -6,6 +6,8 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using ProtoPromiseTests.Threading;
+using System.Threading;
 
 namespace ProtoPromiseTests.APIs
 {
@@ -861,5 +863,87 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsTrue(canceled);
         }
+
+        [Test]
+        public void PromiseSwitchToContextWorksProperly_Then(
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background, SynchronizationType.Explicit)] SynchronizationType synchronizationType,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            Thread foregroundThread = Thread.CurrentThread;
+            bool invoked = false;
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(() =>
+            {
+                Promise promise = synchronizationType == SynchronizationType.Foreground
+                    ? Promise.SwitchToForeground()
+                    : synchronizationType == SynchronizationType.Background
+                    ? Promise.SwitchToBackground()
+                    : Promise.SwitchToContext(TestHelper._foregroundContext);
+
+                promise
+                    .Then(() =>
+                    {
+                        TestHelper.AssertCallbackContext(synchronizationType, invokeContext, foregroundThread);
+                        invoked = true;
+                    })
+                    .Forget();
+            }, invokeContext == SynchronizationType.Foreground);
+
+            TestHelper.ExecuteForegroundCallbacks();
+            if (synchronizationType != SynchronizationType.Background)
+            {
+                Assert.True(invoked);
+            }
+            else
+            {
+                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
+                {
+                    throw new System.TimeoutException();
+                }
+            }
+        }
+
+#if CSHARP_7_3_OR_NEWER
+        [Test]
+        public void PromiseSwitchToContextWorksProperly_Await(
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background, SynchronizationType.Explicit)] SynchronizationType synchronizationType,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            Thread foregroundThread = Thread.CurrentThread;
+            bool invoked = false;
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(() =>
+            {
+                Await();
+
+                async void Await()
+                {
+                    Promise promise = synchronizationType == SynchronizationType.Foreground
+                        ? Promise.SwitchToForeground()
+                        : synchronizationType == SynchronizationType.Background
+                        ? Promise.SwitchToBackground()
+                        : Promise.SwitchToContext(TestHelper._foregroundContext);
+                    
+                    await promise;
+
+                    TestHelper.AssertCallbackContext(synchronizationType, invokeContext, foregroundThread);
+                    invoked = true;
+                }
+            }, invokeContext == SynchronizationType.Foreground);
+
+            TestHelper.ExecuteForegroundCallbacks();
+            if (synchronizationType != SynchronizationType.Background)
+            {
+                Assert.True(invoked);
+            }
+            else
+            {
+                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
+                {
+                    throw new System.TimeoutException();
+                }
+            }
+        }
+#endif
     }
 }

@@ -19,7 +19,7 @@ namespace Proto.Promises
         partial class PromiseRef
         {
             [MethodImpl(InlineOption)]
-            internal void GetResultVoid(short promiseId)
+            internal T GetResult<T>(short promiseId)
             {
                 IncrementIdAndSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
 #if PROMISE_DEBUG
@@ -30,28 +30,7 @@ namespace Proto.Promises
 #endif
                 if (State == Promise.State.Resolved)
                 {
-                    MaybeDispose();
-                    return;
-                }
-                // Throw unhandled exception or canceled exception.
-                Exception exception = ((IThrowable) _valueOrPrevious).GetException();
-                MaybeDispose();
-                throw exception;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal T GetResult<T>(short promiseId)
-            {
-                IncrementIdAndSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-#if PROMISE_DEBUG
-                if (State == Promise.State.Pending)
-                {
-                    throw new InvalidOperationException("PromiseAwaiter<T>.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
-                }
-#endif
-                if (State == Promise.State.Resolved)
-                {
-                    T result = ((ResolveContainer<T>) _valueOrPrevious).value;
+                    T result = ((IValueContainer) _valueOrPrevious).GetValue<T>();
                     MaybeDispose();
                     return result;
                 }
@@ -173,17 +152,6 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void GetResultVoid()
-            {
-                ValidateGetResult(1);
-                var _ref = _promise._ref;
-                if (_ref != null)
-                {
-                    _ref.GetResultVoid(_promise.Id);
-                }
-            }
-
-            [MethodImpl(InlineOption)]
             internal T GetResult()
             {
                 ValidateGetResult(1);
@@ -215,7 +183,7 @@ namespace Proto.Promises
 
             partial void ValidateOperation(int skipFrames);
             partial void ValidateGetResult(int skipFrames);
-            static partial void ValidateArgument(object arg, string argName, int skipFrames);
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
             partial void ValidateOperation(int skipFrames)
             {
@@ -239,7 +207,7 @@ namespace Proto.Promises
                 }
             }
 
-            static partial void ValidateArgument(object arg, string argName, int skipFrames)
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
             {
                 Internal.ValidateArgument(arg, argName, skipFrames + 1);
             }
@@ -284,7 +252,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void GetResult()
             {
-                _awaiter.GetResultVoid();
+                _awaiter.GetResult();
             }
 
             [MethodImpl(Internal.InlineOption)]

@@ -259,7 +259,7 @@ namespace ProtoPromiseTests.APIs
 
             var deferred = Promise.NewDeferred<int>();
 
-            Promise.Sequence(() => deferred.Promise, () => Promise.Canceled<int, string>(cancelation))
+            Promise.Sequence(() => deferred.Promise, () => Promise<int>.Canceled(cancelation))
                 .CatchCancelation(reason =>
                 {
                     Assert.AreEqual(cancelation, reason.Value);

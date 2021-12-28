@@ -157,9 +157,10 @@ namespace Proto.Promises.Threading
                         exceptions.Add(e);
                     }
                 } while (syncStack.IsNotEmpty);
+
                 if (exceptions != null)
                 {
-                    throw new AggregateException(exceptions).Flatten();
+                    throw new AggregateException(exceptions);
                 }
             }
         }

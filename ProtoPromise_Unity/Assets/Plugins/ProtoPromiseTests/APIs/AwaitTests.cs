@@ -197,7 +197,7 @@ namespace ProtoPromiseTests.APIs
             {
                 try
                 {
-                    int value = await Promise.Rejected<int, string>(rejectValue);
+                    int value = await Promise<int>.Rejected(rejectValue);
                 }
                 catch (UnhandledException e)
                 {
@@ -311,7 +311,7 @@ namespace ProtoPromiseTests.APIs
             {
                 try
                 {
-                    int value = await Promise.Canceled<int, string>(cancelValue);
+                    int value = await Promise<int>.Canceled(cancelValue);
                 }
                 catch (CanceledException e)
                 {

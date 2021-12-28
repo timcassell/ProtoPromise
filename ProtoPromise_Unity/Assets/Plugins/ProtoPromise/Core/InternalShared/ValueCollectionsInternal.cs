@@ -671,26 +671,32 @@ namespace Proto.Promises
                 return GetEnumerator();
             }
         }
+    } // class Internal
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode]
+#endif
+    internal static class ArrayExtensions
+    {
         /// <summary>
         /// Generic Array enumerator. Use this instead of the default <see cref="Array.GetEnumerator"/> for passing it around as an <see cref="IEnumerator{T}"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal struct ArrayEnumerator<T> : IEnumerator<T>
+        internal struct Enumerator<T> : IEnumerator<T>
         {
             private readonly T[] _collection;
             private int _index;
 
-            [MethodImpl(InlineOption)]
-            internal ArrayEnumerator(T[] array)
+            [MethodImpl(Internal.InlineOption)]
+            internal Enumerator(T[] array)
             {
                 _index = -1;
                 _collection = array;
             }
 
-            [MethodImpl(InlineOption)]
+            [MethodImpl(Internal.InlineOption)]
             public bool MoveNext()
             {
                 return ++_index < _collection.Length;
@@ -698,7 +704,7 @@ namespace Proto.Promises
 
             public T Current
             {
-                [MethodImpl(InlineOption)]
+                [MethodImpl(Internal.InlineOption)]
                 get { return _collection[_index]; }
             }
 
@@ -713,17 +719,11 @@ namespace Proto.Promises
 #pragma warning restore RECS0083 // Shows NotImplementedException throws in the quick task bar
             }
         }
-    } // class Internal
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
-#endif
-    internal static class ArrayExtensions
-    {
         [MethodImpl(Internal.InlineOption)]
-        internal static Internal.ArrayEnumerator<T> GetGenericEnumerator<T>(this T[] array)
+        internal static Enumerator<T> GetGenericEnumerator<T>(this T[] array)
         {
-            return new Internal.ArrayEnumerator<T>(array);
+            return new Enumerator<T>(array);
         }
     }
 } // namespace Proto.Promises
