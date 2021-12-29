@@ -442,7 +442,7 @@ namespace Proto.Promises
                 exceptions.Add(unhandledExceptions.Pop());
             } while (unhandledExceptions.IsNotEmpty);
 
-            AggregateException aggregateException = new AggregateException(exceptions);
+            AggregateException aggregateException = new AggregateException("Promise.Config.UncaughtRejectionHandler was null.", exceptions);
             SynchronizationContext synchronizationContext = Promise.Config.ForegroundContext ?? Promise.Config.BackgroundContext;
             if (synchronizationContext != null)
             {

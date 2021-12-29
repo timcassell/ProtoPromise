@@ -203,8 +203,6 @@ namespace Proto.Promises
             void SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces);
         }
 
-        // TODO: make sure causality traces are still formatted properly with synchronous callbacks.
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
