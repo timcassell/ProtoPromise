@@ -265,7 +265,7 @@ namespace Proto.Promises
                         default: // SynchronizationOption.Explicit
                         {
                             var newRef = _this._ref == null
-                                ? ConfiguredPromise.GetOrCreateFromNull(false, synchronizationContext, _this.Result)
+                                ? PromiseConfigured.GetOrCreateFromNull(synchronizationContext, _this.Result)
                                 : _this._ref.GetConfigured(_this.Id, synchronizationContext);
                             return new Promise<TResult>(newRef, newRef.Id, _this.Depth, _this.Result);
                         }

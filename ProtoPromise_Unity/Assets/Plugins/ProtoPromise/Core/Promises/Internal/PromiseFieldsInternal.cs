@@ -198,7 +198,7 @@ namespace Proto.Promises
                 volatile protected ITreeHandleable _waiter;
             }
 
-            partial class ConfiguredPromise : PromiseSingleAwait
+            partial class PromiseConfigured : PromiseSingleAwait
             {
                 private enum ScheduleMethod : int
                 {
@@ -209,7 +209,6 @@ namespace Proto.Promises
                 }
 
                 private SynchronizationContext _synchronizationContext;
-                private bool _isSynchronous;
                 volatile private int _mostRecentPotentialScheduleMethod; // ScheduleMethod casted to int for Interlocked. This is to make sure this is only scheduled once, even if multiple threads are racing.
             }
 

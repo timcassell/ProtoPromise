@@ -239,10 +239,10 @@ namespace Proto.Promises
                 return newPromise;
             }
 
-            internal virtual ConfiguredPromise GetConfigured(short promiseId, SynchronizationContext synchronizationContext)
+            internal virtual PromiseConfigured GetConfigured(short promiseId, SynchronizationContext synchronizationContext)
             {
                 MarkAwaited(promiseId, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
-                var newPromise = ConfiguredPromise.GetOrCreate(false, synchronizationContext);
+                var newPromise = PromiseConfigured.GetOrCreate(synchronizationContext);
                 HookupNewPromise(newPromise);
                 return newPromise;
             }
@@ -413,7 +413,7 @@ namespace Proto.Promises
                 internal override PromiseRef GetDuplicate(short promiseId)
                 {
                     MarkAwaited(promiseId, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
-                    var newPromise = ConfiguredPromise.GetOrCreate(true, null);
+                    var newPromise = PromiseDuplicate.GetOrCreate();
                     HookupNewPromise(newPromise);
                     return newPromise;
                 }
@@ -513,9 +513,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class ConfiguredPromise : PromiseSingleAwait, ITreeHandleable
+            internal sealed class PromiseDuplicate : PromiseSingleAwait
             {
-                private ConfiguredPromise() { }
+                private PromiseDuplicate() { }
 
                 protected override void Dispose()
                 {
@@ -523,34 +523,60 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                internal static ConfiguredPromise GetOrCreate(bool isSynchronous, SynchronizationContext synchronizationContext)
+                [MethodImpl(InlineOption)]
+                internal static PromiseDuplicate GetOrCreate()
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<ConfiguredPromise>()
-                        ?? new ConfiguredPromise();
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseDuplicate>()
+                        ?? new PromiseDuplicate();
+                    promise.Reset();
+                    return promise;
+                }
+
+                public override void Handle(ref ExecutionScheduler executionScheduler)
+                {
+                    HandleSelf((IValueContainer) _valueOrPrevious, ref executionScheduler);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal sealed partial class PromiseConfigured : PromiseSingleAwait, ITreeHandleable
+            {
+                private PromiseConfigured() { }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                internal static PromiseConfigured GetOrCreate(SynchronizationContext synchronizationContext)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseConfigured>()
+                        ?? new PromiseConfigured();
                     promise.Reset();
                     promise._synchronizationContext = synchronizationContext;
-                    promise._isSynchronous = isSynchronous;
                     promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.None;
                     return promise;
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static ConfiguredPromise GetOrCreateFromNull<TResult>(bool isSynchronous, SynchronizationContext synchronizationContext,
+                internal static PromiseConfigured GetOrCreateFromNull<TResult>(SynchronizationContext synchronizationContext,
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
                     TResult result)
                 {
-                    var promise = GetOrCreate(isSynchronous, synchronizationContext);
+                    var promise = GetOrCreate(synchronizationContext);
                     promise._valueOrPrevious = CreateResolveContainer(result, 1);
                     promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.MakeReady;
                     return promise;
                 }
 
-                internal override ConfiguredPromise GetConfigured(short promiseId, SynchronizationContext synchronizationContext)
+                internal override PromiseConfigured GetConfigured(short promiseId, SynchronizationContext synchronizationContext)
                 {
                     IncrementIdAndSetFlags(promiseId, PromiseFlags.None);
-                    _isSynchronous = false;
                     _synchronizationContext = synchronizationContext;
                     return this;
                 }
@@ -583,14 +609,7 @@ namespace Proto.Promises
                         }
                         else if (previousScheduleType == ScheduleMethod.MakeReady)
                         {
-                            if (_isSynchronous)
-                            {
-                                executionScheduler.ScheduleSynchronous(this);
-                            }
-                            else
-                            {
-                                executionScheduler.ScheduleOnContext(_synchronizationContext, this);
-                            }
+                            executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                         }
                         MaybeDispose();
                     }
@@ -607,7 +626,6 @@ namespace Proto.Promises
                     base.OnForgetOrHookupFailed();
                 }
 
-                // TODO: Transition state to complete when this is created from Promise.GetAwaiter() and _isSynchronous is true and previous was already complete.
                 void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
@@ -617,14 +635,7 @@ namespace Proto.Promises
                     // Leave pending until this is awaited or forgotten.
                     if (previousScheduleType == ScheduleMethod.AddWaiter)
                     {
-                        if (_isSynchronous)
-                        {
-                            executionScheduler.ScheduleSynchronous(this);
-                        }
-                        else
-                        {
-                            executionScheduler.ScheduleOnContext(_synchronizationContext, this);
-                        }
+                        executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                     }
                     else if (previousScheduleType == ScheduleMethod.OnForgetOrHookupFailed)
                     {
