@@ -1,13 +1,46 @@
-﻿#pragma warning disable IDE0034 // Simplify 'default' expression
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable RECS0108 // Warns about static fields in generic types
+#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Collections;
-using System.Runtime.CompilerServices;
+using System.Threading;
 using UnityEngine;
 
 namespace Proto.Promises
 {
+    partial class Internal
+    {
+        partial class PromiseRef
+        {
+            partial class CallbackHelper
+            {
+                // TODO: refactor to change Promise(<T>).ToYieldInstruction() to an extension instead of part of the type.
+                internal static Promise<T>.YieldInstruction AddYieldInstruction<T>(Promise<T> _this)
+                {
+                    YieldInstruction<T> yieldInstruction;
+                    if (_this._ref == null)
+                    {
+                        yieldInstruction = YieldInstruction<T>.GetOrCreate(CreateResolveContainer(_this.Result, 1), Promise.State.Resolved);
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
+                        yieldInstruction = YieldInstruction<T>.GetOrCreate(null, Promise.State.Pending);
+                        _this._ref.HookupNewWaiter(yieldInstruction);
+                    }
+                    return yieldInstruction;
+                }
+            }
+        }
+    }
+
     partial struct Promise
     {
         /// <summary>
@@ -82,41 +115,13 @@ namespace Proto.Promises
             /// <see cref="Dispose"/>, you must release all references to the
             /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> so the garbage collector can reclaim the memory
             /// that the <see cref="T:ProtoPromise.Promise.YieldInstruction"/> was occupying.</remarks>
-            public virtual void Dispose()
-            {
-                ValidateOperation();
-
-                // Not bothering to remove from owner's branches, just mark for when the promise completes.
-                _isActive = false;
-                if (_state != State.Pending)
-                {
-                    ((IRetainable) _value).Release();
-                    _value = null;
-                }
-            }
-
-#if CSHARP_7_3_OR_NEWER // private protected not available in language versions.
-            private protected void Settle(Internal.IValueContainer valueContainer)
-            {
-#else
-            protected void Settle(object container)
-            {
-                Internal.IValueContainer valueContainer = (Internal.IValueContainer) container;
-#endif
-                // TODO: thread safety
-                if (_isActive)
-                {
-                    valueContainer.Retain();
-                    _value = valueContainer;
-                    _state = valueContainer.GetState();
-                }
-            }
+            public abstract void Dispose();
 
             protected void ValidateOperation()
             {
                 if (!_isActive)
                 {
-                    throw new InvalidOperationException("Promise yield instruction is not valid. You can get a validate yield instruction by calling promise.ToYieldInstruction(). After you have disposed ", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a validate yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
                 }
             }
         }
@@ -126,19 +131,7 @@ namespace Proto.Promises
         /// </summary>
         public YieldInstruction ToYieldInstruction()
         {
-            ValidateOperation(1);
-
-            Internal.YieldInstructionVoid yieldInstruction;
-            if (_target._ref != null)
-            {
-                yieldInstruction = Internal.YieldInstructionVoid.GetOrCreate(null, State.Pending);
-                _target._ref.AddWaiter(yieldInstruction);
-            }
-            else
-            {
-                yieldInstruction = Internal.YieldInstructionVoid.GetOrCreate(Internal.ResolveContainerVoid.GetOrCreate(), State.Resolved);
-            }
-            return yieldInstruction;
+            return _target.ToYieldInstruction();
         }
     }
 
@@ -185,65 +178,20 @@ namespace Proto.Promises
         {
             ValidateOperation(1);
 
-            Internal.YieldInstruction<T> yieldInstruction;
-            if (_ref != null)
-            {
-                yieldInstruction = Internal.YieldInstruction<T>.GetOrCreate(null, Promise.State.Pending);
-                _ref.AddWaiter(yieldInstruction);
-            }
-            else
-            {
-                yieldInstruction = Internal.YieldInstruction<T>.GetOrCreate(Internal.ResolveContainerVoid.GetOrCreate(), Promise.State.Resolved);
-            }
-            return yieldInstruction;
+            return Internal.PromiseRef.CallbackHelper.AddYieldInstruction(this);
         }
     }
 
     partial class Internal
     {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
-#endif
-        internal sealed class YieldInstructionVoid : Promise.YieldInstruction, ITreeHandleable // Annoying old runtime can't compile generic ObjectPool with interface only in the base.
-        {
-            private YieldInstructionVoid() { }
-
-            public static YieldInstructionVoid GetOrCreate(object valueContainer, Promise.State state)
-            {
-                var yieldInstruction = ObjectPool<ITreeHandleable>.TryTake<YieldInstructionVoid>()
-                    ?? new YieldInstructionVoid();
-                yieldInstruction._value = valueContainer;
-                yieldInstruction._state = state;
-                yieldInstruction._isActive = true;
-                return yieldInstruction;
-            }
-
-            public override void Dispose()
-            {
-                base.Dispose();
-                ObjectPool<ITreeHandleable>.MaybeRepool(this);
-            }
-
-            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
-
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
-            {
-                Settle(valueContainer);
-            }
-
-            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
-            {
-                Settle(valueContainer);
-            }
-
-            void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
-        }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
         internal sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, ITreeHandleable // Annoying old runtime can't compile generic ObjectPool with interface only in the base.
         {
+            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+
             private YieldInstruction() { }
 
             public static YieldInstruction<T> GetOrCreate(object valueContainer, Promise.State state)
@@ -258,23 +206,44 @@ namespace Proto.Promises
 
             public override void Dispose()
             {
-                base.Dispose();
+                ValidateOperation();
+
+                // Not bothering to remove from owner's branches, just mark for when the promise completes.
+                _isActive = false;
+                Thread.MemoryBarrier();
+                object container = Interlocked.Exchange(ref _value, null);
+                if (container != null)
+                {
+                    ((IRetainable) container).Release();
+                }
+#if !PROMISE_DEBUG // Don't repool in DEBUG mode.
                 ObjectPool<ITreeHandleable>.MaybeRepool(this);
+#endif
             }
 
-            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+            private void Settle(IValueContainer valueContainer)
+            {
+                valueContainer.Retain();
+                _value = valueContainer;
+                _state = valueContainer.GetState();
+                Thread.MemoryBarrier();
+                if (!_isActive) // Was disposed?
+                {
+                    // Handle race condition with Dispose. Make sure we're removing the same container.
+                    var container = Interlocked.CompareExchange(ref _value, null, valueContainer);
+                    if (container != null)
+                    {
+                        ((IRetainable) container).Release();
+                    }
+                }
+            }
 
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
             {
                 Settle(valueContainer);
             }
 
-            void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
-            {
-                Settle(valueContainer);
-            }
-
-            void ITreeHandleable.Handle() { throw new System.InvalidOperationException(); }
+            void ITreeHandleable.Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
         }
     }
 
@@ -306,7 +275,7 @@ namespace Proto.Promises
         {
             if (_instance != this)
             {
-                Promise.Manager.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
+                Debug.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
                 Destroy(this);
                 return;
             }
@@ -322,7 +291,7 @@ namespace Proto.Promises
             {
                 if (_instance == this)
                 {
-                    Promise.Manager.LogWarning("PromiseYielder destroyed! Any pending PromiseYielder.WaitFor promises will not be resolved!");
+                    Debug.LogWarning("PromiseYielder destroyed! Any pending PromiseYielder.WaitFor promises will not be resolved!");
                     _instance = null;
                 }
             }
@@ -422,7 +391,6 @@ namespace Proto.Promises
                 try
                 {
                     deferred.Resolve(tempObj);
-                    Promise.Manager.HandleCompletes(); // Handle callbacks in case the yield instruction was WaitForEndOfFrame or WaitForFixedUpdate or other unusual yield.
                 }
                 catch
                 {

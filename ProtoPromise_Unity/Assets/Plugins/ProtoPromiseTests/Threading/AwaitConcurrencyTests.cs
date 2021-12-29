@@ -1,4 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL && CSHARP_7_3_OR_NEWER
 
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
@@ -7,10 +7,11 @@
 #endif
 
 using NUnit.Framework;
+using Proto.Promises;
 using System;
 using System.Threading;
 
-namespace Proto.Promises.Tests.Threading
+namespace ProtoPromiseTests.Threading
 {
     public class AwaitConcurrencyTests
     {
@@ -64,7 +65,6 @@ namespace Proto.Promises.Tests.Threading
             promise.Forget();
             TestHelper.GetTryCompleterVoid(completeType, rejectValue).Invoke(deferred, cancelationSource);
             cancelationSource.TryDispose();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -105,7 +105,6 @@ namespace Proto.Promises.Tests.Threading
             );
 
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -145,7 +144,6 @@ namespace Proto.Promises.Tests.Threading
             promise.Forget();
             TestHelper.GetTryCompleterT(completeType, 1, rejectValue).Invoke(deferred, cancelationSource);
             cancelationSource.TryDispose();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -186,7 +184,6 @@ namespace Proto.Promises.Tests.Threading
             );
 
             promise.Forget();
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -241,7 +238,6 @@ namespace Proto.Promises.Tests.Threading
                 teardown: () =>
                 {
                     cancelationSource.TryDispose();
-                    Promise.Manager.HandleCompletesAndProgress();
 
                     Assert.AreNotEqual(Promise.State.Pending, result);
                     switch (completeType)
@@ -312,7 +308,6 @@ namespace Proto.Promises.Tests.Threading
                 teardown: () =>
                 {
                     cancelationSource.TryDispose();
-                    Promise.Manager.HandleCompletesAndProgress();
 
                     Assert.AreNotEqual(Promise.State.Pending, result);
                     switch (completeType)
@@ -334,4 +329,4 @@ namespace Proto.Promises.Tests.Threading
     }
 }
 
-#endif
+#endif // !UNITY_WEBGL && CSHARP_7_3_OR_NEWER

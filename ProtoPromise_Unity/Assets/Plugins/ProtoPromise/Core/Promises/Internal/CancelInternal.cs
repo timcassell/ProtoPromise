@@ -51,7 +51,7 @@ namespace Proto.Promises
                     return Interlocked.Decrement(ref _retainAndCanceled) == 0; // If all bits are 0, canceled was set and all calls are complete.
                 }
 
-                internal void SetCanceled(PromiseBranch owner, IValueContainer valueContainer)
+                internal void SetCanceled(PromiseSingleAwait owner, IValueContainer valueContainer)
                 {
                     ThrowIfInPool(owner);
                     RetainAndSetCanceled();
@@ -66,21 +66,44 @@ namespace Proto.Promises
                     if (previousValue != null)
 #endif
                     {
-                        // Rejection maybe wasn't caught.
-                        previousValue.ReleaseAndMaybeAddToUnhandledStack(true);
+                        previousValue.Release(); // Just release, don't report rejection.
                     }
 
-                    owner.HandleWaiter(valueContainer);
-                    owner.CancelProgressListener();
-                    if (Release())
-                    {
-                        owner.MaybeDispose();
-                    }
+                    ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+                    owner.HandleWaiter(valueContainer, ref executionScheduler);
+                    owner.HandleProgressListener(Promise.State.Canceled, ref executionScheduler);
+                    MaybeReleaseComplete(owner);
+                    executionScheduler.Execute();
                 }
 
-                internal bool TryMakeReady(PromiseBranch owner, IValueContainer valueContainer)
+                internal void MaybeMakeReady(PromiseSingleAwait owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    ThrowIfInPool(owner);
+                    if (TryMakeReady(owner, valueContainer))
+                    {
+                        executionScheduler.ScheduleSynchronous(owner);
+                    }
+                    owner.WaitWhileProgressFlags(PromiseFlags.Subscribing);
+                }
+
+                internal void MaybeMakeReady(PromiseSingleAwait owner, bool isSecondReady, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                {
+                    if (isSecondReady)
+                    {
+                        // The returned promise is handling owner.
+                        valueContainer.Retain();
+                        owner._valueOrPrevious = valueContainer;
+                    }
+                    else if (!TryMakeReady(owner, valueContainer))
+                    {
+                        owner.WaitWhileProgressFlags(PromiseFlags.Subscribing);
+                        return;
+                    }
+                    executionScheduler.ScheduleSynchronous(owner);
+                    owner.WaitWhileProgressFlags(PromiseFlags.Subscribing);
+                }
+
+                private bool TryMakeReady(PromiseSingleAwait owner, IValueContainer valueContainer)
+                {
                     Thread.MemoryBarrier();
                     object oldContainer = owner._valueOrPrevious;
                     bool _, isCancelationRequested;
@@ -97,14 +120,11 @@ namespace Proto.Promises
                             valueContainer.Release();
                         }
                     }
-                    if (Release())
-                    {
-                        owner.MaybeDispose();
-                    }
+                    MaybeReleaseComplete(owner);
                     return false;
                 }
 
-                internal bool TryUnregister(PromiseRef owner)
+                internal bool TryUnregister(PromiseSingleAwait owner)
                 {
                     ThrowIfInPool(owner);
                     bool isCanceling;
@@ -120,12 +140,21 @@ namespace Proto.Promises
                     }
                     return !isCanceling;
                 }
+
+                internal void MaybeReleaseComplete(PromiseSingleAwait owner)
+                {
+                    // This is called in HookupNewCancelablePromise when SetCanceled has set the _valueOrPrevious, so this may also be racing with that function on another thread.
+                    if (Release())
+                    {
+                        owner.MaybeDispose();
+                    }
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolve<TResolver> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolve<TResolver> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegateResolve
             {
                 private CancelablePromiseResolve() { }
@@ -149,36 +178,27 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+                protected override void OnHookupFailed()
                 {
-                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        owner.SuppressRejection = true;
-                        AddToHandleQueueFront(this);
-                    }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        owner.SuppressRejection = true;
-                        AddToHandleQueueBack(this);
-                    }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    ThrowIfInPool(this);
+                    _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     var resolveCallback = _resolver;
                     if (valueContainer.GetState() == Promise.State.Resolved)
                     {
-                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper);
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                     }
                     else if (_cancelationHelper.TryUnregister(this))
                     {
-                        RejectOrCancelInternal(valueContainer);
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
@@ -188,7 +208,7 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -200,11 +220,11 @@ namespace Proto.Promises
                 private CancelablePromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
+                internal static CancelablePromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken, int depth)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolvePromise<TResolver>>()
                         ?? new CancelablePromiseResolvePromise<TResolver>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
@@ -218,48 +238,23 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+                protected override void OnHookupFailed()
                 {
-                    if (_resolver.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        valueContainer.Retain();
-                        _valueOrPrevious = valueContainer;
-                    }
-                    else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
-                        return;
-                    }
-                    owner.SuppressRejection = true;
-                    AddToHandleQueueFront(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    if (_resolver.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        valueContainer.Retain();
-                        _valueOrPrevious = valueContainer;
-                    }
-                    else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
-                        return;
-                    }
-                    owner.SuppressRejection = true;
-                    AddToHandleQueueBack(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    ThrowIfInPool(this);
+                    _cancelationHelper.MaybeMakeReady(this, _resolver.IsNull, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(valueContainer);
+                        HandleSelf(valueContainer, ref executionScheduler);
                         return;
                     }
 
@@ -267,11 +262,11 @@ namespace Proto.Promises
                     _resolver = default(TResolver);
                     if (valueContainer.GetState() == Promise.State.Resolved)
                     {
-                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper);
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                     }
                     else if (_cancelationHelper.TryUnregister(this))
                     {
-                        RejectOrCancelInternal(valueContainer);
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
@@ -281,13 +276,13 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
                 where TResolver : IDelegateResolve
                 where TRejecter : IDelegateReject
             {
@@ -314,43 +309,35 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+                protected override void OnHookupFailed()
                 {
-                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        owner.SuppressRejection = true;
-                        AddToHandleQueueFront(this);
-                    }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        owner.SuppressRejection = true;
-                        AddToHandleQueueBack(this);
-                    }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    ThrowIfInPool(this);
+                    _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     var resolveCallback = _resolver;
                     var rejectCallback = _rejecter;
                     Promise.State state = valueContainer.GetState();
                     if (state == Promise.State.Resolved)
                     {
-                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper);
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                     }
                     else if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
-                        rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper);
+                        suppressRejection = true;
+                        rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                     }
                     else if (_cancelationHelper.TryUnregister(this))
                     {
-                        RejectOrCancelInternal(valueContainer);
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
@@ -360,7 +347,7 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -373,11 +360,11 @@ namespace Proto.Promises
                 private CancelablePromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
+                internal static CancelablePromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken, int depth)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>>()
                         ?? new CancelablePromiseResolveRejectPromise<TResolver, TRejecter>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -393,48 +380,23 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+                protected override void OnHookupFailed()
                 {
-                    if (_resolver.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        valueContainer.Retain();
-                        _valueOrPrevious = valueContainer;
-                    }
-                    else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
-                        return;
-                    }
-                    owner.SuppressRejection = true;
-                    AddToHandleQueueFront(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    if (_resolver.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        valueContainer.Retain();
-                        _valueOrPrevious = valueContainer;
-                    }
-                    else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
-                        return;
-                    }
-                    owner.SuppressRejection = true;
-                    AddToHandleQueueBack(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    ThrowIfInPool(this);
+                    _cancelationHelper.MaybeMakeReady(this, _resolver.IsNull, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(valueContainer);
+                        HandleSelf(valueContainer, ref executionScheduler);
                         return;
                     }
 
@@ -444,16 +406,17 @@ namespace Proto.Promises
                     Promise.State state = valueContainer.GetState();
                     if (state == Promise.State.Resolved)
                     {
-                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper);
+                        resolveCallback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                     }
                     else if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
-                        rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper);
+                        suppressRejection = true;
+                        rejectCallback.InvokeRejecter(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                     }
                     else if (_cancelationHelper.TryUnregister(this))
                     {
-                        RejectOrCancelInternal(valueContainer);
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
@@ -463,13 +426,13 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseContinue<TContinuer> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseContinue<TContinuer> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
                 where TContinuer : IDelegateContinue
             {
                 private CancelablePromiseContinue() { }
@@ -493,29 +456,21 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+                protected override void OnHookupFailed()
                 {
-                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        owner.SuppressRejection = true;
-                        AddToHandleQueueFront(this);
-                    }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        owner.SuppressRejection = true;
-                        AddToHandleQueueBack(this);
-                    }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    ThrowIfInPool(this);
+                    _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
-                    _continuer.Invoke(valueContainer, this, ref _cancelationHelper);
+                    suppressRejection = true;
+                    _continuer.Invoke(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                 }
 
                 void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
@@ -523,7 +478,7 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -535,11 +490,11 @@ namespace Proto.Promises
                 private CancelablePromiseContinuePromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
+                internal static CancelablePromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken, int depth)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseContinuePromise<TContinuer>>()
                         ?? new CancelablePromiseContinuePromise<TContinuer>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._continuer = continuer;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
@@ -553,54 +508,30 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+                protected override void OnHookupFailed()
                 {
-                    if (_continuer.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        valueContainer.Retain();
-                        _valueOrPrevious = valueContainer;
-                    }
-                    else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
-                        return;
-                    }
-                    owner.SuppressRejection = true;
-                    AddToHandleQueueFront(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    if (_continuer.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        valueContainer.Retain();
-                        _valueOrPrevious = valueContainer;
-                    }
-                    else if (!_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        WaitWhileProgressFlags(ProgressFlags.Subscribing);
-                        return;
-                    }
-                    owner.SuppressRejection = true;
-                    AddToHandleQueueBack(this);
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    ThrowIfInPool(this);
+                    _cancelationHelper.MaybeMakeReady(this, _continuer.IsNull, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(IValueContainer valueContainer, ref bool invokingRejected)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_continuer.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(valueContainer);
+                        HandleSelf(valueContainer, ref executionScheduler);
                         return;
                     }
 
                     var callback = _continuer;
                     _continuer = default(TContinuer);
-                    callback.Invoke(valueContainer, this, ref _cancelationHelper);
+                    suppressRejection = true;
+                    callback.Invoke(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                 }
 
                 void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
@@ -608,13 +539,13 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseCancel<TCanceler> : PromiseBranch, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseCancel<TCanceler> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
                 where TCanceler : IDelegateSimple
             {
                 private CancelablePromiseCancel() { }
@@ -636,27 +567,18 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+                protected override void OnHookupFailed()
                 {
-                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        owner.SuppressRejection = true;
-                        AddToHandleQueueFront(this);
-                    }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    if (_cancelationHelper.TryMakeReady(this, valueContainer))
-                    {
-                        owner.SuppressRejection = true;
-                        AddToHandleQueueBack(this);
-                    }
-                    WaitWhileProgressFlags(ProgressFlags.Subscribing);
+                    ThrowIfInPool(this);
+                    _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
-                public override void Handle()
+                public override void Handle(ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
@@ -665,7 +587,7 @@ namespace Proto.Promises
                     {
                         if (_cancelationHelper.TryUnregister(this))
                         {
-                            HandleSelf(valueContainer);
+                            HandleSelf(valueContainer, ref executionScheduler);
                         }
                         return;
                     }
@@ -688,7 +610,7 @@ namespace Proto.Promises
                     }
                     ClearCurrentInvoker();
 
-                    HandleSelf(valueContainer);
+                    HandleSelf(valueContainer, ref executionScheduler);
                 }
 
                 void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
@@ -696,7 +618,7 @@ namespace Proto.Promises
                     _cancelationHelper.SetCanceled(this, valueContainer);
                 }
 
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
+                void ICancelDelegate.Dispose() { }
             }
         } // PromiseRef
     } // Internal

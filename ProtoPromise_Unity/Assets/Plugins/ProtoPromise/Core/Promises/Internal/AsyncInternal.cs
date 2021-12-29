@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0060 // Remove unused parameter
+#pragma warning disable CS0436 // Type conflicts with imported type
 
 using System;
 using System.Diagnostics;
@@ -15,7 +16,9 @@ using Proto.Promises.Async.CompilerServices;
 
 namespace System.Runtime.CompilerServices
 {
-#pragma warning disable CS0436 // Type conflicts with imported type
+    // I would #ifdef this entire file, but Unity complains about namespaces changed with define symbols.
+#if CSHARP_7_3_OR_NEWER // Custom async builders only available after C# 7.2.
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Interface | AttributeTargets.Delegate, Inherited = false, AllowMultiple = false)]
     internal sealed class AsyncMethodBuilderAttribute : Attribute
     {
         public Type BuilderType { get; }
@@ -25,7 +28,7 @@ namespace System.Runtime.CompilerServices
             BuilderType = builderType;
         }
     }
-#pragma warning restore CS0436 // Type conflicts with imported type
+#endif // CSHARP_7_3_OR_NEWER
 }
 
 namespace Proto.Promises
@@ -51,7 +54,7 @@ namespace Proto.Promises
         {
             private Internal.PromiseMethodBuilderInternal<Internal.VoidResult> _builder;
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             private PromiseMethodBuilder(Internal.PromiseMethodBuilderInternal<Internal.VoidResult> builder)
             {
                 _builder = builder;
@@ -59,29 +62,29 @@ namespace Proto.Promises
 
             public Promise Task
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl(Internal.InlineOption)]
                 get { return _builder.Task; }
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public static PromiseMethodBuilder Create()
             {
                 return new PromiseMethodBuilder(Internal.PromiseMethodBuilderInternal<Internal.VoidResult>.Create());
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void SetException(Exception exception)
             {
                 _builder.SetException(exception);
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void SetResult()
             {
-                _builder.SetResult();
+                _builder.SetResult(new Internal.VoidResult());
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : INotifyCompletion
                 where TStateMachine : IAsyncStateMachine
@@ -90,7 +93,7 @@ namespace Proto.Promises
             }
 
             [SecuritySafeCritical]
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : ICriticalNotifyCompletion
                 where TStateMachine : IAsyncStateMachine
@@ -98,14 +101,14 @@ namespace Proto.Promises
                 _builder.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine);
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
                 _builder.Start(ref stateMachine);
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void SetStateMachine(IAsyncStateMachine stateMachine)
             {
                 _builder.SetStateMachine(stateMachine);
@@ -122,7 +125,7 @@ namespace Proto.Promises
         {
             private Internal.PromiseMethodBuilderInternal<T> _builder;
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             private PromiseMethodBuilder(Internal.PromiseMethodBuilderInternal<T> builder)
             {
                 _builder = builder;
@@ -130,29 +133,29 @@ namespace Proto.Promises
 
             public Promise<T> Task
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl(Internal.InlineOption)]
                 get { return _builder.Task; }
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public static PromiseMethodBuilder<T> Create()
             {
                 return new PromiseMethodBuilder<T>(Internal.PromiseMethodBuilderInternal<T>.Create());
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void SetException(Exception exception)
             {
                 _builder.SetException(exception);
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void SetResult(T result)
             {
                 _builder.SetResult(result);
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : INotifyCompletion
                 where TStateMachine : IAsyncStateMachine
@@ -161,7 +164,7 @@ namespace Proto.Promises
             }
 
             [SecuritySafeCritical]
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : ICriticalNotifyCompletion
                 where TStateMachine : IAsyncStateMachine
@@ -169,14 +172,14 @@ namespace Proto.Promises
                 _builder.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine);
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
                 _builder.Start(ref stateMachine);
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(Internal.InlineOption)]
             public void SetStateMachine(IAsyncStateMachine stateMachine)
             {
                 _builder.SetStateMachine(stateMachine);
@@ -201,7 +204,7 @@ namespace Proto.Promises
         {
             private AsyncPromiseRef _promise;
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             private PromiseMethodBuilderInternal(AsyncPromiseRef promise)
             {
                 _promise = promise;
@@ -209,11 +212,11 @@ namespace Proto.Promises
 
             public Promise<T> Task
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get { return new Promise<T>(_promise, _promise.Id); }
+                [MethodImpl(InlineOption)]
+                get { return new Promise<T>(_promise, _promise.Id, 0); }
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public static PromiseMethodBuilderInternal<T> Create()
             {
                 return new PromiseMethodBuilderInternal<T>(AsyncPromiseRef.GetOrCreate());
@@ -224,19 +227,13 @@ namespace Proto.Promises
                 _promise.SetException(exception);
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void SetResult()
-            {
-                _promise.SetResult();
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public void SetResult(T result)
             {
-                _promise.SetResult(ref result);
+                _promise.SetResult(result);
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : INotifyCompletion
                 where TStateMachine : IAsyncStateMachine
@@ -246,7 +243,7 @@ namespace Proto.Promises
             }
 
             [SecuritySafeCritical]
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : ICriticalNotifyCompletion
                 where TStateMachine : IAsyncStateMachine
@@ -254,7 +251,7 @@ namespace Proto.Promises
                 awaiter.UnsafeOnCompleted(_promise.GetContinuation(ref stateMachine));
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
@@ -263,7 +260,7 @@ namespace Proto.Promises
                 stateMachine.MoveNext();
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public void SetStateMachine(IAsyncStateMachine stateMachine) { }
         }
 
@@ -281,11 +278,11 @@ namespace Proto.Promises
 
             public Promise<T> Task
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get { return new Promise<T>(_ref, _id, ref _result); }
+                [MethodImpl(InlineOption)]
+                get { return new Promise<T>(_ref, _id, 0, _result); }
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public static PromiseMethodBuilderInternal<T> Create()
             {
                 return new PromiseMethodBuilderInternal<T>();
@@ -301,19 +298,7 @@ namespace Proto.Promises
                 _ref.SetException(exception);
             }
 
-            public void SetResult()
-            {
-                if (_ref is null)
-                {
-                    _id = ValidIdFromApi;
-                }
-                else
-                {
-                    _ref.SetResult();
-                }
-            }
-
-            public void SetResult(T result)
+            public void SetResult(in T result)
             {
                 if (_ref is null)
                 {
@@ -322,11 +307,11 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    _ref.SetResult(ref result);
+                    _ref.SetResult(result);
                 }
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : INotifyCompletion
                 where TStateMachine : IAsyncStateMachine
@@ -335,7 +320,7 @@ namespace Proto.Promises
             }
 
             [SecuritySafeCritical]
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : ICriticalNotifyCompletion
                 where TStateMachine : IAsyncStateMachine
@@ -343,17 +328,17 @@ namespace Proto.Promises
                 awaiter.UnsafeOnCompleted(GetContinuation(ref stateMachine));
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
                 stateMachine.MoveNext();
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public void SetStateMachine(IAsyncStateMachine stateMachine) { }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             private Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
@@ -372,7 +357,7 @@ namespace Proto.Promises
 #endif
         internal partial class AsyncPromiseRef : PromiseRef.AsyncPromiseBase
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public static AsyncPromiseRef GetOrCreate()
             {
                 var promise = ObjectPool<ITreeHandleable>.TryTake<AsyncPromiseRef>()
@@ -381,23 +366,21 @@ namespace Proto.Promises
                 return promise;
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal void SetResult()
+            [MethodImpl(InlineOption)]
+            internal void SetResult<T>(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T result)
             {
-                ResolveDirect();
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal void SetResult<T>(ref T result)
-            {
-                ResolveDirect(ref result);
+                ResolveDirect(result);
             }
 
             internal void SetException(Exception exception)
             {
                 if (exception is OperationCanceledException)
                 {
-                    CancelDirect(ref exception);
+                    CancelDirect(exception);
                 }
                 else
                 {
@@ -410,7 +393,7 @@ namespace Proto.Promises
 #endif
                         exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
                     }
-                    RejectDirect(ref exception, int.MinValue);
+                    RejectDirect(exception, int.MinValue);
                 }
             }
         }
@@ -434,7 +417,7 @@ namespace Proto.Promises
 
                 public abstract void Dispose();
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl(InlineOption)]
                 public static PromiseMethodContinuer GetOrCreate<TStateMachine>(ref TStateMachine stateMachine, ITraceable owner) where TStateMachine : IAsyncStateMachine
                 {
                     var continuer = Continuer<TStateMachine>.GetOrCreate(ref stateMachine);
@@ -462,7 +445,7 @@ namespace Proto.Promises
                         _continuation = Continue;
                     }
 
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    [MethodImpl(InlineOption)]
                     public static Continuer<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
                     {
                         var continuer = ObjectPool<Continuer<TStateMachine>>.TryTake<Continuer<TStateMachine>>()
@@ -501,7 +484,7 @@ namespace Proto.Promises
 
             private PromiseMethodContinuer _continuer;
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             public Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
             {
                 if (_continuer is null)
@@ -537,7 +520,7 @@ namespace Proto.Promises
 
                 private AsyncPromiseRefMachine() { }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl(InlineOption)]
                 public static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
@@ -584,7 +567,7 @@ namespace Proto.Promises
 
             // Used for child to call base dispose without repooling for both types.
             // This is necessary because C# doesn't allow `base.base.Dispose()`.
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(InlineOption)]
             protected void SuperDispose()
             {
                 base.Dispose();

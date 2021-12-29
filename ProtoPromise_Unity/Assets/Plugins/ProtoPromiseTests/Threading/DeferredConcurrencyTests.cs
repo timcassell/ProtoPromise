@@ -1,4 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL
 
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
@@ -7,9 +7,10 @@
 #endif
 
 using NUnit.Framework;
+using Proto.Promises;
 using System.Threading;
 
-namespace Proto.Promises.Tests.Threading
+namespace ProtoPromiseTests.Threading
 {
     public class DeferredConcurrencyTests
     {
@@ -27,73 +28,44 @@ namespace Proto.Promises.Tests.Threading
 
 #if PROMISE_PROGRESS
         [Test]
-        public void DeferredReportProgressMayBeCalledConcurrently_void0()
+        public void DeferredReportProgressMayBeCalledConcurrently_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType,
+            [Values] bool withCancelationToken)
         {
-            float progress1 = float.NaN;
-            float progress2 = float.NaN;
-            var deferred = Promise.NewDeferred();
-            deferred.Promise
-                .Progress(v => progress1 = v)
-                .Progress(v => progress2 = v)
-                .Forget();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(true,
-                // Setup
-                () => progress1 = progress2 = float.NaN,
-                // Teardown
-                () =>
-                {
-                    // Progress isn't reported until manager handles it.
-                    Assert.IsNaN(progress1);
-                    Assert.IsNaN(progress2);
-                    Promise.Manager.HandleCompletesAndProgress();
-                    // Each progress is reported concurrently, so we can't know which stuck.
-                    // Just check to make sure any of them stuck, so it should be >= min and <= max.
-                    Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
-                    Assert.LessOrEqual(progress1, 0.4f);
-                    Assert.Greater(progress2, 0.2f - TestHelper.progressEpsilon);
-                    Assert.LessOrEqual(progress2, 0.4f);
-                },
-                // Parallel Actions
-                () => deferred.ReportProgress(0.2f),
-                () => deferred.ReportProgress(0.3f),
-                () => deferred.ReportProgress(0.4f)
-            );
-
-            deferred.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-        }
-
-        [Test]
-        public void DeferredReportProgressMayBeCalledConcurrently_void1()
-        {
-            float progress1 = float.NaN;
-            float progress2 = float.NaN;
             var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            deferred.Promise
-                .Progress(v => progress1 = v)
-                .Progress(v => progress2 = v)
-                .Forget();
+            var deferred = default(Promise.Deferred);
+
+            var progressHelper = default(ProgressHelper);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(true,
                 // Setup
-                () => progress1 = progress2 = float.NaN,
+                () =>
+                {
+                    deferred = withCancelationToken
+                        ? Promise.NewDeferred(cancelationSource.Token)
+                        : Promise.NewDeferred();
+                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+
+                    deferred.Promise
+                        .SubscribeProgressAndAssert(progressHelper, 0f)
+                        .Forget();
+
+                    progressHelper.MaybeEnterLock();
+                    progressHelper.PrepareForInvoke();
+                },
                 // Teardown
                 () =>
                 {
-                    // Progress isn't reported until manager handles it.
-                    Assert.IsNaN(progress1);
-                    Assert.IsNaN(progress2);
-                    Promise.Manager.HandleCompletesAndProgress();
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
+                    float progress1 = progressHelper.GetCurrentProgress(true, true);
+                    progressHelper.MaybeExitLock();
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
                     Assert.LessOrEqual(progress1, 0.4f);
-                    Assert.Greater(progress2, 0.2f - TestHelper.progressEpsilon);
-                    Assert.LessOrEqual(progress2, 0.4f);
+
+                    deferred.Resolve();
                 },
                 // Parallel Actions
                 () => deferred.ReportProgress(0.2f),
@@ -101,89 +73,56 @@ namespace Proto.Promises.Tests.Threading
                 () => deferred.ReportProgress(0.4f)
             );
 
-            deferred.Resolve();
             cancelationSource.Dispose();
-            Promise.Manager.HandleCompletesAndProgress();
         }
 
         [Test]
-        public void DeferredReportProgressMayBeCalledConcurrently_T0()
+        public void DeferredReportProgressMayBeCalledConcurrently_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType,
+            [Values] bool withCancelationToken)
         {
-            float progress1 = float.NaN;
-            float progress2 = float.NaN;
-            var deferred = Promise.NewDeferred<int>();
-            deferred.Promise
-                .Progress(v => progress1 = v)
-                .Progress(v => progress2 = v)
-                .Forget();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(true,
-                // Setup
-                () => progress1 = progress2 = float.NaN,
-                // Teardown
-                () =>
-                {
-                    // Progress isn't reported until manager handles it.
-                    Assert.IsNaN(progress1);
-                    Assert.IsNaN(progress2);
-                    Promise.Manager.HandleCompletesAndProgress();
-                    // Each progress is reported concurrently, so we can't know which stuck.
-                    // Just check to make sure any of them stuck, so it should be >= min and <= max.
-                    Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
-                    Assert.LessOrEqual(progress1, 0.4f);
-                    Assert.Greater(progress2, 0.2f - TestHelper.progressEpsilon);
-                    Assert.LessOrEqual(progress2, 0.4f);
-                },
-                // Parallel Actions
-                () => deferred.ReportProgress(0.2f),
-                () => deferred.ReportProgress(0.3f),
-                () => deferred.ReportProgress(0.4f)
-            );
-
-            deferred.Resolve(1);
-            Promise.Manager.HandleCompletesAndProgress();
-        }
-
-        [Test]
-        public void DeferredReportProgressMayBeCalledConcurrently_T1()
-        {
-            float progress1 = float.NaN;
-            float progress2 = float.NaN;
             var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-            deferred.Promise
-                .Progress(v => progress1 = v)
-                .Progress(v => progress2 = v)
-                .Forget();
+            var deferred = default(Promise<int>.Deferred);
+
+            var progressHelper = default(ProgressHelper);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(true,
                 // Setup
-                () => progress1 = progress2 = float.NaN,
+                () =>
+                {
+                    deferred = withCancelationToken
+                        ? Promise.NewDeferred<int>(cancelationSource.Token)
+                        : Promise.NewDeferred<int>();
+                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+
+                    deferred.Promise
+                        .SubscribeProgressAndAssert(progressHelper, 0f)
+                        .Forget();
+
+                    progressHelper.MaybeEnterLock();
+                    progressHelper.PrepareForInvoke();
+                },
                 // Teardown
                 () =>
                 {
-                    // Progress isn't reported until manager handles it.
-                    Assert.IsNaN(progress1);
-                    Assert.IsNaN(progress2);
-                    Promise.Manager.HandleCompletesAndProgress();
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
+                    float progress1 = progressHelper.GetCurrentProgress(true, true);
+                    progressHelper.MaybeExitLock();
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
                     Assert.LessOrEqual(progress1, 0.4f);
-                    Assert.Greater(progress2, 0.2f - TestHelper.progressEpsilon);
-                    Assert.LessOrEqual(progress2, 0.4f);
+
+                    deferred.Resolve(1);
                 },
                 // Parallel Actions
                 () => deferred.ReportProgress(0.2f),
                 () => deferred.ReportProgress(0.3f),
                 () => deferred.ReportProgress(0.4f)
             );
-
-            deferred.Resolve(1);
+         
             cancelationSource.Dispose();
-            Promise.Manager.HandleCompletesAndProgress();
         }
 #endif
 
@@ -207,8 +146,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -233,8 +170,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -260,8 +195,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -286,8 +219,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -313,8 +244,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -339,8 +268,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -366,8 +293,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -392,8 +317,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -419,8 +342,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -445,8 +366,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -472,8 +391,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -498,8 +415,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -525,8 +440,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -551,8 +464,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -578,8 +489,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -604,8 +513,6 @@ namespace Proto.Promises.Tests.Threading
             });
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.Zero(invokedCount); // Callback isn't executed until manager handles it.
-            Promise.Manager.HandleCompletesAndProgress();
             Assert.AreEqual(1, invokedCount);
 
             cancelationSource.Dispose();
@@ -613,133 +520,101 @@ namespace Proto.Promises.Tests.Threading
 
 #if PROMISE_PROGRESS
         [Test]
-        public void DeferredMayReportProgressAndPromiseMaySubscribeProgressConcurrently_void0()
+        public void DeferredMayReportProgressAndPromiseMaySubscribeProgressConcurrently_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType,
+            [Values] bool withCancelationToken)
         {
             float expected = 0.1f;
-            float progress = float.NaN;
+            var cancelationSource = CancelationSource.New();
             var deferred = default(Promise.Deferred);
             var promise = default(Promise);
+
+            var progressHelper = default(ProgressHelper);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
                 // Setup
                 () =>
                 {
-                    progress = float.NaN;
-                    deferred = Promise.NewDeferred();
+                    deferred = withCancelationToken
+                        ? Promise.NewDeferred(cancelationSource.Token)
+                        : Promise.NewDeferred();
                     promise = deferred.Promise;
+                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+                    progressHelper.MaybeEnterLock();
                 },
                 // Teardown
                 () =>
                 {
-                    Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-                    Promise.Manager.HandleCompletesAndProgress();
-                    Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
+                    float progress = progressHelper.GetCurrentProgress(true, true);
+                    progressHelper.MaybeExitLock();
+                    // Race condition could report 0 instead of expected from background threads.
+                    if (progress < expected * 0.5f)
+                    {
+                        Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+                    }
+                    else
+                    {
+                        Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
+                    }
                     deferred.Resolve();
                 },
                 // Parallel Actions
                 () => deferred.ReportProgress(expected),
-                () => promise.Progress(v => progress = v).Forget()
+                () => promise.SubscribeProgress(progressHelper).Forget()
             );
+
+            cancelationSource.Dispose();
         }
 
         [Test]
-        public void DeferredMayReportProgressAndPromiseMaySubscribeProgressConcurrently_void1()
+        public void DeferredMayReportProgressAndPromiseMaySubscribeProgressConcurrently_T0(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType,
+            [Values] bool withCancelationToken)
         {
             float expected = 0.1f;
-            float progress = float.NaN;
-            var cancelationSource = default(CancelationSource);
-            var deferred = default(Promise.Deferred);
-            var promise = default(Promise);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
-                {
-                    progress = float.NaN;
-                    cancelationSource = CancelationSource.New();
-                    deferred = Promise.NewDeferred(cancelationSource.Token);
-                    promise = deferred.Promise;
-                },
-                // Teardown
-                () =>
-                {
-                    Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-                    Promise.Manager.HandleCompletesAndProgress();
-                    Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
-                    deferred.Resolve();
-                    cancelationSource.Dispose();
-                },
-                // Parallel Actions
-                () => deferred.ReportProgress(expected),
-                () => promise.Progress(v => progress = v).Forget()
-            );
-        }
-
-        [Test]
-        public void DeferredMayReportProgressAndPromiseMaySubscribeProgressConcurrently_T0()
-        {
-            float expected = 0.1f;
-            float progress = float.NaN;
+            var cancelationSource = CancelationSource.New();
             var deferred = default(Promise<int>.Deferred);
             var promise = default(Promise);
 
+            var progressHelper = default(ProgressHelper);
+
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsWithOffsets(false,
                 // Setup
                 () =>
                 {
-                    progress = float.NaN;
-                    deferred = Promise.NewDeferred<int>();
+                    deferred = withCancelationToken
+                        ? Promise.NewDeferred<int>(cancelationSource.Token)
+                        : Promise.NewDeferred<int>();
                     promise = deferred.Promise;
+                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+                    progressHelper.MaybeEnterLock();
                 },
                 // Teardown
                 () =>
                 {
-                    Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-                    Promise.Manager.HandleCompletesAndProgress();
-                    Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
+                    float progress = progressHelper.GetCurrentProgress(true, true);
+                    progressHelper.MaybeExitLock();
+                    // Race condition could report 0 instead of expected from background threads.
+                    if (progress < expected * 0.5f)
+                    {
+                        Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
+                    }
+                    else
+                    {
+                        Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
+                    }
                     deferred.Resolve(1);
                 },
                 // Parallel Actions
                 () => deferred.ReportProgress(expected),
-                () => promise.Progress(v => progress = v).Forget()
+                () => promise.SubscribeProgress(progressHelper).Forget()
             );
-        }
 
-        [Test]
-        public void DeferredMayReportProgressAndPromiseMaySubscribeProgressConcurrently_T1()
-        {
-            float expected = 0.1f;
-            float progress = float.NaN;
-            var cancelationSource = default(CancelationSource);
-            var deferred = default(Promise<int>.Deferred);
-            var promise = default(Promise);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
-                {
-                    progress = float.NaN;
-                    cancelationSource = CancelationSource.New();
-                    deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-                    promise = deferred.Promise;
-                },
-                // Teardown
-                () =>
-                {
-                    Assert.IsNaN(progress); // Progress isn't reported until manager handles it.
-                    Promise.Manager.HandleCompletesAndProgress();
-                    Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
-                    deferred.Resolve(1);
-                    cancelationSource.Dispose();
-                },
-                // Parallel Actions
-                () => deferred.ReportProgress(expected),
-                () => promise.Progress(v => progress = v).Forget()
-            );
+            cancelationSource.Dispose();
         }
 #endif
 
@@ -763,7 +638,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -795,7 +669,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -824,7 +697,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -856,7 +728,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -885,7 +756,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -917,7 +787,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -946,7 +815,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -978,7 +846,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1010,7 +877,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1042,7 +908,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1071,7 +936,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1100,7 +964,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1132,7 +995,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1164,7 +1026,6 @@ namespace Proto.Promises.Tests.Threading
                 () =>
                 {
                     cancelationSource.Dispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1193,7 +1054,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1222,7 +1082,6 @@ namespace Proto.Promises.Tests.Threading
                 // Teardown
                 () =>
                 {
-                    Promise.Manager.HandleCompletes();
                     Assert.AreEqual(1, invokedCount);
                 },
                 // Parallel Actions
@@ -1233,4 +1092,4 @@ namespace Proto.Promises.Tests.Threading
     }
 }
 
-#endif
+#endif // !UNITY_WEBGL

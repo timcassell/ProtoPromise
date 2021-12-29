@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.30523.141
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromiseTests", "ProtoPromiseTests\ProtoPromiseTests.csproj", "{27C1B5AC-2E73-4B91-8258-C67B4B064569}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromise", "ProtoPromise\ProtoPromise.csproj", "{2A0BBD14-FA01-467C-8A42-55C5C287F66D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProtoPromise", "ProtoPromise\ProtoPromise.csproj", "{2A0BBD14-FA01-467C-8A42-55C5C287F66D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

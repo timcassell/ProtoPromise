@@ -103,8 +103,7 @@ namespace Proto.Promises
         {
             get
             {
-                CancelationSource _this = this;
-                return _this._ref != null && _this._ref.SourceId == _this._sourceId;
+                return Internal.CancelationRef.IsValidSource(_ref, _sourceId);
             }
         }
 
@@ -115,8 +114,7 @@ namespace Proto.Promises
         {
             get
             {
-                CancelationSource _this = this;
-                return _this._ref != null && _this._ref.IsSourceCanceled(_this._sourceId);
+                return Internal.CancelationRef.IsSourceCanceled(_ref, _sourceId);
             }
         }
 
@@ -126,8 +124,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel()
         {
-            CancelationSource _this = this;
-            return _this._ref != null && _this._ref.TrySetCanceled(_this._sourceId);
+            return Internal.CancelationRef.TrySetCanceled(_ref, _sourceId);
         }
 
         /// <summary>
@@ -136,8 +133,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel<TCancel>(TCancel reason)
         {
-            CancelationSource _this = this;
-            return _this._ref != null && _this._ref.TrySetCanceled(ref reason, _this._sourceId);
+            return Internal.CancelationRef.TrySetCanceled(reason, _ref, _sourceId);
         }
 
         /// <summary>
@@ -170,8 +166,7 @@ namespace Proto.Promises
         /// <returns>True if this is valid and was not already disposed, false otherwise.</returns>
         public bool TryDispose()
         {
-            CancelationSource _this = this;
-            return _this._ref != null && _this._ref.TryDispose(_this._sourceId);
+            return Internal.CancelationRef.TryDispose(_ref, _sourceId);
         }
 
         /// <summary>
@@ -202,19 +197,7 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            CancelationSource _this = this;
-            if (_this._ref == null)
-            {
-                return 0;
-            }
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 31 + _this._tokenId.GetHashCode();
-                hash = hash * 31 + _this._sourceId.GetHashCode();
-                hash = hash * 31 + _this._ref.GetHashCode();
-                return hash;
-            }
+            return Internal.BuildHashCode(_ref, _sourceId.GetHashCode(), _tokenId.GetHashCode());
         }
 
         public static bool operator ==(CancelationSource c1, CancelationSource c2)

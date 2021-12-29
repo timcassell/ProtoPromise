@@ -19,47 +19,22 @@ namespace Proto.Promises
         partial class PromiseRef
         {
             [MethodImpl(InlineOption)]
-            internal void GetResultVoid(short promiseId)
+            internal T GetResult<T>(short promiseId)
             {
-                IncrementId(promiseId);
+                IncrementIdAndSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
 #if PROMISE_DEBUG
                 if (State == Promise.State.Pending)
                 {
                     throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
                 }
 #endif
-                WasAwaitedOrForgotten = true;
                 if (State == Promise.State.Resolved)
                 {
-                    MaybeDispose();
-                    return;
-                }
-                // Throw unhandled exception or canceled exception.
-                SuppressRejection = true;
-                Exception exception = ((IThrowable) _valueOrPrevious).GetException();
-                MaybeDispose();
-                throw exception;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal T GetResult<T>(short promiseId)
-            {
-                IncrementId(promiseId);
-#if PROMISE_DEBUG
-                if (State == Promise.State.Pending)
-                {
-                    throw new InvalidOperationException("PromiseAwaiter<T>.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
-                }
-#endif
-                WasAwaitedOrForgotten = true;
-                if (State == Promise.State.Resolved)
-                {
-                    T result = ((ResolveContainer<T>) _valueOrPrevious).value;
+                    T result = ((IValueContainer) _valueOrPrevious).GetValue<T>();
                     MaybeDispose();
                     return result;
                 }
                 // Throw unhandled exception or canceled exception.
-                SuppressRejection = true;
                 Exception exception = ((IThrowable) _valueOrPrevious).GetException();
                 MaybeDispose();
                 throw exception;
@@ -68,9 +43,8 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, short promiseId)
             {
-                // TODO: handle when synchronous callbacks are implemented
-                InterlockedRetainInternal(promiseId);
-                AddWaiter(AwaiterRef.GetOrCreate(continuation));
+                InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
+                HookupNewWaiter(AwaiterRef.GetOrCreate(continuation));
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -104,14 +78,15 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.Handle()
+                void ITreeHandleable.Handle(ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     var callback = _continuation;
-#if !PROMISE_DEBUG
+#if PROMISE_DEBUG
+                    SetCurrentInvoker(this);
+#else
                     Dispose();
 #endif
-                    SetCurrentInvoker(this);
                     try
                     {
                         callback.Invoke();
@@ -121,22 +96,16 @@ namespace Proto.Promises
                         // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
                         AddRejectionToUnhandledStack(e, this);
                     }
-                    ClearCurrentInvoker();
 #if PROMISE_DEBUG
+                    ClearCurrentInvoker();
                     Dispose();
 #endif
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer)
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    AddToHandleQueueFront(this);
-                }
-
-                void ITreeHandleable.MakeReadyFromSettled(PromiseRef owner, IValueContainer valueContainer)
-                {
-                    ThrowIfInPool(this);
-                    AddToHandleQueueBack(this);
+                    executionScheduler.ScheduleSynchronous(this);
                 }
             }
         }
@@ -144,8 +113,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal partial struct PromiseAwaiterInternal<T>
+        internal readonly partial struct PromiseAwaiterInternal<T>
         {
+            private readonly Promise<T> _promise;
 #if PROMISE_DEBUG
             // To make sure this isn't reused.
             private class IdContainer
@@ -154,7 +124,6 @@ namespace Proto.Promises
             }
             private readonly IdContainer _idContainer;
 #endif
-            private readonly Promise<T> _promise;
 
             /// <summary>
             /// Internal use.
@@ -162,11 +131,12 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal PromiseAwaiterInternal(Promise<T> promise)
             {
-                // TODO: remove the duplicate when synchronous callbacks are implemented.
-                // Duplicate force gets a single use promise (prevents retain overflows from a preserved promise).
+                // Duplicate force gets a single use promise if it's a multi use promise.
+                // It also prevents the promise from being used again improperly if it's a single use promise.
+                // And it internally validates the promise.
                 _promise = promise.Duplicate();
 #if PROMISE_DEBUG
-                _idContainer = new IdContainer() { _id = _promise._id };
+                _idContainer = new IdContainer() { _id = _promise.Id };
 #endif
             }
 
@@ -176,17 +146,8 @@ namespace Proto.Promises
                 get
                 {
                     ValidateOperation(1);
-                    return _promise._ref == null || _promise._ref.State != Promise.State.Pending;
-                }
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void GetResultVoid()
-            {
-                ValidateGetResult(1);
-                if (_promise._ref != null)
-                {
-                    _promise._ref.GetResultVoid(_promise._id);
+                    var _ref = _promise._ref;
+                    return _ref == null || _ref.State != Promise.State.Pending;
                 }
             }
 
@@ -194,9 +155,10 @@ namespace Proto.Promises
             internal T GetResult()
             {
                 ValidateGetResult(1);
-                return _promise._ref == null
-                    ? _promise._result
-                    : _promise._ref.GetResult<T>(_promise._id);
+                var promise = _promise;
+                return promise._ref == null
+                    ? promise.Result
+                    : promise._ref.GetResult<T>(promise.Id);
             }
 
             [MethodImpl(InlineOption)]
@@ -204,12 +166,13 @@ namespace Proto.Promises
             {
                 ValidateArgument(continuation, "continuation", 1);
                 ValidateOperation(1);
-                if (_promise._ref == null)
+                var _ref = _promise._ref;
+                if (_ref == null)
                 {
                     continuation();
                     return;
                 }
-                _promise._ref.OnCompleted(continuation, _promise._id);
+                _ref.OnCompleted(continuation, _promise.Id);
             }
 
             [MethodImpl(InlineOption)]
@@ -220,11 +183,11 @@ namespace Proto.Promises
 
             partial void ValidateOperation(int skipFrames);
             partial void ValidateGetResult(int skipFrames);
-            static partial void ValidateArgument(object arg, string argName, int skipFrames);
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
             partial void ValidateOperation(int skipFrames)
             {
-                bool isValid = _idContainer != null && _idContainer._id == _promise._id;
+                bool isValid = _idContainer != null && _idContainer._id == _promise.Id;
                 MaybeThrow(isValid, skipFrames + 1);
             }
 
@@ -232,7 +195,7 @@ namespace Proto.Promises
             {
                 // GetResult may only be called once, set id to invalid for any future use.
                 bool isValid = _idContainer != null
-                    && Interlocked.CompareExchange(ref _idContainer._id, int.MaxValue, _promise._id) == _promise._id;
+                    && Interlocked.CompareExchange(ref _idContainer._id, int.MaxValue, _promise.Id) == _promise.Id;
                 MaybeThrow(isValid, skipFrames + 1);
             }
 
@@ -244,7 +207,7 @@ namespace Proto.Promises
                 }
             }
 
-            static partial void ValidateArgument(object arg, string argName, int skipFrames)
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
             {
                 Internal.ValidateArgument(arg, argName, skipFrames + 1);
             }
@@ -289,7 +252,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void GetResult()
             {
-                _awaiter.GetResultVoid();
+                _awaiter.GetResult();
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -359,7 +322,7 @@ namespace Proto.Promises
 
     partial struct Promise
     {
-        // TODO: ConfigureAwait taking CancelationToken, ExecutionOptions, and/or progress normalization.
+        // TODO: ConfigureAwait for reporting progress to an async Promise.
 
         /// <summary>
         /// Used to support the await keyword.

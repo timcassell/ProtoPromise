@@ -4,11 +4,12 @@
 #undef PROMISE_PROGRESS
 #endif
 
+using NUnit.Framework;
+using Proto.Promises;
 using System;
 using System.Linq;
-using NUnit.Framework;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class SequenceTests
     {
@@ -36,17 +37,14 @@ namespace Proto.Promises.Tests
                 .Then(() => { completed = true; })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(completed);
 
             deferred1.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(completed);
 
             deferred2.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(completed);
         }
 
@@ -59,7 +57,6 @@ namespace Proto.Promises.Tests
                 .Then(() => { completed = true; })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(completed);
         }
 
@@ -72,7 +69,6 @@ namespace Proto.Promises.Tests
                 .Then(() => { completed = true; })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(completed);
         }
 
@@ -88,17 +84,14 @@ namespace Proto.Promises.Tests
                 .Catch((string e) => { invoked = true; })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             deferred1.Reject("Error");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             deferred2.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             deferred2.Promise.Forget(); // Need to forget this promise because it was never awaited due to the rejection.
         }
@@ -115,17 +108,14 @@ namespace Proto.Promises.Tests
                 .Catch((string e) => { invoked = true; })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             deferred1.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             deferred2.Reject("Error");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -144,19 +134,14 @@ namespace Proto.Promises.Tests
                 .Catch(() => { })
                 .Forget();
 
-            Assert.AreEqual(0, invokes);
-
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
 
             deferred1.Reject("Error");
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
 
             deferred2.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
             deferred2.Promise.Forget(); // Need to forget this promise because it was never awaited due to the rejection.
         }
@@ -177,12 +162,10 @@ namespace Proto.Promises.Tests
                 })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             deferred.Resolve(1);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -199,17 +182,14 @@ namespace Proto.Promises.Tests
                 .CatchCancelation(e => invoked = true)
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             cancelationSource.Cancel("Cancel");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             deferred2.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
@@ -229,17 +209,14 @@ namespace Proto.Promises.Tests
                 .CatchCancelation(e => invoked = true)
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             deferred1.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             cancelationSource.Cancel("Cancel");
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
@@ -260,19 +237,14 @@ namespace Proto.Promises.Tests
             )
                 .Forget();
 
-            Assert.AreEqual(0, invokes);
-
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
 
             cancelationSource.Cancel("Cancel");
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
 
             deferred2.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.AreEqual(1, invokes);
 
             cancelationSource.Dispose();
@@ -287,7 +259,7 @@ namespace Proto.Promises.Tests
 
             var deferred = Promise.NewDeferred<int>();
 
-            Promise.Sequence(() => deferred.Promise, () => Promise.Canceled<int, string>(cancelation))
+            Promise.Sequence(() => deferred.Promise, () => Promise<int>.Canceled(cancelation))
                 .CatchCancelation(reason =>
                 {
                     Assert.AreEqual(cancelation, reason.Value);
@@ -295,12 +267,10 @@ namespace Proto.Promises.Tests
                 })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsFalse(invoked);
 
             deferred.Resolve(1);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -310,6 +280,8 @@ namespace Proto.Promises.Tests
             CancelationSource cancelationSource = CancelationSource.New();
             bool canceled = false;
             int invokedIndex = -1;
+
+            cancelationSource.Cancel();
 
             Promise.Sequence(
                 cancelationSource.Token,
@@ -329,9 +301,6 @@ namespace Proto.Promises.Tests
                     canceled = true;
                 })
                 .Forget();
-
-            cancelationSource.Cancel();
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(-1, invokedIndex);
             Assert.IsTrue(canceled);
@@ -362,10 +331,8 @@ namespace Proto.Promises.Tests
             )
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
             cancelationSource.Cancel();
             deferred.Resolve();
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(0, invokedIndex);
 
@@ -393,8 +360,6 @@ namespace Proto.Promises.Tests
                 }
             )
                 .Forget();
-
-            Promise.Manager.HandleCompletes();
 
             Assert.AreEqual(0, invokedIndex);
 
@@ -433,8 +398,6 @@ namespace Proto.Promises.Tests
                 })
                 .Forget();
 
-            Promise.Manager.HandleCompletes();
-
             Assert.AreEqual(2, invokedIndex);
             Assert.IsFalse(canceled);
 
@@ -443,110 +406,79 @@ namespace Proto.Promises.Tests
 
 #if PROMISE_PROGRESS
         [Test]
-        public void SequenceProgressIsNormalized()
+        public void SequenceProgressIsNormalized(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
             var deferred3 = Promise.NewDeferred();
             var deferred4 = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise, () => deferred3.Promise, () => deferred4.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            Promise.Sequence(
+                () => deferred1.Promise,
+                () => deferred2.Promise,
+                () => deferred3.Promise,
+                () => deferred4.Promise
+            )
+                .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0f, progress, 0f);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1f / 4f);
 
-            deferred1.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.5f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred2, 2f / 4f);
 
-            deferred1.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred2.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred2.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(2f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(2.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred3.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(3f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred4.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(3.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred4.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(4f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 2.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred3, 3f / 4f);
+            
+            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 3.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred4, 4f / 4f);
         }
 
         [Test]
-        public void SequenceProgressIsNoLongerReportedFromRejected()
+        public void SequenceProgressIsNoLongerReportedFromRejected(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
             var deferred3 = Promise.NewDeferred();
             var deferred4 = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise, () => deferred3.Promise, () => deferred4.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            Promise.Sequence(
+                () => deferred1.Promise,
+                () => deferred2.Promise,
+                () => deferred3.Promise,
+                () => deferred4.Promise
+            )
+                .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Catch(() => { })
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0f, progress, 0f);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1f / 4f);
 
-            deferred1.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.5f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 4f);
+            progressHelper.RejectAndAssertResult(deferred2, "Reject", 1.5f / 4f, false);
 
-            deferred1.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 1.5f / 4f, false);
+            progressHelper.ResolveAndAssertResult(deferred3, 1.5f / 4f, false);
 
-            deferred2.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 1.5f / 4f, false);
+            progressHelper.ResolveAndAssertResult(deferred4, 1.5f / 4f, false);
 
-            deferred2.Reject("Reject");
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred3.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred4.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred4.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
             deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the rejection.
             deferred4.Promise.Forget(); // Need to forget this promise because it was never awaited due to the rejection.
         }
 
         [Test]
-        public void SequenceProgressIsNoLongerReportedFromCanceled()
+        public void SequenceProgressIsNoLongerReportedFromCanceled(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
         {
             var deferred1 = Promise.NewDeferred();
             var cancelationSource = CancelationSource.New();
@@ -554,46 +486,27 @@ namespace Proto.Promises.Tests
             var deferred3 = Promise.NewDeferred();
             var deferred4 = Promise.NewDeferred();
 
-            float progress = float.NaN;
-
-            Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise, () => deferred3.Promise, () => deferred4.Promise)
-                .Progress(p => progress = p)
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
+            Promise.Sequence(
+                () => deferred1.Promise,
+                () => deferred2.Promise,
+                () => deferred3.Promise,
+                () => deferred4.Promise
+            )
+                .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
 
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0f, progress, 0f);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1f / 4f);
 
-            deferred1.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(0.5f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 4f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1.5f / 4f, false);
 
-            deferred1.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 1.5f / 4f, false);
+            progressHelper.ResolveAndAssertResult(deferred3, 1.5f / 4f, false);
 
-            deferred2.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            cancelationSource.Cancel();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred3.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred3.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred4.ReportProgress(0.5f);
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
-
-            deferred4.Resolve();
-            Promise.Manager.HandleCompletesAndProgress();
-            Assert.AreEqual(1.5f / 4f, progress, TestHelper.progressEpsilon);
+            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 1.5f / 4f, false);
+            progressHelper.ResolveAndAssertResult(deferred4, 1.5f / 4f, false);
 
             cancelationSource.Dispose();
             deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.

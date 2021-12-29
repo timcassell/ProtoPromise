@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -19,15 +20,15 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             if (promise1._target._ref == null | promise2._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 2);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -43,17 +44,17 @@ namespace Proto.Promises
             ValidateArgument(promise3, "promise3", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 3);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -70,19 +71,19 @@ namespace Proto.Promises
             ValidateArgument(promise4, "promise4", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, false);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3, Internal.PromiseFlags.WasAwaitedOrForgotten));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 4);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -122,14 +123,14 @@ namespace Proto.Promises
             {
                 var p = promises.Current;
                 ValidateElement(p, "promises", 1);
-                if (Internal.PrepareForMulti(p, ref passThroughs, i++) == 0)
+                if (Internal.PrepareForMulti(p, ref passThroughs, i++, Internal.PromiseFlags.WasAwaitedOrForgotten) == 0)
                 {
                     // Validate and release remaining elements.
                     while (promises.MoveNext())
                     {
                         p = promises.Current;
                         ValidateElement(p, "promises", 1);
-                        Internal.PromiseRef.MaybeMarkAwaitedAndDispose(p, false);
+                        Internal.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
                     }
                     // Repool any created passthroughs.
                     foreach (var passthrough in passThroughs)
@@ -142,58 +143,40 @@ namespace Proto.Promises
             } while (promises.MoveNext());
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, pendingCount);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2)
         {
             return Promise<T>.Race(promise1, promise2);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             return Promise<T>.Race(promise1, promise2, promise3);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             return Promise<T>.Race(promise1, promise2, promise3, promise4);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T>(params Promise<T>[] promises)
         {
             return Promise<T>.Race(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
         {
             return Promise<T>.Race(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Race()")]
         public static Promise<T> Race<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.Race(promises);
@@ -211,15 +194,15 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             if (promise1._target._ref == null | promise2._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 2);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -235,17 +218,17 @@ namespace Proto.Promises
             ValidateArgument(promise3, "promise3", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 3);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -262,19 +245,19 @@ namespace Proto.Promises
             ValidateArgument(promise4, "promise4", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
             {
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise1, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise2, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise3, true);
-                Internal.PromiseRef.MaybeMarkAwaitedAndDispose(promise4, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 return Internal.CreateResolved();
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 4);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -314,14 +297,14 @@ namespace Proto.Promises
             {
                 var p = promises.Current;
                 ValidateElement(p, "promises", 1);
-                if (Internal.PrepareForMulti(p, ref passThroughs, i++) == 0)
+                if (Internal.PrepareForMulti(p, ref passThroughs, i++, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection) == 0)
                 {
                     // Validate and release remaining elements.
                     while (promises.MoveNext())
                     {
                         p = promises.Current;
                         ValidateElement(p, "promises", 1);
-                        Internal.PromiseRef.MaybeMarkAwaitedAndDispose(p, true);
+                        Internal.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                     }
                     // Repool any created passthroughs.
                     foreach (var passthrough in passThroughs)
@@ -334,58 +317,40 @@ namespace Proto.Promises
             } while (promises.MoveNext());
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, pendingCount);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2)
         {
             return Promise<T>.First(promise1, promise2);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             return Promise<T>.First(promise1, promise2, promise3);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             return Promise<T>.First(promise1, promise2, promise3, promise4);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T>(params Promise<T>[] promises)
         {
             return Promise<T>.First(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T>(IEnumerable<Promise<T>> promises)
         {
             return Promise<T>.First(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.First()")]
         public static Promise<T> First<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.First(promises);
@@ -451,7 +416,20 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Sequence<TEnumerator>(CancelationToken cancelationToken, TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
         {
-            return Internal.PromiseRef.CreateSequence(promiseFuncs, cancelationToken);
+            ValidateArgument(promiseFuncs, "promiseFuncs", 2);
+
+            if (!promiseFuncs.MoveNext())
+            {
+                return Internal.CreateResolved();
+            }
+
+            // Invoke funcs and normalize the progress.
+            Promise promise = new Promise(null, Internal.ValidIdFromApi, -1);
+            do
+            {
+                promise = promise.Then(promiseFuncs.Current, cancelationToken);
+            } while (promiseFuncs.MoveNext());
+            return promise;
         }
 
         /// <summary>
@@ -465,16 +443,16 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
                 return Internal.CreateResolved();
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, 2, completedProgress);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -488,18 +466,18 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
                 return Internal.CreateResolved();
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, 3, completedProgress);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -513,20 +491,20 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
                 return Internal.CreateResolved();
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, 4, completedProgress);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -564,7 +542,7 @@ namespace Proto.Promises
             {
                 var p = promises.Current;
                 ValidateElement(p, "promises", 1);
-                pendingCount += Internal.PrepareForMulti(p, ref passThroughs, i++, ref completedProgress);
+                pendingCount += Internal.PrepareForMulti(p, ref passThroughs, i++, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 ++totalCount;
             }
 
@@ -573,70 +551,46 @@ namespace Proto.Promises
                 return Internal.CreateResolved();
             }
             var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, totalCount, completedProgress);
-            return new Promise(promise, promise.Id);
+            return new Promise(promise, promise.Id, promise.Depth);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
         {
             return Promise<T>.All(promise1, promise2, valueContainer);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
         {
             return Promise<T>.All(promise1, promise2, promise3, valueContainer);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
-        /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
         {
             return Promise<T>.All(promise1, promise2, promise3, promise4, valueContainer);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/> when they have all resolved.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T>(params Promise<T>[] promises)
         {
             return Promise<T>.All(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/>s when they have all resolved.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises)
         {
             return Promise<T>.All(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/>s when they have all resolved.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> All<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.All(promises);
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that will resolve with <paramref name="valueContainer"/> where the values are in the same order as <paramref name="promises"/> when they have all resolved.
-        /// If any <see cref="Promise{T}"/> is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.All()")]
         public static Promise<IList<T>> AllNonAlloc<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.AllNonAlloc(promises, valueContainer);
@@ -654,22 +608,22 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 if (index == 0)
                 {
-                    target.value = ((Internal.ResolveContainer<T1>) feed).value;
+                    target.value = feed.GetValue<T1>();
                 }
             }, pendingCount, 2, completedProgress);
-            return new Promise<T1>(promise, promise.Id);
+            return new Promise<T1>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -684,26 +638,26 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 if (index == 0)
                 {
-                    target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                    target.value.Item1 = feed.GetValue<T1>();
                 }
                 else
                 {
-                    target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                    target.value.Item2 = feed.GetValue<T2>();
                 }
             }, pendingCount, 2, completedProgress);
-            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -718,29 +672,29 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                 }
             }, pendingCount, 3, completedProgress);
-            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -755,32 +709,32 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                 }
             }, pendingCount, 3, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -795,34 +749,34 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                 }
             }, pendingCount, 4, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -837,37 +791,37 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                 }
             }, pendingCount, 4, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -882,39 +836,39 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                 }
             }, pendingCount, 5, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -929,42 +883,42 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                 }
             }, pendingCount, 5, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -979,44 +933,44 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise6, "promise6", 1);
-            pendingCount += Internal.PrepareForMulti(promise6, ref passThroughs, 5, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise6, ref passThroughs, 5, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                 }
             }, pendingCount, 6, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -1031,47 +985,47 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise6, "promise6", 1);
-            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = feed.GetValue<T6>();
                         break;
                 }
             }, pendingCount, 6, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -1086,49 +1040,49 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise6, "promise6", 1);
-            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise7, "promise7", 1);
-            pendingCount += Internal.PrepareForMulti(promise7, ref passThroughs, 6, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise7, ref passThroughs, 6, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = feed.GetValue<T6>();
                         break;
                 }
             }, pendingCount, 7, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -1143,52 +1097,52 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise6, "promise6", 1);
-            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise7, "promise7", 1);
-            pendingCount += Internal.PrepareForMulti(promise7, ref value.Item7, ref passThroughs, 6, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise7, ref value.Item7, ref passThroughs, 6, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = feed.GetValue<T6>();
                         break;
                     case 6:
-                        target.value.Item7 = ((Internal.ResolveContainer<T7>) feed).value;
+                        target.value.Item7 = feed.GetValue<T7>();
                         break;
                 }
             }, pendingCount, 7, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, promise.Depth);
         }
 
         /// <summary>
@@ -1203,131 +1157,383 @@ namespace Proto.Promises
             ulong completedProgress = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise1, ref value.Item1, ref passThroughs, 0, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise2, "promise2", 1);
-            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise2, ref value.Item2, ref passThroughs, 1, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise3, "promise3", 1);
-            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise3, ref value.Item3, ref passThroughs, 2, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise4, "promise4", 1);
-            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise4, ref value.Item4, ref passThroughs, 3, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise5, "promise5", 1);
-            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise5, ref value.Item5, ref passThroughs, 4, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise6, "promise6", 1);
-            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise6, ref value.Item6, ref passThroughs, 5, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise7, "promise7", 1);
-            pendingCount += Internal.PrepareForMulti(promise7, ref value.Item7, ref passThroughs, 6, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise7, ref value.Item7, ref passThroughs, 6, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
             ValidateArgument(promise8, "promise8", 1);
-            pendingCount += Internal.PrepareForMulti(promise8, ref passThroughs, 7, ref completedProgress);
+            pendingCount += Internal.PrepareForMulti(promise8, ref passThroughs, 7, ref completedProgress, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(ref value);
+                return Internal.CreateResolved(value);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, ref value, (feed, target, index) =>
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = ((Internal.ResolveContainer<T1>) feed).value;
+                        target.value.Item1 = feed.GetValue<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = ((Internal.ResolveContainer<T2>) feed).value;
+                        target.value.Item2 = feed.GetValue<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = ((Internal.ResolveContainer<T3>) feed).value;
+                        target.value.Item3 = feed.GetValue<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = ((Internal.ResolveContainer<T4>) feed).value;
+                        target.value.Item4 = feed.GetValue<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = ((Internal.ResolveContainer<T5>) feed).value;
+                        target.value.Item5 = feed.GetValue<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = ((Internal.ResolveContainer<T6>) feed).value;
+                        target.value.Item6 = feed.GetValue<T6>();
                         break;
                     case 6:
-                        target.value.Item7 = ((Internal.ResolveContainer<T7>) feed).value;
+                        target.value.Item7 = feed.GetValue<T7>();
                         break;
                 }
             }, pendingCount, 8, completedProgress);
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id);
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, promise.Depth);
+        }
+
+        private static Promise SwitchToContext(SynchronizationOption synchronizationOption)
+        {
+            return Internal.CreateResolved()
+                .WaitAsync(synchronizationOption);
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise"/>.
+        /// Returns a new <see cref="Promise"/> that will resolve on the foreground context.
+        /// </summary>
+        public static Promise SwitchToForeground()
+        {
+            return SwitchToContext(SynchronizationOption.Foreground);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/> that will resolve on the background context.
+        /// </summary>
+        public static Promise SwitchToBackground()
+        {
+            return SwitchToContext(SynchronizationOption.Background);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/> that will resolve on the provided <paramref name="synchronizationContext"/>
+        /// </summary>
+        public static Promise SwitchToContext(SynchronizationContext synchronizationContext)
+        {
+            return Internal.CreateResolved()
+                .WaitAsync(synchronizationContext);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise"/>.
+        /// You may provide a <paramref name="synchronizationOption"/> to control the context on which the <paramref name="resolver"/> is invoked.
         /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
         /// or rejected with that <see cref="Exception"/>.
         /// </summary>
-		public static Promise New(Action<Deferred> resolver)
+		public static Promise New(Action<Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
         {
             Deferred deferred = Deferred.New();
-            Internal.CreateResolved()
-                .Finally(ValueTuple.Create(deferred, resolver), cv =>
+            Run(ValueTuple.Create(deferred, resolver), cv =>
+            {
+                Deferred def = cv.Item1;
+                try
                 {
-                    Deferred def = cv.Item1;
-                    try
-                    {
-                        cv.Item2.Invoke(def);
-                    }
-                    catch (OperationCanceledException e)
-                    {
-                        def.TryCancel(e); // Don't rethrow cancelation.
-                    }
-                    catch (Exception e)
-                    {
-                        if (!def.TryReject(e)) throw;
-                    }
-                });
-            return deferred.Promise;
-        }
-
-        /// <summary>
-        /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with a <see cref="Promise{T}.Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Promise{T}.Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
-        /// or rejected with that <see cref="Exception"/>.
-        /// </summary>
-		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver)
-        {
-            return Promise<T>.New(resolver);
-        }
-
-        /// <summary>
-        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked immediately with <paramref name="captureValue"/> and a <see cref="Deferred"/> that controls the state of the <see cref="Promise"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
-        /// or rejected with that <see cref="Exception"/>.
-        /// </summary>
-        public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver)
-        {
-            Deferred deferred = Deferred.New();
-            Internal.CreateResolved()
-                .Finally(ValueTuple.Create(deferred, resolver, captureValue), cv =>
+                    cv.Item2.Invoke(def);
+                }
+                catch (OperationCanceledException e)
                 {
-                    Deferred def = cv.Item1;
-                    try
-                    {
-                        cv.Item2.Invoke(cv.Item3, def);
-                    }
-                    catch (OperationCanceledException e)
-                    {
-                        def.TryCancel(e); // Don't rethrow cancelation.
-                    }
-                    catch (Exception e)
-                    {
-                        if (!def.TryReject(e)) throw;
-                    }
-                })
+                    def.TryCancel(e); // Don't rethrow cancelation.
+                }
+                catch (Exception e)
+                {
+                    if (!def.TryReject(e)) throw;
+                }
+            }, synchronizationOption)
                 .Forget();
             return deferred.Promise;
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise{T}"/>. <paramref name="resolver"/> is invoked immediately with <paramref name="captureValue"/> and a <see cref="Promise{T}.Deferred"/> that controls the state of the new <see cref="Promise{T}"/>.
-        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Promise{T}.Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise"/> on the provided <paramref name="synchronizationContext"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
         /// or rejected with that <see cref="Exception"/>.
         /// </summary>
-        public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver)
+		public static Promise New(Action<Deferred> resolver, SynchronizationContext synchronizationContext)
         {
-            return Promise<T>.New(captureValue, resolver);
+            Deferred deferred = Deferred.New();
+            Run(ValueTuple.Create(deferred, resolver), cv =>
+            {
+                Deferred def = cv.Item1;
+                try
+                {
+                    cv.Item2.Invoke(def);
+                }
+                catch (OperationCanceledException e)
+                {
+                    def.TryCancel(e); // Don't rethrow cancelation.
+                }
+                catch (Exception e)
+                {
+                    if (!def.TryReject(e)) throw;
+                }
+            }, synchronizationContext)
+                .Forget();
+            return deferred.Promise;
+        }
+
+        [Obsolete("Prefer Promise<T>.New()")]
+		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
+        {
+            return Promise<T>.New(resolver, synchronizationOption);
+        }
+
+        [Obsolete("Prefer Promise<T>.New()")]
+        public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver, SynchronizationContext synchronizationContext)
+        {
+            return Promise<T>.New(resolver, synchronizationContext);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked with <paramref name="captureValue"/> and a <see cref="Deferred"/> that controls the state of the <see cref="Promise"/>.
+        /// You may provide a <paramref name="synchronizationOption"/> to control the context on which the <paramref name="resolver"/> is invoked.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// or rejected with that <see cref="Exception"/>.
+        /// </summary>
+        public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
+        {
+            Deferred deferred = Deferred.New();
+            Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
+            {
+                Deferred def = cv.Item1;
+                try
+                {
+                    cv.Item2.Invoke(cv.Item3, def);
+                }
+                catch (OperationCanceledException e)
+                {
+                    def.TryCancel(e); // Don't rethrow cancelation.
+                }
+                catch (Exception e)
+                {
+                    if (!def.TryReject(e)) throw;
+                }
+            }, synchronizationOption)
+                .Forget();
+            return deferred.Promise;
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked with <paramref name="captureValue"/> and a <see cref="Deferred"/> that controls the state of the <see cref="Promise"/> on the provided <paramref name="synchronizationContext"/>.
+        /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
+        /// or rejected with that <see cref="Exception"/>.
+        /// </summary>
+        public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationContext synchronizationContext)
+        {
+            Deferred deferred = Deferred.New();
+            Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
+            {
+                Deferred def = cv.Item1;
+                try
+                {
+                    cv.Item2.Invoke(cv.Item3, def);
+                }
+                catch (OperationCanceledException e)
+                {
+                    def.TryCancel(e); // Don't rethrow cancelation.
+                }
+                catch (Exception e)
+                {
+                    if (!def.TryReject(e)) throw;
+                }
+            }, synchronizationContext)
+                .Forget();
+            return deferred.Promise;
+        }
+
+        [Obsolete("Prefer Promise<T>.New()")]
+        public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
+        {
+            return Promise<T>.New(captureValue, resolver, synchronizationOption);
+        }
+
+        [Obsolete("Prefer Promise<T>.New()")]
+        public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver, SynchronizationContext synchronizationContext)
+        {
+            return Promise<T>.New(captureValue, resolver, synchronizationContext);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="action"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise"/> that will be resolved when the <paramref name="action"/> returns successfully.
+        /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run(Action action, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Finally(action);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="action"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise"/> that will be resolved when the <paramref name="action"/> returns successfully.
+        /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Finally(captureValue, action);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="action"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise"/> that will be resolved when the <paramref name="action"/> returns successfully.
+        /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run(Action action, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Finally(action);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="action"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise"/> that will be resolved when the <paramref name="action"/> returns successfully.
+        /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Finally(captureValue, action);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise{T}"/> that will be resolved with the value returned by the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<T>(Func<T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise{T}"/> that will be resolved with the value returned by the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(captureValue, function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise{T}"/> that will be resolved with the value returned by the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<T>(Func<T> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise{T}"/> that will be resolved with the value returned by the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(captureValue, function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise"/> that will adopt the state of the <see cref="Promise"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run(Func<Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise"/> that will adopt the state of the <see cref="Promise"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(captureValue, function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise"/> that will adopt the state of the <see cref="Promise"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run(Func<Promise> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise"/> that will adopt the state of the <see cref="Promise"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(captureValue, function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise{T}"/> that will adopt the state of the <see cref="Promise{T}"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise{T}"/> that will adopt the state of the <see cref="Promise{T}"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
+        {
+            return SwitchToContext(synchronizationOption)
+                .Then(captureValue, function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise{T}"/> that will adopt the state of the <see cref="Promise{T}"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(function);
+        }
+
+        /// <summary>
+        /// Run the <paramref name="function"/> with <paramref name="captureValue"/> on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise{T}"/> that will adopt the state of the <see cref="Promise{T}"/> returned from the <paramref name="function"/>.
+        /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
+        /// </summary>
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationContext synchronizationContext)
+        {
+            return SwitchToContext(synchronizationContext)
+                .Then(captureValue, function);
         }
 
         /// <summary>
@@ -1343,7 +1549,7 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Resolved<T>(T value)
         {
-            return Internal.CreateResolved(ref value);
+            return Internal.CreateResolved(value);
         }
 
         /// <summary>
@@ -1356,9 +1562,7 @@ namespace Proto.Promises
             return deferred.Promise;
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that is already rejected with <paramref name="reason"/>.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Rejected<TReject>(TReject reason)")]
         public static Promise<T> Rejected<T, TReject>(TReject reason)
         {
             return Promise<T>.Rejected(reason);
@@ -1392,9 +1596,7 @@ namespace Proto.Promises
             return Promise<T>.Canceled();
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that is already canceled with <paramref name="reason"/>.
-        /// </summary>
+        [Obsolete("Prefer Promise<T>.Canceled<TCancel>(TCancel reason)")]
         public static Promise<T> Canceled<T, TCancel>(TCancel reason)
         {
             return Promise<T>.Canceled(reason);
@@ -1415,7 +1617,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T>.Deferred NewDeferred<T>(CancelationToken cancelationToken = default(CancelationToken))
         {
-            return Promise<T>.Deferred.New(cancelationToken);
+            return Promise<T>.NewDeferred(cancelationToken);
         }
 
         /// <summary>

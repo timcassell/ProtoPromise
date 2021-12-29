@@ -4,7 +4,10 @@
 #undef PROMISE_DEBUG
 # endif
 
+#pragma warning disable IDE0034 // Simplify 'default' expression
+
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
@@ -22,18 +25,18 @@ namespace Proto.Promises
         partial struct ReasonContainer
     {
         private readonly Internal.IValueContainer _valueContainer;
-#if PROMISE_DEBUG && !CSHARP_7_3_OR_NEWER
-        private readonly ulong _id;
+#if PROMISE_DEBUG
+        private readonly long _id;
 #endif
 
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal ReasonContainer(Internal.IValueContainer valueContainer)
+        internal ReasonContainer(Internal.IValueContainer valueContainer, long id)
         {
             _valueContainer = valueContainer;
-#if PROMISE_DEBUG && !CSHARP_7_3_OR_NEWER
-            _id = Internal.InvokeId;
+#if PROMISE_DEBUG
+            _id = id;
 #endif
         }
 
@@ -70,7 +73,7 @@ namespace Proto.Promises
         public bool TryGetValueAs<T>(out T value)
         {
             Validate();
-            return Internal.TryConvert(_valueContainer, out value);
+            return Internal.TryGetValue(_valueContainer, out value);
         }
 
 
@@ -78,11 +81,8 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
         partial void Validate()
         {
-            if (
-#if !CSHARP_7_3_OR_NEWER
-                _id != Internal.InvokeId |
-#endif
-                _valueContainer == null)
+            bool isValid = _valueContainer != null && _id == Internal.InvokeId;
+            if (!isValid)
             {
                 throw new InvalidOperationException("An instance of ReasonContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
             }
@@ -105,55 +105,46 @@ namespace Proto.Promises
 #endif
             partial struct ResultContainer
         {
-            private readonly Internal.IValueContainer _valueContainer;
-#if PROMISE_DEBUG && !CSHARP_7_3_OR_NEWER
-            private readonly ulong _id;
-#endif
+            private readonly Promise<Internal.VoidResult>.ResultContainer _target;
 
             /// <summary>
             /// FOR INTERNAL USE ONLY!
             /// </summary>
+            [MethodImpl(Internal.InlineOption)]
             internal ResultContainer(Internal.IValueContainer valueContainer)
             {
-                _valueContainer = valueContainer;
-#if PROMISE_DEBUG && !CSHARP_7_3_OR_NEWER
-                _id = Internal.InvokeId;
-#endif
+                _target = new Promise<Internal.VoidResult>.ResultContainer(valueContainer);
             }
 
-#if PROMISE_DEBUG && !CSHARP_7_3_OR_NEWER
             /// <summary>
             /// FOR INTERNAL USE ONLY!
             /// </summary>
-            internal ResultContainer(Internal.IValueContainer valueContainer, ulong id)
-            {
-                _valueContainer = valueContainer;
-                _id = id;
-            }
+            [MethodImpl(Internal.InlineOption)]
+            internal ResultContainer(
+#if CSHARP_7_3_OR_NEWER
+                in
 #endif
+                Promise<Internal.VoidResult>.ResultContainer target)
+            {
+                _target = target;
+            }
 
             /// <summary>
             /// If the <see cref="Promise"/> is rejected, rethrow the rejection.
             /// </summary>
+            [MethodImpl(Internal.InlineOption)]
             public void RethrowIfRejected()
             {
-                ValidateCall();
-                if (_valueContainer.GetState() == State.Rejected)
-                {
-                    throw Internal.ForcedRethrowException.GetOrCreate();
-                }
+                _target.RethrowIfRejected();
             }
 
             /// <summary>
             /// If the <see cref="Promise"/> is canceled, rethrow the cancelation.
             /// </summary>
+            [MethodImpl(Internal.InlineOption)]
             public void RethrowIfCanceled()
             {
-                ValidateCall();
-                if (_valueContainer.GetState() == State.Canceled)
-                {
-                    throw Internal.ForcedRethrowException.GetOrCreate();
-                }
+                _target.RethrowIfCanceled();
             }
 
             /// <summary>
@@ -161,11 +152,8 @@ namespace Proto.Promises
             /// </summary>
             public State State
             {
-                get
-                {
-                    ValidateCall();
-                    return _valueContainer.GetState();
-                }
+                [MethodImpl(Internal.InlineOption)]
+                get { return _target.State; }
             }
 
             /// <summary>
@@ -173,12 +161,8 @@ namespace Proto.Promises
             /// </summary>
             public ReasonContainer RejectContainer
             {
-                get
-                {
-                    ValidateCall();
-                    ValidateRejected();
-                    return new ReasonContainer(_valueContainer);
-                }
+                [MethodImpl(Internal.InlineOption)]
+                get { return _target.RejectContainer; }
             }
 
             /// <summary>
@@ -186,48 +170,9 @@ namespace Proto.Promises
             /// </summary>
             public ReasonContainer CancelContainer
             {
-                get
-                {
-                    ValidateCall();
-                    ValidateCanceled();
-                    return new ReasonContainer(_valueContainer);
-                }
+                [MethodImpl(Internal.InlineOption)]
+                get { return _target.CancelContainer; }
             }
-
-            partial void ValidateCall();
-            partial void ValidateRejected();
-            partial void ValidateCanceled();
-#if PROMISE_DEBUG
-            partial void ValidateCall()
-            {
-                if (
-#if !CSHARP_7_3_OR_NEWER
-                    _id != Internal.InvokeId |
-#endif
-                    _valueContainer == null)
-                {
-                    throw new InvalidOperationException("An instance of ResultContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
-                }
-            }
-#endif
-
-#if PROMISE_DEBUG
-            partial void ValidateRejected()
-            {
-                if (_valueContainer.GetState() != State.Rejected)
-                {
-                    throw new InvalidOperationException("Promise must be rejected in order to access RejectContainer.", Internal.GetFormattedStacktrace(2));
-                }
-            }
-
-            partial void ValidateCanceled()
-            {
-                if (_valueContainer.GetState() != State.Canceled)
-                {
-                    throw new InvalidOperationException("Promise must be canceled in order to access CancelContainer.", Internal.GetFormattedStacktrace(2));
-                }
-            }
-#endif
         }
     }
 
@@ -247,18 +192,59 @@ namespace Proto.Promises
             partial struct ResultContainer
         {
             private readonly Internal.IValueContainer _valueContainer;
-#if PROMISE_DEBUG && !CSHARP_7_3_OR_NEWER
-            private readonly ulong _id;
+            private readonly T _result;
+#if PROMISE_DEBUG
+            private readonly long _id;
+            private long Id
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return _id; }
+            }
+#else
+            private long Id
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return Internal.ValidIdFromApi; }
+            }
 #endif
 
             /// <summary>
             /// FOR INTERNAL USE ONLY!
             /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            internal ResultContainer(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T result)
+            {
+                _valueContainer = null;
+                _result = result;
+#if PROMISE_DEBUG
+                _id = Internal.InvokeId;
+#endif
+            }
+
+            /// <summary>
+            /// FOR INTERNAL USE ONLY!
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
             internal ResultContainer(Internal.IValueContainer valueContainer)
             {
                 _valueContainer = valueContainer;
-#if PROMISE_DEBUG && !CSHARP_7_3_OR_NEWER
+                _result = default(T);
+#if PROMISE_DEBUG
                 _id = Internal.InvokeId;
+#endif
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            private ResultContainer(Internal.IValueContainer valueContainer, long id, T result = default(T))
+            {
+                _valueContainer = valueContainer;
+                _result = result;
+#if PROMISE_DEBUG
+                _id = id;
 #endif
             }
 
@@ -268,7 +254,7 @@ namespace Proto.Promises
             public void RethrowIfRejected()
             {
                 ValidateCall();
-                if (_valueContainer.GetState() == Promise.State.Rejected)
+                if (_valueContainer != null && _valueContainer.GetState() == Promise.State.Rejected)
                 {
                     throw Internal.ForcedRethrowException.GetOrCreate();
                 }
@@ -280,7 +266,7 @@ namespace Proto.Promises
             public void RethrowIfCanceled()
             {
                 ValidateCall();
-                if (_valueContainer.GetState() == Promise.State.Canceled)
+                if (_valueContainer != null && _valueContainer.GetState() == Promise.State.Canceled)
                 {
                     throw Internal.ForcedRethrowException.GetOrCreate();
                 }
@@ -294,7 +280,9 @@ namespace Proto.Promises
                 get
                 {
                     ValidateCall();
-                    return _valueContainer.GetState();
+                    return _valueContainer != null
+                        ? _valueContainer.GetState()
+                        : Promise.State.Resolved;
                 }
             }
 
@@ -307,7 +295,9 @@ namespace Proto.Promises
                 {
                     ValidateCall();
                     ValidateResolved();
-                    return ((Internal.ResolveContainer<T>) _valueContainer).value;
+                    return _valueContainer != null
+                        ? _valueContainer.GetValue<T>()
+                        : _result;
                 }
             }
 
@@ -316,11 +306,12 @@ namespace Proto.Promises
             /// </summary>
             public ReasonContainer RejectContainer
             {
+                [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     ValidateCall();
                     ValidateRejected();
-                    return new ReasonContainer(_valueContainer);
+                    return new ReasonContainer(_valueContainer, Id);
                 }
             }
 
@@ -329,21 +320,20 @@ namespace Proto.Promises
             /// </summary>
             public ReasonContainer CancelContainer
             {
+                [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     ValidateCall();
                     ValidateCanceled();
-                    return new ReasonContainer(_valueContainer);
+                    return new ReasonContainer(_valueContainer, Id);
                 }
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public static implicit operator Promise.ResultContainer(ResultContainer rhs)
             {
-#if PROMISE_DEBUG && !CSHARP_7_3_OR_NEWER
-                return new Promise.ResultContainer(rhs._valueContainer, rhs._id);
-#else
-                return new Promise.ResultContainer(rhs._valueContainer);
-#endif
+                var newContainer = new Promise<Internal.VoidResult>.ResultContainer(rhs._valueContainer, rhs.Id);
+                return new Promise.ResultContainer(newContainer);
             }
 
             partial void ValidateCall();
@@ -353,21 +343,15 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             partial void ValidateCall()
             {
-                if (
-#if !CSHARP_7_3_OR_NEWER
-                    _id != Internal.InvokeId |
-#endif
-                    _valueContainer == null)
+                if (Id != Internal.InvokeId)
                 {
                     throw new InvalidOperationException("An instance of ResultContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
                 }
             }
-#endif
 
-#if PROMISE_DEBUG
             partial void ValidateResolved()
             {
-                if (_valueContainer.GetState() != Promise.State.Resolved)
+                if (State != Promise.State.Resolved)
                 {
                     throw new InvalidOperationException("Promise must be resolved in order to access Result.", Internal.GetFormattedStacktrace(2));
                 }
@@ -375,7 +359,7 @@ namespace Proto.Promises
 
             partial void ValidateRejected()
             {
-                if (_valueContainer.GetState() != Promise.State.Rejected)
+                if (State != Promise.State.Rejected)
                 {
                     throw new InvalidOperationException("Promise must be rejected in order to access RejectContainer.", Internal.GetFormattedStacktrace(2));
                 }
@@ -383,7 +367,7 @@ namespace Proto.Promises
 
             partial void ValidateCanceled()
             {
-                if (_valueContainer.GetState() != Promise.State.Canceled)
+                if (State != Promise.State.Canceled)
                 {
                     throw new InvalidOperationException("Promise must be canceled in order to access CancelContainer.", Internal.GetFormattedStacktrace(2));
                 }

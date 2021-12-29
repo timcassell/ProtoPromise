@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
 using System.Runtime.CompilerServices;
@@ -15,9 +16,13 @@ namespace Proto.Promises
     {
         partial class PromiseRef
         {
-            // These static functions help with the implementation so we don't need to type the generics every time.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal static class DelegateWrapper
             {
+                // These static functions help with the implementation so we don't need to type the generics in every method.
+
                 [MethodImpl(InlineOption)]
                 public static DelegateResolvePassthrough CreatePassthrough()
                 {
@@ -25,99 +30,259 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateVoidVoid Create(Action callback)
+                public static Delegate<VoidResult, VoidResult> Create(Action callback)
                 {
-                    return new DelegateVoidVoid(callback);
+                    return new Delegate<VoidResult, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateVoidResult<TResult> Create<TResult>(Func<TResult> callback)
+                public static Delegate<VoidResult, TResult> Create<TResult>(Func<TResult> callback)
                 {
-                    return new DelegateVoidResult<TResult>(callback);
+                    return new Delegate<VoidResult, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateVoidPromise Create(Func<Promise> callback)
+                public static Delegate<TArg, VoidResult> Create<TArg>(Action<TArg> callback)
                 {
-                    return new DelegateVoidPromise(callback);
+                    return new Delegate<TArg, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateVoidPromiseT<TResult> Create<TResult>(Func<Promise<TResult>> callback)
+                public static Delegate<TArg, TResult> Create<TArg, TResult>(Func<TArg, TResult> callback)
                 {
-                    return new DelegateVoidPromiseT<TResult>(callback);
+                    return new Delegate<TArg, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateArgVoid<TArg> Create<TArg>(Action<TArg> callback)
+                public static DelegatePromise<VoidResult, VoidResult> Create(Func<Promise> callback)
                 {
-                    return new DelegateArgVoid<TArg>(callback);
+                    return new DelegatePromise<VoidResult, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateArgResult<TArg, TResult> Create<TArg, TResult>(Func<TArg, TResult> callback)
+                public static DelegatePromise<VoidResult, TResult> Create<TResult>(Func<Promise<TResult>> callback)
                 {
-                    return new DelegateArgResult<TArg, TResult>(callback);
+                    return new DelegatePromise<VoidResult, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateArgPromise<TArg> Create<TArg>(Func<TArg, Promise> callback)
+                public static DelegatePromise<TArg, VoidResult> Create<TArg>(Func<TArg, Promise> callback)
                 {
-                    return new DelegateArgPromise<TArg>(callback);
+                    return new DelegatePromise<TArg, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateArgPromiseT<TArg, TResult> Create<TArg, TResult>(Func<TArg, Promise<TResult>> callback)
+                public static DelegatePromise<TArg, TResult> Create<TArg, TResult>(Func<TArg, Promise<TResult>> callback)
                 {
-                    return new DelegateArgPromiseT<TArg, TResult>(callback);
+                    return new DelegatePromise<TArg, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCaptureVoidVoid<TCapture> Create<TCapture>(ref TCapture capturedValue, Action<TCapture> callback)
+                public static DelegateCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Action<TCapture> callback)
                 {
-                    return new DelegateCaptureVoidVoid<TCapture>(ref capturedValue, callback);
+                    return new DelegateCapture<TCapture, VoidResult, VoidResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(ref TCapture capturedValue, Func<TCapture, TResult> callback)
+                public static DelegateCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Func<TCapture, TResult> callback)
                 {
-                    return new DelegateCaptureVoidResult<TCapture, TResult>(ref capturedValue, callback);
+                    return new DelegateCapture<TCapture, VoidResult, TResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCaptureVoidPromise<TCapture> Create<TCapture>(ref TCapture capturedValue, Func<TCapture, Promise> callback)
+                public static DelegateCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Action<TCapture, TArg> callback)
                 {
-                    return new DelegateCaptureVoidPromise<TCapture>(ref capturedValue, callback);
+                    return new DelegateCapture<TCapture, TArg, VoidResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCaptureVoidPromiseT<TCapture, TResult> Create<TCapture, TResult>(ref TCapture capturedValue, Func<TCapture, Promise<TResult>> callback)
+                public static DelegateCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
                 {
-                    return new DelegateCaptureVoidPromiseT<TCapture, TResult>(ref capturedValue, callback);
+                    return new DelegateCapture<TCapture, TArg, TResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(ref TCapture capturedValue, Action<TCapture, TArg> callback)
+                public static DelegatePromiseCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Func<TCapture, Promise> callback)
                 {
-                    return new DelegateCaptureArgVoid<TCapture, TArg>(ref capturedValue, callback);
+                    return new DelegatePromiseCapture<TCapture, VoidResult, VoidResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
+                public static DelegatePromiseCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Func<TCapture, Promise<TResult>> callback)
                 {
-                    return new DelegateCaptureArgResult<TCapture, TArg, TResult>(ref capturedValue, callback);
+                    return new DelegatePromiseCapture<TCapture, VoidResult, TResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCaptureArgPromise<TCapture, TArg> Create<TCapture, TArg>(ref TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
+                public static DelegatePromiseCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
                 {
-                    return new DelegateCaptureArgPromise<TCapture, TArg>(ref capturedValue, callback);
+                    return new DelegatePromiseCapture<TCapture, TArg, VoidResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCaptureArgPromiseT<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(ref TCapture capturedValue, Func<TCapture, TArg, Promise<TResult>> callback)
+                public static DelegatePromiseCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Func<TCapture, TArg, Promise<TResult>> callback)
                 {
-                    return new DelegateCaptureArgPromiseT<TCapture, TArg, TResult>(ref capturedValue, callback);
+                    return new DelegatePromiseCapture<TCapture, TArg, TResult>(capturedValue, callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinue<VoidResult, VoidResult> Create(Promise.ContinueAction callback)
+                {
+                    return new DelegateContinue<VoidResult, VoidResult>(callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinue<VoidResult, TResult> Create<TResult>(Promise.ContinueFunc<TResult> callback)
+                {
+                    return new DelegateContinue<VoidResult, TResult>(callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinue<TArg, VoidResult> Create<TArg>(Promise<TArg>.ContinueAction callback)
+                {
+                    return new DelegateContinue<TArg, VoidResult>(callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinue<TArg, TResult> Create<TArg, TResult>(Promise<TArg>.ContinueFunc<TResult> callback)
+                {
+                    return new DelegateContinue<TArg, TResult>(callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinueCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
+                {
+                    return new DelegateContinueCapture<TCapture, VoidResult, VoidResult>(capturedValue, callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinueCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
+                {
+                    return new DelegateContinueCapture<TCapture, VoidResult, TResult>(capturedValue, callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinueCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
+                {
+                    return new DelegateContinueCapture<TCapture, TArg, VoidResult>(capturedValue, callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinueCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
+                {
+                    return new DelegateContinueCapture<TCapture, TArg, TResult>(capturedValue, callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinuePromise<VoidResult, VoidResult> Create(Promise.ContinueFunc<Promise> callback)
+                {
+                    return new DelegateContinuePromise<VoidResult, VoidResult>(callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinuePromise<VoidResult, TResult> Create<TResult>(Promise.ContinueFunc<Promise<TResult>> callback)
+                {
+                    return new DelegateContinuePromise<VoidResult, TResult>(callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinuePromise<TArg, VoidResult> Create<TArg>(Promise<TArg>.ContinueFunc<Promise> callback)
+                {
+                    return new DelegateContinuePromise<TArg, VoidResult>(callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinuePromise<TArg, TResult> Create<TArg, TResult>(Promise<TArg>.ContinueFunc<Promise<TResult>> callback)
+                {
+                    return new DelegateContinuePromise<TArg, TResult>(callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinuePromiseCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
+                {
+                    return new DelegateContinuePromiseCapture<TCapture, VoidResult, VoidResult>(capturedValue, callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinuePromiseCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TResult>> callback)
+                {
+                    return new DelegateContinuePromiseCapture<TCapture, VoidResult, TResult>(capturedValue, callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinuePromiseCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
+                {
+                    return new DelegateContinuePromiseCapture<TCapture, TArg, VoidResult>(capturedValue, callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateContinuePromiseCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>> callback)
+                {
+                    return new DelegateContinuePromiseCapture<TCapture, TArg, TResult>(capturedValue, callback);
                 }
             }
 
@@ -128,38 +293,60 @@ namespace Proto.Promises
             {
                 private readonly bool _isActive;
 
+                public bool IsNull
+                {
+                    [MethodImpl(InlineOption)]
+                    get { return !_isActive; }
+                }
+
+                [MethodImpl(InlineOption)]
                 internal DelegateResolvePassthrough(bool isActive)
                 {
                     _isActive = isActive;
                 }
 
-                public bool IsNull { get { return !_isActive; } }
-
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
+                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
-                    owner.ResolveInternal(valueContainer);
+                    owner.ResolveInternal(valueContainer, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.ResolveInternal(valueContainer);
+                        owner.ResolveInternal(valueContainer, ref executionScheduler);
+                        valueContainer.Release();
+                    }
+                }
+
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                {
+                    owner.ResolveInternal(valueContainer, ref executionScheduler);
+                    valueContainer.Release();
+                }
+
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                {
+                    if (cancelationHelper.TryUnregister(owner))
+                    {
+                        owner.ResolveInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
             }
 
             #region Regular Delegates
+            // NOTE: IDelegate<TArg, TResult> is cleaner, but doesn't play well with AOT compilers (IL2CPP).
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateVoidVoid : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            internal struct Delegate<TArg, TResult> : IDelegateResolve, IDelegateResolvePromise, IDelegateReject, IDelegateRejectPromise
             {
-                private readonly Action _callback;
+                internal readonly Delegate _callback;
 
                 public bool IsNull
                 {
@@ -168,263 +355,153 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateVoidVoid(Action callback)
+                public Delegate(Delegate callback)
                 {
                     _callback = callback;
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
+                public TResult Invoke(TArg arg)
                 {
-                    _callback.Invoke();
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    if (isVoidResult)
+                    {
+                        if (isVoidArg)
+                        {
+                            ((Action) _callback).Invoke();
+                        }
+                        else
+                        {
+                            ((Action<TArg>) _callback).Invoke(arg);
+                        }
+                        return default(TResult);
+                    }
+                    if (isVoidArg)
+                    {
+                        return ((Func<TResult>) _callback).Invoke();
+                    }
+                    return ((Func<TArg, TResult>) _callback).Invoke(arg);
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                {
+                    TResult result = Invoke(valueContainer.GetValue<TArg>());
                     valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
+                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
-                    Invoke(valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
+                    TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner);
+                        TResult result = Invoke(arg);
+                        valueContainer.Release();
+                        owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                [MethodImpl(InlineOption)]
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
+                    TResult result = Invoke(valueContainer.GetValue<TArg>());
+                    owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                    valueContainer.Release();
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                {
+                    TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateArgVoid<TArg> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                private readonly Action<TArg> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateArgVoid(Action<TArg> callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    _callback.Invoke(arg);
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    Invoke(arg, valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TArg arg;
-                    if (TryConvert(valueContainer, out arg))
-                    {
-                        Invoke(arg, valueContainer, owner);
-                    }
-                    else
-                    {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        TResult result = Invoke(arg);
+                        owner.WaitFor(CreateResolved(result), ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
 
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                void IDelegateReject.InvokeRejecter(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    if (cancelationHelper.TryUnregister(owner))
+                    TArg arg;
+                    if (valueContainer.TryGetValue(out arg))
                     {
-                        Invoke(arg, valueContainer, owner);
+                        TResult result = Invoke(arg);
+                        valueContainer.Release();
+                        owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                    }
+                    else
+                    {
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        valueContainer.Release();
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                void IDelegateReject.InvokeRejecter(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    if (valueContainer.TryGetValue(out arg))
                     {
                         if (cancelationHelper.TryUnregister(owner))
                         {
-                            Invoke(arg, valueContainer, owner);
+                            TResult result = Invoke(arg);
+                            valueContainer.Release();
+                            owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
-            }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateVoidResult<TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                private readonly Func<TResult> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateVoidResult(Func<TResult> callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TResult result = _callback.Invoke();
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateArgResult<TArg, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                private readonly Func<TArg, TResult> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateArgResult(Func<TArg, TResult> callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TResult result = _callback.Invoke(arg);
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    Invoke(arg, valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
+                void IDelegateRejectPromise.InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    if (valueContainer.TryGetValue(out arg))
                     {
-                        Invoke(arg, valueContainer, owner);
+                        TResult result = Invoke(arg);
+                        owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                        valueContainer.Release();
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
 
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(arg, valueContainer, owner);
-                    }
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                void IDelegateRejectPromise.InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    if (valueContainer.TryGetValue(out arg))
                     {
                         if (cancelationHelper.TryUnregister(owner))
                         {
-                            Invoke(arg, valueContainer, owner);
+                            TResult result = Invoke(arg);
+                            owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                            valueContainer.Release();
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
             }
 
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateVoidPromise : IDelegateResolvePromise, IDelegateRejectPromise
+            internal struct DelegatePromise<TArg, TResult> : IDelegateResolvePromise, IDelegateRejectPromise
             {
-                private readonly Func<Promise> _callback;
+                internal readonly Delegate _callback;
 
                 public bool IsNull
                 {
@@ -433,130 +510,100 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateVoidPromise(Func<Promise> callback)
+                public DelegatePromise(Delegate callback)
                 {
                     _callback = callback;
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
+                public Promise<TResult> Invoke(TArg arg)
                 {
-                    var result = _callback.Invoke();
-                    ((PromiseWaitPromise) owner).WaitFor(result);
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    if (isVoidResult)
+                    {
+                        Promise promise;
+                        if (isVoidArg)
+                        {
+                            promise = ((Func<Promise>) _callback).Invoke();
+                        }
+                        else
+                        {
+                            promise = ((Func<TArg, Promise>) _callback).Invoke(arg);
+                        }
+                        return new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
+                    }
+                    if (isVoidArg)
+                    {
+                        return ((Func<Promise<TResult>>) _callback).Invoke();
+                    }
+                    return ((Func<TArg, Promise<TResult>>) _callback).Invoke(arg);
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                {
+                    Promise<TResult> result = Invoke(valueContainer.GetValue<TArg>());
+                    owner.WaitFor(result, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
-                    Invoke(valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
+                    TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner);
+                        Promise<TResult> result = Invoke(arg);
+                        owner.WaitFor(result, ref executionScheduler);
+                        valueContainer.Release();
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateArgPromise<TArg> : IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                private readonly Func<TArg, Promise> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateArgPromise(Func<TArg, Promise> callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(arg);
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    Invoke(arg, valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
+                void IDelegateRejectPromise.InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    if (valueContainer.TryGetValue(out arg))
                     {
-                        Invoke(arg, valueContainer, owner);
+                        Promise<TResult> result = Invoke(arg);
+                        owner.WaitFor(result, ref executionScheduler);
+                        valueContainer.Release();
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
 
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(arg, valueContainer, owner);
-                    }
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                void IDelegateRejectPromise.InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    if (valueContainer.TryGetValue(out arg))
                     {
                         if (cancelationHelper.TryUnregister(owner))
                         {
-                            Invoke(arg, valueContainer, owner);
+                            Promise<TResult> result = Invoke(arg);
+                            owner.WaitFor(result, ref executionScheduler);
+                            valueContainer.Release();
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
             }
 
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateVoidPromiseT<TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
+            internal struct DelegateContinue<TArg, TResult> : IDelegateContinue
             {
-                private readonly Func<Promise<TPromise>> _callback;
+                private readonly Delegate _callback;
 
                 public bool IsNull
                 {
@@ -565,397 +612,172 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateVoidPromiseT(Func<Promise<TPromise>> callback)
+                public DelegateContinue(Delegate callback)
                 {
                     _callback = callback;
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
+                public TResult Invoke(TArg arg)
                 {
-                    var result = _callback.Invoke();
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    if (isVoidResult)
                     {
-                        Invoke(valueContainer, owner);
+                        if (isVoidArg)
+                        {
+                            ((Promise.ContinueAction) _callback).Invoke(new Promise.ResultContainer(null));
+                        }
+                        else
+                        {
+                            ((Promise<TArg>.ContinueAction) _callback).Invoke(new Promise<TArg>.ResultContainer(arg));
+                        }
+                        return default(TResult);
                     }
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
+                    if (isVoidArg)
                     {
-                        Invoke(valueContainer, owner);
+                        return ((Promise.ContinueFunc<TResult>) _callback).Invoke(new Promise.ResultContainer(null));
                     }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateArgPromiseT<TArg, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                private readonly Func<TArg, Promise<TPromise>> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
+                    return ((Promise<TArg>.ContinueFunc<TResult>) _callback).Invoke(new Promise<TArg>.ResultContainer(arg));
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateArgPromiseT(Func<TArg, Promise<TPromise>> callback)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(arg);
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    Invoke(arg, valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    IValueContainer resolveContainer;
+                    if (isVoidResult)
                     {
-                        Invoke(arg, valueContainer, owner);
+                        if (isVoidArg)
+                        {
+                            ((Promise.ContinueAction) _callback).Invoke(new Promise.ResultContainer(valueContainer));
+                        }
+                        else
+                        {
+                            ((Promise<TArg>.ContinueAction) _callback).Invoke(new Promise<TArg>.ResultContainer(valueContainer));
+                        }
+                        resolveContainer = ResolveContainerVoid.GetOrCreate(0);
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
-                        valueContainer.Release();
+                        TResult result;
+                        if (isVoidArg)
+                        {
+                            result = ((Promise.ContinueFunc<TResult>) _callback).Invoke(new Promise.ResultContainer(valueContainer));
+                        }
+                        else
+                        {
+                            result = ((Promise<TArg>.ContinueFunc<TResult>) _callback).Invoke(new Promise<TArg>.ResultContainer(valueContainer));
+                        }
+                        resolveContainer = CreateResolveContainer(result, 0);
                     }
+                    valueContainer.Release();
+                    owner.ResolveInternal(resolveContainer, ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(arg, valueContainer, owner);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
+            }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal struct DelegateContinuePromise<TArg, TResult> : IDelegateContinuePromise
+            {
+                private readonly Delegate _callback;
+
+                public bool IsNull
                 {
-                    TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    [MethodImpl(InlineOption)]
+                    get { return _callback == null; }
+                }
+
+                [MethodImpl(InlineOption)]
+                public DelegateContinuePromise(Delegate callback)
+                {
+                    _callback = callback;
+                }
+
+                [MethodImpl(InlineOption)]
+                public Promise<TResult> Invoke(TArg arg)
+                {
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    if (isVoidResult)
                     {
-                        if (cancelationHelper.TryUnregister(owner))
+                        Promise promise;
+                        if (isVoidArg)
                         {
-                            Invoke(arg, valueContainer, owner);
+                            promise = ((Promise.ContinueFunc<Promise>) _callback).Invoke(new Promise.ResultContainer(null));
+                        }
+                        else
+                        {
+                            promise = ((Promise<TArg>.ContinueFunc<Promise>) _callback).Invoke(new Promise<TArg>.ResultContainer(arg));
+                        }
+                        return new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
+                    }
+                    if (isVoidArg)
+                    {
+                        return ((Promise.ContinueFunc<Promise<TResult>>) _callback).Invoke(new Promise.ResultContainer(null));
+                    }
+                    return ((Promise<TArg>.ContinueFunc<Promise<TResult>>) _callback).Invoke(new Promise<TArg>.ResultContainer(arg));
+                }
+
+                [MethodImpl(InlineOption)]
+                public void Invoke(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                {
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    Promise<TResult> result;
+                    if (isVoidResult)
+                    {
+                        Promise promise;
+                        if (isVoidArg)
+                        {
+                            promise = ((Promise.ContinueFunc<Promise>) _callback).Invoke(new Promise.ResultContainer(valueContainer));
+                        }
+                        else
+                        {
+                            promise = ((Promise<TArg>.ContinueFunc<Promise>) _callback).Invoke(new Promise<TArg>.ResultContainer(valueContainer));
+                        }
+                        result = new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
+                    }
+                    else
+                    {
+                        if (isVoidArg)
+                        {
+                            result = ((Promise.ContinueFunc<Promise<TResult>>) _callback).Invoke(new Promise.ResultContainer(valueContainer));
+                        }
+                        else
+                        {
+                            result = ((Promise<TArg>.ContinueFunc<Promise<TResult>>) _callback).Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                         }
                     }
-                    else if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.RejectOrCancelInternal(valueContainer);
-                        valueContainer.Release();
-                    }
-                }
-            }
-
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueVoidVoid : IDelegateContinue
-            {
-                private readonly Promise.ContinueAction _callback;
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueVoidVoid(Promise.ContinueAction callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    _callback.Invoke(new Promise.ResultContainer(valueContainer));
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueVoidResult<TResult> : IDelegateContinue
-            {
-                private readonly Promise.ContinueFunc<TResult> _callback;
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueVoidResult(Promise.ContinueFunc<TResult> callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TResult result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueArgVoid<TArg> : IDelegateContinue
-            {
-                private readonly Promise<TArg>.ContinueAction _callback;
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueArgVoid(Promise<TArg>.ContinueAction callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueArgResult<TArg, TResult> : IDelegateContinue
-            {
-                private readonly Promise<TArg>.ContinueFunc<TResult> _callback;
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueArgResult(Promise<TArg>.ContinueFunc<TResult> callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TResult result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueVoidPromise : IDelegateContinuePromise
-            {
-                private readonly Promise.ContinueFunc<Promise> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueVoidPromise(Promise.ContinueFunc<Promise> callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result);
+                    owner.WaitFor(result, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueVoidPromiseT<TPromise> : IDelegateContinuePromise
-            {
-                private readonly Promise.ContinueFunc<Promise<TPromise>> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueVoidPromiseT(Promise.ContinueFunc<Promise<TPromise>> callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(new Promise.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueArgPromise<TArg> : IDelegateContinuePromise
-            {
-                private readonly Promise<TArg>.ContinueFunc<Promise> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueArgPromise(Promise<TArg>.ContinueFunc<Promise> callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueArgPromiseT<TArg, TPromise> : IDelegateContinuePromise
-            {
-                private readonly Promise<TArg>.ContinueFunc<Promise<TPromise>> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueArgPromiseT(Promise<TArg>.ContinueFunc<Promise<TPromise>> callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(new Promise<TArg>.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
@@ -963,6 +785,12 @@ namespace Proto.Promises
             internal struct DelegateFinally : IDelegateSimple
             {
                 private readonly Action _callback;
+
+                public bool IsNull
+                {
+                    [MethodImpl(InlineOption)]
+                    get { return _callback == null; }
+                }
 
                 [MethodImpl(InlineOption)]
                 public DelegateFinally(Action callback)
@@ -993,7 +821,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(IValueContainer valueContainer)
                 {
-                    _callback.Invoke(new ReasonContainer(valueContainer));
+                    _callback.Invoke(new ReasonContainer(valueContainer, InvokeId));
                 }
             }
 
@@ -1022,10 +850,10 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureVoidVoid<TCapture> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
+            internal struct DelegateCapture<TCapture, TArg, TResult> : IDelegateResolve, IDelegateResolvePromise, IDelegateReject, IDelegateRejectPromise
             {
+                private readonly Delegate _callback;
                 private readonly TCapture _capturedValue;
-                private readonly Action<TCapture> _callback;
 
                 public bool IsNull
                 {
@@ -1034,271 +862,165 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureVoidVoid(ref TCapture capturedValue, Action<TCapture> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    _callback.Invoke(_capturedValue);
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+                public DelegateCapture(
+#if CSHARP_7_3_OR_NEWER
+                    in
 #endif
-            internal struct DelegateCaptureArgVoid<TCapture, TArg> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Action<TCapture, TArg> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateCaptureArgVoid(ref TCapture capturedValue, Action<TCapture, TArg> callback)
+                    TCapture capturedValue, Delegate callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
+                public TResult Invoke(TArg arg)
                 {
-                    _callback.Invoke(_capturedValue, arg);
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidCapture = null != default(TCapture) && typeof(TCapture) == typeof(VoidResult);
+                    if (isVoidCapture)
+                    {
+                        return new Delegate<TArg, TResult>(_callback).Invoke(arg);
+                    }
+
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    if (isVoidResult)
+                    {
+                        if (isVoidArg)
+                        {
+                            ((Action<TCapture>) _callback).Invoke(_capturedValue);
+                        }
+                        else
+                        {
+                            ((Action<TCapture, TArg>) _callback).Invoke(_capturedValue, arg);
+                        }
+                        return default(TResult);
+                    }
+                    if (isVoidArg)
+                    {
+                        return ((Func<TCapture, TResult>) _callback).Invoke(_capturedValue);
+                    }
+                    return ((Func<TCapture, TArg, TResult>) _callback).Invoke(_capturedValue, arg);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
+                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    Invoke(arg, valueContainer, owner);
+                    TResult result = Invoke(valueContainer.GetValue<TArg>());
+                    valueContainer.Release();
+                    owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
+                [MethodImpl(InlineOption)]
+                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
-                    TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    TArg arg = valueContainer.GetValue<TArg>();
+                    if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(arg, valueContainer, owner);
+                        TResult result = Invoke(arg);
+                        valueContainer.Release();
+                        owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
                     }
-                    else
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                {
+                    TResult result = Invoke(valueContainer.GetValue<TArg>());
+                    owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                    valueContainer.Release();
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                {
+                    TArg arg = valueContainer.GetValue<TArg>();
+                    if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        TResult result = Invoke(arg);
+                        owner.WaitFor(CreateResolved(result), ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
 
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                void IDelegateReject.InvokeRejecter(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    if (cancelationHelper.TryUnregister(owner))
+                    TArg arg;
+                    if (valueContainer.TryGetValue(out arg))
                     {
-                        Invoke(arg, valueContainer, owner);
+                        TResult result = Invoke(arg);
+                        valueContainer.Release();
+                        owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                    }
+                    else
+                    {
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        valueContainer.Release();
                     }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                void IDelegateReject.InvokeRejecter(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    if (valueContainer.TryGetValue(out arg))
                     {
                         if (cancelationHelper.TryUnregister(owner))
                         {
-                            Invoke(arg, valueContainer, owner);
+                            TResult result = Invoke(arg);
+                            valueContainer.Release();
+                            owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
-            }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateCaptureVoidResult<TCapture, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, TResult> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateCaptureVoidResult(ref TCapture capturedValue, Func<TCapture, TResult> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TResult result = _callback.Invoke(_capturedValue);
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateCaptureArgResult<TCapture, TArg, TResult> : IDelegateResolve, IDelegateReject, IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, TArg, TResult> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateCaptureArgResult(ref TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TResult result = _callback.Invoke(_capturedValue, arg);
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    Invoke(arg, valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
+                void IDelegateRejectPromise.InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    if (valueContainer.TryGetValue(out arg))
                     {
-                        Invoke(arg, valueContainer, owner);
+                        TResult result = Invoke(arg);
+                        owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                        valueContainer.Release();
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
 
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(arg, valueContainer, owner);
-                    }
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                void IDelegateRejectPromise.InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    if (valueContainer.TryGetValue(out arg))
                     {
                         if (cancelationHelper.TryUnregister(owner))
                         {
-                            Invoke(arg, valueContainer, owner);
+                            TResult result = Invoke(arg);
+                            owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                            valueContainer.Release();
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
             }
 
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureVoidPromise<TCapture> : IDelegateResolvePromise, IDelegateRejectPromise
+            internal struct DelegatePromiseCapture<TCapture, TArg, TResult> : IDelegateResolvePromise, IDelegateRejectPromise
             {
+                private readonly Delegate _callback;
                 private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, Promise> _callback;
 
                 public bool IsNull
                 {
@@ -1307,134 +1029,112 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureVoidPromise(ref TCapture capturedValue, Func<TCapture, Promise> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(_capturedValue);
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+                public DelegatePromiseCapture(
+#if CSHARP_7_3_OR_NEWER
+                    in
 #endif
-            internal struct DelegateCaptureArgPromise<TCapture, TArg> : IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, TArg, Promise> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateCaptureArgPromise(ref TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
+                    TCapture capturedValue, Delegate callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
+                public Promise<TResult> Invoke(TArg arg)
                 {
-                    var result = _callback.Invoke(_capturedValue, arg);
-                    ((PromiseWaitPromise) owner).WaitFor(result);
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidCapture = null != default(TCapture) && typeof(TCapture) == typeof(VoidResult);
+                    if (isVoidCapture)
+                    {
+                        return new DelegatePromise<TArg, TResult>(_callback).Invoke(arg);
+                    }
+
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    if (isVoidResult)
+                    {
+                        Promise promise;
+                        if (isVoidArg)
+                        {
+                            promise = ((Func<TCapture, Promise>) _callback).Invoke(_capturedValue);
+                        }
+                        else
+                        {
+                            promise = ((Func<TCapture, TArg, Promise>) _callback).Invoke(_capturedValue, arg);
+                        }
+                        return new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
+                    }
+                    if (isVoidArg)
+                    {
+                        return ((Func<TCapture, Promise<TResult>>) _callback).Invoke(_capturedValue);
+                    }
+                    return ((Func<TCapture, TArg, Promise<TResult>>) _callback).Invoke(_capturedValue, arg);
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                {
+                    Promise<TResult> result = Invoke(valueContainer.GetValue<TArg>());
+                    owner.WaitFor(result, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
+                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    Invoke(arg, valueContainer, owner);
+                    TArg arg = valueContainer.GetValue<TArg>();
+                    if (cancelationHelper.TryUnregister(owner))
+                    {
+                        Promise<TResult> result = Invoke(arg);
+                        owner.WaitFor(result, ref executionScheduler);
+                        valueContainer.Release();
+                    }
                 }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
+                void IDelegateRejectPromise.InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    if (valueContainer.TryGetValue(out arg))
                     {
-                        Invoke(arg, valueContainer, owner);
+                        Promise<TResult> result = Invoke(arg);
+                        owner.WaitFor(result, ref executionScheduler);
+                        valueContainer.Release();
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
 
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(arg, valueContainer, owner);
-                    }
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                void IDelegateRejectPromise.InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    if (valueContainer.TryGetValue(out arg))
                     {
                         if (cancelationHelper.TryUnregister(owner))
                         {
-                            Invoke(arg, valueContainer, owner);
+                            Promise<TResult> result = Invoke(arg);
+                            owner.WaitFor(result, ref executionScheduler);
+                            valueContainer.Release();
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
+                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
             }
 
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCaptureVoidPromiseT<TCapture, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
+            internal struct DelegateContinueCapture<TCapture, TArg, TResult> : IDelegateContinue
             {
+                private readonly Delegate _callback;
                 private readonly TCapture _capturedValue;
-                public readonly Func<TCapture, Promise<TPromise>> _callback;
 
                 public bool IsNull
                 {
@@ -1443,427 +1143,204 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureVoidPromiseT(ref TCapture capturedValue, Func<TCapture, Promise<TPromise>> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(_capturedValue);
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    Invoke(valueContainer, owner);
-                }
-
-                [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+                public DelegateContinueCapture(
+#if CSHARP_7_3_OR_NEWER
+                    in
 #endif
-            internal struct DelegateCaptureArgPromiseT<TCapture, TArg, TPromise> : IDelegateResolvePromise, IDelegateRejectPromise
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Func<TCapture, TArg, Promise<TPromise>> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateCaptureArgPromiseT(ref TCapture capturedValue, Func<TCapture, TArg, Promise<TPromise>> callback)
+                    TCapture capturedValue, Delegate callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Invoke(TArg arg, IValueContainer valueContainer, PromiseBranch owner)
+                public TResult Invoke(TArg arg)
                 {
-                    var result = _callback.Invoke(_capturedValue, arg);
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    if (isVoidResult)
+                    {
+                        if (isVoidArg)
+                        {
+                            ((Promise.ContinueAction<TCapture>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(null));
+                        }
+                        else
+                        {
+                            ((Promise<TArg>.ContinueAction<TCapture>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
+                        }
+                        return default(TResult);
+                    }
+                    if (isVoidArg)
+                    {
+                        return ((Promise.ContinueFunc<TCapture, TResult>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(null));
+                    }
+                    return ((Promise<TArg>.ContinueFunc<TCapture, TResult>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
-                    Invoke(arg, valueContainer, owner);
-                }
-
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    IValueContainer resolveContainer;
+                    if (isVoidResult)
                     {
-                        Invoke(arg, valueContainer, owner);
+                        if (isVoidArg)
+                        {
+                            ((Promise.ContinueAction<TCapture>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
+                        }
+                        else
+                        {
+                            ((Promise<TArg>.ContinueAction<TCapture>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
+                        }
+                        resolveContainer = ResolveContainerVoid.GetOrCreate(0);
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer);
-                        valueContainer.Release();
+                        TResult result;
+                        if (isVoidArg)
+                        {
+                            result = ((Promise.ContinueFunc<TCapture, TResult>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
+                        }
+                        else
+                        {
+                            result = ((Promise<TArg>.ContinueFunc<TCapture, TResult>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
+                        }
+                        resolveContainer = CreateResolveContainer(result, 0);
                     }
+                    valueContainer.Release();
+                    owner.ResolveInternal(resolveContainer, ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
-                    TArg arg = ((ResolveContainer<TArg>) valueContainer).value;
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(arg, valueContainer, owner);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
+            }
 
-                public void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal struct DelegateContinuePromiseCapture<TCapture, TArg, TResult> : IDelegateContinuePromise
+            {
+                private readonly Delegate _callback;
+                private readonly TCapture _capturedValue;
+
+                public bool IsNull
                 {
-                    TArg arg;
-                    if (TryConvert(valueContainer, out arg))
+                    [MethodImpl(InlineOption)]
+                    get { return _callback == null; }
+                }
+
+                [MethodImpl(InlineOption)]
+                public DelegateContinuePromiseCapture(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Delegate callback)
+                {
+                    _capturedValue = capturedValue;
+                    _callback = callback;
+                }
+
+                [MethodImpl(InlineOption)]
+                public Promise<TResult> Invoke(TArg arg)
+                {
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    if (isVoidResult)
                     {
-                        if (cancelationHelper.TryUnregister(owner))
+                        Promise promise;
+                        if (isVoidArg)
                         {
-                            Invoke(arg, valueContainer, owner);
+                            promise = ((Promise.ContinueFunc<TCapture, Promise>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(null));
+                        }
+                        else
+                        {
+                            promise = ((Promise<TArg>.ContinueFunc<TCapture, Promise>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
+                        }
+                        return new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
+                    }
+                    if (isVoidArg)
+                    {
+                        return ((Promise.ContinueFunc<TCapture, Promise<TResult>>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(null));
+                    }
+                    return ((Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
+                }
+
+                [MethodImpl(InlineOption)]
+                public void Invoke(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                {
+                    // JIT constant-optimizes these checks away.
+                    bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
+                    bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
+                    Promise<TResult> result;
+                    if (isVoidResult)
+                    {
+                        Promise promise;
+                        if (isVoidArg)
+                        {
+                            promise = ((Promise.ContinueFunc<TCapture, Promise>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
+                        }
+                        else
+                        {
+                            promise = ((Promise<TArg>.ContinueFunc<TCapture, Promise>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
+                        }
+                        result = new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
+                    }
+                    else
+                    {
+                        if (isVoidArg)
+                        {
+                            result = ((Promise.ContinueFunc<TCapture, Promise<TResult>>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
+                        }
+                        else
+                        {
+                            result = ((Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                         }
                     }
-                    else if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.RejectOrCancelInternal(valueContainer);
-                        valueContainer.Release();
-                    }
-                }
-            }
-
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueCaptureVoidVoid<TCapture> : IDelegateContinue
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Promise.ContinueAction<TCapture> _callback;
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureVoidVoid(ref TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueCaptureVoidResult<TCapture, TResult> : IDelegateContinue
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Promise.ContinueFunc<TCapture, TResult> _callback;
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureVoidResult(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TResult result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueCaptureArgVoid<TCapture, TArg> : IDelegateContinue
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Promise<TArg>.ContinueAction<TCapture> _callback;
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureArgVoid(ref TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainerVoid.GetOrCreate());
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueCaptureArgResult<TCapture, TArg, TResult> : IDelegateContinue
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Promise<TArg>.ContinueFunc<TCapture, TResult> _callback;
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureArgResult(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    TResult result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                    valueContainer.Release();
-                    owner.ResolveInternal(ResolveContainer<TResult>.GetOrCreate(ref result, 0));
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueCaptureVoidPromise<TCapture> : IDelegateContinuePromise
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Promise.ContinueFunc<TCapture, Promise> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureVoidPromise(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result);
+                    owner.WaitFor(result, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
+                public void Invoke(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner);
+                        Invoke(valueContainer, owner, ref executionScheduler);
                     }
                 }
             }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueCaptureVoidPromiseT<TCapture, TPromise> : IDelegateContinuePromise
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Promise.ContinueFunc<TCapture, Promise<TPromise>> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureVoidPromiseT(ref TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TPromise>> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(_capturedValue, new Promise.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueCaptureArgPromise<TCapture, TArg> : IDelegateContinuePromise
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Promise<TArg>.ContinueFunc<TCapture, Promise> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureArgPromise(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateContinueCaptureArgPromiseT<TCapture, TArg, TPromise> : IDelegateContinuePromise
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Promise<TArg>.ContinueFunc<TCapture, Promise<TPromise>> _callback;
-
-                public bool IsNull
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _callback == null; }
-                }
-
-                [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureArgPromiseT(ref TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TPromise>> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner)
-                {
-                    var result = _callback.Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
-                    ((PromiseWaitPromise) owner).WaitFor(result);
-                    valueContainer.Release();
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(valueContainer, owner);
-                    }
-                }
-            }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             internal struct DelegateCaptureFinally<TCapture> : IDelegateSimple
             {
-                private readonly TCapture _capturedValue;
                 private readonly Action<TCapture> _callback;
+                private readonly TCapture _capturedValue;
+
+                public bool IsNull
+                {
+                    [MethodImpl(InlineOption)]
+                    get { return _callback == null; }
+                }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureFinally(ref TCapture capturedValue, Action<TCapture> callback)
+                public DelegateCaptureFinally(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Action<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
@@ -1881,11 +1358,15 @@ namespace Proto.Promises
 #endif
             internal struct DelegateCaptureCancel<TCapture> : IDelegateSimple
             {
-                private readonly TCapture _capturedValue;
                 private readonly Promise.CanceledAction<TCapture> _callback;
+                private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureCancel(ref TCapture capturedValue, Promise.CanceledAction<TCapture> callback)
+                public DelegateCaptureCancel(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Promise.CanceledAction<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
@@ -1894,7 +1375,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(IValueContainer valueContainer)
                 {
-                    _callback.Invoke(_capturedValue, new ReasonContainer(valueContainer));
+                    _callback.Invoke(_capturedValue, new ReasonContainer(valueContainer, InvokeId));
                 }
             }
 
@@ -1903,11 +1384,15 @@ namespace Proto.Promises
 #endif
             internal struct DelegateCaptureProgress<TCapture> : IProgress<float>
             {
-                private readonly TCapture _capturedValue;
                 private readonly Action<TCapture, float> _callback;
+                private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureProgress(ref TCapture capturedValue, Action<TCapture, float> callback)
+                public DelegateCaptureProgress(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Action<TCapture, float> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;

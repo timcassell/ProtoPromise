@@ -25,7 +25,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal partial class MergePromise : PromiseBranch, IMultiTreeHandleable
+            internal partial class MergePromise : PromiseSingleAwaitWithProgress, IMultiTreeHandleable
             {
                 private MergePromise() { }
 
@@ -50,7 +50,7 @@ namespace Proto.Promises
                     base.Dispose();
                 }
 
-                public static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
+                internal static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
                 {
                     var promise = ObjectPool<ITreeHandleable>.TryTake<MergePromise>()
                         ?? new MergePromise();
@@ -58,10 +58,19 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                public static MergePromise GetOrCreate<T>(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved,
-                    uint pendingAwaits, uint totalAwaits, ulong completedProgress)
+                internal static MergePromise GetOrCreate<T>(
+                    ValueLinkedStack<PromisePassThrough> promisePassThroughs,
+
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    T value,
+                    Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved,
+                    uint pendingAwaits,
+                    uint totalAwaits,
+                    ulong completedProgress)
                 {
-                    var promise = MergePromiseT<T>.GetOrCreate(ref value, onPromiseResolved);
+                    var promise = MergePromiseT<T>.GetOrCreate(value, onPromiseResolved);
                     promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
                     return promise;
                 }
@@ -85,7 +94,10 @@ namespace Proto.Promises
                         var passThrough = promisePassThroughs.Pop();
 #if PROMISE_DEBUG
                         passThrough.Retain();
-                        _passThroughs.Push(passThrough);
+                        lock (_locker)
+                        {
+                            _passThroughs.Push(passThrough);
+                        }
 #endif
                         passThrough.SetTargetAndAddToOwner(this);
                         if (_valueOrPrevious != null)
@@ -107,13 +119,13 @@ namespace Proto.Promises
                     }
                 }
 
-                public override void Handle()
+                public override void Handle(ref ExecutionScheduler executionScheduler)
                 {
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     Promise.State state = valueContainer.GetState();
                     State = state;
-                    HandleWaiter(valueContainer);
-                    HandleProgressListener(state);
+                    HandleWaiter(valueContainer, ref executionScheduler);
+                    HandleProgressListener(state, ref executionScheduler);
 
                     if (Interlocked.Decrement(ref _waitCount) == 0)
                     {
@@ -121,45 +133,59 @@ namespace Proto.Promises
                     }
                 }
 
-                public virtual bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index) // IMultiTreeHandleable.Handle
+                public virtual void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler) // IMultiTreeHandleable.Handle
                 {
-                    ThrowIfInPool(this);
+                    // Retain while handling, then release when complete for thread safety.
+                    InterlockedRetainDisregardId();
 
-                    owner.SuppressRejection = true;
                     if (owner.State != Promise.State.Resolved) // Rejected/Canceled
                     {
                         if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
                         {
                             if (Interlocked.Decrement(ref _waitCount) == 0)
                             {
-                                MaybeDispose();
+                                _smallFields.InterlockedTryReleaseComplete();
                             }
-                            return false;
-                        }
-                        valueContainer.Retain();
-                        Interlocked.Decrement(ref _waitCount);
-                        return true;
-                    }
-                    else // Resolved
-                    {
-                        int remaining = Interlocked.Decrement(ref _waitCount);
-                        if (remaining == 1)
-                        {
-                            return Interlocked.CompareExchange(ref _valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null) == null;
-                        }
-                        else if (remaining == 0)
-                        {
-                            MaybeDispose();
                         }
                         else
                         {
-                            IncrementProgress(owner, passThrough);
+                            valueContainer.Retain();
+                            Interlocked.Decrement(ref _waitCount);
+                            executionScheduler.ScheduleSynchronous(this);
                         }
                     }
-                    return false;
+                    else // Resolved
+                    {
+                        IncrementProgress(passThrough, ref executionScheduler);
+                        int remaining = Interlocked.Decrement(ref _waitCount);
+                        if (remaining == 1)
+                        {
+                            if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
+                            {
+                                valueContainer.Retain();
+                                executionScheduler.ScheduleSynchronous(this);
+                            }
+                        }
+                        else if (remaining == 0)
+                        {
+                            _smallFields.InterlockedTryReleaseComplete();
+                        }
+                    }
+                    MaybeDispose();
                 }
 
-                partial void IncrementProgress(PromiseRef owner, PromisePassThrough passThrough);
+                internal int Depth
+                {
+#if PROMISE_PROGRESS
+                    [MethodImpl(InlineOption)]
+                    get { return _maxWaitDepth; }
+#else
+                    [MethodImpl(InlineOption)]
+                    get { return 0; }
+#endif
+                }
+
+                partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress);
 
                 private sealed class MergePromiseT<T> : MergePromise, IMultiTreeHandleable
@@ -190,37 +216,44 @@ namespace Proto.Promises
                         ObjectPool<ITreeHandleable>.MaybeRepool(this);
                     }
 
-                    public static MergePromiseT<T> GetOrCreate(ref T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved)
+                    internal static MergePromiseT<T> GetOrCreate(
+#if CSHARP_7_3_OR_NEWER
+                        in
+#endif
+                        T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved)
                     {
                         var promise = ObjectPool<ITreeHandleable>.TryTake<MergePromiseT<T>>()
                             ?? new MergePromiseT<T>();
                         promise._onPromiseResolved = onPromiseResolved;
-                        promise._valueContainer = ResolveContainer<T>.GetOrCreate(ref value, 1);
+                        promise._valueContainer = ResolveContainer<T>.GetOrCreate(value, 1);
                         return promise;
                     }
 
-                    public override bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index)
+                    public override void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                     {
-                        ThrowIfInPool(this);
+                        // Retain while handling, then release when complete for thread safety.
+                        InterlockedRetainDisregardId();
 
-                        owner.SuppressRejection = true;
                         if (owner.State != Promise.State.Resolved) // Rejected/Canceled
                         {
                             if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
                             {
                                 if (Interlocked.Decrement(ref _waitCount) == 0)
                                 {
-                                    MaybeDispose();
+                                    _smallFields.InterlockedTryReleaseComplete();
                                 }
-                                return false;
                             }
-                            valueContainer.Retain();
-                            Interlocked.Decrement(ref _waitCount);
-                            return true;
+                            else
+                            {
+                                valueContainer.Retain();
+                                Interlocked.Decrement(ref _waitCount);
+                                executionScheduler.ScheduleSynchronous(this);
+                            }
                         }
                         else // Resolved
                         {
-                            _onPromiseResolved.Invoke(valueContainer, _valueContainer, index);
+                            _onPromiseResolved.Invoke(valueContainer, _valueContainer, passThrough.Index);
+                            IncrementProgress(passThrough, ref executionScheduler);
                             int remaining = Interlocked.Decrement(ref _waitCount);
                             if (remaining == 1)
                             {
@@ -228,19 +261,15 @@ namespace Proto.Promises
                                 {
                                     // Only nullify if all promises resolved, otherwise we let Dispose release it.
                                     _valueContainer = null;
-                                    return true;
+                                    executionScheduler.ScheduleSynchronous(this);
                                 }
                             }
                             else if (remaining == 0)
                             {
-                                MaybeDispose();
-                            }
-                            else
-                            {
-                                IncrementProgress(owner, passThrough);
+                                _smallFields.InterlockedTryReleaseComplete();
                             }
                         }
-                        return false;
+                        MaybeDispose();
                     }
                 }
             }
@@ -248,11 +277,23 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class MergePromise : IProgressInvokable
             {
-                protected override PromiseRef AddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener)
+                internal override void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler)
                 {
+                    HandleProgressListener(state, new Fixed32(_maxWaitDepth + 1), ref executionScheduler);
+                }
+
+                protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
+                {
+                    // Unnecessary to set last known since we know SetInitialProgress will be called on this.
                     ThrowIfInPool(this);
+                    progressListener.Retain();
                     _progressListener = progressListener;
                     return null;
+                }
+
+                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, ref ExecutionScheduler executionScheduler)
+                {
+                    SetInitialProgress(progressListener, CurrentProgress(), new Fixed32(_maxWaitDepth + 1), ref executionScheduler);
                 }
 
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress)
@@ -267,50 +308,49 @@ namespace Proto.Promises
                         int maxWaitDepth = 0;
                         foreach (var passThrough in promisePassThroughs)
                         {
-                            int waitDepth = passThrough.Owner._smallFields._waitDepthAndProgress.WholePart;
+                            int waitDepth = passThrough.Depth;
                             expectedProgressCounter += waitDepth;
                             maxWaitDepth = Math.Max(maxWaitDepth, waitDepth);
                         }
 
                         // Use the longest chain as this depth.
-                        _smallFields._waitDepthAndProgress = new Fixed32(maxWaitDepth);
-                        _progressScaler = (double) NextWholeProgress / (double) expectedProgressCounter;
+                        _maxWaitDepth = maxWaitDepth;
+                        _progressScaler = (double) (_maxWaitDepth + 1) / (double) expectedProgressCounter;
                     }
                 }
 
-                partial void IncrementProgress(PromiseRef owner, PromisePassThrough passThrough)
+                partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                 {
-                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(owner), true);
+                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(), ref executionScheduler);
                 }
 
-                protected override Fixed32 CurrentProgress()
+                private Fixed32 CurrentProgress()
                 {
                     ThrowIfInPool(this);
                     return new Fixed32(_unscaledProgress.ToDouble() * _progressScaler);
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, bool shouldReport)
+                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    IncrementProgress(amount, shouldReport);
+                    IncrementProgress(amount, ref executionScheduler);
                 }
 
-                private void IncrementProgress(uint amount, bool shouldReport)
+                private void IncrementProgress(uint amount, ref ExecutionScheduler executionScheduler)
                 {
                     _unscaledProgress.InterlockedIncrement(amount);
-                    if (shouldReport
-                        && (_smallFields._stateAndFlags.InterlockedSetProgressFlags(ProgressFlags.InProgressQueue) & ProgressFlags.InProgressQueue) == 0) // Was not already in progress queue?
+                    if ((_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();
-                        AddToFrontOfProgressQueue(this);
+                        executionScheduler.ScheduleProgressSynchronous(this);
                     }
                 }
 
-                void IProgressInvokable.Invoke()
+                void IProgressInvokable.Invoke(ref ExecutionScheduler executionScheduler)
                 {
                     var progress = CurrentProgress();
-                    _smallFields._stateAndFlags.InterlockedUnsetProgressFlags(ProgressFlags.InProgressQueue);
-                    ReportProgress(progress);
+                    _smallFields.InterlockedUnsetFlags(PromiseFlags.InProgressQueue);
+                    ReportProgress(progress, ref executionScheduler);
                     MaybeDispose();
                 }
             }
