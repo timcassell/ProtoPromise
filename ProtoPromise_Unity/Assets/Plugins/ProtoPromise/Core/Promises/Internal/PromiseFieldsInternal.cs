@@ -135,21 +135,30 @@ namespace Proto.Promises
 
     partial class Internal
     {
+        internal enum AdoptProgressType : byte
+        {
+            // Shifted by 6 to share bit space with PromiseFlags.
+            None = 0,
+            HasSecondPrevious = 1 << 6,
+            HasProgressListener = 2 << 6,
+            IsSubscribed = 3 << 6,
+
+            Mask = 3 << 6
+        }
+
         [Flags]
         internal enum PromiseFlags : byte
         {
             None = 0,
 
-            // Don't change the layout, very important for InterlockedSetSubscribedIfSecondPrevious().
             SuppressRejection = 1 << 0,
             WasAwaitedOrForgotten = 1 << 1,
             // For progress below
-            SecondPrevious = 1 << 2,
-            SelfSubscribed = 1 << 3,
-            InProgressQueue = 1 << 4,
-            Subscribing = 1 << 5,
-            Reporting = 1 << 6,
-            SettingInitial = 1 << 7,
+            InProgressQueue = 1 << 2,
+            Subscribing = 1 << 3,
+            Reporting = 1 << 4,
+            SettingInitial = 1 << 5,
+            SelfSubscribed = 1 << 6, // Shares bit with AdoptProgressType, but it doesn't interfere because this is only used for PromiseMultiAwait and AdoptProgressType is only used for PromiseWaitPromise.
 
             All = byte.MaxValue
         }
@@ -176,6 +185,8 @@ namespace Proto.Promises
                 volatile internal Promise.State _state;
                 [FieldOffset(1)]
                 volatile private PromiseFlags _flags;
+                [FieldOffset(1)]
+                private AdoptProgressType _adoptProgressType;
                 [FieldOffset(2)]
                 private ushort _retains;
                 [FieldOffset(4)]

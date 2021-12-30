@@ -178,8 +178,7 @@ namespace Proto.Promises
 
             partial struct SmallFields
             {
-                [MethodImpl(InlineOption)]
-                internal PromiseFlags InterlockedSetSubscribedIfSecondPrevious()
+                internal AdoptProgressType InterlockedExchangeProgressType(AdoptProgressType value)
                 {
                     Thread.MemoryBarrier();
                     SmallFields initialValue = default(SmallFields), newValue;
@@ -187,10 +186,11 @@ namespace Proto.Promises
                     {
                         initialValue._longValue = Interlocked.Read(ref _longValue);
                         newValue = initialValue;
-                        PromiseFlags setFlags = (PromiseFlags) ((byte) (newValue._flags & PromiseFlags.SecondPrevious) << 1); // Change SecondPrevious flag to SecondSubscribed.
-                        newValue._flags |= setFlags;
+                        // use mask to remove existing value, then add new value.
+                        newValue._adoptProgressType = (newValue._adoptProgressType & ~AdoptProgressType.Mask) | value;
                     } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
-                    return initialValue._flags;
+                    // Return only the masked value.
+                    return initialValue._adoptProgressType & AdoptProgressType.Mask;
                 }
             } // SmallFields
 
@@ -1216,12 +1216,14 @@ namespace Proto.Promises
                 {
                     _progressFields._previousDepthPlusOne = depth + 1;
                     // Lazy subscribe: only subscribe to second previous if a progress listener is added to this (this keeps execution more efficient when progress isn't used).
-                    bool hasListener = _progressListener != null;
-                    PromiseFlags subscribedFlag = hasListener ? PromiseFlags.SelfSubscribed : PromiseFlags.None;
-                    PromiseFlags oldFlags = _smallFields.InterlockedSetFlags(PromiseFlags.SecondPrevious | subscribedFlag);
-                    if (hasListener & (oldFlags & PromiseFlags.SelfSubscribed) == 0) // Has listener and was not already subscribed?
+                    AdoptProgressType oldType = _smallFields.InterlockedExchangeProgressType(AdoptProgressType.HasSecondPrevious);
+                    if (oldType == AdoptProgressType.HasProgressListener)
                     {
-                        other.SubscribeListener(this, new Fixed32(depth), ref executionScheduler);
+                        oldType = _smallFields.InterlockedExchangeProgressType(AdoptProgressType.IsSubscribed);
+                        if (oldType != AdoptProgressType.IsSubscribed)
+                        {
+                            other.SubscribeListener(this, new Fixed32(depth), ref executionScheduler);
+                        }
                     }
                 }
 
@@ -1243,13 +1245,12 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     progressListener.Retain();
                     _progressListener = progressListener;
-                    PromiseFlags oldFlags = _smallFields.InterlockedSetSubscribedIfSecondPrevious();
-                    bool secondPrevious = (oldFlags & PromiseFlags.SecondPrevious) != 0;
-                    bool secondSubscribed = (oldFlags & PromiseFlags.SelfSubscribed) != 0;
-                    if (secondPrevious) // Are we waiting on second previous?
+                    AdoptProgressType oldType = _smallFields.InterlockedExchangeProgressType(AdoptProgressType.HasProgressListener);
+                    if (oldType == AdoptProgressType.HasSecondPrevious)
                     {
                         lastKnownProgress = new Fixed32(_progressFields._previousDepthPlusOne - 1);
-                        if (secondSubscribed) // Was already subscribed?
+                        oldType = _smallFields.InterlockedExchangeProgressType(AdoptProgressType.IsSubscribed);
+                        if (oldType == AdoptProgressType.IsSubscribed)
                         {
                             return null;
                         }
