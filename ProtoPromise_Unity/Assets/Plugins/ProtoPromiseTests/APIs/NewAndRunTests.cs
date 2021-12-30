@@ -1,4 +1,10 @@
-﻿using Proto.Promises;
+﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+#endif
+
+using Proto.Promises;
 using NUnit.Framework;
 using System.Threading;
 using ProtoPromiseTests.Threading;
@@ -794,10 +800,12 @@ namespace ProtoPromiseTests.APIs
                     : Promise.Run(action, (SynchronizationOption) synchronizationType);
             }, invokeContext == SynchronizationType.Foreground);
 
+#if PROMISE_PROGRESS
             if (isPending)
             {
                 promise = promise.SubscribeProgressAndAssert(progressHelper, 0f);
             }
+#endif
 
             promise
                 .ContinueWith(resultContainer =>
@@ -830,6 +838,7 @@ namespace ProtoPromiseTests.APIs
 
             if (isPending)
             {
+#if PROMISE_PROGRESS
                 progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
                 if (completeType == CompleteType.Resolve)
                 {
@@ -840,6 +849,9 @@ namespace ProtoPromiseTests.APIs
                     TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred, cancelationSource);
                     progressHelper.AssertCurrentProgress(0.5f, false, false);
                 }
+#else
+                TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred, cancelationSource);
+#endif
             }
             cancelationSource.TryDispose();
 
@@ -900,10 +912,12 @@ namespace ProtoPromiseTests.APIs
                     : Promise.Run(captureValue, action, (SynchronizationOption) synchronizationType);
             }, invokeContext == SynchronizationType.Foreground);
 
+#if PROMISE_PROGRESS
             if (isPending)
             {
                 promise = promise.SubscribeProgressAndAssert(progressHelper, 0f);
             }
+#endif
 
             promise
                 .ContinueWith(resultContainer =>
@@ -936,6 +950,7 @@ namespace ProtoPromiseTests.APIs
 
             if (isPending)
             {
+#if PROMISE_PROGRESS
                 progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
                 if (completeType == CompleteType.Resolve)
                 {
@@ -946,6 +961,9 @@ namespace ProtoPromiseTests.APIs
                     TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred, cancelationSource);
                     progressHelper.AssertCurrentProgress(0.5f, false, false);
                 }
+#else
+                TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred, cancelationSource);
+#endif
             }
             cancelationSource.TryDispose();
 
@@ -1005,10 +1023,12 @@ namespace ProtoPromiseTests.APIs
                     : Promise.Run(action, (SynchronizationOption) synchronizationType);
             }, invokeContext == SynchronizationType.Foreground);
 
+#if PROMISE_PROGRESS
             if (isPending)
             {
                 promise = promise.SubscribeProgressAndAssert(progressHelper, 0f);
             }
+#endif
 
             promise
                 .ContinueWith(resultContainer =>
@@ -1042,6 +1062,7 @@ namespace ProtoPromiseTests.APIs
 
             if (isPending)
             {
+#if PROMISE_PROGRESS
                 progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
                 if (completeType == CompleteType.Resolve)
                 {
@@ -1052,6 +1073,9 @@ namespace ProtoPromiseTests.APIs
                     TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred, cancelationSource);
                     progressHelper.AssertCurrentProgress(0.5f, false, false);
                 }
+#else
+                TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred, cancelationSource);
+#endif
             }
             cancelationSource.TryDispose();
 
@@ -1113,10 +1137,12 @@ namespace ProtoPromiseTests.APIs
                     : Promise.Run(captureValue, action, (SynchronizationOption) synchronizationType);
             }, invokeContext == SynchronizationType.Foreground);
 
+#if PROMISE_PROGRESS
             if (isPending)
             {
                 promise = promise.SubscribeProgressAndAssert(progressHelper, 0f);
             }
+#endif
 
             promise
                 .ContinueWith(resultContainer =>
@@ -1150,6 +1176,7 @@ namespace ProtoPromiseTests.APIs
 
             if (isPending)
             {
+#if PROMISE_PROGRESS
                 progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
                 if (completeType == CompleteType.Resolve)
                 {
@@ -1160,6 +1187,9 @@ namespace ProtoPromiseTests.APIs
                     TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred, cancelationSource);
                     progressHelper.AssertCurrentProgress(0.5f, false, false);
                 }
+#else
+                TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred, cancelationSource);
+#endif
             }
             cancelationSource.TryDispose();
 
