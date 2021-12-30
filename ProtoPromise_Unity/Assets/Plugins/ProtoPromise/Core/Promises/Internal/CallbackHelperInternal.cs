@@ -912,7 +912,13 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
                     return 0;
 #elif PROMISE_DEBUG
-                    return new Fixed32(depth).GetIncrementedWholeTruncated().WholePart;
+                    int newDepth = depth + 1;
+                    int checkVal = (newDepth << Promise.Config.ProgressDecimalBits) >> Promise.Config.ProgressDecimalBits;
+                    if (newDepth != checkVal)
+                    {
+                        throw new OverflowException();
+                    }
+                    return newDepth;
 #else
                     return depth + 1;
 #endif

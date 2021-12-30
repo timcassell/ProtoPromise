@@ -754,19 +754,23 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test, TestCaseSource("GetArgs_RunAdopt")]
-        public void PromiseRunIsInvokedAndCompletedProperly_adopt_void(
+        public void PromiseRunIsInvokedAndCompletedAndProgressReportedProperly_adopt_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
             CompleteType completeType,
             bool throwInAction,
             bool isAlreadyComplete)
         {
+            bool isPending = !throwInAction & !isAlreadyComplete;
+            
             Thread foregroundThread = Thread.CurrentThread;
             bool invoked = false;
             string expectedRejectValue = "Reject";
 
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
+
+            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
 
             System.Func<Promise> action = () =>
             {
@@ -789,6 +793,11 @@ namespace ProtoPromiseTests.APIs
                     ? Promise.Run(action, TestHelper._foregroundContext)
                     : Promise.Run(action, (SynchronizationOption) synchronizationType);
             }, invokeContext == SynchronizationType.Foreground);
+
+            if (isPending)
+            {
+                promise = promise.SubscribeProgressAndAssert(progressHelper, 0f);
+            }
 
             promise
                 .ContinueWith(resultContainer =>
@@ -819,7 +828,19 @@ namespace ProtoPromiseTests.APIs
                 throw new System.TimeoutException();
             }
 
-            TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred, cancelationSource);
+            if (isPending)
+            {
+                progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+                if (completeType == CompleteType.Resolve)
+                {
+                    progressHelper.ResolveAndAssertResult(deferred, 1f);
+                }
+                else
+                {
+                    TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred, cancelationSource);
+                    progressHelper.AssertCurrentProgress(0.5f, false, false);
+                }
+            }
             cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacks();
@@ -837,13 +858,15 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test, TestCaseSource("GetArgs_RunAdopt")]
-        public void PromiseRunIsInvokedAndCompletedProperly_adopt_capture_void(
+        public void PromiseRunIsInvokedAndCompletedAndProgressReportedProperly_adopt_capture_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
             CompleteType completeType,
             bool throwInAction,
             bool isAlreadyComplete)
         {
+            bool isPending = !throwInAction & !isAlreadyComplete;
+
             Thread foregroundThread = Thread.CurrentThread;
             bool invoked = false;
             string expectedRejectValue = "Reject";
@@ -851,6 +874,8 @@ namespace ProtoPromiseTests.APIs
 
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
+
+            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
 
             System.Func<int, Promise> action = cv =>
             {
@@ -875,6 +900,11 @@ namespace ProtoPromiseTests.APIs
                     : Promise.Run(captureValue, action, (SynchronizationOption) synchronizationType);
             }, invokeContext == SynchronizationType.Foreground);
 
+            if (isPending)
+            {
+                promise = promise.SubscribeProgressAndAssert(progressHelper, 0f);
+            }
+
             promise
                 .ContinueWith(resultContainer =>
                 {
@@ -904,7 +934,19 @@ namespace ProtoPromiseTests.APIs
                 throw new System.TimeoutException();
             }
 
-            TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred, cancelationSource);
+            if (isPending)
+            {
+                progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+                if (completeType == CompleteType.Resolve)
+                {
+                    progressHelper.ResolveAndAssertResult(deferred, 1f);
+                }
+                else
+                {
+                    TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred, cancelationSource);
+                    progressHelper.AssertCurrentProgress(0.5f, false, false);
+                }
+            }
             cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacks();
@@ -922,13 +964,15 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test, TestCaseSource("GetArgs_RunAdopt")]
-        public void PromiseRunIsInvokedAndCompletedProperly_adopt_T(
+        public void PromiseRunIsInvokedAndCompletedAndProgressReportedProperly_adopt_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
             CompleteType completeType,
             bool throwInAction,
             bool isAlreadyComplete)
         {
+            bool isPending = !throwInAction & !isAlreadyComplete;
+
             Thread foregroundThread = Thread.CurrentThread;
             bool invoked = false;
             string expectedRejectValue = "Reject";
@@ -936,6 +980,8 @@ namespace ProtoPromiseTests.APIs
 
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
+
+            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
 
             System.Func<Promise<int>> action = () =>
             {
@@ -958,6 +1004,11 @@ namespace ProtoPromiseTests.APIs
                     ? Promise.Run(action, TestHelper._foregroundContext)
                     : Promise.Run(action, (SynchronizationOption) synchronizationType);
             }, invokeContext == SynchronizationType.Foreground);
+
+            if (isPending)
+            {
+                promise = promise.SubscribeProgressAndAssert(progressHelper, 0f);
+            }
 
             promise
                 .ContinueWith(resultContainer =>
@@ -989,7 +1040,19 @@ namespace ProtoPromiseTests.APIs
                 throw new System.TimeoutException();
             }
 
-            TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred, cancelationSource);
+            if (isPending)
+            {
+                progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+                if (completeType == CompleteType.Resolve)
+                {
+                    progressHelper.ResolveAndAssertResult(deferred, expectedResolveValue, 1f);
+                }
+                else
+                {
+                    TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred, cancelationSource);
+                    progressHelper.AssertCurrentProgress(0.5f, false, false);
+                }
+            }
             cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacks();
@@ -1007,13 +1070,15 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test, TestCaseSource("GetArgs_RunAdopt")]
-        public void PromiseRunIsInvokedAndCompletedProperly_adopt_capture_T(
+        public void PromiseRunIsInvokedAndCompletedAndProgressReportedProperly_adopt_capture_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
             CompleteType completeType,
             bool throwInAction,
             bool isAlreadyComplete)
         {
+            bool isPending = !throwInAction & !isAlreadyComplete;
+
             Thread foregroundThread = Thread.CurrentThread;
             bool invoked = false;
             string expectedRejectValue = "Reject";
@@ -1022,6 +1087,8 @@ namespace ProtoPromiseTests.APIs
 
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
+
+            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
 
             System.Func<int, Promise<int>> action = cv =>
             {
@@ -1046,6 +1113,11 @@ namespace ProtoPromiseTests.APIs
                     : Promise.Run(captureValue, action, (SynchronizationOption) synchronizationType);
             }, invokeContext == SynchronizationType.Foreground);
 
+            if (isPending)
+            {
+                promise = promise.SubscribeProgressAndAssert(progressHelper, 0f);
+            }
+
             promise
                 .ContinueWith(resultContainer =>
                 {
@@ -1076,7 +1148,19 @@ namespace ProtoPromiseTests.APIs
                 throw new System.TimeoutException();
             }
 
-            TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred, cancelationSource);
+            if (isPending)
+            {
+                progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+                if (completeType == CompleteType.Resolve)
+                {
+                    progressHelper.ResolveAndAssertResult(deferred, expectedResolveValue, 1f);
+                }
+                else
+                {
+                    TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred, cancelationSource);
+                    progressHelper.AssertCurrentProgress(0.5f, false, false);
+                }
+            }
             cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacks();
