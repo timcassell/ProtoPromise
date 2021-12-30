@@ -804,7 +804,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     progressListener.Retain();
-                    _progressListener = progressListener;
+                    SetProgressListener(progressListener);
                     //lastKnownProgress = _smallProgressFields._depthAndProgress; // Unnecessary to set last known since we know SetInitialProgress will be called on this.
                     return null;
                 }
@@ -847,12 +847,12 @@ namespace Proto.Promises
                                     {
                                         executionScheduler.ScheduleOnContext(_synchronizationContext, overrideScheduler._handleStack.Pop());
                                     }
-    #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                                     if (overrideScheduler._handleStack.IsNotEmpty)
                                     {
                                         throw new Exception("This should never happen.");
                                     }
-    #endif
+#endif
                                 }
                             }
                         }
@@ -885,6 +885,19 @@ namespace Proto.Promises
 
             partial class PromiseSingleAwaitWithProgress
             {
+                [MethodImpl(InlineOption)]
+                protected void SetProgressListener(IProgressListener progressListener)
+                {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    if (Interlocked.CompareExchange(ref _progressListener, progressListener, null) != null)
+                    {
+                        throw new System.InvalidOperationException("Cannot add more than 1 progress listener.");
+                    }
+#else
+                    _progressListener = progressListener;
+#endif
+                }
+
                 protected void SetInitialProgress(IProgressListener progressListener, Fixed32 currentProgress, Fixed32 expectedProgress, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
@@ -1157,7 +1170,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     progressListener.Retain();
                     lastKnownProgress = _currentProgress;
-                    _progressListener = progressListener;
+                    SetProgressListener(progressListener);
                     return null;
                 }
 
@@ -1244,7 +1257,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     progressListener.Retain();
-                    _progressListener = progressListener;
+                    SetProgressListener(progressListener);
                     AdoptProgressType oldType = _smallFields.InterlockedExchangeProgressType(AdoptProgressType.HasProgressListener);
                     if (oldType == AdoptProgressType.HasSecondPrevious)
                     {
