@@ -134,7 +134,7 @@ namespace ProtoPromiseTests.APIs
             TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred, default(CancelationSource));
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -215,7 +215,7 @@ namespace ProtoPromiseTests.APIs
             TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred, default(CancelationSource));
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -296,7 +296,7 @@ namespace ProtoPromiseTests.APIs
             TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred, default(CancelationSource));
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -379,7 +379,7 @@ namespace ProtoPromiseTests.APIs
             TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred, default(CancelationSource));
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -483,7 +483,7 @@ namespace ProtoPromiseTests.APIs
                 .Forget();
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -553,7 +553,7 @@ namespace ProtoPromiseTests.APIs
                 .Forget();
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -624,7 +624,7 @@ namespace ProtoPromiseTests.APIs
                 .Forget();
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -697,7 +697,7 @@ namespace ProtoPromiseTests.APIs
                 .Forget();
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -856,7 +856,7 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -968,7 +968,7 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -1080,7 +1080,7 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -1194,7 +1194,7 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
