@@ -4,10 +4,11 @@
 #undef PROMISE_DEBUG
 #endif
 
-using System;
 using NUnit.Framework;
+using Proto.Promises;
+using System;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class FinallyTests
     {
@@ -30,7 +31,7 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
 
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 promise.Finally(default(Action));
             });
@@ -46,7 +47,7 @@ namespace Proto.Promises.Tests
             var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise.Preserve();
 
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
                 promise.Finally(default(Action));
             });
@@ -70,7 +71,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -87,7 +87,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve(1);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -106,7 +105,6 @@ namespace Proto.Promises.Tests
 
             deferred.Reject(rejection);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -125,7 +123,6 @@ namespace Proto.Promises.Tests
 
             deferred.Reject(rejection);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -152,7 +149,6 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel("Cancel");
             }
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
@@ -187,7 +183,6 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel("Cancel");
             }
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
@@ -218,7 +213,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve();
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -241,7 +235,6 @@ namespace Proto.Promises.Tests
 
             deferred.Resolve(1);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
         }
 
@@ -275,7 +268,6 @@ namespace Proto.Promises.Tests
 
             deferred.Reject(rejectValue);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             Assert.IsTrue(uncaughtHandled);
             Promise.Config.UncaughtRejectionHandler = currentHandler;
@@ -311,7 +303,6 @@ namespace Proto.Promises.Tests
 
             deferred.Reject(rejectValue);
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
             Assert.IsTrue(uncaughtHandled);
             Promise.Config.UncaughtRejectionHandler = currentHandler;
@@ -346,7 +337,6 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel("Cancel");
             }
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
@@ -387,7 +377,6 @@ namespace Proto.Promises.Tests
                 cancelationSource.Cancel("Cancel");
             }
 
-            Promise.Manager.HandleCompletes();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();

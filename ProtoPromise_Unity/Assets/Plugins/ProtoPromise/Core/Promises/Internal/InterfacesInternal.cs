@@ -6,44 +6,44 @@
         {
             internal partial interface IMultiTreeHandleable : ITreeHandleable
             {
-                bool Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, int index);
+                void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegateResolve
             {
-                void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner);
-                void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
+                void InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
+                void InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegateResolvePromise
             {
-                void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner);
-                void InvokeResolver(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
+                void InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler);
+                void InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
                 bool IsNull { get; }
             }
 
             internal interface IDelegateReject
             {
-                void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner);
-                void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegateRejectPromise
             {
-                void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner);
-                void InvokeRejecter(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler);
+                void InvokeRejecter(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegateContinue
             {
-                void Invoke(IValueContainer valueContainer, PromiseBranch owner);
-                void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
+                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
+                void Invoke(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegateContinuePromise
             {
-                void Invoke(IValueContainer valueContainer, PromiseBranch owner);
-                void Invoke(IValueContainer valueContainer, PromiseBranch owner, ref CancelationHelper cancelationHelper);
+                void Invoke(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler);
+                void Invoke(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
                 bool IsNull { get; }
             }
         }

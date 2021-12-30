@@ -41,7 +41,7 @@ namespace Proto.Promises
                 // Even the pool itself doesn't require a class instance (that would be necessary with a typed dictionary).
 
                 // These must not be readonly.
-                private static ValueLinkedStackSafe<TLinked> _pool;
+                private static ValueLinkedStackSafe<TLinked> _pool = new ValueLinkedStackSafe<TLinked>();
                 private static SpinLocker _locker;
 
                 // The downside to static pools instead of a Type dictionary is adding each type's clear function to the OnClearPool delegate consumes memory and is potentially more expensive than clearing a dictionary.

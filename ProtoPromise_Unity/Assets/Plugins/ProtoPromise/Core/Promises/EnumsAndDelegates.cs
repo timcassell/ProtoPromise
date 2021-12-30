@@ -1,5 +1,12 @@
 ﻿namespace Proto.Promises
 {
+    public enum SynchronizationOption : byte
+    {
+        Synchronous,
+        Foreground,
+        Background
+    }
+
     partial struct Promise
     {
         public enum State : byte

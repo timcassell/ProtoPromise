@@ -17,6 +17,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -54,7 +55,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        public static class Config
+        public static partial class Config
         {
             /// <summary>
             /// If you need to support longer promise chains, decrease decimalBits. If you need higher precision, increase decimalBits.
@@ -68,25 +69,45 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
             [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
+            // TODO: just use (u)short in Fixed32 instead of bit shift.
             public const int ProgressDecimalBits = 13; // Must be const. Allowing this to change at runtime could mess up progress in flight.
 
             [Obsolete("Use ObjectPoolingEnabled instead.")]
-            public static PoolType ObjectPooling { get { return _objectPoolingEnabled ? PoolType.All : PoolType.None; } set { _objectPoolingEnabled = value != PoolType.None; } }
+            public static PoolType ObjectPooling 
+            {
+                get { return _objectPoolingEnabled ? PoolType.All : PoolType.None; }
+                set { _objectPoolingEnabled = value != PoolType.None; }
+            }
 
             volatile private static bool _objectPoolingEnabled = true; // Enabled by default.
-            public static bool ObjectPoolingEnabled { get { return _objectPoolingEnabled; } set { _objectPoolingEnabled = value; } }
+            public static bool ObjectPoolingEnabled
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return _objectPoolingEnabled; } 
+                [MethodImpl(Internal.InlineOption)]
+                set { _objectPoolingEnabled = value; } 
+            }
 
+            /// <summary>
+            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
+            /// </summary>
 #if PROMISE_DEBUG
+            public static TraceLevel DebugCausalityTracer
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return _debugCausalityTracer; }
+                [MethodImpl(Internal.InlineOption)]
+                set { _debugCausalityTracer = value; }
+            }
             volatile private static TraceLevel _debugCausalityTracer = TraceLevel.Rejections;
-            /// <summary>
-            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
-            /// </summary>
-            public static TraceLevel DebugCausalityTracer { get { return _debugCausalityTracer; } set { _debugCausalityTracer = value; } }
 #else
-            /// <summary>
-            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
-            /// </summary>
-            public static TraceLevel DebugCausalityTracer { get { return default(TraceLevel); } set { } }
+            public static TraceLevel DebugCausalityTracer
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return default(TraceLevel); }
+                [MethodImpl(Internal.InlineOption)]
+                set { }
+            }
 #endif
 
             // Used so that libraries can have a ProtoPromise dependency without forcing progress enabled/disabled on those libraries' users.
@@ -105,13 +126,46 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// If this is not null, uncaught rejections get routed through this instead of being thrown.
+            /// Uncaught rejections get routed through this delegate.
+            /// This must be set to a non-null delegate, otherwise uncaught rejections will continue to pile up without being reported.
             /// </summary>
-            public static Action<UnhandledException> UncaughtRejectionHandler { get; set; }
+            public static Action<UnhandledException> UncaughtRejectionHandler
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return _uncaughtRejectionHandler; }
+                [MethodImpl(Internal.InlineOption)]
+                set { _uncaughtRejectionHandler = value; }
+            }
+            volatile private static Action<UnhandledException> _uncaughtRejectionHandler;
 
             /// <summary>
-            /// Warning handler.
+            /// The <see cref="SynchronizationContext"/> used to marshal work to the UI thread.
             /// </summary>
+            public static SynchronizationContext ForegroundContext
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return _foregroundContext; }
+                set
+                {
+                    _foregroundContext = value;
+                    Internal._foregroundSynchronizationHandler = new Internal.SynchronizationHandler(value);
+                }
+            }
+            volatile private static SynchronizationContext _foregroundContext;
+
+            /// <summary>
+            /// The <see cref="SynchronizationContext"/> used to marshal work to a background thread. If this is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> is used.
+            /// </summary>
+            public static SynchronizationContext BackgroundContext
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return _backgroundContext; }
+                [MethodImpl(Internal.InlineOption)]
+                set { _backgroundContext = value; }
+            }
+            volatile private static SynchronizationContext _backgroundContext;
+
+            [Obsolete]
             public static Action<string> WarningHandler { get; set; }
         }
     }

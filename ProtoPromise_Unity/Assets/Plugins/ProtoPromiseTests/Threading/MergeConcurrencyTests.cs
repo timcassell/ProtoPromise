@@ -1,4 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL
 
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
@@ -7,10 +7,11 @@
 #endif
 
 using NUnit.Framework;
+using Proto.Promises;
 using System;
 using System.Collections.Generic;
 
-namespace Proto.Promises.Tests.Threading
+namespace ProtoPromiseTests.Threading
 {
     public class MergeConcurrencyTests
     {
@@ -69,18 +70,19 @@ namespace Proto.Promises.Tests.Threading
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -114,24 +116,25 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise),
-                expectedResolveValue: (1, 2)
+                expectedResolveValue: ValueTuple.Create(1, 2)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
                     cancelationSource1.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -171,26 +174,27 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferredVoid.Promise),
-                expectedResolveValue: (1, 2)
+                expectedResolveValue: ValueTuple.Create(1, 2)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
                     deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
                     cancelationSource1.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -230,26 +234,27 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise),
-                expectedResolveValue: (1, 2, 3)
+                expectedResolveValue: ValueTuple.Create(1, 2, 3)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
                     deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
                     cancelationSource1.TryDispose();
                     cancelationSource2.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -295,13 +300,14 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferredVoid.Promise),
-                expectedResolveValue: (1, 2, 3)
+                expectedResolveValue: ValueTuple.Create(1, 2, 3)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
@@ -309,14 +315,14 @@ namespace Proto.Promises.Tests.Threading
                     deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
                     cancelationSource1.TryDispose();
                     cancelationSource2.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -362,13 +368,14 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise),
-                expectedResolveValue: (1, 2, 3, 4)
+                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
@@ -376,14 +383,14 @@ namespace Proto.Promises.Tests.Threading
                     deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
                     cancelationSource1.TryDispose();
                     cancelationSource2.TryDispose();
                     cancelationSource3.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -435,13 +442,14 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferredVoid.Promise),
-                expectedResolveValue: (1, 2, 3, 4)
+                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
@@ -450,7 +458,8 @@ namespace Proto.Promises.Tests.Threading
                     deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -458,7 +467,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource2.TryDispose();
                     cancelationSource3.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -510,13 +518,14 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise),
-                expectedResolveValue: (1, 2, 3, 4, 5)
+                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
@@ -525,7 +534,8 @@ namespace Proto.Promises.Tests.Threading
                     deferred4 = TestHelper.GetNewDeferredT<int>(completeType4, out cancelationSource4);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -533,7 +543,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource2.TryDispose();
                     cancelationSource3.TryDispose();
                     cancelationSource4.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -591,13 +600,14 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferredVoid.Promise),
-                expectedResolveValue: (1, 2, 3, 4, 5)
+                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
@@ -607,7 +617,8 @@ namespace Proto.Promises.Tests.Threading
                     deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -616,7 +627,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource3.TryDispose();
                     cancelationSource4.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -674,13 +684,14 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferred5.Promise),
-                expectedResolveValue: (1, 2, 3, 4, 5, 6)
+                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5, 6)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
@@ -690,7 +701,8 @@ namespace Proto.Promises.Tests.Threading
                     deferred5 = TestHelper.GetNewDeferredT<int>(completeType5, out cancelationSource5);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -699,7 +711,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource3.TryDispose();
                     cancelationSource4.TryDispose();
                     cancelationSource5.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -763,13 +774,14 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferred5.Promise, deferredVoid.Promise),
-                expectedResolveValue: (1, 2, 3, 4, 5, 6)
+                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5, 6)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
@@ -780,7 +792,8 @@ namespace Proto.Promises.Tests.Threading
                     deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -790,7 +803,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource4.TryDispose();
                     cancelationSource5.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -854,13 +866,14 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferred5.Promise, deferred6.Promise),
-                expectedResolveValue: (1, 2, 3, 4, 5, 6, 7)
+                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5, 6, 7)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
@@ -871,7 +884,8 @@ namespace Proto.Promises.Tests.Threading
                     deferred6 = TestHelper.GetNewDeferredT<int>(completeType6, out cancelationSource6);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -881,7 +895,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource4.TryDispose();
                     cancelationSource5.TryDispose();
                     cancelationSource6.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -951,13 +964,14 @@ namespace Proto.Promises.Tests.Threading
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferred5.Promise, deferred6.Promise, deferredVoid.Promise),
-                expectedResolveValue: (1, 2, 3, 4, 5, 6, 7)
+                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5, 6, 7)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                setup: () =>
+                // setup
+                () =>
                 {
                     deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
                     deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
@@ -969,7 +983,8 @@ namespace Proto.Promises.Tests.Threading
                     deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
                     helper.Setup();
                 },
-                teardown: () =>
+                // teardown
+                () =>
                 {
                     helper.Teardown();
                     cancelationSource0.TryDispose();
@@ -980,7 +995,6 @@ namespace Proto.Promises.Tests.Threading
                     cancelationSource5.TryDispose();
                     cancelationSource6.TryDispose();
                     cancelationSourceVoid.TryDispose();
-                    Promise.Manager.HandleCompletes();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -989,4 +1003,4 @@ namespace Proto.Promises.Tests.Threading
     }
 }
 
-#endif
+#endif // !UNITY_WEBGL

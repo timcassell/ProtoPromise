@@ -7,10 +7,11 @@
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0059 // Unnecessary assignment of a value
 
-using System;
 using NUnit.Framework;
+using Proto.Promises;
+using System;
 
-namespace Proto.Promises.Tests
+namespace ProtoPromiseTests.APIs
 {
     public class CancelationTests
     {
@@ -39,9 +40,9 @@ namespace Proto.Promises.Tests
             public void CancelationSourceInvalidOperations()
             {
                 CancelationSource cancelationSource = new CancelationSource();
-                Assert.Throws<InvalidOperationException>(() => { cancelationSource.Cancel(); });
-                Assert.Throws<InvalidOperationException>(() => { cancelationSource.Cancel("Cancel"); });
-                Assert.Throws<InvalidOperationException>(() => { cancelationSource.Dispose(); });
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationSource.Cancel(); });
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationSource.Cancel("Cancel"); });
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationSource.Dispose(); });
             }
 
             [Test]
@@ -634,13 +635,13 @@ namespace Proto.Promises.Tests
             public void CancelationTokenInvalidOperations()
             {
                 CancelationToken cancelationToken = new CancelationToken();
-                Assert.Throws<InvalidOperationException>(() => { var _ = cancelationToken.CancelationValue; });
-                Assert.Throws<InvalidOperationException>(() => { var _ = cancelationToken.CancelationValueType; });
-                Assert.Throws<InvalidOperationException>(() => { cancelationToken.Register(_ => { }); });
-                Assert.Throws<InvalidOperationException>(() => { cancelationToken.Register(1, (i, _) => { }); });
-                Assert.Throws<InvalidOperationException>(() => { string _; cancelationToken.TryGetCancelationValueAs(out _); });
-                Assert.Throws<InvalidOperationException>(cancelationToken.Retain);
-                Assert.Throws<InvalidOperationException>(cancelationToken.Release);
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { var _ = cancelationToken.CancelationValue; });
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { var _ = cancelationToken.CancelationValueType; });
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationToken.Register(_ => { }); });
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationToken.Register(1, (i, _) => { }); });
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { string _; cancelationToken.TryGetCancelationValueAs(out _); });
+                Assert.Throws<Proto.Promises.InvalidOperationException>(cancelationToken.Retain);
+                Assert.Throws<Proto.Promises.InvalidOperationException>(cancelationToken.Release);
             }
 
             [Test]
@@ -1208,8 +1209,8 @@ namespace Proto.Promises.Tests
                 cancelationToken.Retain();
                 cancelationSource.Dispose();
                 CancelationRegistration cancelationRegistration;
-                Assert.Throws<InvalidOperationException>(() => cancelationToken.Register(_ => { }));
-                Assert.Throws<InvalidOperationException>(() => cancelationToken.Register(1, (cv, _) => { }));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationToken.Register(_ => { }));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationToken.Register(1, (cv, _) => { }));
                 Assert.IsFalse(cancelationToken.TryRegister(_ => { }, out cancelationRegistration));
                 Assert.IsFalse(cancelationToken.TryRegister(1, (cv, _) => { }, out cancelationRegistration));
                 cancelationToken.Release();
