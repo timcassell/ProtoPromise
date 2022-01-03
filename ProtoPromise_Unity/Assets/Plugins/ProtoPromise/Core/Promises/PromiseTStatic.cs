@@ -637,6 +637,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> New(Action<Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
         {
+            ValidateArgument(resolver, "resolver", 1);
+
             Deferred deferred = Deferred.New();
             Promise.Run(ValueTuple.Create(deferred, resolver), cv =>
             {
@@ -666,6 +668,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
         {
+            ValidateArgument(resolver, "resolver", 1);
+
             Deferred deferred = Deferred.New();
             Promise.Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
             {
@@ -694,6 +698,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> New(Action<Deferred> resolver, SynchronizationContext synchronizationContext)
         {
+            ValidateArgument(resolver, "resolver", 1);
+
             Deferred deferred = Deferred.New();
             Promise.Run(ValueTuple.Create(deferred, resolver), cv =>
             {
@@ -722,6 +728,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationContext synchronizationContext)
         {
+            ValidateArgument(resolver, "resolver", 1);
+
             Deferred deferred = Deferred.New();
             Promise.Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
             {

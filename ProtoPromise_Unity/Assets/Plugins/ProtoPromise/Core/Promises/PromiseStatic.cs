@@ -1246,6 +1246,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise New(Action<Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
         {
+            ValidateArgument(resolver, "resolver", 1);
+
             Deferred deferred = Deferred.New();
             Run(ValueTuple.Create(deferred, resolver), cv =>
             {
@@ -1274,6 +1276,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise New(Action<Deferred> resolver, SynchronizationContext synchronizationContext)
         {
+            ValidateArgument(resolver, "resolver", 1);
+
             Deferred deferred = Deferred.New();
             Run(ValueTuple.Create(deferred, resolver), cv =>
             {
@@ -1315,6 +1319,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
         {
+            ValidateArgument(resolver, "resolver", 1);
+
             Deferred deferred = Deferred.New();
             Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
             {
@@ -1343,6 +1349,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationContext synchronizationContext)
         {
+            ValidateArgument(resolver, "resolver", 1);
+
             Deferred deferred = Deferred.New();
             Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
             {
@@ -1382,6 +1390,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Run(Action action, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
         {
+            ValidateArgument(action, "action", 1);
+
             return SwitchToContext(synchronizationOption)
                 .Finally(action);
         }
@@ -1392,6 +1402,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
         {
+            ValidateArgument(action, "action", 1);
+
             return SwitchToContext(synchronizationOption)
                 .Finally(captureValue, action);
         }
@@ -1402,6 +1414,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Run(Action action, SynchronizationContext synchronizationContext)
         {
+            ValidateArgument(action, "action", 1);
+
             return SwitchToContext(synchronizationContext)
                 .Finally(action);
         }
@@ -1412,6 +1426,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationContext synchronizationContext)
         {
+            ValidateArgument(action, "action", 1);
+
             return SwitchToContext(synchronizationContext)
                 .Finally(captureValue, action);
         }
@@ -1422,6 +1438,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Run<T>(Func<T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
         {
+            ValidateArgument(function, "function", 1);
+
             return SwitchToContext(synchronizationOption)
                 .Then(function);
         }
@@ -1432,6 +1450,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
         {
+            ValidateArgument(function, "function", 1);
+
             return SwitchToContext(synchronizationOption)
                 .Then(captureValue, function);
         }
@@ -1442,6 +1462,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Run<T>(Func<T> function, SynchronizationContext synchronizationContext)
         {
+            ValidateArgument(function, "function", 1);
+
             return SwitchToContext(synchronizationContext)
                 .Then(function);
         }
@@ -1452,6 +1474,8 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationContext synchronizationContext)
         {
+            ValidateArgument(function, "function", 1);
+
             return SwitchToContext(synchronizationContext)
                 .Then(captureValue, function);
         }
@@ -1462,7 +1486,11 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Run(Func<Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
         {
-            return SwitchToContext(synchronizationOption)
+            ValidateArgument(function, "function", 1);
+
+            Promise promise = SwitchToContext(synchronizationOption);
+            // Depth -1 to properly normalize the progress from the returned promise.
+            return new Promise(promise._target._ref, promise._target.Id, -1)
                 .Then(function);
         }
 
@@ -1472,7 +1500,11 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
         {
-            return SwitchToContext(synchronizationOption)
+            ValidateArgument(function, "function", 1);
+
+            Promise promise = SwitchToContext(synchronizationOption);
+            // Depth -1 to properly normalize the progress from the returned promise.
+            return new Promise(promise._target._ref, promise._target.Id, -1)
                 .Then(captureValue, function);
         }
 
@@ -1482,7 +1514,11 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Run(Func<Promise> function, SynchronizationContext synchronizationContext)
         {
-            return SwitchToContext(synchronizationContext)
+            ValidateArgument(function, "function", 1);
+
+            Promise promise = SwitchToContext(synchronizationContext);
+            // Depth -1 to properly normalize the progress from the returned promise.
+            return new Promise(promise._target._ref, promise._target.Id, -1)
                 .Then(function);
         }
 
@@ -1492,7 +1528,11 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationContext synchronizationContext)
         {
-            return SwitchToContext(synchronizationContext)
+            ValidateArgument(function, "function", 1);
+
+            Promise promise = SwitchToContext(synchronizationContext);
+            // Depth -1 to properly normalize the progress from the returned promise.
+            return new Promise(promise._target._ref, promise._target.Id, -1)
                 .Then(captureValue, function);
         }
 
@@ -1502,7 +1542,11 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
         {
-            return SwitchToContext(synchronizationOption)
+            ValidateArgument(function, "function", 1);
+
+            Promise promise = SwitchToContext(synchronizationOption);
+            // Depth -1 to properly normalize the progress from the returned promise.
+            return new Promise(promise._target._ref, promise._target.Id, -1)
                 .Then(function);
         }
 
@@ -1512,7 +1556,11 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background)
         {
-            return SwitchToContext(synchronizationOption)
+            ValidateArgument(function, "function", 1);
+
+            Promise promise = SwitchToContext(synchronizationOption);
+            // Depth -1 to properly normalize the progress from the returned promise.
+            return new Promise(promise._target._ref, promise._target.Id, -1)
                 .Then(captureValue, function);
         }
 
@@ -1522,7 +1570,11 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationContext synchronizationContext)
         {
-            return SwitchToContext(synchronizationContext)
+            ValidateArgument(function, "function", 1);
+
+            Promise promise = SwitchToContext(synchronizationContext);
+            // Depth -1 to properly normalize the progress from the returned promise.
+            return new Promise(promise._target._ref, promise._target.Id, -1)
                 .Then(function);
         }
 
@@ -1532,7 +1584,11 @@ namespace Proto.Promises
         /// </summary>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationContext synchronizationContext)
         {
-            return SwitchToContext(synchronizationContext)
+            ValidateArgument(function, "function", 1);
+
+            Promise promise = SwitchToContext(synchronizationContext);
+            // Depth -1 to properly normalize the progress from the returned promise.
+            return new Promise(promise._target._ref, promise._target.Id, -1)
                 .Then(captureValue, function);
         }
 

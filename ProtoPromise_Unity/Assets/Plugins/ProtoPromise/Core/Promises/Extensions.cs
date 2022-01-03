@@ -13,7 +13,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
 #endif
-    public static class Extensions
+    public static partial class Extensions
     {
 #if CSHARP_7_3_OR_NEWER
         /// <summary>

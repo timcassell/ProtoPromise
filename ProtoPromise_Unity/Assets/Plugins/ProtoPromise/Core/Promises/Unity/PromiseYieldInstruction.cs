@@ -1,0 +1,242 @@
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable RECS0108 // Warns about static fields in generic types
+#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
+
+using System;
+using System.Collections;
+using System.Threading;
+using UnityEngine;
+
+namespace UnityEngine
+{
+#if !UNITY_5_3_OR_NEWER
+    /// <summary>
+    /// Custom yield instruction. Use yield return StartCoroutine(customYieldInstruction)
+    /// </summary>
+    public abstract class CustomYieldInstruction : IEnumerator
+    {
+        public abstract bool keepWaiting { get; }
+
+        public object Current { get { return null; } }
+
+        public bool MoveNext()
+        {
+            return keepWaiting;
+        }
+
+        public void Reset()
+        {
+            throw new NotImplementedException();
+        }
+    }
+#endif
+}
+
+namespace Proto.Promises
+{
+    partial class Extensions
+    {
+        public static PromiseYieldInstruction ToYieldInstruction(this Promise promise)
+        {
+            return ToYieldInstruction(promise._target);
+        }
+
+        public static PromiseYieldInstruction<T> ToYieldInstruction<T>(this Promise<T> promise)
+        {
+            return Internal.YieldInstruction<T>.GetOrCreate(promise);
+        }
+    }
+
+
+    /// <summary>
+    /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from has settled.
+    /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [System.Diagnostics.DebuggerNonUserCode]
+#endif
+    public abstract class PromiseYieldInstruction : CustomYieldInstruction, IDisposable
+    {
+        volatile protected object _value;
+        volatile protected Promise.State _state;
+        volatile protected int _retainCounter;
+
+
+        internal PromiseYieldInstruction() { }
+
+        /// <summary>
+        /// The state of the <see cref="Promise"/> this came from.
+        /// </summary>
+        /// <value>The state.</value>
+        public Promise.State State
+        {
+            get
+            {
+                ValidateOperation();
+                return _state;
+            }
+        }
+
+        /// <summary>
+        /// Is the Promise still pending?
+        /// </summary>
+        public override bool keepWaiting
+        {
+            get
+            {
+                ValidateOperation();
+                return State == Promise.State.Pending;
+            }
+        }
+
+        /// <summary>
+        /// Get the result. If the Promise resolved successfully, this will return without error.
+        /// If the Promise was rejected, this will throw an <see cref="UnhandledException"/>.
+        /// If the Promise was canceled, this will throw a <see cref="CanceledException"/>.
+        /// </summary>
+        public void GetResult()
+        {
+            ValidateOperation();
+
+            if (_state == Promise.State.Resolved)
+            {
+                return;
+            }
+            if (_state == Promise.State.Pending)
+            {
+                throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
+            }
+            // Throw unhandled exception or canceled exception.
+            throw ((Internal.IThrowable) _value).GetException();
+        }
+
+        /// <summary>
+        /// Adds this object back to the pool if object pooling is enabled.
+        /// Don't try to access it after disposing! Results are undefined.
+        /// </summary>
+        /// <remarks>Call <see cref="Dispose"/> when you are finished using the
+        /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/>. The <see cref="Dispose"/> method leaves the
+        /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> in an unusable state. After calling
+        /// <see cref="Dispose"/>, you must release all references to the
+        /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> so the garbage collector can reclaim the memory
+        /// that the <see cref="T:ProtoPromise.Promise.YieldInstruction"/> was occupying.</remarks>
+        public virtual void Dispose()
+        {
+            ValidateOperation();
+        }
+
+        protected void ValidateOperation()
+        {
+            if (_retainCounter == 0)
+            {
+                throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a validate yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise{T}"/> it came from has settled.
+    /// An instance of this should be disposed when you are finished with it.
+    /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [System.Diagnostics.DebuggerNonUserCode]
+#endif
+    public abstract class PromiseYieldInstruction<T> : PromiseYieldInstruction
+    {
+        protected T _result;
+
+        internal PromiseYieldInstruction() { }
+
+        /// <summary>
+        /// Get the result. If the Promise resolved successfully, this will return the result of the operation.
+        /// If the Promise was rejected, this will throw an <see cref="UnhandledException"/>.
+        /// If the Promise was canceled, this will throw a <see cref="CanceledException"/>.
+        /// </summary>
+        public new T GetResult()
+        {
+            ValidateOperation();
+
+            if (_state == Promise.State.Resolved)
+            {
+                return _result;
+            }
+            if (_state == Promise.State.Pending)
+            {
+                throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
+            }
+            // Throw unhandled exception or canceled exception.
+            throw ((Internal.IThrowable) _value).GetException();
+        }
+    }
+
+    partial class Internal
+    {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
+        internal sealed class YieldInstruction<T> : PromiseYieldInstruction<T>, ILinked<YieldInstruction<T>>
+        {
+            private int _disposeChecker; // To detect if Dispose is called from multiple threads.
+
+            YieldInstruction<T> ILinked<YieldInstruction<T>>.Next { get; set; }
+
+            private YieldInstruction() { }
+
+            public static YieldInstruction<T> GetOrCreate(Promise<T> promise)
+            {
+                var yieldInstruction = ObjectPool<YieldInstruction<T>>.TryTake<YieldInstruction<T>>()
+                    ?? new YieldInstruction<T>();
+                yieldInstruction._disposeChecker = 0;
+                yieldInstruction._state = Promise.State.Pending;
+                yieldInstruction._retainCounter = 2; // 1 retain for complete, 1 for dispose.
+                promise.ContinueWith(yieldInstruction, (yi, resultContainer) =>
+                {
+                    if (yi._state == Promise.State.Resolved)
+                    {
+                        yi._result = resultContainer.Result;
+                    }
+                    else
+                    {
+                        yi._value = resultContainer._valueContainer;
+                        resultContainer._valueContainer.Retain();
+                    }
+                    yi._state = resultContainer.State;
+                    
+                    yi.MaybeDispose();
+                })
+                    .Forget();
+                return yieldInstruction;
+            }
+
+            public override void Dispose()
+            {
+                if (Interlocked.Exchange(ref _disposeChecker, 1) == 1)
+                {
+                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a validate yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
+                }
+                MaybeDispose();
+            }
+
+            private void MaybeDispose()
+            {
+                if (Interlocked.Decrement(ref _retainCounter) == 0)
+                {
+                    var container = _value;
+                    _value = null;
+                    if (container != null)
+                    {
+                        ((IRetainable) container).Release();
+                    }
+#if !PROMISE_DEBUG // Don't repool in DEBUG mode.
+                    ObjectPool<YieldInstruction<T>>.MaybeRepool(this);
+#endif
+                }
+            }
+        }
+    }
+}

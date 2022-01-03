@@ -2147,12 +2147,6 @@ namespace Proto.Promises
             return !(lhs == rhs);
         }
 
-        /// <summary>
-        /// Returns null.
-        /// </summary>
-        [Obsolete]
-        public Type ResultType { get { return null; } }
-
         [Obsolete("Retain is no longer valid, use Preserve instead.", true)]
         public void Retain()
         {

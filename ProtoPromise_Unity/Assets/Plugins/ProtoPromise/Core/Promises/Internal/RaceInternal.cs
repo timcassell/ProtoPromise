@@ -181,7 +181,7 @@ namespace Proto.Promises
 
                     // Use double for better precision.
                     var newAmount = new Fixed32(senderAmount.ToDouble() * (_raceSmallFields._depthAndProgress.WholePart + 1) / (double) (ownerAmount.WholePart + 1));
-                    if (_raceSmallFields._currentProgress.InterlockedTrySetIfGreater(newAmount))
+                    if (_raceSmallFields._currentProgress.InterlockedTrySetIfGreater(newAmount, senderAmount))
                     {
                         if ((_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
                         {

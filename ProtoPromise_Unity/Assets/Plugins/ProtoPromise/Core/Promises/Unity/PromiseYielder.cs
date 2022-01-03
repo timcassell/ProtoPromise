@@ -8,245 +8,11 @@
 #pragma warning disable RECS0108 // Warns about static fields in generic types
 #pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
-using System;
 using System.Collections;
-using System.Threading;
 using UnityEngine;
 
 namespace Proto.Promises
 {
-    partial class Internal
-    {
-        partial class PromiseRef
-        {
-            partial class CallbackHelper
-            {
-                // TODO: refactor to change Promise(<T>).ToYieldInstruction() to an extension instead of part of the type.
-                internal static Promise<T>.YieldInstruction AddYieldInstruction<T>(Promise<T> _this)
-                {
-                    YieldInstruction<T> yieldInstruction;
-                    if (_this._ref == null)
-                    {
-                        yieldInstruction = YieldInstruction<T>.GetOrCreate(CreateResolveContainer(_this.Result, 1), Promise.State.Resolved);
-                    }
-                    else
-                    {
-                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                        yieldInstruction = YieldInstruction<T>.GetOrCreate(null, Promise.State.Pending);
-                        _this._ref.HookupNewWaiter(yieldInstruction);
-                    }
-                    return yieldInstruction;
-                }
-            }
-        }
-    }
-
-    partial struct Promise
-    {
-        /// <summary>
-        /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from has settled.
-        /// An instance of this should be disposed when you are finished with it.
-        /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
-#endif
-        public abstract class YieldInstruction : CustomYieldInstruction, IDisposable
-        {
-            volatile protected object _value;
-            volatile protected State _state;
-            volatile protected bool _isActive;
-
-            internal YieldInstruction() { }
-
-            /// <summary>
-            /// The state of the <see cref="Promise"/> this came from.
-            /// </summary>
-            /// <value>The state.</value>
-            public State State
-            {
-                get
-                {
-                    ValidateOperation();
-                    return _state;
-                }
-            }
-
-            /// <summary>
-            /// Is the Promise still pending?
-            /// </summary>
-            public override bool keepWaiting
-            {
-                get
-                {
-                    ValidateOperation();
-                    return State == State.Pending;
-                }
-            }
-
-            /// <summary>
-            /// Get the result. If the Promise resolved successfully, this will return without error.
-            /// If the Promise was rejected, this will throw an <see cref="UnhandledException"/>.
-            /// If the Promise was canceled, this will throw a <see cref="CanceledException"/>.
-            /// </summary>
-            public void GetResult()
-            {
-                ValidateOperation();
-
-                if (_state == State.Pending)
-                {
-                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
-                }
-
-                if (_state == State.Resolved)
-                {
-                    return;
-                }
-                // Throw unhandled exception or canceled exception.
-                throw ((Internal.IThrowable) _value).GetException();
-            }
-
-            /// <summary>
-            /// Adds this object back to the pool if object pooling is enabled.
-            /// Don't try to access it after disposing! Results are undefined.
-            /// </summary>
-            /// <remarks>Call <see cref="Dispose"/> when you are finished using the
-            /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/>. The <see cref="Dispose"/> method leaves the
-            /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> in an unusable state. After calling
-            /// <see cref="Dispose"/>, you must release all references to the
-            /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> so the garbage collector can reclaim the memory
-            /// that the <see cref="T:ProtoPromise.Promise.YieldInstruction"/> was occupying.</remarks>
-            public abstract void Dispose();
-
-            protected void ValidateOperation()
-            {
-                if (!_isActive)
-                {
-                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a validate yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
-                }
-            }
-        }
-
-        /// <summary>
-        /// Returns a new <see cref="YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
-        /// </summary>
-        public YieldInstruction ToYieldInstruction()
-        {
-            return _target.ToYieldInstruction();
-        }
-    }
-
-    partial struct Promise<T>
-    {
-        /// <summary>
-        /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise{T}"/> it came from has settled.
-        /// An instance of this should be disposed when you are finished with it.
-        /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
-#endif
-        public abstract class YieldInstruction : Promise.YieldInstruction
-        {
-            internal YieldInstruction() { }
-
-            /// <summary>
-            /// Get the result. If the Promise resolved successfully, this will return the result of the operation.
-            /// If the Promise was rejected, this will throw an <see cref="UnhandledException"/>.
-            /// If the Promise was canceled, this will throw a <see cref="CanceledException"/>.
-            /// </summary>
-            public new T GetResult()
-            {
-                ValidateOperation();
-
-                if (_state == Promise.State.Pending)
-                {
-                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
-                }
-
-                if (_state == Promise.State.Resolved)
-                {
-                    return ((Internal.ResolveContainer<T>) _value).value;
-                }
-                // Throw unhandled exception or canceled exception.
-                throw ((Internal.IThrowable) _value).GetException();
-            }
-        }
-
-        /// <summary>
-        /// Returns a new <see cref="Promise{T}.YieldInstruction"/> that can be yielded in a coroutine to wait until this is settled.
-        /// </summary>
-        public YieldInstruction ToYieldInstruction()
-        {
-            ValidateOperation(1);
-
-            return Internal.PromiseRef.CallbackHelper.AddYieldInstruction(this);
-        }
-    }
-
-    partial class Internal
-    {
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
-#endif
-        internal sealed class YieldInstruction<T> : Promise<T>.YieldInstruction, ITreeHandleable // Annoying old runtime can't compile generic ObjectPool with interface only in the base.
-        {
-            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
-
-            private YieldInstruction() { }
-
-            public static YieldInstruction<T> GetOrCreate(object valueContainer, Promise.State state)
-            {
-                var yieldInstruction = ObjectPool<ITreeHandleable>.TryTake<YieldInstruction<T>>()
-                    ?? new YieldInstruction<T>();
-                yieldInstruction._value = valueContainer;
-                yieldInstruction._state = state;
-                yieldInstruction._isActive = true;
-                return yieldInstruction;
-            }
-
-            public override void Dispose()
-            {
-                ValidateOperation();
-
-                // Not bothering to remove from owner's branches, just mark for when the promise completes.
-                _isActive = false;
-                Thread.MemoryBarrier();
-                object container = Interlocked.Exchange(ref _value, null);
-                if (container != null)
-                {
-                    ((IRetainable) container).Release();
-                }
-#if !PROMISE_DEBUG // Don't repool in DEBUG mode.
-                ObjectPool<ITreeHandleable>.MaybeRepool(this);
-#endif
-            }
-
-            private void Settle(IValueContainer valueContainer)
-            {
-                valueContainer.Retain();
-                _value = valueContainer;
-                _state = valueContainer.GetState();
-                Thread.MemoryBarrier();
-                if (!_isActive) // Was disposed?
-                {
-                    // Handle race condition with Dispose. Make sure we're removing the same container.
-                    var container = Interlocked.CompareExchange(ref _value, null, valueContainer);
-                    if (container != null)
-                    {
-                        ((IRetainable) container).Release();
-                    }
-                }
-            }
-
-            void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
-            {
-                Settle(valueContainer);
-            }
-
-            void ITreeHandleable.Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
-        }
-    }
-
     /// <summary>
     /// Yielder used to wait for a yield instruction to complete in the form of a Promise, using Unity's coroutines.
     /// </summary>
@@ -302,20 +68,33 @@ namespace Proto.Promises
 #endif
         private class Routine : IEnumerator, Internal.ILinked<Routine>
         {
-            Routine Internal.ILinked<Routine>.Next { get; set; }
+            private MonoBehaviour _currentRunner;
+            private Promise.Deferred _deferred;
+            private bool _continue;
 
-            public static Routine GetOrCreate()
-            {
-                return Internal.ObjectPool<Routine>.TryTake<Routine>()
-                    ?? new Routine();
-            }
+            public object Current { get; private set; }
+            Routine Internal.ILinked<Routine>.Next { get; set; }
 
             private Routine() { }
 
-            public Promise.Deferred onComplete;
-            public bool _continue;
-
-            public object Current { get { return null; } }
+            public static void WaitForInstruction(Promise.Deferred deferred, object yieldInstruction, MonoBehaviour runner)
+            {
+                var routine = Internal.ObjectPool<Routine>.TryTake<Routine>()
+                    ?? new Routine();
+                bool sameRunner = routine._currentRunner == runner & runner != null;
+                routine._currentRunner = runner != null ? runner : Instance;
+                routine._deferred = deferred;
+                routine.Current = yieldInstruction;
+                if (routine._continue & sameRunner)
+                {
+                    // The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
+                    routine._continue = false;
+                }
+                else
+                {
+                    routine._currentRunner.StartCoroutine(routine);
+                }
+            }
 
             public bool MoveNext()
             {
@@ -329,72 +108,18 @@ namespace Proto.Promises
 
             void Complete()
             {
-                var deferred = onComplete;
-                onComplete = default(Promise.Deferred);
+                var deferred = _deferred;
+                _deferred = default(Promise.Deferred);
+                Current = null;
                 // Place this back in the pool before invoking in case the invocation will re-use this.
                 Internal.ObjectPool<Routine>.MaybeRepool(this);
                 try
                 {
                     deferred.Resolve();
-                    // Don't need to handle completes here since they will be handled in PromiseBehaviour.
                 }
                 catch
                 {
-                    // Reset the flag if there was an error.
-                    _continue = false;
-                    throw;
-                }
-            }
-
-            void IEnumerator.Reset() { }
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
-#endif
-        private class Routine<T> : IEnumerator, Internal.ILinked<Routine<T>>
-        {
-            Routine<T> Internal.ILinked<Routine<T>>.Next { get; set; }
-
-            public static Routine<T> GetOrCreate()
-            {
-                return Internal.ObjectPool<Routine<T>>.TryTake<Routine<T>>()
-                    ?? new Routine<T>();
-            }
-
-            private Routine() { }
-
-            public Promise<T>.Deferred onComplete;
-            public bool _continue;
-
-            public T Current { get; set; }
-            object IEnumerator.Current { get { return Current; } }
-
-            public bool MoveNext()
-            {
-                // As a coroutine, this will wait for the Current's yield, then execute this once, then stop.
-                if (_continue)
-                {
-                    Complete();
-                }
-                return _continue = !_continue;
-            }
-
-            public void Complete()
-            {
-                var deferred = onComplete;
-                onComplete = default(Promise<T>.Deferred);
-                T tempObj = Current;
-                Current = default(T);
-                // Place this back in the pool before invoking in case the invocation will re-use this.
-                Internal.ObjectPool<Routine<T>>.MaybeRepool(this);
-                try
-                {
-                    deferred.Resolve(tempObj);
-                }
-                catch
-                {
-                    // Reset the flag if there was an error.
+                    // Reset the flag if there was an error. This should never happen.
                     _continue = false;
                     throw;
                 }
@@ -404,73 +129,24 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise{TYieldInstruction}"/> that resolves with the <paramref name="yieldInstruction"/> after the <paramref name="yieldInstruction"/> has completed.
+        /// Returns a <see cref="Promise"/> that will resolve after the <paramref name="yieldInstruction"/> has completed.
+        /// If <paramref name="runner"/> is provided, the coroutine will be ran on it, otherwise it will be ran on the singleton PromiseYielder instance.
         /// </summary>
-        /// <param name="yieldInstruction">Yield instruction.</param>
-        /// <typeparam name="TYieldInstruction">The type of yieldInstruction.</typeparam>
-        public static Promise<TYieldInstruction> WaitFor<TYieldInstruction>(TYieldInstruction yieldInstruction)
+        /// <param name="yieldInstruction">The yield instruction to wait for.</param>
+        public static Promise WaitFor(object yieldInstruction, MonoBehaviour runner = null)
         {
-            Routine<TYieldInstruction> routine = Routine<TYieldInstruction>.GetOrCreate();
-            routine.Current = yieldInstruction;
-            routine.onComplete = Promise<TYieldInstruction>.Deferred.New();
-
-            if (routine._continue)
-            {
-                // The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
-                routine._continue = false;
-            }
-            else
-            {
-                Instance.StartCoroutine(routine);
-            }
-
-            return routine.onComplete.Promise;
+            var deferred = Promise.NewDeferred();
+            Routine.WaitForInstruction(deferred, yieldInstruction, runner);
+            return deferred.Promise;
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that resolves after 1 frame.
+        /// Returns a <see cref="Promise"/> that will resolve after 1 frame.
+        /// If <paramref name="runner"/> is provided, the coroutine will be ran on it, otherwise it will be ran on the singleton PromiseYielder instance.
         /// </summary>
-        public static Promise WaitOneFrame()
+        public static Promise WaitOneFrame(MonoBehaviour runner = null)
         {
-            Routine routine = Routine.GetOrCreate();
-            routine.onComplete = Promise.Deferred.New();
-
-            if (routine._continue)
-            {
-                // The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
-                routine._continue = false;
-            }
-            else
-            {
-                Instance.StartCoroutine(routine);
-            }
-
-            return routine.onComplete.Promise;
+            return WaitFor(null, runner);
         }
     }
-}
-
-namespace UnityEngine
-{
-#if !UNITY_5_3_OR_NEWER
-    /// <summary>
-    /// Custom yield instruction. Use yield return StartCoroutine(customYieldInstruction)
-    /// </summary>
-    public abstract class CustomYieldInstruction : IEnumerator
-    {
-        public abstract bool keepWaiting { get; }
-
-        public object Current { get { return null; } }
-
-        public bool MoveNext()
-        {
-            return keepWaiting;
-        }
-
-        public void Reset()
-        {
-            throw new NotImplementedException();
-        }
-    }
-#endif
 }
