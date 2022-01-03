@@ -2166,12 +2166,6 @@ namespace Proto.Promises
         }
         #endregion
 
-        /// <summary>
-        /// Returns typeof(<typeparamref name="T"/>).
-        /// </summary>
-        [Obsolete]
-        public Type ResultType { get { return typeof(T); } }
-
         [Obsolete("Retain is no longer valid, use Preserve instead.", true)]
         public void Retain()
         {
