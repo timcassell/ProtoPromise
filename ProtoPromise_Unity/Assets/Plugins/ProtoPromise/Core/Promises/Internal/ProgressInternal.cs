@@ -983,7 +983,8 @@ namespace Proto.Promises
                     PromiseSingleAwaitWithProgress setter = this;
                     do
                     {
-                        if ((setter._smallFields.InterlockedSetFlags(PromiseFlags.Reporting) & PromiseFlags.Reporting) != 0)
+                        PromiseFlags setFlag = progress.IsPriority ? PromiseFlags.Reporting : PromiseFlags.SettingInitial;
+                        if ((setter._smallFields.InterlockedSetFlags(setFlag) & setFlag) != 0)
                         {
                             break;
                         }
@@ -998,7 +999,7 @@ namespace Proto.Promises
                         {
                             setter = null;
                         }
-                        unsetter._smallFields.InterlockedUnsetFlags(PromiseFlags.Reporting);
+                        unsetter._smallFields.InterlockedUnsetFlags(setFlag);
                     } while (setter != null);
                 }
             } // PromiseSingleAwaitWithProgress
