@@ -145,10 +145,9 @@ namespace Proto.Promises
             // For progress below
             InProgressQueue = 1 << 2,
             Subscribing = 1 << 3,
-            Reporting = 1 << 4,
-            SecondPrevious = 1 << 5,
-            SelfSubscribed = 1 << 6,
-            AboutToSubscribe = 1 << 7,
+            SettingInitial = 1 << 4,
+            Reporting = 1 << 5,
+            Subscribed = 1 << 6,
 
             All = byte.MaxValue
         }
@@ -259,9 +258,9 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                private struct PromiseWaitSmallFields
+                private partial struct PromiseWaitSmallFields
                 {
-                    internal int _previousDepthPlusOne;
+                    volatile private int _previousDepthPlusOneAndFlags;
                     internal Fixed32 _depthAndProgress;
                 }
                 private PromiseWaitSmallFields _progressFields;

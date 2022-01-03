@@ -668,15 +668,13 @@ namespace Proto.Promises
                     }
                 }
 
+#if !PROMISE_PROGRESS
                 [MethodImpl(InlineOption)]
                 private void SetPreviousAndSubscribeProgress(PromiseRef other, int depth, ref ExecutionScheduler executionScheduler)
                 {
-                    _smallFields.InterlockedSetFlags(PromiseFlags.SecondPrevious);
                     _valueOrPrevious = other;
-                    SubscribeProgressToOther(other, depth, ref executionScheduler);
                 }
-
-                partial void SubscribeProgressToOther(PromiseRef other, int depth, ref ExecutionScheduler executionScheduler);
+#endif
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
