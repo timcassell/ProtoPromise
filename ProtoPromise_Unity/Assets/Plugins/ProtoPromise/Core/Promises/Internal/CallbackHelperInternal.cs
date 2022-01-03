@@ -911,10 +911,8 @@ namespace Proto.Promises
                 {
 #if !PROMISE_PROGRESS
                     return 0;
-#elif PROMISE_DEBUG
-                    return new Fixed32(depth).GetIncrementedWholeTruncated().WholePart;
 #else
-                    return depth + 1;
+                    return Fixed32.GetNextDepth(depth);
 #endif
                 }
 

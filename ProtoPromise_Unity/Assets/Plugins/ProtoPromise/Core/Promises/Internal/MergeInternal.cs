@@ -321,24 +321,26 @@ namespace Proto.Promises
 
                 partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                 {
-                    IncrementProgress(passThrough.GetProgressDifferenceToCompletion(), ref executionScheduler);
+                    Fixed32 progressFlags;
+                    uint dif = passThrough.GetProgressDifferenceToCompletion(out progressFlags);
+                    IncrementProgress(dif, progressFlags, ref executionScheduler);
                 }
 
                 private Fixed32 CurrentProgress()
                 {
                     ThrowIfInPool(this);
-                    return new Fixed32(_unscaledProgress.ToDouble() * _progressScaler);
+                    return Fixed32.GetScaled(_unscaledProgress, _progressScaler);
                 }
 
                 void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    IncrementProgress(amount, ref executionScheduler);
+                    IncrementProgress(amount, senderAmount, ref executionScheduler);
                 }
 
-                private void IncrementProgress(uint amount, ref ExecutionScheduler executionScheduler)
+                private void IncrementProgress(uint amount, Fixed32 otherFlags, ref ExecutionScheduler executionScheduler)
                 {
-                    _unscaledProgress.InterlockedIncrement(amount);
+                    _unscaledProgress.InterlockedIncrement(amount, otherFlags);
                     if ((_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();

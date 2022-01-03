@@ -22,17 +22,15 @@ namespace Proto.Promises
             internal T GetResult<T>(short promiseId)
             {
                 IncrementIdAndSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-#if PROMISE_DEBUG
-                if (State == Promise.State.Pending)
-                {
-                    throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
-                }
-#endif
                 if (State == Promise.State.Resolved)
                 {
                     T result = ((IValueContainer) _valueOrPrevious).GetValue<T>();
                     MaybeDispose();
                     return result;
+                }
+                if (State == Promise.State.Pending)
+                {
+                    throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
                 }
                 // Throw unhandled exception or canceled exception.
                 Exception exception = ((IThrowable) _valueOrPrevious).GetException();

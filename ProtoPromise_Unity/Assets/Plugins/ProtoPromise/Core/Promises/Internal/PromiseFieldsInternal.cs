@@ -140,16 +140,14 @@ namespace Proto.Promises
         {
             None = 0,
 
-            // Don't change the layout, very important for InterlockedSetSubscribedIfSecondPrevious().
             SuppressRejection = 1 << 0,
             WasAwaitedOrForgotten = 1 << 1,
             // For progress below
-            SecondPrevious = 1 << 2,
-            SelfSubscribed = 1 << 3,
-            InProgressQueue = 1 << 4,
-            Subscribing = 1 << 5,
-            Reporting = 1 << 6,
-            SettingInitial = 1 << 7,
+            InProgressQueue = 1 << 2,
+            Subscribing = 1 << 3,
+            SettingInitial = 1 << 4,
+            Reporting = 1 << 5,
+            Subscribed = 1 << 6,
 
             All = byte.MaxValue
         }
@@ -260,9 +258,9 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                private struct PromiseWaitSmallFields
+                private partial struct PromiseWaitSmallFields
                 {
-                    internal int _previousDepthPlusOne;
+                    volatile private int _previousDepthPlusOneAndFlags;
                     internal Fixed32 _depthAndProgress;
                 }
                 private PromiseWaitSmallFields _progressFields;
@@ -499,7 +497,6 @@ namespace Proto.Promises
                     internal Fixed32 _currentProgress;
                     volatile internal bool _complete;
                     volatile internal bool _canceled;
-                    volatile internal bool _didFirstInvoke;
                     internal bool _isSynchronous;
                 }
 

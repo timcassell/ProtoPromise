@@ -663,13 +663,18 @@ namespace Proto.Promises
                     else
                     {
                         _ref.MarkAwaited(other.Id, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
-                        _valueOrPrevious = _ref;
-                        SubscribeProgressToOther(_ref, other.Depth, ref executionScheduler);
+                        SetPreviousAndSubscribeProgress(_ref, other.Depth, ref executionScheduler);
                         _ref.AddWaiter(this, ref executionScheduler);
                     }
                 }
 
-                partial void SubscribeProgressToOther(PromiseRef other, int depth, ref ExecutionScheduler executionScheduler);
+#if !PROMISE_PROGRESS
+                [MethodImpl(InlineOption)]
+                private void SetPreviousAndSubscribeProgress(PromiseRef other, int depth, ref ExecutionScheduler executionScheduler)
+                {
+                    _valueOrPrevious = other;
+                }
+#endif
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

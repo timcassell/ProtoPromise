@@ -866,8 +866,16 @@ namespace ProtoPromiseTests.APIs
 
         [Test]
         public void PromiseSwitchToContextWorksProperly_Then(
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background, SynchronizationType.Explicit)] SynchronizationType synchronizationType,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground,
+#if !UNITY_WEBGL
+                SynchronizationType.Background,
+#endif
+                SynchronizationType.Explicit)] SynchronizationType synchronizationType,
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+                , SynchronizationType.Background
+#endif
+                )] SynchronizationType invokeContext)
         {
             Thread foregroundThread = Thread.CurrentThread;
             bool invoked = false;
@@ -876,7 +884,7 @@ namespace ProtoPromiseTests.APIs
             {
                 Promise promise = synchronizationType == SynchronizationType.Foreground
                     ? Promise.SwitchToForeground()
-                    : synchronizationType == SynchronizationType.Background
+                    : synchronizationType == TestHelper.backgroundType
                     ? Promise.SwitchToBackground()
                     : Promise.SwitchToContext(TestHelper._foregroundContext);
 
@@ -890,7 +898,7 @@ namespace ProtoPromiseTests.APIs
             }, invokeContext == SynchronizationType.Foreground);
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
@@ -906,8 +914,16 @@ namespace ProtoPromiseTests.APIs
 #if CSHARP_7_3_OR_NEWER
         [Test]
         public void PromiseSwitchToContextWorksProperly_Await(
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background, SynchronizationType.Explicit)] SynchronizationType synchronizationType,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground,
+#if !UNITY_WEBGL
+                SynchronizationType.Background,
+#endif
+                SynchronizationType.Explicit)] SynchronizationType synchronizationType,
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+                , SynchronizationType.Background
+#endif
+                )] SynchronizationType invokeContext)
         {
             Thread foregroundThread = Thread.CurrentThread;
             bool invoked = false;
@@ -920,7 +936,7 @@ namespace ProtoPromiseTests.APIs
                 {
                     Promise promise = synchronizationType == SynchronizationType.Foreground
                         ? Promise.SwitchToForeground()
-                        : synchronizationType == SynchronizationType.Background
+                        : synchronizationType == TestHelper.backgroundType
                         ? Promise.SwitchToBackground()
                         : Promise.SwitchToContext(TestHelper._foregroundContext);
                     
@@ -932,7 +948,7 @@ namespace ProtoPromiseTests.APIs
             }, invokeContext == SynchronizationType.Foreground);
 
             TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != SynchronizationType.Background)
+            if (synchronizationType != TestHelper.backgroundType)
             {
                 Assert.True(invoked);
             }
