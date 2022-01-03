@@ -196,7 +196,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal static partial class CallbackHelper
+            internal static class CallbackHelper
             {
 #if !PROMISE_PROGRESS
                 [MethodImpl(InlineOption)]

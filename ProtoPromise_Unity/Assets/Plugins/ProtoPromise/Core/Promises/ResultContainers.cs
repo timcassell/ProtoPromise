@@ -191,7 +191,10 @@ namespace Proto.Promises
 #endif
             partial struct ResultContainer
         {
-            private readonly Internal.IValueContainer _valueContainer;
+            /// <summary>
+            /// FOR INTERNAL USE ONLY!
+            /// </summary>
+            internal readonly Internal.IValueContainer _valueContainer;
             private readonly T _result;
 #if PROMISE_DEBUG
             private readonly long _id;
