@@ -490,6 +490,19 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
+            internal static void MaybeAddLinkedCancelation(CancelationRef listener, CancelationRef _this, short tokenId, bool isCanceled)
+            {
+                if (isCanceled)
+                {
+                    listener.TryInvokeCallbacks();
+                }
+                else if (_this != null)
+                {
+                    _this.MaybeAddLinkedCancelation(listener, tokenId);
+                }
+            }
+
+            [MethodImpl(InlineOption)]
             internal void MaybeAddLinkedCancelation(CancelationRef listener, short tokenId)
             {
                 // Retain for thread safety.
@@ -740,7 +753,7 @@ namespace Proto.Promises
                     return false;
                 }
                 // Wait for a callback currently being added/removed in another thread.
-                // When other threads enter the lock, they will see the _valueContainer was already set, so we don't need any further callback synchronization.
+                // When other threads enter the lock, they will see the _state was already set, so we don't need any further callback synchronization.
                 lock (_registeredCallbacks) { }
                 Unlink();
                 List<Exception> exceptions = null;
@@ -786,7 +799,7 @@ namespace Proto.Promises
                 if (Interlocked.CompareExchange(ref _state, (int) State.Disposed, (int) State.Pending) == (int) State.Pending)
                 {
                     // Wait for a callback currently being added/removed in another thread.
-                    // When other threads enter the lock, they will see the _valueContainer was already set, so we don't need any further callback synchronization.
+                    // When other threads enter the lock, they will see the _state was already set, so we don't need any further callback synchronization.
                     lock (_registeredCallbacks) { }
                     Unlink();
                     for (int i = 0, max = _registeredCallbacks.Count; i < max; ++i)

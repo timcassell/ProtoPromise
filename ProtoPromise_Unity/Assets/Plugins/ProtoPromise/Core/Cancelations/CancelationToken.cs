@@ -47,11 +47,7 @@ namespace Proto.Promises
         /// </summary>
         internal void MaybeLinkSourceInternal(Internal.CancelationRef cancelationRef)
         {
-            // No need to copy values for thread-safety here, as this is only called from the `New(CancetionToken)` functions.
-            if (_ref != null)
-            {
-                _ref.MaybeAddLinkedCancelation(cancelationRef, _id);
-            }
+            Internal.CancelationRef.MaybeAddLinkedCancelation(cancelationRef, _ref, _id, _isCanceled);
         }
 
         /// <summary>
