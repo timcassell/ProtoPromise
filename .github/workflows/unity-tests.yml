@@ -74,6 +74,7 @@ jobs:
         with:
           projectPath: ProtoPromise_Unity
           testMode: ${{ matrix.testMode }}
+        timeout-minutes: 90
 
       # Workaround for NUnit XML (see https://github.com/dorny/test-reporter/issues/98#issuecomment-867106931)
       - name: Install NUnit
