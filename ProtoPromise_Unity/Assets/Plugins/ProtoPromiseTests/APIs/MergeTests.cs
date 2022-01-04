@@ -168,33 +168,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void MergePromiseIsCanceledWhenFirstPromiseIsCanceled0()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
-            var deferred2 = Promise.NewDeferred<string>();
-
-            string expected = "Cancel";
-            bool canceled = false;
-
-            Promise.Merge(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(e =>
-                {
-                    Assert.AreEqual(expected, e.Value);
-                    canceled = true;
-                })
-                .Forget();
-
-            cancelationSource.Cancel(expected);
-            deferred2.Resolve("Success");
-
-            Assert.IsTrue(canceled);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void MergePromiseIsCanceledWhenFirstPromiseIsCanceled1()
+        public void MergePromiseIsCanceledWhenFirstPromiseIsCanceled()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
@@ -203,9 +177,8 @@ namespace ProtoPromiseTests.APIs
             bool canceled = false;
 
             Promise.Merge(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(e.ValueType);
                     canceled = true;
                 })
                 .Forget();
@@ -219,33 +192,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void MergePromiseIsCanceledWhenSecondPromiseIsCanceled0()
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred<string>(cancelationSource.Token);
-
-            string expected = "Cancel";
-            bool canceled = false;
-
-            Promise.Merge(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(e =>
-                {
-                    Assert.AreEqual(expected, e.Value);
-                    canceled = true;
-                })
-                .Forget();
-
-            deferred1.Resolve(2);
-            cancelationSource.Cancel(expected);
-
-            Assert.IsTrue(canceled);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void MergePromiseIsCanceledWhenSecondPromiseIsCanceled1()
+        public void MergePromiseIsCanceledWhenSecondPromiseIsCanceled()
         {
             var deferred1 = Promise.NewDeferred<int>();
             CancelationSource cancelationSource = CancelationSource.New();
@@ -254,9 +201,8 @@ namespace ProtoPromiseTests.APIs
             bool canceled = false;
 
             Promise.Merge(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(e.ValueType);
                     canceled = true;
                 })
                 .Forget();
@@ -270,35 +216,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void MergePromiseIsCanceledWhenBothPromisesAreCanceled0()
-        {
-            CancelationSource cancelationSource1 = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred<int>(cancelationSource1.Token);
-            CancelationSource cancelationSource2 = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred<string>(cancelationSource2.Token);
-
-            string expected = "Cancel";
-            bool canceled = false;
-
-            Promise.Merge(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(e =>
-                {
-                    Assert.AreEqual(expected, e.Value);
-                    canceled = true;
-                })
-                .Forget();
-
-            cancelationSource1.Cancel(expected);
-            cancelationSource2.Cancel("Different Cancel");
-
-            Assert.IsTrue(canceled);
-
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
-        }
-
-        [Test]
-        public void MergePromiseIsCanceledWhenBothPromisesAreCanceled1()
+        public void MergePromiseIsCanceledWhenBothPromisesAreCanceled()
         {
             CancelationSource cancelationSource1 = CancelationSource.New();
             var deferred1 = Promise.NewDeferred<int>(cancelationSource1.Token);
@@ -308,15 +226,14 @@ namespace ProtoPromiseTests.APIs
             bool canceled = false;
 
             Promise.Merge(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(e.ValueType);
                     canceled = true;
                 })
                 .Forget();
 
             cancelationSource1.Cancel();
-            cancelationSource2.Cancel("Different Cancel");
+            cancelationSource2.Cancel();
 
             Assert.IsTrue(canceled);
 
@@ -328,14 +245,12 @@ namespace ProtoPromiseTests.APIs
         public void MergePromiseIsCanceledWhenAnyPromiseIsAlreadyCanceled()
         {
             bool canceled = false;
-            string expected = "Cancel";
 
             var deferred = Promise.NewDeferred<int>();
 
-            Promise.Merge(deferred.Promise, Promise<int>.Canceled(expected))
-                .CatchCancelation(reason =>
+            Promise.Merge(deferred.Promise, Promise<int>.Canceled())
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(expected, reason.Value);
                     canceled = true;
                 })
                 .Forget();

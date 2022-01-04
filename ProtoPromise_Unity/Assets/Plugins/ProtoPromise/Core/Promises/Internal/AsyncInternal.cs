@@ -380,7 +380,7 @@ namespace Proto.Promises
             {
                 if (exception is OperationCanceledException)
                 {
-                    CancelDirect(exception);
+                    CancelDirect();
                 }
                 else
                 {

@@ -287,7 +287,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            cancelationSource.Cancel("Cancel");
+            cancelationSource.Cancel();
 
             Assert.IsFalse(resolved);
 
@@ -315,7 +315,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            cancelationSource.Cancel("Cancel");
+            cancelationSource.Cancel();
 
             Assert.IsFalse(resolved);
 
@@ -342,7 +342,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            cancelationSource.Cancel("Cancel");
+            cancelationSource.Cancel();
 
             Assert.IsFalse(resolved);
 
@@ -370,7 +370,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            cancelationSource.Cancel("Cancel");
+            cancelationSource.Cancel();
 
             Assert.IsFalse(resolved);
 
@@ -382,69 +382,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void FirstIsCanceledWhenAllPromisesAreCanceled_void0()
-        {
-            CancelationSource cancelationSource1 = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred(cancelationSource1.Token);
-            CancelationSource cancelationSource2 = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred(cancelationSource2.Token);
-
-            bool canceled = false;
-            string expected = "Cancel";
-
-            Promise.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    canceled = true;
-                })
-                .Forget();
-
-            cancelationSource1.Cancel("Different Cancel");
-
-            Assert.IsFalse(canceled);
-
-            cancelationSource2.Cancel(expected);
-
-            Assert.IsTrue(canceled);
-
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
-        }
-
-        [Test]
-        public void FirstIsCanceledWhenAllPromisesAreCanceled_T0()
-        {
-            CancelationSource cancelationSource1 = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred<int>(cancelationSource1.Token);
-            CancelationSource cancelationSource2 = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred<int>(cancelationSource2.Token);
-
-            bool canceled = false;
-            string expected = "Cancel";
-
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    canceled = true;
-                })
-                .Forget();
-
-            cancelationSource1.Cancel("Different Cancel");
-
-            Assert.IsFalse(canceled);
-
-            cancelationSource2.Cancel(expected);
-
-            Assert.IsTrue(canceled);
-
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
-        }
-
-        [Test]
-        public void FirstIsCanceledWhenAllPromisesAreCanceled_void1()
+        public void FirstIsCanceledWhenAllPromisesAreCanceled_void()
         {
             CancelationSource cancelationSource1 = CancelationSource.New();
             var deferred1 = Promise.NewDeferred(cancelationSource1.Token);
@@ -454,19 +392,16 @@ namespace ProtoPromiseTests.APIs
             bool canceled = false;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(reason.ValueType);
                     canceled = true;
                 })
                 .Forget();
 
-            cancelationSource1.Cancel("Different Cancel");
-
+            cancelationSource1.Cancel();
             Assert.IsFalse(canceled);
 
             cancelationSource2.Cancel();
-
             Assert.IsTrue(canceled);
 
             cancelationSource1.Dispose();
@@ -474,7 +409,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void FirstIsCanceledWhenAllPromisesAreCanceled_T1()
+        public void FirstIsCanceledWhenAllPromisesAreCanceled_T()
         {
             CancelationSource cancelationSource1 = CancelationSource.New();
             var deferred1 = Promise.NewDeferred<int>(cancelationSource1.Token);
@@ -484,19 +419,16 @@ namespace ProtoPromiseTests.APIs
             bool canceled = false;
 
             Promise<int>.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(reason.ValueType);
                     canceled = true;
                 })
                 .Forget();
 
-            cancelationSource1.Cancel("Different Cancel");
-
+            cancelationSource1.Cancel();
             Assert.IsFalse(canceled);
 
             cancelationSource2.Cancel();
-
             Assert.IsTrue(canceled);
 
             cancelationSource1.Dispose();
@@ -521,7 +453,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            cancelationSource.Cancel("Cancel");
+            cancelationSource.Cancel();
 
             Assert.IsFalse(rejected);
 
@@ -550,7 +482,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            cancelationSource.Cancel("Cancel");
+            cancelationSource.Cancel();
 
             Assert.IsFalse(rejected);
 
@@ -579,7 +511,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            cancelationSource.Cancel("Cancel");
+            cancelationSource.Cancel();
 
             Assert.IsFalse(rejected);
 
@@ -608,7 +540,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            cancelationSource.Cancel("Cancel");
+            cancelationSource.Cancel();
 
             Assert.IsFalse(rejected);
 
@@ -620,65 +552,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled_void0()
-        {
-            var deferred1 = Promise.NewDeferred();
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
-
-            bool canceled = false;
-            string expected = "Cancel";
-
-            Promise.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    canceled = true;
-                })
-                .Forget();
-
-            deferred1.Reject("Error");
-
-            Assert.IsFalse(canceled);
-
-            cancelationSource.Cancel(expected);
-
-            Assert.IsTrue(canceled);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled_T0()
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
-
-            bool canceled = false;
-            string expected = "Cancel";
-
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    canceled = true;
-                })
-                .Forget();
-
-            deferred1.Reject("Error");
-
-            Assert.IsFalse(canceled);
-
-            cancelationSource.Cancel(expected);
-
-            Assert.IsTrue(canceled);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled_void1()
+        public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled_void()
         {
             var deferred1 = Promise.NewDeferred();
             CancelationSource cancelationSource = CancelationSource.New();
@@ -687,9 +561,8 @@ namespace ProtoPromiseTests.APIs
             bool canceled = false;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(reason.ValueType);
                     canceled = true;
                 })
                 .Forget();
@@ -706,7 +579,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled_T1()
+        public void FirstIsCancelededWhenFirstPromiseIsRejectedThenSecondPromiseIsCanceled_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             CancelationSource cancelationSource = CancelationSource.New();
@@ -715,9 +588,8 @@ namespace ProtoPromiseTests.APIs
             bool canceled = false;
 
             Promise<int>.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(reason.ValueType);
                     canceled = true;
                 })
                 .Forget();
@@ -734,65 +606,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled_void0()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
-            var deferred2 = Promise.NewDeferred();
-
-            bool canceled = false;
-            string expected = "Cancel";
-
-            Promise.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    canceled = true;
-                })
-                .Forget();
-
-            deferred2.Reject("Error");
-
-            Assert.IsFalse(canceled);
-
-            cancelationSource.Cancel(expected);
-
-            Assert.IsTrue(canceled);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled_T0()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
-            var deferred2 = Promise.NewDeferred<int>();
-
-            bool canceled = false;
-            string expected = "Cancel";
-
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    canceled = true;
-                })
-                .Forget();
-
-            deferred2.Reject("Error");
-
-            Assert.IsFalse(canceled);
-
-            cancelationSource.Cancel(expected);
-
-            Assert.IsTrue(canceled);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled_void1()
+        public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred1 = Promise.NewDeferred(cancelationSource.Token);
@@ -801,9 +615,8 @@ namespace ProtoPromiseTests.APIs
             bool canceled = false;
 
             Promise.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(reason.ValueType);
                     canceled = true;
                 })
                 .Forget();
@@ -820,7 +633,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled_T1()
+        public void FirstIsCancelededWhenSecondPromiseIsRejectedThenFirstPromiseIsCanceled_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
@@ -829,9 +642,8 @@ namespace ProtoPromiseTests.APIs
             bool canceled = false;
 
             Promise<int>.First(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(reason.ValueType);
                     canceled = true;
                 })
                 .Forget();

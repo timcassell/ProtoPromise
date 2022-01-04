@@ -855,8 +855,8 @@ namespace ProtoPromiseTests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -871,8 +871,8 @@ namespace ProtoPromiseTests.Threading
             var promise = Promise.Canceled().Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
@@ -886,8 +886,8 @@ namespace ProtoPromiseTests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -902,8 +902,8 @@ namespace ProtoPromiseTests.Threading
             var promise = Promise<int>.Canceled().Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }

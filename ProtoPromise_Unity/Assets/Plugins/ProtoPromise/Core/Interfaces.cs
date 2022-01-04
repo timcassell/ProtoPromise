@@ -8,14 +8,6 @@
         void Cancel();
     }
 
-    public interface ICancelableAny : ICancelable
-    {
-        /// <summary>
-        /// Cancel this instance with <paramref name="reason"/>.
-        /// </summary>
-        void Cancel<TCancel>(TCancel reason);
-    }
-
     public interface IRetainable
     {
         /// <summary>

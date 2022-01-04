@@ -647,9 +647,9 @@ namespace Proto.Promises
                 {
                     cv.Item2.Invoke(def);
                 }
-                catch (OperationCanceledException e)
+                catch (OperationCanceledException)
                 {
-                    def.TryCancel(e); // Don't rethrow cancelation.
+                    def.TryCancel(); // Don't rethrow cancelation.
                 }
                 catch (Exception e)
                 {
@@ -678,9 +678,9 @@ namespace Proto.Promises
                 {
                     cv.Item2.Invoke(cv.Item3, def);
                 }
-                catch (OperationCanceledException e)
+                catch (OperationCanceledException)
                 {
-                    def.TryCancel(e); // Don't rethrow cancelation.
+                    def.TryCancel(); // Don't rethrow cancelation.
                 }
                 catch (Exception e)
                 {
@@ -708,9 +708,9 @@ namespace Proto.Promises
                 {
                     cv.Item2.Invoke(def);
                 }
-                catch (OperationCanceledException e)
+                catch (OperationCanceledException)
                 {
-                    def.TryCancel(e); // Don't rethrow cancelation.
+                    def.TryCancel(); // Don't rethrow cancelation.
                 }
                 catch (Exception e)
                 {
@@ -738,9 +738,9 @@ namespace Proto.Promises
                 {
                     cv.Item2.Invoke(cv.Item3, def);
                 }
-                catch (OperationCanceledException e)
+                catch (OperationCanceledException)
                 {
-                    def.TryCancel(e); // Don't rethrow cancelation.
+                    def.TryCancel(); // Don't rethrow cancelation.
                 }
                 catch (Exception e)
                 {
@@ -779,14 +779,10 @@ namespace Proto.Promises
             return deferred.Promise;
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that is already canceled with <paramref name="reason"/>.
-        /// </summary>
+        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
         public static Promise<T> Canceled<TCancel>(TCancel reason)
         {
-            var deferred = NewDeferred();
-            deferred.Cancel(reason);
-            return deferred.Promise;
+            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Canceled() instead.", Internal.GetFormattedStacktrace(1));
         }
 
         /// <summary>

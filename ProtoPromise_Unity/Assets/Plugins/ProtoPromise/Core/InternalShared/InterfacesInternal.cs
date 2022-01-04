@@ -43,11 +43,6 @@ namespace Proto.Promises
             IRejectValueContainer ToContainer(ITraceable traceable);
         }
 
-        internal interface ICancelationToContainer
-        {
-            ICancelValueContainer ToContainer();
-        }
-
         internal interface ICantHandleException
         {
             void AddToUnhandledStack(ITraceable traceable);
@@ -62,15 +57,9 @@ namespace Proto.Promises
 
         internal interface ICancelValueContainer : IValueContainer, IThrowable { }
 
-        internal interface ICancelDelegate
-        {
-            void Invoke(ICancelValueContainer valueContainer);
-            void Dispose();
-        }
-
         internal interface IDelegateSimple
         {
-            void Invoke(IValueContainer valueContainer);
+            void Invoke();
         }
     }
 }

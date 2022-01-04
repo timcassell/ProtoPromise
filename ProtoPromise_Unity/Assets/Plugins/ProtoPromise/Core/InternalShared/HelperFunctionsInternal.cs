@@ -331,44 +331,6 @@ namespace Proto.Promises
             return valueContainer;
         }
 
-        internal static ICancelValueContainer CreateCancelContainer<TCancel>(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TCancel reason)
-        {
-            ICancelValueContainer cancelValue;
-            if (typeof(TCancel).IsValueType)
-            {
-                cancelValue = CancelContainer<TCancel>.GetOrCreate(reason, 0);
-            }
-            else
-            {
-#if CSHARP_7_3_OR_NEWER
-                if (reason is ICancelationToContainer internalCancelation)
-#else
-                ICancelationToContainer internalCancelation = reason as ICancelationToContainer;
-                if (internalCancelation != null)
-#endif
-                {
-                    // reason is an internal cancelation object, get its container instead of wrapping it.
-                    cancelValue = internalCancelation.ToContainer();
-                }
-                else if (reason == null || reason is OperationCanceledException)
-                {
-                    // Use void container instead of wrapping OperationCanceledException, or if reason is null.
-                    cancelValue = CancelContainerVoid.GetOrCreate(0);
-                }
-                else
-                {
-                    // Only need to create one object pool for reference types.
-                    object o = reason;
-                    cancelValue = CancelContainer<object>.GetOrCreate(o, 0);
-                }
-            }
-            return cancelValue;
-        }
-
         // Handle uncaught errors. These must not be readonly.
         private static ValueLinkedStack<UnhandledException> _unhandledExceptions = new ValueLinkedStack<UnhandledException>();
         private static SpinLocker _unhandledExceptionsLocker;

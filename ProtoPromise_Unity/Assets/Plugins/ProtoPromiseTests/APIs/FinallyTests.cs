@@ -129,8 +129,6 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void OnFinallyIsInvokedWhenPromiseIsCanceled_void()
         {
-            bool repeat = true;
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
@@ -140,31 +138,15 @@ namespace ProtoPromiseTests.APIs
                 .Finally(() => invoked = true)
                 .Forget();
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
-
+            cancelationSource.Cancel();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
 
         [Test]
         public void OnFinallyIsInvokedWhenPromiseIsCanceled_T()
         {
-            bool repeat = true;
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
@@ -174,24 +156,10 @@ namespace ProtoPromiseTests.APIs
                 .Finally(() => invoked = true)
                 .Forget();
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
-
+            cancelationSource.Cancel();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
 
         [Test]
@@ -311,9 +279,7 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void PromiseIsRejectedWithThrownExceptionWhenOnFinallyThrows_canceled_void()
         {
-            bool repeat = true;
             Exception expected = new Exception();
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
@@ -328,32 +294,16 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
-
+            cancelationSource.Cancel();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
 
         [Test]
         public void PromiseIsRejectedWithThrownExceptionWhenOnFinallyThrows_canceled_T()
         {
-            bool repeat = true;
             Exception expected = new Exception();
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
@@ -368,24 +318,10 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
-
+            cancelationSource.Cancel();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
     }
 }

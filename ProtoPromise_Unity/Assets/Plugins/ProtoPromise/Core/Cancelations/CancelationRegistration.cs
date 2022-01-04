@@ -35,6 +35,17 @@ namespace Proto.Promises
         }
 
         /// <summary>
+        /// Get the <see cref="CancelationToken"/> associated with this <see cref="CancelationRegistration"/>.
+        /// </summary>
+        public CancelationToken Token
+        {
+            get
+            {
+                return new CancelationToken(_ref, _id);
+            }
+        }
+
+        /// <summary>
         /// Get whether the callback is registered and the associated <see cref="CancelationToken"/> has not been canceled and the associated <see cref="CancelationSource"/> has not been disposed.
         /// </summary>
         public bool IsRegistered
@@ -48,7 +59,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Get whether this is registered and whether the associated <see cref="CancelationToken"/> is requesting cancelation.
+        /// Get whether this is registered and whether the associated <see cref="CancelationToken"/> is requesting cancelation as an atomic operation.
         /// </summary>
         /// <param name="isRegistered">true if this is registered, false otherwise</param>
         /// <param name="isTokenCancelationRequested">true if the associated <see cref="CancelationToken"/> is requesting cancelation, false otherwise</param>

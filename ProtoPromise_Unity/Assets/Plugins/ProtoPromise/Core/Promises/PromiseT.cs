@@ -233,7 +233,7 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise<T> CatchCancelation(Promise.CanceledAction onCanceled, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> CatchCancelation(Action onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(1);
             ValidateArgument(onCanceled, "onCanceled", 1);
@@ -844,7 +844,7 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Promise.CanceledAction<TCaptureCancel> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(1);
             ValidateArgument(onCanceled, "onCanceled", 1);

@@ -741,7 +741,7 @@ namespace ProtoPromiseTests.APIs
             {
                 ++expectedInvokes;
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
-                    .CatchCancelation(_ =>
+                    .CatchCancelation(() =>
                     {
                         Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
@@ -752,7 +752,7 @@ namespace ProtoPromiseTests.APIs
             {
                 ++expectedInvokes;
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
-                    .CatchCancelation(1, (cv, reason) =>
+                    .CatchCancelation(1, cv =>
                     {
                         Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
@@ -806,7 +806,7 @@ namespace ProtoPromiseTests.APIs
             {
                 ++expectedInvokes;
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
-                    .CatchCancelation(_ =>
+                    .CatchCancelation(() =>
                     {
                         Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
@@ -817,7 +817,7 @@ namespace ProtoPromiseTests.APIs
             {
                 ++expectedInvokes;
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
-                    .CatchCancelation(1, (cv, reason) =>
+                    .CatchCancelation(1, cv =>
                     {
                         Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);

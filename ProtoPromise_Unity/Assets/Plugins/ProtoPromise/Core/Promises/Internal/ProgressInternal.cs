@@ -219,8 +219,17 @@ namespace Proto.Promises
                 // Wait until progressFlags are unset.
                 // This is used to make sure promises and progress listeners aren't disposed while still in use on another thread.
                 SpinWait spinner = new SpinWait();
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+#endif
                 while (_smallFields.AreFlagsSet(progressFlags))
                 {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    if (stopwatch.Elapsed.TotalSeconds > 1)
+                    {
+                        throw new TimeoutException();
+                    }
+#endif
                     spinner.SpinOnce();
                 }
             }
@@ -619,7 +628,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress, IProgressListener, IProgressInvokable, ICancelDelegate, ITreeHandleable
+            internal sealed partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress, IProgressListener, IProgressInvokable, ICancelable, ITreeHandleable
                 where TProgress : IProgress<float>
             {
                 [MethodImpl(InlineOption)]
@@ -658,7 +667,7 @@ namespace Proto.Promises
                     promise._smallProgressFields._depthAndProgress = new Fixed32(depth);
                     promise._smallProgressFields._isSynchronous = isSynchronous;
                     promise._synchronizationContext = synchronizationContext;
-                    cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
+                    cancelationToken.TryRegister(promise, out promise._cancelationRegistration);
                     return promise;
                 }
 
@@ -680,9 +689,7 @@ namespace Proto.Promises
                     // Use double for better precision.
                     double expected = _smallProgressFields._depthAndProgress.WholePart + 1u;
                     float value = (float) (progress.ToDouble() / expected);
-                    bool _, isCancelationRequested;
-                    _cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out _, out isCancelationRequested);
-                    if (!progress.IsSuspended & !IsComplete & !IsCanceled & !isCancelationRequested)
+                    if (!progress.IsSuspended & !IsComplete & !IsCanceled & !_cancelationRegistration.Token.IsCancelationRequested)
                     {
                         CallbackHelper.InvokeAndCatchProgress(_progress, value, this);
                     }
@@ -828,13 +835,11 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
-                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                void ICancelable.Cancel()
                 {
                     ThrowIfInPool(this);
                     IsCanceled = true;
                 }
-
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
 
                 void IProgressListener.Retain()
                 {
@@ -1554,8 +1559,17 @@ namespace Proto.Promises
                 {
                     Thread.MemoryBarrier(); // Make sure any writes happen before reading the flags.
                     SpinWait spinner = new SpinWait();
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+#endif
                     while (_smallFields._reportingProgress | _smallFields._settingInitialProgress)
                     {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                        if (stopwatch.Elapsed.TotalSeconds > 1)
+                        {
+                            throw new TimeoutException();
+                        }
+#endif
                         spinner.SpinOnce();
                     }
                 }

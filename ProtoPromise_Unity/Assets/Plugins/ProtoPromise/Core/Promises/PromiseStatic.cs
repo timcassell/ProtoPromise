@@ -1256,9 +1256,9 @@ namespace Proto.Promises
                 {
                     cv.Item2.Invoke(def);
                 }
-                catch (OperationCanceledException e)
+                catch (OperationCanceledException)
                 {
-                    def.TryCancel(e); // Don't rethrow cancelation.
+                    def.TryCancel(); // Don't rethrow cancelation.
                 }
                 catch (Exception e)
                 {
@@ -1286,9 +1286,9 @@ namespace Proto.Promises
                 {
                     cv.Item2.Invoke(def);
                 }
-                catch (OperationCanceledException e)
+                catch (OperationCanceledException)
                 {
-                    def.TryCancel(e); // Don't rethrow cancelation.
+                    def.TryCancel(); // Don't rethrow cancelation.
                 }
                 catch (Exception e)
                 {
@@ -1329,9 +1329,9 @@ namespace Proto.Promises
                 {
                     cv.Item2.Invoke(cv.Item3, def);
                 }
-                catch (OperationCanceledException e)
+                catch (OperationCanceledException)
                 {
-                    def.TryCancel(e); // Don't rethrow cancelation.
+                    def.TryCancel(); // Don't rethrow cancelation.
                 }
                 catch (Exception e)
                 {
@@ -1359,9 +1359,9 @@ namespace Proto.Promises
                 {
                     cv.Item2.Invoke(cv.Item3, def);
                 }
-                catch (OperationCanceledException e)
+                catch (OperationCanceledException)
                 {
-                    def.TryCancel(e); // Don't rethrow cancelation.
+                    def.TryCancel(); // Don't rethrow cancelation.
                 }
                 catch (Exception e)
                 {
@@ -1634,14 +1634,10 @@ namespace Proto.Promises
             return deferred.Promise;
         }
 
-        /// <summary>
-        /// Returns a <see cref="Promise"/> that is already canceled with <paramref name="reason"/>.
-        /// </summary>
+        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
         public static Promise Canceled<TCancel>(TCancel reason)
         {
-            var deferred = NewDeferred();
-            deferred.Cancel(reason);
-            return deferred.Promise;
+            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Canceled() instead.", Internal.GetFormattedStacktrace(1));
         }
 
         /// <summary>
@@ -1652,7 +1648,7 @@ namespace Proto.Promises
             return Promise<T>.Canceled();
         }
 
-        [Obsolete("Prefer Promise<T>.Canceled<TCancel>(TCancel reason)")]
+        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
         public static Promise<T> Canceled<T, TCancel>(TCancel reason)
         {
             return Promise<T>.Canceled(reason);
@@ -1695,18 +1691,17 @@ namespace Proto.Promises
         /// </summary>
         public static CanceledException CancelException()
         {
-            return Internal.CanceledExceptionInternalVoid.GetOrCreate();
+            return Internal.CanceledExceptionInternal.GetOrCreate();
         }
 
         /// <summary>
         /// Get a <see cref="Promises.CancelException"/> that can be thrown to cancel the promise with the provided reason from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.CancelException(value);"
         /// </summary>
+        [Obsolete("Cancelation reasons are no longer supported. Use CancelException() instead.", true)]
         public static CanceledException CancelException<T>(T value)
         {
-            Type type = typeof(T).IsValueType ? typeof(T) : value.GetType();
-            string message = "Operation was canceled with a reason, type: " + type + ", value: " + value.ToString();
-            return new Internal.CanceledExceptionInternal<T>(value, message);
+            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use CancelException() instead.", Internal.GetFormattedStacktrace(1));
         }
 
         /// <summary>

@@ -41,7 +41,6 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = new CancelationSource();
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationSource.Cancel(); });
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationSource.Cancel("Cancel"); });
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationSource.Dispose(); });
             }
 
@@ -62,19 +61,10 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationSourceIsValidAfterCancel_0()
+            public void CancelationSourceIsValidAfterCancel()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
-                Assert.IsTrue(cancelationSource.IsValid);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationSourceIsValidAfterCancel_1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                cancelationSource.Cancel("Canceled");
                 Assert.IsTrue(cancelationSource.IsValid);
                 cancelationSource.Dispose();
             }
@@ -92,15 +82,6 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
-                Assert.IsTrue(cancelationSource.IsCancelationRequested);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationSourceCancelationRequestedAfterCanceled_1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                cancelationSource.Cancel("Canceled");
                 Assert.IsTrue(cancelationSource.IsCancelationRequested);
                 cancelationSource.Dispose();
             }
@@ -139,34 +120,30 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationSource2CanceledWithSameValueAsToken1_0()
+            public void CancelationSource2IsCanceledWhenToken1IsCanceled_0()
             {
-                string cancelValue = "CancelValue";
                 bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token);
-                cancelationSource2.Token.Register(reason =>
+                cancelationSource2.Token.Register(() =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
-                cancelationSource1.Cancel(cancelValue);
+                cancelationSource1.Cancel();
                 Assert.IsTrue(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
             }
 
             [Test]
-            public void CancelationSource2CanceledWithSameValueAsToken1_1()
+            public void CancelationSource2IsCanceledWhenToken1IsCanceled_1()
             {
-                string cancelValue = "CancelValue";
                 bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
-                cancelationSource1.Cancel(cancelValue);
+                cancelationSource1.Cancel();
                 CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token);
-                cancelationSource2.Token.Register(reason =>
+                cancelationSource2.Token.Register(() =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
                 Assert.IsTrue(invoked);
@@ -254,22 +231,20 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationSource3CanceledWithSameValueAsToken1_0()
+            public void CancelationSource3IsCanceledWhenToken1IsCanceled_0()
             {
-                string cancelValue = "CancelValue";
                 bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
                 CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
-                cancelationSource3.Token.Register(reason =>
+                cancelationSource3.Token.Register(() =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
-                cancelationSource1.Cancel(cancelValue);
+                cancelationSource1.Cancel();
                 Assert.IsTrue(invoked);
                 invoked = false;
-                cancelationSource2.Cancel("Different value");
+                cancelationSource2.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -277,22 +252,20 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationSource3CanceledWithSameValueAsToken1_1()
+            public void CancelationSource3IsCanceledWhenToken1IsCanceled_1()
             {
-                string cancelValue = "CancelValue";
                 bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
-                cancelationSource1.Cancel(cancelValue);
+                cancelationSource1.Cancel();
                 CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
-                cancelationSource3.Token.Register(reason =>
+                cancelationSource3.Token.Register(() =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
                 Assert.IsTrue(invoked);
                 invoked = false;
-                cancelationSource2.Cancel("Different value");
+                cancelationSource2.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -300,22 +273,20 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationSource3CanceledWithSameValueAsToken2_0()
+            public void CancelationSource3IsCanceledWhenToken2IsCanceled_0()
             {
-                string cancelValue = "CancelValue";
                 bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
                 CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
-                cancelationSource3.Token.Register(reason =>
+                cancelationSource3.Token.Register(() =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
-                cancelationSource2.Cancel(cancelValue);
+                cancelationSource2.Cancel();
                 Assert.IsTrue(invoked);
                 invoked = false;
-                cancelationSource1.Cancel("Different value");
+                cancelationSource1.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -323,22 +294,20 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationSource3CanceledWithSameValueAsToken2_1()
+            public void CancelationSource3IsCanceledWhenToken2IsCanceled_1()
             {
-                string cancelValue = "CancelValue";
                 bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
-                cancelationSource2.Cancel(cancelValue);
+                cancelationSource2.Cancel();
                 CancelationSource cancelationSource3 = CancelationSource.New(cancelationSource1.Token, cancelationSource2.Token);
-                cancelationSource3.Token.Register(reason =>
+                cancelationSource3.Token.Register(() =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
                 Assert.IsTrue(invoked);
                 invoked = false;
-                cancelationSource1.Cancel("Different value");
+                cancelationSource1.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -425,22 +394,20 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationSource3CanceledWithSameValueAsToken1_2()
+            public void CancelationSource3IsCanceledWhenToken1IsCanceled_2()
             {
-                string cancelValue = "CancelValue";
                 bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
                 CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
-                cancelationSource3.Token.Register(reason =>
+                cancelationSource3.Token.Register(() =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
-                cancelationSource1.Cancel(cancelValue);
+                cancelationSource1.Cancel();
                 Assert.IsTrue(invoked);
                 invoked = false;
-                cancelationSource2.Cancel("Different value");
+                cancelationSource2.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -448,22 +415,20 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationSource3CanceledWithSameValueAsToken1_3()
+            public void CancelationSource3IsCanceledWhenToken1IsCanceled_3()
             {
-                string cancelValue = "CancelValue";
                 bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
-                cancelationSource1.Cancel(cancelValue);
+                cancelationSource1.Cancel();
                 CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
-                cancelationSource3.Token.Register(reason =>
+                cancelationSource3.Token.Register(() =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
                 Assert.IsTrue(invoked);
                 invoked = false;
-                cancelationSource2.Cancel("Different value");
+                cancelationSource2.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -471,22 +436,20 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationSource3CanceledWithSameValueAsToken2_2()
+            public void CancelationSource3IsCanceledWhenToken2IsCanceled_2()
             {
-                string cancelValue = "CancelValue";
                 bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
                 CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
-                cancelationSource3.Token.Register(reason =>
+                cancelationSource3.Token.Register(() =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
-                cancelationSource2.Cancel(cancelValue);
+                cancelationSource2.Cancel();
                 Assert.IsTrue(invoked);
                 invoked = false;
-                cancelationSource1.Cancel("Different value");
+                cancelationSource1.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -494,22 +457,20 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationSource3CanceledWithSameValueAsToken2_3()
+            public void CancelationSource3IsCanceledWhenToken2IsCanceled_3()
             {
-                string cancelValue = "CancelValue";
                 bool invoked = false;
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New();
-                cancelationSource2.Cancel(cancelValue);
+                cancelationSource2.Cancel();
                 CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
-                cancelationSource3.Token.Register(reason =>
+                cancelationSource3.Token.Register(()  =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
                 Assert.IsTrue(invoked);
                 invoked = false;
-                cancelationSource1.Cancel("Different value");
+                cancelationSource1.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -517,39 +478,35 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationSourceLinkedToToken1TwiceIsCanceledWithSameValueAsToken1()
+            public void CancelationSourceLinkedToToken1TwiceIsCanceledWhenToken1Iscanceled()
             {
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
-                string cancelValue = "CancelValue";
                 bool invoked = false;
-                cancelationSource2.Token.Register(reason =>
+                cancelationSource2.Token.Register(() =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
-                cancelationSource1.Cancel(cancelValue);
+                cancelationSource1.Cancel();
                 Assert.IsTrue(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
             }
 
             [Test]
-            public void CancelationSourceLinkedToToken1TwiceIsCanceledWithDifferentValueAsToken1()
+            public void CancelationSourceLinkedToToken1TwiceIsNotCanceledWhenToken1Iscanceled()
             {
                 CancelationSource cancelationSource1 = CancelationSource.New();
                 CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
-                string cancelValue = "CancelValue";
                 bool invoked = false;
-                cancelationSource2.Token.Register(reason =>
+                cancelationSource2.Token.Register(() =>
                 {
-                    Assert.AreEqual(cancelValue, reason.Value);
                     invoked = true;
                 });
-                cancelationSource2.Cancel(cancelValue);
+                cancelationSource2.Cancel();
                 Assert.IsTrue(invoked);
                 invoked = false;
-                cancelationSource1.Cancel("Different value");
+                cancelationSource1.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource1.Dispose();
                 cancelationSource2.Dispose();
@@ -612,7 +569,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationTokenCancelationRequestedAfterCanceled0()
+            public void CancelationTokenCancelationRequestedAfterCanceled()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
@@ -622,24 +579,11 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationTokenCancelationRequestedAfterCanceled1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel("Canceled");
-                Assert.IsTrue(cancelationToken.IsCancelationRequested);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
             public void CancelationTokenInvalidOperations()
             {
                 CancelationToken cancelationToken = new CancelationToken();
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { var _ = cancelationToken.CancelationValue; });
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { var _ = cancelationToken.CancelationValueType; });
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationToken.Register(_ => { }); });
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationToken.Register(1, (i, _) => { }); });
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { string _; cancelationToken.TryGetCancelationValueAs(out _); });
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationToken.Register(() => { }); });
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationToken.Register(1, i => { }); });
                 Assert.Throws<Proto.Promises.InvalidOperationException>(cancelationToken.Retain);
                 Assert.Throws<Proto.Promises.InvalidOperationException>(cancelationToken.Release);
             }
@@ -663,7 +607,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationTokenFromSourceCancelationIsRequested0()
+            public void CancelationTokenFromSourceCancelationIsRequested()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
@@ -673,127 +617,13 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationTokenFromSourceCancelationIsRequested1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel("Cancel");
-                Assert.IsTrue(cancelationToken.IsCancelationRequested);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationTokenFromSourceCancelationIsNotRequestedAfterSourceIsDisposed0()
+            public void CancelationTokenFromSourceCancelationIsNotRequestedAfterSourceIsDisposed()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
                 Assert.IsFalse(cancelationToken.IsCancelationRequested);
-            }
-
-            [Test]
-            public void CancelationTokenFromSourceCancelationIsNotRequestedAfterSourceIsDisposed1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel("Cancel");
-                cancelationSource.Dispose();
-                Assert.IsFalse(cancelationToken.IsCancelationRequested);
-            }
-
-            [Test]
-            public void CancelationTokenValueTypeIsNull0()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel();
-                Assert.IsNull(cancelationToken.CancelationValueType);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationTokenValueTypeIsNull1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel(default(string));
-                Assert.IsNull(cancelationToken.CancelationValueType);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationTokenValueTypeIsString()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel("Cancel");
-                Assert.IsTrue(cancelationToken.CancelationValueType == typeof(string));
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationTokenValueIsNull0()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel();
-                Assert.IsNull(cancelationToken.CancelationValue);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationTokenValueIsNull1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel(default(string));
-                Assert.IsNull(cancelationToken.CancelationValue);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationTokenValueMatchesCancelValue()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                string cancelValue = "Cancel";
-                cancelationSource.Cancel(cancelValue);
-                Assert.AreEqual(cancelValue, cancelationToken.CancelationValue);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationTokenNullValueCannotBeGottenAsString0()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel();
-                string val;
-                Assert.IsFalse(cancelationToken.TryGetCancelationValueAs(out val));
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationTokenNullValueCannotBeGottenAsString1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel(default(string));
-                string val;
-                Assert.IsFalse(cancelationToken.TryGetCancelationValueAs(out val));
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationTokenStringValueCanBeGottenAsString()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel("Cancel");
-                string val;
-                Assert.IsTrue(cancelationToken.TryGetCancelationValueAs(out val));
-                cancelationSource.Dispose();
             }
 
             [Test]
@@ -819,7 +649,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void RetainedCancelationTokenFromSourceCancelationIsRequestedAfterSourceIsDisposed0()
+            public void RetainedCancelationTokenFromSourceCancelationIsRequestedAfterSourceIsDisposed()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
@@ -831,19 +661,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void RetainedCancelationTokenFromSourceCancelationIsRequestedAfterSourceIsDisposed1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel("Cancel");
-                cancelationToken.Retain();
-                cancelationSource.Dispose();
-                Assert.IsTrue(cancelationToken.IsCancelationRequested);
-                cancelationToken.Release();
-            }
-
-            [Test]
-            public void ReleasedCancelationTokenFromSourceCancelationIsNotRequestedAfterSourceIsDisposed0()
+            public void ReleasedCancelationTokenFromSourceCancelationIsNotRequestedAfterSourceIsDisposed()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
@@ -855,42 +673,11 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void ReleasedCancelationTokenFromSourceCancelationIsNotRequestedAfterSourceIsDisposed1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel("Cancel");
-                cancelationToken.Retain();
-                cancelationSource.Dispose();
-                cancelationToken.Release();
-                Assert.IsFalse(cancelationToken.IsCancelationRequested);
-            }
-
-            [Test]
-            public void CancelationTokenThrowIfCancelationRequested0()
+            public void CancelationTokenThrowIfCancelationRequested()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 cancelationSource.Cancel();
-                bool caughtException = false;
-                try
-                {
-                    cancelationToken.ThrowIfCancelationRequested();
-                }
-                catch (CanceledException)
-                {
-                    caughtException = true;
-                }
-                cancelationSource.Dispose();
-                Assert.IsTrue(caughtException);
-            }
-
-            [Test]
-            public void CancelationTokenThrowIfCancelationRequested1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationSource.Cancel("Cancel");
                 bool caughtException = false;
                 try
                 {
@@ -931,7 +718,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                CancelationRegistration cancelationRegistration = cancelationToken.Register(_ => { });
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(() => { });
                 Assert.IsTrue(cancelationRegistration.IsRegistered);
                 cancelationSource.Dispose();
             }
@@ -941,7 +728,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, (i, _) => { });
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, i => { });
                 Assert.IsTrue(cancelationRegistration.IsRegistered);
                 cancelationSource.Dispose();
             }
@@ -951,7 +738,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                CancelationRegistration cancelationRegistration = cancelationToken.Register(_ => { });
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(() => { });
                 cancelationSource.Cancel();
                 Assert.IsFalse(cancelationRegistration.IsRegistered);
                 cancelationSource.Dispose();
@@ -962,7 +749,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, (i, _) => { });
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, i => { });
                 cancelationSource.Cancel();
                 Assert.IsFalse(cancelationRegistration.IsRegistered);
                 cancelationSource.Dispose();
@@ -974,7 +761,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 CancelationRegistration cancelationRegistration = new CancelationRegistration();
-                cancelationRegistration = cancelationToken.Register(_ => Assert.IsFalse(cancelationRegistration.IsRegistered));
+                cancelationRegistration = cancelationToken.Register(() => Assert.IsFalse(cancelationRegistration.IsRegistered));
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
             }
@@ -985,7 +772,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 CancelationRegistration cancelationRegistration = new CancelationRegistration();
-                cancelationRegistration = cancelationToken.Register(0, (i, _) => Assert.IsFalse(cancelationRegistration.IsRegistered));
+                cancelationRegistration = cancelationToken.Register(0, i => Assert.IsFalse(cancelationRegistration.IsRegistered));
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
             }
@@ -995,7 +782,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                CancelationRegistration cancelationRegistration = cancelationToken.Register(_ => { });
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(() => { });
                 cancelationSource.Dispose();
                 Assert.IsFalse(cancelationRegistration.IsRegistered);
             }
@@ -1005,7 +792,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, (i, _) => { });
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, i => { });
                 cancelationSource.Dispose();
                 Assert.IsFalse(cancelationRegistration.IsRegistered);
             }
@@ -1016,7 +803,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 bool invoked = false;
-                cancelationToken.Register(_ => invoked = true);
+                cancelationToken.Register(() => invoked = true);
                 cancelationSource.Cancel();
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
@@ -1028,32 +815,8 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 bool invoked = false;
-                cancelationToken.Register(0, (i, _) => invoked = true);
+                cancelationToken.Register(0, i => invoked = true);
                 cancelationSource.Cancel();
-                Assert.IsTrue(invoked);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationTokenRegisterCallbackIsInvoked2()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                bool invoked = false;
-                cancelationToken.Register(_ => invoked = true);
-                cancelationSource.Cancel("Cancel");
-                Assert.IsTrue(invoked);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationTokenRegisterCallbackIsInvoked3()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                bool invoked = false;
-                cancelationToken.Register(0, (i, _) => invoked = true);
-                cancelationSource.Cancel("Cancel");
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
             }
@@ -1066,8 +829,8 @@ namespace ProtoPromiseTests.APIs
                 bool invoked = false;
                 CancelationRegistration cancelationRegistration = new CancelationRegistration();
                 // Can't unregister cancelation after token is canceled.
-                cancelationToken.Register(_ => Assert.IsFalse(cancelationRegistration.TryUnregister()));
-                cancelationRegistration = cancelationToken.Register(_ => invoked = true);
+                cancelationToken.Register(() => Assert.IsFalse(cancelationRegistration.TryUnregister()));
+                cancelationRegistration = cancelationToken.Register(() => invoked = true);
                 cancelationSource.Cancel();
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
@@ -1081,8 +844,8 @@ namespace ProtoPromiseTests.APIs
                 bool invoked = false;
                 CancelationRegistration cancelationRegistration = new CancelationRegistration();
                 // Can't unregister cancelation after token is canceled.
-                cancelationToken.Register(_ => Assert.IsFalse(cancelationRegistration.TryUnregister()));
-                cancelationRegistration = cancelationToken.Register(0, (i, _) => invoked = true);
+                cancelationToken.Register(() => Assert.IsFalse(cancelationRegistration.TryUnregister()));
+                cancelationRegistration = cancelationToken.Register(0, i => invoked = true);
                 cancelationSource.Cancel();
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
@@ -1094,7 +857,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 bool invoked = false;
-                CancelationRegistration cancelationRegistration = cancelationToken.Register(_ => invoked = true);
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(() => invoked = true);
                 cancelationRegistration.Unregister();
                 cancelationSource.Cancel();
                 Assert.IsFalse(invoked);
@@ -1107,7 +870,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 bool invoked = false;
-                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, (i, _) => invoked = true);
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, i => invoked = true);
                 cancelationRegistration.Unregister();
                 cancelationSource.Cancel();
                 Assert.IsFalse(invoked);
@@ -1120,7 +883,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 string expected = "Captured";
-                cancelationToken.Register(expected, (cv, _) => Assert.AreEqual(expected, cv));
+                cancelationToken.Register(expected, cv => Assert.AreEqual(expected, cv));
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
             }
@@ -1132,8 +895,8 @@ namespace ProtoPromiseTests.APIs
                 CancelationToken cancelationToken = cancelationSource.Token;
                 bool invoked = false;
                 // This should never be done in practice!
-                cancelationToken.Register(_ => cancelationSource.Dispose());
-                cancelationToken.Register(_ => invoked = true);
+                cancelationToken.Register(() => cancelationSource.Dispose());
+                cancelationToken.Register(() => invoked = true);
                 cancelationSource.Cancel();
                 Assert.IsTrue(invoked);
             }
@@ -1144,8 +907,8 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 CancelationRegistration cancelationRegistration = new CancelationRegistration();
-                cancelationToken.Register(_ => Assert.IsFalse(cancelationRegistration.IsRegistered));
-                cancelationRegistration = cancelationToken.Register(_ => { });
+                cancelationToken.Register(() => Assert.IsFalse(cancelationRegistration.IsRegistered));
+                cancelationRegistration = cancelationToken.Register(() => { });
                 cancelationSource.Cancel();
                     cancelationSource.Dispose();
             }
@@ -1155,7 +918,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationToken.Register(_ =>
+                cancelationToken.Register(() =>
                 {
                     throw new Exception();
                 });
@@ -1169,13 +932,13 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 int callbackCount = 0;
-                cancelationToken.Register(_ => ++callbackCount);
-                cancelationToken.Register(_ =>
+                cancelationToken.Register(() => ++callbackCount);
+                cancelationToken.Register(() =>
                 {
                     ++callbackCount;
                     throw new Exception();
                 });
-                cancelationToken.Register(_ => ++callbackCount);
+                cancelationToken.Register(() => ++callbackCount);
                 try
                 {
                     cancelationSource.Cancel();
@@ -1193,11 +956,11 @@ namespace ProtoPromiseTests.APIs
                 cancelationToken.Retain();
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
-                cancelationToken.Register(_ => { });
-                cancelationToken.Register(1, (cv, _) => { });
+                cancelationToken.Register(() => { });
+                cancelationToken.Register(1, cv => { });
                 CancelationRegistration cancelationRegistration;
-                Assert.IsTrue(cancelationToken.TryRegister(_ => { }, out cancelationRegistration));
-                Assert.IsTrue(cancelationToken.TryRegister(1, (cv, _) => { }, out cancelationRegistration));
+                Assert.IsTrue(cancelationToken.TryRegister(() => { }, out cancelationRegistration));
+                Assert.IsTrue(cancelationToken.TryRegister(1, cv => { }, out cancelationRegistration));
                 cancelationToken.Release();
             }
 
@@ -1209,10 +972,10 @@ namespace ProtoPromiseTests.APIs
                 cancelationToken.Retain();
                 cancelationSource.Dispose();
                 CancelationRegistration cancelationRegistration;
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationToken.Register(_ => { }));
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationToken.Register(1, (cv, _) => { }));
-                Assert.IsFalse(cancelationToken.TryRegister(_ => { }, out cancelationRegistration));
-                Assert.IsFalse(cancelationToken.TryRegister(1, (cv, _) => { }, out cancelationRegistration));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationToken.Register(() => { }));
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationToken.Register(1, cv => { }));
+                Assert.IsFalse(cancelationToken.TryRegister(() => { }, out cancelationRegistration));
+                Assert.IsFalse(cancelationToken.TryRegister(1, cv => { }, out cancelationRegistration));
                 cancelationToken.Release();
             }
 
@@ -1222,7 +985,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 CancelationRegistration cancelationRegistration = default(CancelationRegistration);
-                cancelationRegistration = cancelationToken.Register(_ =>
+                cancelationRegistration = cancelationToken.Register(() =>
                 {
                     bool isRegistered, isCancelationRequested;
                     cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out isRegistered, out isCancelationRequested);
@@ -1239,7 +1002,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 CancelationRegistration cancelationRegistration = default(CancelationRegistration);
-                cancelationRegistration = cancelationToken.Register(1, (cv, _) =>
+                cancelationRegistration = cancelationToken.Register(1, cv =>
                 {
                     bool isRegistered, isCancelationRequested;
                     cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out isRegistered, out isCancelationRequested);
@@ -1256,7 +1019,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 CancelationRegistration cancelationRegistration = default(CancelationRegistration);
-                cancelationRegistration = cancelationToken.Register(_ =>
+                cancelationRegistration = cancelationToken.Register(() =>
                 {
                     bool isCancelationRequested;
                     Assert.IsFalse(cancelationRegistration.TryUnregister(out isCancelationRequested));
@@ -1272,7 +1035,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 CancelationRegistration cancelationRegistration = default(CancelationRegistration);
-                cancelationRegistration = cancelationToken.Register(1, (cv, _) =>
+                cancelationRegistration = cancelationToken.Register(1, cv =>
                 {
                     bool isCancelationRequested;
                     Assert.IsFalse(cancelationRegistration.TryUnregister(out isCancelationRequested));

@@ -375,10 +375,10 @@ namespace ProtoPromiseTests.APIs
 
             Promise.All(deferred1.Promise, deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(e => { canceled = true; })
+                .CatchCancelation(() => { canceled = true; })
                 .Forget();
 
-            cancelationSource.Cancel("Cancel!");
+            cancelationSource.Cancel();
 
             Assert.IsTrue(canceled);
 
@@ -401,10 +401,10 @@ namespace ProtoPromiseTests.APIs
 
             Promise<int>.All(deferred1.Promise, deferred2.Promise)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(e => { canceled = true; })
+                .CatchCancelation(() => { canceled = true; })
                 .Forget();
 
-            cancelationSource.Cancel("Cancel!");
+            cancelationSource.Cancel();
 
             Assert.IsTrue(canceled);
 
@@ -426,14 +426,14 @@ namespace ProtoPromiseTests.APIs
 
             Promise.All(deferred1.Promise, deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(e => { canceled = true; })
+                .CatchCancelation(() => { canceled = true; })
                 .Forget();
 
             deferred1.Resolve();
 
             Assert.IsFalse(canceled);
 
-            cancelationSource.Cancel("Cancel!");
+            cancelationSource.Cancel();
 
             Assert.IsTrue(canceled);
 
@@ -451,14 +451,14 @@ namespace ProtoPromiseTests.APIs
 
             Promise<int>.All(deferred1.Promise, deferred2.Promise)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(e => { canceled = true; })
+                .CatchCancelation(() => { canceled = true; })
                 .Forget();
 
             deferred1.Resolve(2);
 
             Assert.IsFalse(canceled);
 
-            cancelationSource.Cancel("Cancel!");
+            cancelationSource.Cancel();
 
             Assert.IsTrue(canceled);
 
@@ -478,14 +478,14 @@ namespace ProtoPromiseTests.APIs
 
             Promise.All(deferred1.Promise, deferred2.Promise)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(e => { canceled = true; })
+                .CatchCancelation(() => { canceled = true; })
                 .Forget();
 
-            cancelationSource1.Cancel("Cancel!");
+            cancelationSource1.Cancel();
 
             Assert.IsTrue(canceled);
 
-            cancelationSource2.Cancel("Cancel!");
+            cancelationSource2.Cancel();
 
             Assert.IsTrue(canceled);
 
@@ -506,14 +506,14 @@ namespace ProtoPromiseTests.APIs
 
             Promise<int>.All(deferred1.Promise, deferred2.Promise)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(e => { canceled = true; })
+                .CatchCancelation(() => { canceled = true; })
                 .Forget();
 
-            cancelationSource1.Cancel("Cancel!");
+            cancelationSource1.Cancel();
 
             Assert.IsTrue(canceled);
 
-            cancelationSource2.Cancel("Cancel!");
+            cancelationSource2.Cancel();
 
             Assert.IsTrue(canceled);
 
@@ -525,26 +525,23 @@ namespace ProtoPromiseTests.APIs
         public void AllPromiseIsCancelededWhenAnyPromiseIsAlreadyCanceled_void()
         {
             int cancelCount = 0;
-            string cancelation = "Cancel!";
 
             var deferred = Promise.NewDeferred();
             var promise1 = deferred.Promise.Preserve();
-            var promise2 = Promise.Canceled(cancelation).Preserve();
+            var promise2 = Promise.Canceled().Preserve();
 
             Promise.All(promise1, promise2)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(ex =>
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(cancelation, ex.Value);
                     ++cancelCount;
                 })
                 .Forget();
 
             Promise.All(promise2, promise1)
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(ex =>
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(cancelation, ex.Value);
                     ++cancelCount;
                 })
                 .Forget();
@@ -561,26 +558,23 @@ namespace ProtoPromiseTests.APIs
         public void AllPromiseIsCancelededWhenAnyPromiseIsAlreadyCanceled_T()
         {
             int cancelCount = 0;
-            string cancelation = "Cancel!";
 
             var deferred = Promise.NewDeferred<int>();
             var promise1 = deferred.Promise.Preserve();
-            var promise2 = Promise<int>.Canceled(cancelation).Preserve();
+            var promise2 = Promise<int>.Canceled().Preserve();
 
             Promise<int>.All(promise1, promise2)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(ex =>
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(cancelation, ex.Value);
                     ++cancelCount;
                 })
                 .Forget();
 
             Promise<int>.All(promise2, promise1)
                 .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(ex =>
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(cancelation, ex.Value);
                     ++cancelCount;
                 })
                 .Forget();

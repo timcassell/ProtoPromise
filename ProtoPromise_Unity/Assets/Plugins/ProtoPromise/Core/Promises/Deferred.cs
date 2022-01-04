@@ -25,7 +25,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            struct DeferredBase : IProgress<float>, IEquatable<DeferredBase>
+            struct DeferredBase : ICancelable, IProgress<float>, IEquatable<DeferredBase>
         {
             private readonly Internal.PromiseRef.DeferredPromiseBase _ref;
             private readonly short _promiseId;
@@ -159,31 +159,6 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
-            /// </summary>
-            /// <exception cref="InvalidOperationException"/>
-            [MethodImpl(Internal.InlineOption)]
-            public void Cancel<TCancel>(TCancel reason)
-            {
-                if (!TryCancel(reason))
-                {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
-                }
-            }
-
-            /// <summary>
-            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
-            /// <para/> Returns true if successful, false otherwise.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
-            /// </summary>
-            [MethodImpl(Internal.InlineOption)]
-            public bool TryCancel<TCancel>(TCancel reason)
-            {
-                return Internal.PromiseRef.DeferredPromiseBase.TryCancel(_ref, _deferredId, reason);
-            }
-
-            /// <summary>
             /// Cancel the linked <see cref="Promise"/> without a reason.
             /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
@@ -205,7 +180,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool TryCancel()
             {
-                return Internal.PromiseRef.DeferredPromiseBase.TryCancelVoid(_ref, _deferredId);
+                return Internal.PromiseRef.DeferredPromiseBase.TryCancel(_ref, _deferredId);
             }
 
             /// <summary>
@@ -274,6 +249,18 @@ namespace Proto.Promises
                 return !(lhs == rhs);
             }
 
+            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
+            public void Cancel<TCancel>(TCancel reason)
+            {
+                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
+            }
+
+            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true)]
+            public bool TryCancel<TCancel>(TCancel reason)
+            {
+                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
+            }
+
             [Obsolete("DeferredBase.State is no longer valid. Use IsValidAndPending.", true)]
             public State State
             {
@@ -306,7 +293,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            struct Deferred : IProgress<float>, IEquatable<Deferred>
+            struct Deferred : ICancelable, IProgress<float>, IEquatable<Deferred>
         {
             private readonly Promise<Internal.VoidResult>.Deferred _target;
 
@@ -415,28 +402,6 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
-            /// </summary>
-            /// <exception cref="InvalidOperationException"/>
-            [MethodImpl(Internal.InlineOption)]
-            public void Cancel<TCancel>(TCancel reason)
-            {
-                _target.Cancel(reason);
-            }
-
-            /// <summary>
-            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
-            /// <para/> Returns true if successful, false otherwise.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
-            /// </summary>
-            [MethodImpl(Internal.InlineOption)]
-            public bool TryCancel<TCancel>(TCancel reason)
-            {
-                return _target.TryCancel(reason);
-            }
-
-            /// <summary>
             /// Cancel the linked <see cref="Promise"/> without a reason.
             /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
@@ -537,6 +502,18 @@ namespace Proto.Promises
                 return !(lhs == rhs);
             }
 
+            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
+            public void Cancel<TCancel>(TCancel reason)
+            {
+                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
+            }
+
+            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true)]
+            public bool TryCancel<TCancel>(TCancel reason)
+            {
+                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
+            }
+
             [Obsolete("Deferred.State is no longer valid. Use IsValidAndPending.", true)]
             public State State
             {
@@ -572,7 +549,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            struct Deferred : IProgress<float>, IEquatable<Deferred>
+            struct Deferred : ICancelable, IProgress<float>, IEquatable<Deferred>
         {
             internal readonly Internal.PromiseRef.DeferredPromise<T> _ref;
             internal readonly short _promiseId;
@@ -687,31 +664,6 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
-            /// </summary>
-            /// <exception cref="InvalidOperationException"/>
-            [MethodImpl(Internal.InlineOption)]
-            public void Cancel<TCancel>(TCancel reason)
-            {
-                if (!TryCancel(reason))
-                {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
-                }
-            }
-
-            /// <summary>
-            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
-            /// <para/> Returns true if successful, false otherwise.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
-            /// </summary>
-            [MethodImpl(Internal.InlineOption)]
-            public bool TryCancel<TCancel>(TCancel reason)
-            {
-                return Internal.PromiseRef.DeferredPromiseBase.TryCancel(_ref, _deferredId, reason);
-            }
-
-            /// <summary>
             /// Cancel the linked <see cref="Promise"/> without a reason.
             /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
@@ -733,7 +685,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool TryCancel()
             {
-                return Internal.PromiseRef.DeferredPromiseBase.TryCancelVoid(_ref, _deferredId);
+                return Internal.PromiseRef.DeferredPromiseBase.TryCancel(_ref, _deferredId);
             }
 
             /// <summary>
@@ -818,6 +770,18 @@ namespace Proto.Promises
             public static bool operator !=(Deferred lhs, Deferred rhs)
             {
                 return !(lhs == rhs);
+            }
+
+            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
+            public void Cancel<TCancel>(TCancel reason)
+            {
+                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
+            }
+
+            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true)]
+            public bool TryCancel<TCancel>(TCancel reason)
+            {
+                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
             }
 
             [Obsolete("Deferred.State is no longer valid. Use IsValidAndPending.", true)]

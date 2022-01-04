@@ -226,65 +226,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_void0()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
-            var deferred2 = Promise.NewDeferred();
-
-            bool invoked = false;
-            string expected = "Cancel";
-
-            Promise.Race(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    invoked = true;
-                })
-                .Forget();
-
-            cancelationSource.Cancel(expected);
-
-            Assert.IsTrue(invoked);
-
-            deferred2.Resolve();
-
-            cancelationSource.Dispose();
-
-            Assert.IsTrue(invoked);
-        }
-
-        [Test]
-        public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_T0()
-        {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
-            var deferred2 = Promise.NewDeferred<int>();
-
-            bool invoked = false;
-            string expected = "Cancel";
-
-            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    invoked = true;
-                })
-                .Forget();
-
-            cancelationSource.Cancel(expected);
-
-            Assert.IsTrue(invoked);
-
-            deferred2.Resolve(5);
-
-            cancelationSource.Dispose();
-
-            Assert.IsTrue(invoked);
-        }
-
-        [Test]
-        public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_void1()
+        public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred1 = Promise.NewDeferred(cancelationSource.Token);
@@ -293,9 +235,8 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(reason.ValueType);
                     invoked = true;
                 })
                 .Forget();
@@ -312,7 +253,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_T1()
+        public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
@@ -321,9 +262,8 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
 
             Promise<int>.Race(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(reason.ValueType);
                     invoked = true;
                 })
                 .Forget();
@@ -340,65 +280,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void RaceIsCanceledWhenSecondPromiseIsCanceledFirst_void0()
-        {
-            var deferred1 = Promise.NewDeferred();
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
-
-            bool invoked = false;
-            string expected = "Cancel";
-
-            Promise.Race(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    invoked = true;
-                })
-                .Forget();
-
-            cancelationSource.Cancel(expected);
-
-            Assert.IsTrue(invoked);
-
-            deferred1.Resolve();
-
-            cancelationSource.Dispose();
-
-            Assert.IsTrue(invoked);
-        }
-
-        [Test]
-        public void RaceIsCanceledWhenSecondPromiseIsCanceledFirst_T0()
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
-
-            bool invoked = false;
-            string expected = "Cancel";
-
-            Promise<int>.Race(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
-                {
-                    Assert.AreEqual(expected, reason.Value);
-                    invoked = true;
-                })
-                .Forget();
-
-            cancelationSource.Cancel(expected);
-
-            Assert.IsTrue(invoked);
-
-            deferred1.Resolve(5);
-
-            cancelationSource.Dispose();
-
-            Assert.IsTrue(invoked);
-        }
-
-        [Test]
-        public void RaceIsCanceledWhenSecondPromiseIsCanceledFirst_void1()
+        public void RaceIsCanceledWhenSecondPromiseIsCanceledFirst_void()
         {
             var deferred1 = Promise.NewDeferred();
             CancelationSource cancelationSource = CancelationSource.New();
@@ -407,9 +289,8 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
 
             Promise.Race(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(reason.ValueType);
                     invoked = true;
                 })
                 .Forget();
@@ -426,7 +307,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void RaceIsCanceledWhenSecondPromiseIsCanceledFirst_T1()
+        public void RaceIsCanceledWhenSecondPromiseIsCanceledFirst_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             CancelationSource cancelationSource = CancelationSource.New();
@@ -435,9 +316,8 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
 
             Promise<int>.Race(deferred1.Promise, deferred2.Promise)
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(reason.ValueType);
                     invoked = true;
                 })
                 .Forget();
