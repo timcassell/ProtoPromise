@@ -67,7 +67,7 @@ namespace Proto.Promises
         internal sealed class CanceledExceptionInternal : CanceledException
         {
 #if !PROMISE_DEBUG
-            private static readonly CanceledExceptionInternalVoid _instance = new CanceledExceptionInternalVoid("Operation was canceled.");
+            private static readonly CanceledExceptionInternal _instance = new CanceledExceptionInternal("Operation was canceled.");
 #endif
 
             internal static CanceledExceptionInternal GetOrCreate()

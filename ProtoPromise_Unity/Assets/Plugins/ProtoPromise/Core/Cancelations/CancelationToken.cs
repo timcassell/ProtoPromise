@@ -25,6 +25,7 @@ namespace Proto.Promises
     {
         private readonly Internal.CancelationRef _ref;
         private readonly short _id;
+        private readonly bool _isCanceled;
 
         /// <summary>
         /// Returns an empty <see cref="CancelationToken"/>.
@@ -34,10 +35,11 @@ namespace Proto.Promises
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal CancelationToken(Internal.CancelationRef cancelationRef, short tokenId)
+        internal CancelationToken(Internal.CancelationRef cancelationRef, short tokenId, bool isCanceled)
         {
             _ref = cancelationRef;
             _id = tokenId;
+            _isCanceled = isCanceled;
         }
 
         /// <summary>
@@ -53,6 +55,14 @@ namespace Proto.Promises
         }
 
         /// <summary>
+        /// Get a token that is already in the canceled state.
+        /// </summary>
+        public static CancelationToken Canceled()
+        {
+            return new CancelationToken(null, Internal.ValidIdFromApi, true);
+        }
+
+        /// <summary>
         /// Gets whether this token is capable of being in the canceled state.
         /// </summary>
         /// <remarks>A <see cref="CancelationToken"/> is capable of being in the canceled state when the <see cref="CancelationSource"/> it is attached to is valid, or if the token has been retained and not yet released.</remarks>
@@ -60,7 +70,7 @@ namespace Proto.Promises
         {
             get
             {
-                return Internal.CancelationRef.CanTokenBeCanceled(_ref, _id);
+                return _isCanceled | Internal.CancelationRef.CanTokenBeCanceled(_ref, _id);
             }
         }
 
@@ -71,7 +81,7 @@ namespace Proto.Promises
         {
             get
             {
-                return Internal.CancelationRef.IsTokenCanceled(_ref, _id);
+                return _isCanceled | Internal.CancelationRef.IsTokenCanceled(_ref, _id);
             }
         }
 
@@ -81,7 +91,7 @@ namespace Proto.Promises
         /// <exception cref="CancelException"/>
         public void ThrowIfCancelationRequested()
         {
-            Internal.CancelationRef.ThrowIfCanceled(_ref, _id);
+            Internal.CancelationRef.ThrowIfCanceled(_ref, _id, _isCanceled);
         }
 
         /// <summary>
@@ -94,7 +104,7 @@ namespace Proto.Promises
         public bool TryRegister(Action callback, out CancelationRegistration cancelationRegistration)
         {
             ValidateArgument(callback, "callback", 1);
-            return Internal.CancelationRef.TryRegister(_ref, _id, new Internal.CancelDelegateTokenVoid(callback), out cancelationRegistration);
+            return Internal.CancelationRef.TryRegister(_ref, _id, _isCanceled, new Internal.CancelDelegateTokenVoid(callback), out cancelationRegistration);
         }
 
         /// <summary>
@@ -108,7 +118,7 @@ namespace Proto.Promises
         public bool TryRegister<TCapture>(TCapture captureValue, Action<TCapture> callback, out CancelationRegistration cancelationRegistration)
         {
             ValidateArgument(callback, "callback", 1);
-            return Internal.CancelationRef.TryRegister(_ref, _id, new Internal.CancelDelegateToken<TCapture>(captureValue, callback), out cancelationRegistration);
+            return Internal.CancelationRef.TryRegister(_ref, _id, _isCanceled, new Internal.CancelDelegateToken<TCapture>(captureValue, callback), out cancelationRegistration);
         }
 
         /// <summary>
@@ -122,7 +132,7 @@ namespace Proto.Promises
         public bool TryRegister<TCancelable>(TCancelable cancelable, out CancelationRegistration cancelationRegistration) where TCancelable : ICancelable
         {
             ValidateArgument(cancelable, "cancelable", 1);
-            return Internal.CancelationRef.TryRegister(_ref, _id, cancelable, out cancelationRegistration);
+            return Internal.CancelationRef.TryRegister(_ref, _id, _isCanceled, cancelable, out cancelationRegistration);
         }
 
         /// <summary>
@@ -228,7 +238,7 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            return Internal.BuildHashCode(_ref, _id.GetHashCode(), 0);
+            return Internal.BuildHashCode(_ref, _id.GetHashCode(), 0, _isCanceled.GetHashCode());
         }
 
         public static bool operator ==(CancelationToken c1, CancelationToken c2)

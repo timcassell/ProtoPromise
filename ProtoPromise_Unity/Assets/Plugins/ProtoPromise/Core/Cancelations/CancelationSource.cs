@@ -91,7 +91,7 @@ namespace Proto.Promises
         {
             get
             {
-                return new CancelationToken(_ref, _tokenId);
+                return new CancelationToken(_ref, _tokenId, false);
             }
         }
 

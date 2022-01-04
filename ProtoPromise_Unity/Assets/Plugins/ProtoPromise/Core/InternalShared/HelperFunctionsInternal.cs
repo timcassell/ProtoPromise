@@ -440,17 +440,22 @@ namespace Proto.Promises
 
         internal static int BuildHashCode(object _ref, int hashcode1, int hashcode2)
         {
-            if (_ref == null)
-            {
-                return 0;
-            }
+            int hashcode0 = _ref == null ? 0 : _ref.GetHashCode();
             unchecked
             {
                 int hash = 17;
-                hash = hash * 31 + _ref.GetHashCode();
+                hash = hash * 31 + hashcode0;
                 hash = hash * 31 + hashcode1;
                 hash = hash * 31 + hashcode2;
                 return hash;
+            }
+        }
+
+        internal static int BuildHashCode(object _ref, int hashcode1, int hashcode2, int hashcode3)
+        {
+            unchecked
+            {
+                return BuildHashCode(_ref, hashcode1, hashcode2) * 31 + hashcode3;
             }
         }
     } // class Internal

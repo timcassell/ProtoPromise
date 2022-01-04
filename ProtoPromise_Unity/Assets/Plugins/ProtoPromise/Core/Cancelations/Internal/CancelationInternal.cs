@@ -147,7 +147,9 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _cancelable = default(TCancelable);
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
+#endif
                     ObjectPool<CancelableWrappe<TCancelable>>.MaybeRepool(this);
                 }
             }
@@ -479,18 +481,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static void ThrowIfCanceled(CancelationRef _this, short tokenId)
+            internal static void ThrowIfCanceled(CancelationRef _this, short tokenId, bool isCanceled)
             {
-                if (_this != null)
-                {
-                    _this.ThrowIfCanceled(tokenId);
-                }
-            }
-
-            [MethodImpl(InlineOption)]
-            private void ThrowIfCanceled(short tokenId)
-            {
-                if (IsTokenCanceled(tokenId))
+                if (isCanceled | (_this != null && _this.IsTokenCanceled(tokenId)))
                 {
                     throw CanceledExceptionInternal.GetOrCreate();
                 }
@@ -530,7 +523,7 @@ namespace Proto.Promises
                         listener._idsAndRetains.InterlockedRetainInternal();
                         _registeredCallbacks.Add(new RegisteredDelegate(order, listener));
                     }
-                    listener._links.Push(new CancelationRegistration(this, TokenId, order));
+                    listener._links.Push(new CancelationRegistration(this, TokenId, order, false));
                 }
                 goto Return;
 
@@ -544,12 +537,18 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryRegister<TCancelable>(CancelationRef _this, short tokenId,
+            internal static bool TryRegister<TCancelable>(CancelationRef _this, short tokenId, bool isCanceled,
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
                     TCancelable cancelable, out CancelationRegistration registration) where TCancelable : ICancelable
             {
+                if (isCanceled)
+                {
+                    registration = new CancelationRegistration(null, ValidIdFromApi, 0, isCanceled);
+                    cancelable.Cancel();
+                    return true;
+                }
                 if (_this == null)
                 {
                     registration = default(CancelationRegistration);
@@ -578,7 +577,7 @@ namespace Proto.Promises
                     {
                         if (state == State.Canceled)
                         {
-                            registration = new CancelationRegistration(this, TokenId, 0);
+                            registration = new CancelationRegistration(this, TokenId, 0, false);
                             cancelable.Cancel();
                             return true;
                         }
@@ -611,13 +610,13 @@ namespace Proto.Promises
                     }
                     _registeredCallbacks.Add(new RegisteredDelegate(order, callback));
                 }
-                registration = new CancelationRegistration(this, TokenId, order);
+                registration = new CancelationRegistration(this, TokenId, order, false);
                 return true;
 
             MaybeInvoke:
                 if (state == State.Canceled)
                 {
-                    registration = new CancelationRegistration(this, TokenId, 0);
+                    registration = new CancelationRegistration(this, TokenId, 0, false);
                     callback.Invoke();
                     return true;
                 }

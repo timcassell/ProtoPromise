@@ -21,17 +21,19 @@ namespace Proto.Promises
         struct CancelationRegistration : IEquatable<CancelationRegistration>
     {
         private readonly Internal.CancelationRef _ref;
-        private readonly short _id;
         private readonly uint _order;
+        private readonly short _id;
+        private readonly bool _isCanceled;
 
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal CancelationRegistration(Internal.CancelationRef cancelationRef, short tokenId, uint registrationPosition)
+        internal CancelationRegistration(Internal.CancelationRef cancelationRef, short tokenId, uint registrationPosition, bool isCanceled)
         {
             _ref = cancelationRef;
             _id = tokenId;
             _order = registrationPosition;
+            _isCanceled = isCanceled;
         }
 
         /// <summary>
@@ -41,7 +43,7 @@ namespace Proto.Promises
         {
             get
             {
-                return new CancelationToken(_ref, _id);
+                return new CancelationToken(_ref, _id, _isCanceled);
             }
         }
 
@@ -52,6 +54,10 @@ namespace Proto.Promises
         {
             get
             {
+                if (_isCanceled)
+                {
+                    return false;
+                }
                 bool isRegistered, _;
                 GetIsRegisteredAndIsCancelationRequested(out isRegistered, out _);
                 return isRegistered;
@@ -65,6 +71,12 @@ namespace Proto.Promises
         /// <param name="isTokenCancelationRequested">true if the associated <see cref="CancelationToken"/> is requesting cancelation, false otherwise</param>
         public void GetIsRegisteredAndIsCancelationRequested(out bool isRegistered, out bool isTokenCancelationRequested)
         {
+            if (_isCanceled)
+            {
+                isTokenCancelationRequested = true;
+                isRegistered = false;
+                return;
+            }
             isRegistered = Internal.CancelationRef.GetIsRegisteredAndIsCanceled(_ref, _id, _order, out isTokenCancelationRequested);
         }
 
@@ -98,6 +110,11 @@ namespace Proto.Promises
         /// <returns>true if the callback was previously registered and the associated <see cref="CancelationSource"/> not yet canceled or disposed, false otherwise</returns>
         public bool TryUnregister(out bool isTokenCancelationRequested)
         {
+            if (_isCanceled)
+            {
+                isTokenCancelationRequested = true;
+                return false;
+            }
             return Internal.CancelationRef.TryUnregister(_ref, _id, _order, out isTokenCancelationRequested);
         }
 
@@ -117,7 +134,7 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            return Internal.BuildHashCode(_ref, _order.GetHashCode(), _id.GetHashCode());
+            return Internal.BuildHashCode(_ref, _order.GetHashCode(), _id.GetHashCode(), _isCanceled.GetHashCode());
         }
 
         public static bool operator ==(CancelationRegistration lhs, CancelationRegistration rhs)
