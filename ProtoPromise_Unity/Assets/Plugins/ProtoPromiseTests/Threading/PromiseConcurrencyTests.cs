@@ -292,10 +292,6 @@ namespace ProtoPromiseTests.Threading
                 if (completeType == CompleteType.Resolve && completePlace == ActionPlace.InTeardown)
                 {
                     expectedInvokes += 10;
-                    if (reportPlace == ActionPlace.InTeardown)
-                    {
-                        expectedInvokes += 10;
-                    }
                 }
             }
 
@@ -393,14 +389,7 @@ namespace ProtoPromiseTests.Threading
                     }
                 }
                 progressReporter.Teardown();
-                if (waitForReportTeardown)
-                {
-                    for (int i = 0; i < progressHelpers.Length; ++i)
-                    {
-                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
-                        progressHelpers[i].PrepareForInvoke();
-                    }
-                }
+                // Not checking for report invoke here because of background thread race conditions.
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
@@ -448,10 +437,6 @@ namespace ProtoPromiseTests.Threading
                 if (completeType == CompleteType.Resolve && completePlace == ActionPlace.InTeardown)
                 {
                     expectedInvokes += 10;
-                    if (reportPlace == ActionPlace.InTeardown)
-                    {
-                        expectedInvokes += 10;
-                    }
                 }
             }
 
@@ -534,9 +519,6 @@ namespace ProtoPromiseTests.Threading
                 promiseCompleter.Setup();
             };
             bool waitForSubscribeTeardown = !waitForSubscribeSetup && completePlace == ActionPlace.InTeardown;
-            bool waitForReportTeardown = !waitForReportSetup && completePlace == ActionPlace.InTeardown
-                && (subscribePlace != ActionPlace.Parallel || reportPlace != ActionPlace.Parallel)
-                && (waitForSubscribeSetup || !waitForSubscribeTeardown || reportPlace == ActionPlace.InTeardown);
             Action teardownAction = () =>
             {
                 progressSubscriber.Teardown();
@@ -549,14 +531,7 @@ namespace ProtoPromiseTests.Threading
                     }
                 }
                 progressReporter.Teardown();
-                if (waitForReportTeardown)
-                {
-                    for (int i = 0; i < progressHelpers.Length; ++i)
-                    {
-                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
-                        progressHelpers[i].PrepareForInvoke();
-                    }
-                }
+                // Not checking for report invoke here because of background thread race conditions.
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
