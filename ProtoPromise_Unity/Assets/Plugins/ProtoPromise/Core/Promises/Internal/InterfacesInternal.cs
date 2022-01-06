@@ -9,13 +9,13 @@
                 void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
             }
 
-            internal interface IDelegateResolve
+            internal interface IDelegateResolveOrCancel
             {
                 void InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
                 void InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
             }
 
-            internal interface IDelegateResolvePromise
+            internal interface IDelegateResolveOrCancelPromise
             {
                 void InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler);
                 void InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);

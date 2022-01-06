@@ -289,7 +289,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateResolvePassthrough : IDelegateResolve, IDelegateResolvePromise
+            internal struct DelegateResolvePassthrough : IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise
             {
                 private readonly bool _isActive;
 
@@ -306,14 +306,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     owner.ResolveInternal(valueContainer, ref executionScheduler);
                     valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -322,13 +322,13 @@ namespace Proto.Promises
                     }
                 }
 
-                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     owner.ResolveInternal(valueContainer, ref executionScheduler);
                     valueContainer.Release();
                 }
 
-                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
@@ -344,7 +344,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct Delegate<TArg, TResult> : IDelegateResolve, IDelegateResolvePromise, IDelegateReject, IDelegateRejectPromise
+            internal struct Delegate<TArg, TResult> : IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
             {
                 internal readonly Delegate _callback;
 
@@ -386,7 +386,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
                     valueContainer.Release();
@@ -394,7 +394,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
@@ -406,7 +406,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
                     owner.WaitFor(CreateResolved(result), ref executionScheduler);
@@ -414,7 +414,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
@@ -499,7 +499,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegatePromise<TArg, TResult> : IDelegateResolvePromise, IDelegateRejectPromise
+            internal struct DelegatePromise<TArg, TResult> : IDelegateResolveOrCancelPromise, IDelegateRejectPromise
             {
                 internal readonly Delegate _callback;
 
@@ -542,7 +542,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     Promise<TResult> result = Invoke(valueContainer.GetValue<TArg>());
                     owner.WaitFor(result, ref executionScheduler);
@@ -550,7 +550,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
@@ -850,7 +850,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCapture<TCapture, TArg, TResult> : IDelegateResolve, IDelegateResolvePromise, IDelegateReject, IDelegateRejectPromise
+            internal struct DelegateCapture<TCapture, TArg, TResult> : IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
             {
                 private readonly Delegate _callback;
                 private readonly TCapture _capturedValue;
@@ -904,7 +904,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
                     valueContainer.Release();
@@ -912,7 +912,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolve.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(IValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
@@ -924,7 +924,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
                     owner.WaitFor(CreateResolved(result), ref executionScheduler);
@@ -932,7 +932,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
@@ -1017,7 +1017,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegatePromiseCapture<TCapture, TArg, TResult> : IDelegateResolvePromise, IDelegateRejectPromise
+            internal struct DelegatePromiseCapture<TCapture, TArg, TResult> : IDelegateResolveOrCancelPromise, IDelegateRejectPromise
             {
                 private readonly Delegate _callback;
                 private readonly TCapture _capturedValue;
@@ -1072,7 +1072,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     Promise<TResult> result = Invoke(valueContainer.GetValue<TArg>());
                     owner.WaitFor(result, ref executionScheduler);
@@ -1080,7 +1080,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolvePromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(IValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
