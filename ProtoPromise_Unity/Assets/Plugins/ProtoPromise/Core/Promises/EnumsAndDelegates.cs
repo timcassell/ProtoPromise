@@ -22,9 +22,6 @@
         public delegate void ContinueAction<TCapture>(TCapture capturedValue, ResultContainer resultContainer);
         public delegate TResult ContinueFunc<TResult>(ResultContainer resultContainer);
         public delegate TResult ContinueFunc<TCapture, TResult>(TCapture capturedValue, ResultContainer resultContainer);
-        // Same for ReasonContainer.
-        public delegate void CanceledAction(ReasonContainer resultContainer);
-        public delegate void CanceledAction<TCapture>(TCapture capturedValue, ReasonContainer resultContainer);
     }
 
     partial struct Promise<T>

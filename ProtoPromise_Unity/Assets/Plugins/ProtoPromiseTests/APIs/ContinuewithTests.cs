@@ -282,8 +282,6 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void OnContinueIsInvokedWhenPromiseIsCanceled_void()
         {
-            bool repeat = true;
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
             var promise = deferred.Promise.Preserve();
@@ -294,32 +292,16 @@ namespace ProtoPromiseTests.APIs
                 onContinue: r => ++finallyCount
             );
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
-
+            cancelationSource.Cancel();
             Assert.AreEqual(TestHelper.continueVoidCallbacks * 2, finallyCount);
 
             cancelationSource.Dispose();
             promise.Forget();
-
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
 
         [Test]
         public void OnContinueIsInvokedWhenPromiseIsCanceled_T()
         {
-            bool repeat = true;
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
             var promise = deferred.Promise.Preserve();
@@ -330,25 +312,11 @@ namespace ProtoPromiseTests.APIs
                 onContinue: r => ++finallyCount
             );
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
-
+            cancelationSource.Cancel();
             Assert.AreEqual(TestHelper.continueTCallbacks * 2, finallyCount);
 
             cancelationSource.Dispose();
             promise.Forget();
-
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
 
         [Test]
@@ -362,33 +330,10 @@ namespace ProtoPromiseTests.APIs
                 onContinue: r =>
                 {
                     Assert.AreEqual(r.State, Promise.State.Canceled);
-                    Assert.IsNull(r.CancelContainer.ValueType);
                 }
             );
 
             cancelationSource.Cancel();
-
-            cancelationSource.Dispose();
-            promise.Forget();
-        }
-
-        [Test]
-        public void OnContinueCancelReasonWhenPromiseIsCanceled_void()
-        {
-            string cancelation = "Cancel";
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
-
-            TestHelper.AddContinueCallbacks<int, string>(promise,
-                onContinue: r =>
-                {
-                    Assert.AreEqual(r.State, Promise.State.Canceled);
-                    Assert.AreEqual(cancelation, r.CancelContainer.Value);
-                }
-            );
-
-            cancelationSource.Cancel(cancelation);
 
             cancelationSource.Dispose();
             promise.Forget();
@@ -405,7 +350,6 @@ namespace ProtoPromiseTests.APIs
                 onContinue: r =>
                 {
                     Assert.AreEqual(r.State, Promise.State.Canceled);
-                    Assert.IsNull(r.CancelContainer.ValueType);
                 }
             );
 
@@ -416,29 +360,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void OnContinueCancelReasonWhenPromiseIsCanceled_T()
-        {
-            string cancelation = "Cancel";
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
-
-            TestHelper.AddContinueCallbacks<int, int, string>(promise,
-                onContinue: r =>
-                {
-                    Assert.AreEqual(r.State, Promise.State.Canceled);
-                    Assert.AreEqual(cancelation, r.CancelContainer.Value);
-                }
-            );
-
-            cancelationSource.Cancel(cancelation);
-
-            cancelationSource.Dispose();
-            promise.Forget();
-        }
-
-        [Test]
-        public void OnContinueRethrowCancelReasonWhenPromiseIsCanceled_void0()
+        public void OnContinueRethrowCancelWhenPromiseIsCanceled_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
@@ -448,7 +370,7 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.AddContinueCallbacks<int, string>(promise,
                 onContinue: r => r.RethrowIfCanceled(),
-                onCancel: e => { Assert.IsNull(e.ValueType); ++cancelCount; }
+                onCancel: () => { ++cancelCount; }
             );
 
             cancelationSource.Cancel();
@@ -463,33 +385,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void OnContinueRethrowCancelReasonWhenPromiseIsCanceled_void1()
-        {
-            string cancelation = "Cancel";
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
-
-            int cancelCount = 0;
-
-            TestHelper.AddContinueCallbacks<int, string>(promise,
-                onContinue: r => r.RethrowIfCanceled(),
-                onCancel: e => { Assert.AreEqual(cancelation, e.Value); ++cancelCount; }
-            );
-
-            cancelationSource.Cancel(cancelation);
-
-            Assert.AreEqual(
-                TestHelper.continueVoidCallbacks * 2,
-                cancelCount
-            );
-
-            cancelationSource.Dispose();
-            promise.Forget();
-        }
-
-        [Test]
-        public void OnContinueRethrowCancelReasonWhenPromiseIsCanceled_T0()
+        public void OnContinueRethrowCancelReasonWhenPromiseIsCanceled_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
@@ -499,36 +395,10 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.AddContinueCallbacks<int, int, string>(promise,
                 onContinue: r => r.RethrowIfCanceled(),
-                onCancel: e => { Assert.IsNull(e.ValueType); ++cancelCount; }
+                onCancel: () => { ++cancelCount; }
             );
 
             cancelationSource.Cancel();
-
-            Assert.AreEqual(
-                TestHelper.continueTCallbacks * 2,
-                cancelCount
-            );
-
-            cancelationSource.Dispose();
-            promise.Forget();
-        }
-
-        [Test]
-        public void OnContinueRethrowCancelReasonWhenPromiseIsCanceled_T1()
-        {
-            string cancelation = "Cancel";
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-            var promise = deferred.Promise.Preserve();
-
-            int cancelCount = 0;
-
-            TestHelper.AddContinueCallbacks<int, int, string>(promise,
-                onContinue: r => r.RethrowIfCanceled(),
-                onCancel: e => { Assert.AreEqual(cancelation, e.Value); ++cancelCount; }
-            );
-
-            cancelationSource.Cancel(cancelation);
 
             Assert.AreEqual(
                 TestHelper.continueTCallbacks * 2,

@@ -799,7 +799,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer)
+                public void Invoke()
                 {
                     _callback.Invoke();
                 }
@@ -810,18 +810,18 @@ namespace Proto.Promises
 #endif
             internal struct DelegateCancel : IDelegateSimple
             {
-                private readonly Promise.CanceledAction _callback;
+                private readonly Action _callback;
 
                 [MethodImpl(InlineOption)]
-                public DelegateCancel(Promise.CanceledAction callback)
+                public DelegateCancel(Action callback)
                 {
                     _callback = callback;
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer)
+                public void Invoke()
                 {
-                    _callback.Invoke(new ReasonContainer(valueContainer, InvokeId));
+                    _callback.Invoke();
                 }
             }
 
@@ -1347,7 +1347,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer)
+                public void Invoke()
                 {
                     _callback.Invoke(_capturedValue);
                 }
@@ -1358,7 +1358,7 @@ namespace Proto.Promises
 #endif
             internal struct DelegateCaptureCancel<TCapture> : IDelegateSimple
             {
-                private readonly Promise.CanceledAction<TCapture> _callback;
+                private readonly Action<TCapture> _callback;
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
@@ -1366,16 +1366,16 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
-                    TCapture capturedValue, Promise.CanceledAction<TCapture> callback)
+                    TCapture capturedValue, Action<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer)
+                public void Invoke()
                 {
-                    _callback.Invoke(_capturedValue, new ReasonContainer(valueContainer, InvokeId));
+                    _callback.Invoke(_capturedValue);
                 }
             }
 

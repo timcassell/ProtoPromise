@@ -165,12 +165,9 @@ namespace Proto.Promises
                 get { return _target.RejectContainer; }
             }
 
-            /// <summary>
-            /// If the <see cref="Promise"/> is canceled, get a container of the reason.
-            /// </summary>
+            [Obsolete("Cancelation reasons are no longer supported.", true)]
             public ReasonContainer CancelContainer
             {
-                [MethodImpl(Internal.InlineOption)]
                 get { return _target.CancelContainer; }
             }
         }
@@ -318,20 +315,6 @@ namespace Proto.Promises
                 }
             }
 
-            /// <summary>
-            /// If the <see cref="Promise{T}"/> is canceled, get a container of the reason.
-            /// </summary>
-            public ReasonContainer CancelContainer
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    ValidateCall();
-                    ValidateCanceled();
-                    return new ReasonContainer(_valueContainer, Id);
-                }
-            }
-
             [MethodImpl(Internal.InlineOption)]
             public static implicit operator Promise.ResultContainer(ResultContainer rhs)
             {
@@ -376,6 +359,16 @@ namespace Proto.Promises
                 }
             }
 #endif
+
+            [Obsolete("Cancelation reasons are no longer supported.", true)]
+            public ReasonContainer CancelContainer
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get
+                {
+                    throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
+                }
+            }
         }
     }
 }

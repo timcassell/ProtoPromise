@@ -179,12 +179,12 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
-                .CatchCancelation(e => invoked = true)
+                .CatchCancelation(() => invoked = true)
                 .Forget();
 
             Assert.IsFalse(invoked);
 
-            cancelationSource.Cancel("Cancel");
+            cancelationSource.Cancel();
 
             Assert.IsTrue(invoked);
 
@@ -206,7 +206,7 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
 
             Promise.Sequence(() => deferred1.Promise, () => deferred2.Promise)
-                .CatchCancelation(e => invoked = true)
+                .CatchCancelation(() => invoked = true)
                 .Forget();
 
             Assert.IsFalse(invoked);
@@ -215,7 +215,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsFalse(invoked);
 
-            cancelationSource.Cancel("Cancel");
+            cancelationSource.Cancel();
 
             Assert.IsTrue(invoked);
 
@@ -239,7 +239,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.AreEqual(1, invokes);
 
-            cancelationSource.Cancel("Cancel");
+            cancelationSource.Cancel();
 
             Assert.AreEqual(1, invokes);
 
@@ -255,14 +255,12 @@ namespace ProtoPromiseTests.APIs
         public void SequencePromiseIsCanceledWhenAnyPromiseIsAlreadyCanceled()
         {
             bool invoked = false;
-            string cancelation = "Cancel";
 
             var deferred = Promise.NewDeferred<int>();
 
-            Promise.Sequence(() => deferred.Promise, () => Promise<int>.Canceled(cancelation))
-                .CatchCancelation(reason =>
+            Promise.Sequence(() => deferred.Promise, () => Promise<int>.Canceled())
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(cancelation, reason.Value);
                     invoked = true;
                 })
                 .Forget();
@@ -296,7 +294,7 @@ namespace ProtoPromiseTests.APIs
                     return Promise.Resolved();
                 }
             )
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
                     canceled = true;
                 })
@@ -392,7 +390,7 @@ namespace ProtoPromiseTests.APIs
                     return Promise.Resolved();
                 }
             )
-                .CatchCancelation(reason =>
+                .CatchCancelation(() =>
                 {
                     canceled = true;
                 })

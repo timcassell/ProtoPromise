@@ -329,10 +329,10 @@ namespace Proto.Promises
                             RejectOrCancelInternal(CreateRejectContainer(e, int.MinValue, this), ref executionScheduler);
                         }
                     }
-                    catch (OperationCanceledException e)
+                    catch (OperationCanceledException)
                     {
                         valueContainer.ReleaseAndMaybeAddToUnhandledStack(!suppressRejection);
-                        RejectOrCancelInternal(CreateCancelContainer(e), ref executionScheduler);
+                        RejectOrCancelInternal(CancelContainerVoid.GetOrCreate(0), ref executionScheduler);
                     }
                     catch (Exception e)
                     {
@@ -724,16 +724,6 @@ namespace Proto.Promises
                     RejectOrCancelInternal(CancelContainerVoid.GetOrCreate(0));
                 }
 
-                protected void CancelDirect<TCancel>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCancel reason)
-                {
-                    ThrowIfInPool(this);
-                    RejectOrCancelInternal(CreateCancelContainer(reason));
-                }
-
                 public sealed override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
             }
 
@@ -1077,7 +1067,7 @@ namespace Proto.Promises
                 {
                     var callback = _finalizer;
                     _finalizer = default(TFinalizer);
-                    callback.Invoke(valueContainer);
+                    callback.Invoke();
                     HandleSelf(valueContainer, ref executionScheduler);
                 }
             }
@@ -1122,7 +1112,7 @@ namespace Proto.Promises
                     SetCurrentInvoker(this);
                     try
                     {
-                        callback.Invoke(valueContainer);
+                        callback.Invoke();
                     }
                     catch (Exception e)
                     {
