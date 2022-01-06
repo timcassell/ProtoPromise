@@ -159,7 +159,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Cancel the linked <see cref="Promise"/> without a reason.
+            /// Cancel the linked <see cref="Promise"/>.
             /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
@@ -173,7 +173,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// Try to cancel the linked <see cref="Promise"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
@@ -353,7 +353,7 @@ namespace Proto.Promises
 
             /// <summary>
             /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promises.Promise"/>.
-            /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promises.Promise"/> will be canceled with its reason.
+            /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promises.Promise"/> will be canceled.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
@@ -402,7 +402,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Cancel the linked <see cref="Promise"/> without a reason.
+            /// Cancel the linked <see cref="Promise"/>.
             /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
@@ -413,7 +413,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// Try to cancel the linked <see cref="Promise"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
@@ -607,7 +607,7 @@ namespace Proto.Promises
 
             /// <summary>
             /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promises.Promise"/>.
-            /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promises.Promise"/> will be canceled with its reason.
+            /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promises.Promise"/> will be canceled.
             /// </summary>
             public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
             {
@@ -664,7 +664,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Cancel the linked <see cref="Promise"/> without a reason.
+            /// Cancel the linked <see cref="Promise"/>.
             /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
@@ -678,7 +678,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Try to cancel the linked <see cref="Promise"/> with <paramref name="reason"/>.
+            /// Try to cancel the linked <see cref="Promise"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>

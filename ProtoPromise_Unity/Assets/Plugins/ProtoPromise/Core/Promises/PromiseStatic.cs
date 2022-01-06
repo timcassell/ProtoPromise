@@ -1625,7 +1625,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise"/> that is already canceled without a reason.
+        /// Returns a <see cref="Promise"/> that is already canceled.
         /// </summary>
         public static Promise Canceled()
         {
@@ -1641,7 +1641,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that is already canceled without a reason.
+        /// Returns a <see cref="Promise{T}"/> that is already canceled.
         /// </summary>
         public static Promise<T> Canceled<T>()
         {
@@ -1656,7 +1656,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promise"/>.
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promise"/> will be canceled with its reason.
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promise"/> will be canceled.
         /// </summary>
         public static Deferred NewDeferred(CancelationToken cancelationToken = default(CancelationToken))
         {
@@ -1665,7 +1665,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Promise{T}.Deferred"/> is pending, it and the <see cref="Promise{T}"/> will be canceled with its reason.
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Promise{T}.Deferred"/> is pending, it and the <see cref="Promise{T}"/> will be canceled.
         /// </summary>
         public static Promise<T>.Deferred NewDeferred<T>(CancelationToken cancelationToken = default(CancelationToken))
         {
@@ -1686,7 +1686,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Get a <see cref="CancelException"/> that can be thrown to cancel the promise without a reason from an onResolved or onRejected callback, or in an async Promise function.
+        /// Get a <see cref="CancelException"/> that can be thrown to cancel the promise from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.CancelException();"
         /// </summary>
         public static CanceledException CancelException()
@@ -1694,10 +1694,6 @@ namespace Proto.Promises
             return Internal.CanceledExceptionInternal.GetOrCreate();
         }
 
-        /// <summary>
-        /// Get a <see cref="Promises.CancelException"/> that can be thrown to cancel the promise with the provided reason from an onResolved or onRejected callback, or in an async Promise function.
-        /// This should be used as "throw Promise.CancelException(value);"
-        /// </summary>
         [Obsolete("Cancelation reasons are no longer supported. Use CancelException() instead.", true)]
         public static CanceledException CancelException<T>(T value)
         {

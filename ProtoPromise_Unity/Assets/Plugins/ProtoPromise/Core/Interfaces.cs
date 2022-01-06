@@ -3,7 +3,7 @@
     public interface ICancelable
     {
         /// <summary>
-        /// Cancel this instance without a reason.
+        /// Cancel this instance.
         /// </summary>
         void Cancel();
     }

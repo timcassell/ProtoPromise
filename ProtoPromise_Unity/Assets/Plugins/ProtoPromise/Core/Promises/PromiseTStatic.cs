@@ -770,7 +770,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a <see cref="Promise{T}"/> that is already canceled without a reason.
+        /// Returns a <see cref="Promise{T}"/> that is already canceled.
         /// </summary>
         public static Promise<T> Canceled()
         {
