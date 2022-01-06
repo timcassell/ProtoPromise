@@ -56,71 +56,31 @@ namespace Proto.Promises
 #endif
                     TReject reason, int rejectSkipFrames)
                 {
-                    return _this != null && _this.TryReject(deferredId, reason, 1);
-                }
-
-                [MethodImpl(InlineOption)]
-                private bool TryReject<TReject>(short deferredId,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TReject reason, int rejectSkipFrames)
-                {
-                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                    if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
-                        RejectDirect(reason, rejectSkipFrames + 1);
+                        _this.RejectDirect(reason, rejectSkipFrames + 1);
                         return true;
                     }
                     return false;
                 }
 
-                internal static bool TryCancel<TCancel>(DeferredPromiseBase _this, short deferredId,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCancel reason)
+                internal static bool TryCancel(DeferredPromiseBase _this, short deferredId)
                 {
-                    return _this != null && _this.TryCancel(deferredId, reason);
-                }
-
-                [MethodImpl(InlineOption)]
-                private bool TryCancel<TCancel>(short deferredId,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCancel reason)
-                {
-                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                    if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
-                        CancelDirect(reason);
+                        _this.CancelDirect();
                         return true;
                     }
                     return false;
                 }
 
-                internal static bool TryCancelVoid(DeferredPromiseBase _this, short deferredId)
-                {
-                    return _this != null && _this.TryCancelVoid(deferredId);
-                }
-
-                [MethodImpl(InlineOption)]
-                private bool TryCancelVoid(short deferredId)
-                {
-                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
-                    {
-                        CancelDirect();
-                        return true;
-                    }
-                    return false;
-                }
-
-                protected void CancelFromToken(ICancelValueContainer valueContainer)
+                protected void CancelFromToken()
                 {
                     ThrowIfInPool(this);
                     // A simple increment is sufficient.
                     // If the CancelationSource was canceled before the Deferred was completed, even if the Deferred was completed before the cancelation was invoked, the cancelation takes precedence.
                     _smallFields.InterlockedIncrementDeferredId();
-                    RejectOrCancelInternal(valueContainer);
+                    CancelDirect();
                 }
 
                 internal static bool TryReportProgress(DeferredPromiseBase _this, short deferredId, float progress)
@@ -172,19 +132,9 @@ namespace Proto.Promises
 #endif
                     T value)
                 {
-                    return _this != null && _this.TryResolve(deferredId, value);
-                }
-
-                [MethodImpl(InlineOption)]
-                private bool TryResolve(short deferredId,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    T value)
-                {
-                    if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                    if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
-                        ResolveDirect(value);
+                        _this.ResolveDirect(value);
                         return true;
                     }
                     return false;
@@ -194,7 +144,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class DeferredPromiseCancel<T> : DeferredPromise<T>, ICancelDelegate
+            internal sealed partial class DeferredPromiseCancel<T> : DeferredPromise<T>, ICancelable
             {
                 private DeferredPromiseCancel() { }
 
@@ -210,7 +160,7 @@ namespace Proto.Promises
                     var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromiseCancel<T>>()
                         ?? new DeferredPromiseCancel<T>();
                     promise.Reset();
-                    cancelationToken.TryRegisterInternal(promise, out promise._cancelationRegistration);
+                    cancelationToken.TryRegister(promise, out promise._cancelationRegistration);
                     return promise;
                 }
 
@@ -220,12 +170,10 @@ namespace Proto.Promises
                     return TryUnregisterAndIsNotCanceling(ref _cancelationRegistration);
                 }
 
-                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                void ICancelable.Cancel()
                 {
-                    CancelFromToken(valueContainer);
+                    CancelFromToken();
                 }
-
-                void ICancelDelegate.Dispose() { ThrowIfInPool(this); }
             }
         } // class PromiseRef
     } // class Internal

@@ -64,104 +64,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal sealed class CanceledExceptionInternal<T> : CanceledException, ICancelValueContainer, ICancelationToContainer
-        {
-            private readonly T _value;
-
-            internal CanceledExceptionInternal(T value, string message) : base(message)
-            {
-                _value = value;
-            }
-
-            public override Type ValueType { get { return typeof(T).IsValueType ? typeof(T) : _value.GetType(); } }
-
-            public override object Value { get { return _value; } }
-
-            public override bool TryGetValueAs<TConvert>(out TConvert value)
-            {
-                CanceledExceptionInternal<TConvert> casted = this as CanceledExceptionInternal<TConvert>;
-                if (casted != null)
-                {
-                    value = casted._value;
-                    return true;
-                }
-                if (!typeof(T).IsValueType && typeof(TConvert).IsAssignableFrom(_value.GetType()))
-                {
-                    value = (TConvert) (object) _value;
-                    return true;
-                }
-                value = default(TConvert);
-                return false;
-            }
-
-            Promise.State IValueContainer.GetState()
-            {
-                return Promise.State.Canceled;
-            }
-
-            void IValueContainer.Retain() { }
-            void IValueContainer.Release() { }
-            void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
-
-            Exception IThrowable.GetException()
-            {
-                return this;
-            }
-
-            ICancelValueContainer ICancelationToContainer.ToContainer()
-            {
-                return this;
-            }
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-        internal sealed class CanceledExceptionInternalVoid : CanceledException, ICancelValueContainer, ICancelationToContainer
+        internal sealed class CanceledExceptionInternal : CanceledException
         {
 #if !PROMISE_DEBUG
-            private static readonly CanceledExceptionInternalVoid _instance = new CanceledExceptionInternalVoid("Operation was canceled without a reason.");
+            private static readonly CanceledExceptionInternal _instance = new CanceledExceptionInternal("Operation was canceled.");
 #endif
 
-            internal static CanceledExceptionInternalVoid GetOrCreate()
+            internal static CanceledExceptionInternal GetOrCreate()
             {
 #if PROMISE_DEBUG
-                return new CanceledExceptionInternalVoid("Operation was canceled without a reason."); // Don't re-use instance in DEBUG mode so users can read its stacktrace on any thread.
+                return new CanceledExceptionInternal("Operation was canceled."); // Don't re-use instance in DEBUG mode so users can read its stacktrace on any thread.
 #else
                 return _instance;
 #endif
             }
 
-            private CanceledExceptionInternalVoid(string message) : base(message) { }
-
-            public override Type ValueType { get { return null; } }
-
-            public override object Value { get { return null; } }
-
-            public override bool TryGetValueAs<TConvert>(out TConvert value)
-            {
-                value = default(TConvert);
-                return false;
-            }
-
-            Promise.State IValueContainer.GetState()
-            {
-                return Promise.State.Canceled;
-            }
-
-            void IValueContainer.Retain() { }
-            void IValueContainer.Release() { }
-            void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
-
-            Exception IThrowable.GetException()
-            {
-                return this;
-            }
-
-            ICancelValueContainer ICancelationToContainer.ToContainer()
-            {
-                return this;
-            }
+            private CanceledExceptionInternal(string message) : base(message) { }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

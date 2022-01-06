@@ -292,10 +292,6 @@ namespace ProtoPromiseTests.Threading
                 if (completeType == CompleteType.Resolve && completePlace == ActionPlace.InTeardown)
                 {
                     expectedInvokes += 10;
-                    if (reportPlace == ActionPlace.InTeardown)
-                    {
-                        expectedInvokes += 10;
-                    }
                 }
             }
 
@@ -377,8 +373,10 @@ namespace ProtoPromiseTests.Threading
                 }
                 promiseCompleter.Setup();
             };
-            bool waitForSubscribeTeardown = !waitForSubscribeSetup && completePlace == ActionPlace.InTeardown && reportPlace == ActionPlace.InTeardown;
-            bool waitForReportTeardown = !waitForReportSetup && completePlace == ActionPlace.InTeardown;
+            bool waitForSubscribeTeardown = !waitForSubscribeSetup && completePlace == ActionPlace.InTeardown;
+            bool waitForReportTeardown = !waitForReportSetup && completePlace == ActionPlace.InTeardown
+                && (subscribePlace != ActionPlace.Parallel || reportPlace != ActionPlace.Parallel)
+                && (waitForSubscribeSetup || !waitForSubscribeTeardown || reportPlace == ActionPlace.InTeardown);
             Action teardownAction = () =>
             {
                 progressSubscriber.Teardown();
@@ -391,14 +389,7 @@ namespace ProtoPromiseTests.Threading
                     }
                 }
                 progressReporter.Teardown();
-                if (waitForReportTeardown)
-                {
-                    for (int i = 0; i < progressHelpers.Length; ++i)
-                    {
-                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
-                        progressHelpers[i].PrepareForInvoke();
-                    }
-                }
+                // Not checking for report invoke here because of background thread race conditions.
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
@@ -446,10 +437,6 @@ namespace ProtoPromiseTests.Threading
                 if (completeType == CompleteType.Resolve && completePlace == ActionPlace.InTeardown)
                 {
                     expectedInvokes += 10;
-                    if (reportPlace == ActionPlace.InTeardown)
-                    {
-                        expectedInvokes += 10;
-                    }
                 }
             }
 
@@ -531,8 +518,7 @@ namespace ProtoPromiseTests.Threading
                 }
                 promiseCompleter.Setup();
             };
-            bool waitForSubscribeTeardown = !waitForSubscribeSetup && completePlace == ActionPlace.InTeardown && reportPlace == ActionPlace.InTeardown;
-            bool waitForReportTeardown = !waitForReportSetup && completePlace == ActionPlace.InTeardown;
+            bool waitForSubscribeTeardown = !waitForSubscribeSetup && completePlace == ActionPlace.InTeardown;
             Action teardownAction = () =>
             {
                 progressSubscriber.Teardown();
@@ -545,14 +531,7 @@ namespace ProtoPromiseTests.Threading
                     }
                 }
                 progressReporter.Teardown();
-                if (waitForReportTeardown)
-                {
-                    for (int i = 0; i < progressHelpers.Length; ++i)
-                    {
-                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
-                        progressHelpers[i].PrepareForInvoke();
-                    }
-                }
+                // Not checking for report invoke here because of background thread race conditions.
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
@@ -855,8 +834,8 @@ namespace ProtoPromiseTests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -871,8 +850,8 @@ namespace ProtoPromiseTests.Threading
             var promise = Promise.Canceled().Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
@@ -886,8 +865,8 @@ namespace ProtoPromiseTests.Threading
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             cancelationSource.Cancel();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -902,8 +881,8 @@ namespace ProtoPromiseTests.Threading
             var promise = Promise<int>.Canceled().Preserve();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(_ => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, (cv, _) => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }

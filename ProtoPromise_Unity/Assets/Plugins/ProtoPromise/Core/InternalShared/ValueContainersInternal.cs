@@ -237,68 +237,6 @@ namespace Proto.Promises
             }
         }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
-#endif
-        internal sealed class CancelContainer<T> : ValueContainer<T>, ILinked<CancelContainer<T>>, ICancelValueContainer, ICancelationToContainer
-        {
-            CancelContainer<T> ILinked<CancelContainer<T>>.Next { get; set; }
-
-            private CancelContainer() { }
-
-            internal static CancelContainer<T> GetOrCreate(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                T value, int retainCount)
-            {
-                var container = ObjectPool<CancelContainer<T>>.TryTake<CancelContainer<T>>()
-                    ?? new CancelContainer<T>();
-                container.value = value;
-                container.Reset(retainCount);
-                return container;
-            }
-
-            public override Promise.State GetState()
-            {
-                return Promise.State.Canceled;
-            }
-
-            public override void Release()
-            {
-                if (TryReleaseComplete())
-                {
-                    Dispose();
-                }
-            }
-
-            public override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
-            {
-                Release();
-            }
-
-            private void Dispose()
-            {
-                value = default(T);
-                ObjectPool<CancelContainer<T>>.MaybeRepool(this);
-            }
-
-            Exception IThrowable.GetException()
-            {
-                ThrowIfInPool(this);
-                Type type = typeof(T).IsValueType ? typeof(T) : value.GetType();
-                string message = "Operation was canceled with a reason, type: " + type + ", value: " + value.ToString();
-
-                return new CanceledExceptionInternal<T>(value, message);
-            }
-
-            ICancelValueContainer ICancelationToContainer.ToContainer()
-            {
-                ThrowIfInPool(this);
-                return this;
-            }
-        }
-
         internal interface IConstructor<T>
         {
             T Construct();
@@ -375,7 +313,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        internal sealed class CancelContainerVoid : SingletonValueContainer<CancelContainerVoid, CancelContainerVoid.Constructor>, ICancelValueContainer, ICancelationToContainer
+        internal sealed class CancelContainerVoid : SingletonValueContainer<CancelContainerVoid, CancelContainerVoid.Constructor>, ICancelValueContainer
         {
             internal struct Constructor : IConstructor<CancelContainerVoid>
             {
@@ -399,12 +337,7 @@ namespace Proto.Promises
 
             Exception IThrowable.GetException()
             {
-                return CanceledExceptionInternalVoid.GetOrCreate();
-            }
-
-            ICancelValueContainer ICancelationToContainer.ToContainer()
-            {
-                return this;
+                return CanceledExceptionInternal.GetOrCreate();
             }
         }
 

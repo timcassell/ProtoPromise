@@ -48,8 +48,8 @@ namespace ProtoPromiseTests.APIs
             Assert.Throws<InvalidOperationException>(() => promise.Progress(v => { }));
             Assert.Throws<InvalidOperationException>(() => promise.Progress(1, (cv, v) => { }));
 #endif
-            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(r => { }));
-            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(1, (cv, r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(() => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(1, cv => { }));
 
             Assert.Throws<InvalidOperationException>(() => promise.Finally(() => { }));
             Assert.Throws<InvalidOperationException>(() => promise.Finally(1, cv => { }));
@@ -179,8 +179,8 @@ namespace ProtoPromiseTests.APIs
             Assert.Throws<InvalidOperationException>(() => promise.Progress(v => { }));
             Assert.Throws<InvalidOperationException>(() => promise.Progress(1, (cv, v) => { }));
 #endif
-            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(r => { }));
-            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(1, (cv, r) => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(() => { }));
+            Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(1, cv => { }));
 
             Assert.Throws<InvalidOperationException>(() => promise.Finally(() => { }));
             Assert.Throws<InvalidOperationException>(() => promise.Finally(1, cv => { }));
@@ -468,24 +468,22 @@ namespace ProtoPromiseTests.APIs
             var promise = Promise.Resolved().Preserve();
 
             int cancelCount = 0;
-            string expected = "Cancel!";
 
-            Promise.CanceledAction onCancel = reason =>
+            System.Action onCancel = () =>
             {
-                Assert.AreEqual(expected, reason.Value);
                 ++cancelCount;
             };
 
             TestHelper.AddResolveCallbacks<int, string>(promise,
-                onResolve: () => { throw Promise.CancelException(expected); },
+                onResolve: () => { throw Promise.CancelException(); },
                 onCancel: onCancel
             );
             TestHelper.AddCallbacks<int, object, string>(promise,
-                onResolve: () => { throw Promise.CancelException(expected); },
+                onResolve: () => { throw Promise.CancelException(); },
                 onCancel: onCancel
             );
             TestHelper.AddContinueCallbacks<int, string>(promise,
-                onContinue: _ => { throw Promise.CancelException(expected); },
+                onContinue: _ => { throw Promise.CancelException(); },
                 onCancel: onCancel
             );
 
@@ -503,24 +501,22 @@ namespace ProtoPromiseTests.APIs
             var promise = Promise.Resolved(100).Preserve();
 
             int cancelCount = 0;
-            string expected = "Cancel!";
 
-            Promise.CanceledAction onCancel = reason =>
+            System.Action onCancel = () =>
             {
-                Assert.AreEqual(expected, reason.Value);
                 ++cancelCount;
             };
 
             TestHelper.AddResolveCallbacks<int, bool, string>(promise,
-                onResolve: v => { throw Promise.CancelException(expected); },
+                onResolve: v => { throw Promise.CancelException(); },
                 onCancel: onCancel
             );
             TestHelper.AddCallbacks<int, bool, object, string>(promise,
-                onResolve: v => { throw Promise.CancelException(expected); },
+                onResolve: v => { throw Promise.CancelException(); },
                 onCancel: onCancel
             );
             TestHelper.AddContinueCallbacks<int, bool, string>(promise,
-                onContinue: _ => { throw Promise.CancelException(expected); },
+                onContinue: _ => { throw Promise.CancelException(); },
                 onCancel: onCancel
             );
 
@@ -538,21 +534,19 @@ namespace ProtoPromiseTests.APIs
             var promise = Promise.Rejected("Rejected").Preserve();
 
             int cancelCount = 0;
-            string expected = "Cancel!";
 
-            Promise.CanceledAction onCancel = reason =>
+            System.Action onCancel = () =>
             {
-                Assert.AreEqual(expected, reason.Value);
                 ++cancelCount;
             };
 
             TestHelper.AddCallbacks<int, object, string>(promise,
-                onReject: v => { throw Promise.CancelException(expected); },
-                onUnknownRejection: () => { throw Promise.CancelException(expected); },
+                onReject: v => { throw Promise.CancelException(); },
+                onUnknownRejection: () => { throw Promise.CancelException(); },
                 onCancel: onCancel
             );
             TestHelper.AddContinueCallbacks<int, string>(promise,
-                onContinue: _ => { throw Promise.CancelException(expected); },
+                onContinue: _ => { throw Promise.CancelException(); },
                 onCancel: onCancel
             );
 
@@ -570,21 +564,19 @@ namespace ProtoPromiseTests.APIs
             var promise = Promise<int>.Rejected("Rejected").Preserve();
 
             int cancelCount = 0;
-            string expected = "Cancel!";
 
-            Promise.CanceledAction onCancel = reason =>
+            System.Action onCancel = () =>
             {
-                Assert.AreEqual(expected, reason.Value);
                 ++cancelCount;
             };
 
             TestHelper.AddCallbacks<int, bool, object, string>(promise,
-                onReject: v => { throw Promise.CancelException(expected); },
-                onUnknownRejection: () => { throw Promise.CancelException(expected); },
+                onReject: v => { throw Promise.CancelException(); },
+                onUnknownRejection: () => { throw Promise.CancelException(); },
                 onCancel: onCancel
             );
             TestHelper.AddContinueCallbacks<int, int, string>(promise,
-                onContinue: _ => { throw Promise.CancelException(expected); },
+                onContinue: _ => { throw Promise.CancelException(); },
                 onCancel: onCancel
             );
 
@@ -765,7 +757,7 @@ namespace ProtoPromiseTests.APIs
             bool resolved = false;
 
             Promise.Resolved()
-                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been resolved"))
+                .CatchCancelation(() => Assert.Fail("Promise was canceled when it should have been resolved"))
                 .Then(() => resolved = true, () => Assert.Fail("Promise was rejected when it should have been resolved"))
                 .Forget();
 
@@ -779,7 +771,7 @@ namespace ProtoPromiseTests.APIs
             bool resolved = false;
 
             Promise.Resolved(expected)
-                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been resolved"))
+                .CatchCancelation(() => Assert.Fail("Promise was canceled when it should have been resolved"))
                 .Then(val =>
                 {
                     Assert.AreEqual(expected, val);
@@ -797,7 +789,7 @@ namespace ProtoPromiseTests.APIs
             bool rejected = false;
 
             Promise.Rejected(expected)
-                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been rejected"))
+                .CatchCancelation(() => Assert.Fail("Promise was canceled when it should have been rejected"))
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected"),
                 (object reason) =>
                 {
@@ -816,7 +808,7 @@ namespace ProtoPromiseTests.APIs
             bool rejected = false;
 
             Promise<int>.Rejected(expected)
-                .CatchCancelation(r => Assert.Fail("Promise was canceled when it should have been rejected"))
+                .CatchCancelation(() => Assert.Fail("Promise was canceled when it should have been rejected"))
                 .Then(() => Assert.Fail("Promise was resolved when it should have been rejected"),
                 (object reason) =>
                 {
@@ -829,15 +821,13 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void PromiseCanceledIsCanceledWithTheGivenReason_void()
+        public void PromiseCanceledIsCanceled_void()
         {
-            string expected = "Cancel";
             bool canceled = false;
 
-            Promise.Canceled(expected)
-                .CatchCancelation(reason =>
+            Promise.Canceled()
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(expected, reason.Value);
                     canceled = true;
                 })
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"), () => Assert.Fail("Promise was rejected when it should have been canceled"))
@@ -847,15 +837,13 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void PromiseCanceledIsCanceledWithTheGivenReason_T()
+        public void PromiseCanceledIsCanceled_T()
         {
-            string expected = "Cancel";
             bool canceled = false;
 
-            Promise<int>.Canceled(expected)
-                .CatchCancelation(reason =>
+            Promise<int>.Canceled()
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(expected, reason.Value);
                     canceled = true;
                 })
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"), () => Assert.Fail("Promise was rejected when it should have been canceled"))

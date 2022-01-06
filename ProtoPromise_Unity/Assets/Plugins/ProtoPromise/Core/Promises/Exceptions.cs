@@ -190,11 +190,30 @@ namespace Proto.Promises
     {
         internal CanceledException(string message) : base(message) { }
 
-        public abstract Type ValueType { get; }
 
-        public abstract object Value { get; }
+        [Obsolete("Cancelation reasons are no longer supported.", true)]
+        public Type ValueType
+        {
+            get
+            {
+                throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
+            }
+        }
 
-        public abstract bool TryGetValueAs<T>(out T value);
+        [Obsolete("Cancelation reasons are no longer supported.", true)]
+        public object Value
+        {
+            get
+            {
+                throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
+            }
+        }
+
+        [Obsolete("Cancelation reasons are no longer supported.", true)]
+        public bool TryGetValueAs<T>(out T value)
+        {
+            throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
+        }
     }
 
 

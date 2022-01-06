@@ -418,7 +418,7 @@ namespace ProtoPromiseTests
                     }
                     else if (result.State == Promise.State.Canceled)
                     {
-                        d.Cancel(result.CancelContainer.Value);
+                        d.Cancel();
                     }
                     else
                     {
@@ -450,7 +450,7 @@ namespace ProtoPromiseTests
                     }
                     else if (result.State == Promise.State.Canceled)
                     {
-                        d.Cancel(result.CancelContainer.Value);
+                        d.Cancel();
                     }
                     else
                     {
@@ -484,7 +484,7 @@ namespace ProtoPromiseTests
             Action<TCapture> onResolveCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
         {
@@ -526,7 +526,7 @@ namespace ProtoPromiseTests
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             CancelationToken cancelationToken = default(CancelationToken),
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
         {
@@ -560,8 +560,8 @@ namespace ProtoPromiseTests
             {
                 onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
             }
-            onCancel += _ => { };
-            onCancelCapture += (_, __) => { };
+            onCancel += () => { };
+            onCancelCapture += _ => { };
 
             foreach (var p in GetTestablePromises(promise))
             {
@@ -649,7 +649,7 @@ namespace ProtoPromiseTests
             Action<TCapture> onResolveCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
         {
@@ -691,7 +691,7 @@ namespace ProtoPromiseTests
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             CancelationToken cancelationToken = default(CancelationToken),
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
         {
@@ -725,8 +725,8 @@ namespace ProtoPromiseTests
             {
                 onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
             }
-            onCancel += _ => { };
-            onCancelCapture += (_, __) => { };
+            onCancel += () => { };
+            onCancelCapture += _ => { };
 
             foreach (var p in GetTestablePromises(promise))
             {
@@ -814,7 +814,7 @@ namespace ProtoPromiseTests
             Action<TCapture> onResolveCapture = null, Action<TCapture> onRejectCapture = null, Action<TCapture> onUnknownRejectionCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onDirectCallbackAdded = null, TestAction<Promise<TConvert>> onDirectCallbackAddedConvert = null, TestAction<Promise> onDirectCallbackAddedCatch = null,
             TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise> onAdoptCallbackAddedCatch = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
@@ -859,7 +859,7 @@ namespace ProtoPromiseTests
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             CancelationToken cancelationToken = default(CancelationToken),
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onDirectCallbackAdded = null, TestAction<Promise<TConvert>> onDirectCallbackAddedConvert = null, TestAction<Promise> onDirectCallbackAddedCatch = null,
             TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise> onAdoptCallbackAddedCatch = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
@@ -914,8 +914,8 @@ namespace ProtoPromiseTests
             {
                 onAdoptCallbackAddedCatch = (ref Promise p) => { };
             }
-            onCancel += _ => { };
-            onCancelCapture += (_, __) => { };
+            onCancel += () => { };
+            onCancelCapture += _ => { };
 
             foreach (var p in GetTestablePromises(promise))
             {
@@ -1668,7 +1668,7 @@ namespace ProtoPromiseTests
             Action<TCapture> onResolveCapture = null, Action<TCapture> onRejectCapture = null, Action<TCapture> onUnknownRejectionCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null, Func<Promise<T>, Promise<T>> promiseToPromiseT = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null, TestAction<Promise<T>> onCallbackAddedT = null,
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onDirectCallbackAdded = null, TestAction<Promise<TConvert>> onDirectCallbackAddedConvert = null, TestAction<Promise<T>> onDirectCallbackAddedT = null,
             TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise<T>> onAdoptCallbackAddedT = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
@@ -1713,7 +1713,7 @@ namespace ProtoPromiseTests
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null, Func<Promise<T>, Promise<T>> promiseToPromiseT = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null, TestAction<Promise<T>> onCallbackAddedT = null,
             CancelationToken cancelationToken = default(CancelationToken),
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onDirectCallbackAdded = null, TestAction<Promise<TConvert>> onDirectCallbackAddedConvert = null, TestAction<Promise<T>> onDirectCallbackAddedT = null,
             TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise<T>> onAdoptCallbackAddedT = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
@@ -1776,8 +1776,8 @@ namespace ProtoPromiseTests
             {
                 onAdoptCallbackAddedT = (ref Promise<T> p) => { };
             }
-            onCancel += _ => { };
-            onCancelCapture += (_, __) => { };
+            onCancel += () => { };
+            onCancelCapture += _ => { };
 
             foreach (var p in GetTestablePromises(promise))
             {
@@ -2532,7 +2532,7 @@ namespace ProtoPromiseTests
             Promise.ContinueAction<TCapture> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
         {
@@ -2574,7 +2574,7 @@ namespace ProtoPromiseTests
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             CancelationToken cancelationToken = default(CancelationToken),
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
         {
@@ -2608,8 +2608,8 @@ namespace ProtoPromiseTests
             {
                 onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
             }
-            onCancel += _ => { };
-            onCancelCapture += (_, __) => { };
+            onCancel += () => { };
+            onCancelCapture += _ => { };
 
             foreach (var p in GetTestablePromises(promise))
             {
@@ -2696,7 +2696,7 @@ namespace ProtoPromiseTests
             Promise<T>.ContinueAction<TCapture> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
         {
@@ -2737,7 +2737,7 @@ namespace ProtoPromiseTests
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             CancelationToken cancelationToken = default(CancelationToken),
-            Promise.CanceledAction onCancel = null, Promise.CanceledAction<TCapture> onCancelCapture = null,
+            Action onCancel = null, Action<TCapture> onCancelCapture = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None)
         {
@@ -2771,8 +2771,8 @@ namespace ProtoPromiseTests
             {
                 onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
             }
-            onCancel += _ => { };
-            onCancelCapture += (_, __) => { };
+            onCancel += () => { };
+            onCancelCapture += _ => { };
 
             foreach (var p in GetTestablePromises(promise))
             {

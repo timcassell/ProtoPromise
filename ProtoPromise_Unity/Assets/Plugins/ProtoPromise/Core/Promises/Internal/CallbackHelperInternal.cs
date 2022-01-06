@@ -42,9 +42,9 @@ namespace Proto.Promises
                         TResult result = resolver.Invoke(resolved.Result);
                         return new Promise<TResult>(null, ValidIdFromApi, resolved.Depth, result);
                     }
-                    catch (OperationCanceledException e)
+                    catch (OperationCanceledException)
                     {
-                        var promise = Promise<TResult>.Canceled(e);
+                        var promise = Promise<TResult>.Canceled();
                         return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
                     }
                     catch (Exception e)
@@ -62,9 +62,9 @@ namespace Proto.Promises
                         TResult result = resolver.Invoke(resolved.Result);
                         return new Promise<TResult>(null, ValidIdFromApi, resolved.Depth, result);
                     }
-                    catch (OperationCanceledException e)
+                    catch (OperationCanceledException)
                     {
-                        var promise = Promise<TResult>.Canceled(e);
+                        var promise = Promise<TResult>.Canceled();
                         return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
                     }
                     catch (Exception e)
@@ -81,9 +81,9 @@ namespace Proto.Promises
                     {
                         return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
                     }
-                    catch (OperationCanceledException e)
+                    catch (OperationCanceledException)
                     {
-                        var promise = Promise<TResult>.Canceled(e);
+                        var promise = Promise<TResult>.Canceled();
                         return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
                     }
                     catch (Exception e)
@@ -100,9 +100,9 @@ namespace Proto.Promises
                     {
                         return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
                     }
-                    catch (OperationCanceledException e)
+                    catch (OperationCanceledException)
                     {
-                        var promise = Promise<TResult>.Canceled(e);
+                        var promise = Promise<TResult>.Canceled();
                         return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
                     }
                     catch (Exception e)
@@ -120,9 +120,9 @@ namespace Proto.Promises
                         TResult result = resolver.Invoke(resolved.Result);
                         return new Promise<TResult>(null, ValidIdFromApi, resolved.Depth, result);
                     }
-                    catch (OperationCanceledException e)
+                    catch (OperationCanceledException)
                     {
-                        var promise = Promise<TResult>.Canceled(e);
+                        var promise = Promise<TResult>.Canceled();
                         return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
                     }
                     catch (Exception e)
@@ -140,9 +140,9 @@ namespace Proto.Promises
                         TResult result = resolver.Invoke(resolved.Result);
                         return new Promise<TResult>(null, ValidIdFromApi, resolved.Depth, result);
                     }
-                    catch (OperationCanceledException e)
+                    catch (OperationCanceledException)
                     {
-                        var promise = Promise<TResult>.Canceled(e);
+                        var promise = Promise<TResult>.Canceled();
                         return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth, promise.Result);
                     }
                     catch (Exception e)
@@ -159,9 +159,9 @@ namespace Proto.Promises
                     {
                         return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
                     }
-                    catch (OperationCanceledException e)
+                    catch (OperationCanceledException)
                     {
-                        var promise = Promise<TResult>.Canceled(e);
+                        var promise = Promise<TResult>.Canceled();
                         return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
                     }
                     catch (Exception e)
@@ -178,9 +178,9 @@ namespace Proto.Promises
                     {
                         return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
                     }
-                    catch (OperationCanceledException e)
+                    catch (OperationCanceledException)
                     {
-                        var promise = Promise<TResult>.Canceled(e);
+                        var promise = Promise<TResult>.Canceled();
                         return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
                     }
                     catch (Exception e)

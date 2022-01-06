@@ -22,119 +22,147 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal sealed class CancelationRef : ICancelDelegate, ILinked<CancelationRef>, ITraceable
+        internal abstract class CancelableBase
+        {
+            internal abstract void Invoke();
+            internal abstract void Dispose();
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        internal struct CancelDelegateTokenVoid : ICancelable
+        {
+            private readonly Action _callback;
+
+            [MethodImpl(InlineOption)]
+            internal CancelDelegateTokenVoid(Action callback)
+            {
+                _callback = callback;
+            }
+
+            [MethodImpl(InlineOption)]
+            public void Cancel()
+            {
+                _callback.Invoke();
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        internal struct CancelDelegateToken<TCapture> : ICancelable
+        {
+            private readonly TCapture _capturedValue;
+            private readonly Action<TCapture> _callback;
+
+            [MethodImpl(InlineOption)]
+            internal CancelDelegateToken(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Action<TCapture> callback)
+            {
+                _capturedValue = capturedValue;
+                _callback = callback;
+            }
+
+            [MethodImpl(InlineOption)]
+            public void Cancel()
+            {
+                _callback.Invoke(_capturedValue);
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        internal sealed class CancelationRef : CancelableBase, ILinked<CancelationRef>, ITraceable
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
 #endif
-            private struct CancelDelegateTokenVoid : IDelegateSimple
-            {
-                private readonly Promise.CanceledAction _callback;
-
-                [MethodImpl(InlineOption)]
-                internal CancelDelegateTokenVoid(Promise.CanceledAction callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer)
-                {
-                    _callback.Invoke(new ReasonContainer(valueContainer, InvokeId));
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode]
-#endif
-            private struct CancelDelegateToken<TCapture> : IDelegateSimple
-            {
-                private readonly TCapture _capturedValue;
-                private readonly Promise.CanceledAction<TCapture> _callback;
-
-                [MethodImpl(InlineOption)]
-                internal CancelDelegateToken(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise.CanceledAction<TCapture> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(IValueContainer valueContainer)
-                {
-                    _callback.Invoke(_capturedValue, new ReasonContainer(valueContainer, InvokeId));
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode]
-#endif
-            private sealed class CancelDelegate<TCanceler> : ICancelDelegate, ITraceable, ILinked<CancelDelegate<TCanceler>>
-                where TCanceler : IDelegateSimple
+            private sealed class CancelableWrappe<TCancelable> : CancelableBase, ITraceable, ILinked<CancelableWrappe<TCancelable>>
+                where TCancelable : ICancelable
             {
 #if PROMISE_DEBUG
                 CausalityTrace ITraceable.Trace { get; set; }
 #endif
-                CancelDelegate<TCanceler> ILinked<CancelDelegate<TCanceler>>.Next { get; set; }
+                CancelableWrappe<TCancelable> ILinked<CancelableWrappe<TCancelable>>.Next { get; set; }
 
-                private TCanceler _canceler;
+                private TCancelable _cancelable;
 
-                private CancelDelegate() { }
+                private CancelableWrappe() { }
+
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                volatile private bool _disposed;
+
+                ~CancelableWrappe()
+                {
+                    if (!_disposed)
+                    {
+                        // For debugging. This should never happen.
+                        string message = "A " + GetType() + " was garbage collected without it being disposed.";
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    }
+                }
+#endif
 
                 [MethodImpl(InlineOption)]
-                internal static CancelDelegate<TCanceler> GetOrCreate(TCanceler canceler)
+                internal static CancelableWrappe<TCancelable> GetOrCreate(TCancelable cancelable)
                 {
-                    var del = ObjectPool<CancelDelegate<TCanceler>>.TryTake<CancelDelegate<TCanceler>>()
-                        ?? new CancelDelegate<TCanceler>();
-                    del._canceler = canceler;
+                    var del = ObjectPool<CancelableWrappe<TCancelable>>.TryTake<CancelableWrappe<TCancelable>>()
+                        ?? new CancelableWrappe<TCancelable>();
+                    del._cancelable = cancelable;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    del._disposed = false;
+#endif
                     SetCreatedStacktrace(del, 2);
                     return del;
                 }
 
-                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                internal override void Invoke()
                 {
                     ThrowIfInPool(this);
+                    var canceler = _cancelable;
+#if PROMISE_DEBUG
                     SetCurrentInvoker(this);
-                    var canceler = _canceler;
-                    Dispose();
                     try
                     {
-                        // Canceler may dispose this.
-                        canceler.Invoke(valueContainer);
+                        canceler.Cancel();
                     }
                     finally
                     {
                         ClearCurrentInvoker();
+                        Dispose();
                     }
+#else
+                    Dispose();
+                    canceler.Cancel();
+#endif
                 }
 
                 [MethodImpl(InlineOption)]
-                private void Dispose()
-                {
-                    _canceler = default(TCanceler);
-                    ObjectPool<CancelDelegate<TCanceler>>.MaybeRepool(this);
-                }
-
-                void ICancelDelegate.Dispose()
+                internal override void Dispose()
                 {
                     ThrowIfInPool(this);
-                    Dispose();
+                    _cancelable = default(TCancelable);
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    _disposed = true;
+#endif
+                    ObjectPool<CancelableWrappe<TCancelable>>.MaybeRepool(this);
                 }
             }
 
             private struct RegisteredDelegate : IComparable<RegisteredDelegate>
             {
-                internal readonly ICancelDelegate callback;
+                internal readonly CancelableBase cancelable;
                 internal readonly uint order;
 
                 [MethodImpl(InlineOption)]
-                internal RegisteredDelegate(uint order, ICancelDelegate callback)
+                internal RegisteredDelegate(uint order, CancelableBase cancelable)
                 {
-                    this.callback = callback;
+                    this.cancelable = cancelable;
                     this.order = order;
                 }
 
@@ -146,24 +174,6 @@ namespace Proto.Promises
                 {
                     return order.CompareTo(other.order);
                 }
-            }
-
-            // Used as a reference holder for _valueContainer for thread safety purposes and to let the finalizer know that the source was disposed.
-            private class DisposedRef : ICancelValueContainer
-            {
-                internal static readonly DisposedRef instance = new DisposedRef();
-
-                private DisposedRef() { }
-
-                void IValueContainer.Retain() { }
-                void IValueContainer.Release() { }
-
-                Type IValueContainer.ValueType { get { throw new System.InvalidOperationException(); } }
-                object IValueContainer.Value { get { throw new System.InvalidOperationException(); } }
-                Exception IThrowable.GetException() { throw new System.InvalidOperationException(); }
-                Promise.State IValueContainer.GetState() { throw new System.InvalidOperationException(); }
-                void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { throw new System.InvalidOperationException(); }
-
             }
 
             [StructLayout(LayoutKind.Explicit)]
@@ -375,6 +385,13 @@ namespace Proto.Promises
                     } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                     return true;
                 }
+            } // IdsAndRetains
+
+            private enum State : int
+            {
+                Pending,
+                Canceled,
+                Disposed
             }
 
 #if PROMISE_DEBUG
@@ -383,17 +400,13 @@ namespace Proto.Promises
 
             ~CancelationRef()
             {
-                if (ValueContainer != null)
-                {
-                    ValueContainer.Release();
-                }
                 if (_idsAndRetains._userRetains > 0)
                 {
                     // CancelationToken wasn't released.
                     string message = "A CancelationToken's resources were garbage collected without being released. You must release all IRetainable objects that you have retained.";
                     AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
                 }
-                if (_valueContainer != DisposedRef.instance)
+                if (_state != (int) State.Disposed)
                 {
                     // CancelationSource wasn't disposed.
                     AddRejectionToUnhandledStack(new UnreleasedObjectException("CancelationSource's resources were garbage collected without being disposed."), this);
@@ -406,15 +419,10 @@ namespace Proto.Promises
             // TODO: create a custom SortedDictionary with pooled nodes instead.
             private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
             private ValueLinkedStackZeroGC<CancelationRegistration> _links = ValueLinkedStackZeroGC<CancelationRegistration>.Create();
-            volatile private ICancelValueContainer _valueContainer;
+            volatile private int _state; // State as int for Interlocked.
             private uint _registeredCount;
             private IdsAndRetains _idsAndRetains = new IdsAndRetains(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
 
-            internal ICancelValueContainer ValueContainer
-            {
-                [MethodImpl(InlineOption)]
-                get { return _valueContainer; }
-            }
             internal short SourceId
             {
                 [MethodImpl(InlineOption)]
@@ -431,7 +439,7 @@ namespace Proto.Promises
                 var cancelRef = ObjectPool<CancelationRef>.TryTake<CancelationRef>()
                     ?? new CancelationRef();
                 cancelRef._idsAndRetains.SetInternalRetain(1); // 1 retain for Dispose.
-                cancelRef._valueContainer = null;
+                cancelRef._state = (int) State.Pending;
                 SetCreatedStacktrace(cancelRef, 2);
                 return cancelRef;
             }
@@ -451,8 +459,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool IsSourceCanceled(short sourceId)
             {
-                var temp = _valueContainer;
-                return sourceId == SourceId & temp != null & temp != DisposedRef.instance;
+                return sourceId == SourceId & _state == (int) State.Canceled;
             }
 
             [MethodImpl(InlineOption)]
@@ -470,125 +477,29 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool IsTokenCanceled(short tokenId)
             {
-                var temp = _valueContainer;
-                return tokenId == TokenId & temp != null & temp != DisposedRef.instance;
+                return tokenId == TokenId & _state == (int) State.Canceled;
             }
 
             [MethodImpl(InlineOption)]
-            internal static void ThrowIfCanceled(CancelationRef _this, short tokenId)
+            internal static void ThrowIfCanceled(CancelationRef _this, short tokenId, bool isCanceled)
             {
-                if (_this != null)
+                if (isCanceled | (_this != null && _this.IsTokenCanceled(tokenId)))
                 {
-                    _this.ThrowIfCanceled(tokenId);
-                }
-            }
-
-            [MethodImpl(InlineOption)]
-            private void ThrowIfCanceled(short tokenId)
-            {
-                // Retain for thread safety.
-                if (!TryRetainInternal(tokenId))
-                {
-                    return;
-                }
-                try
-                {
-                    var temp = _valueContainer;
-                    if (temp != null & temp != DisposedRef.instance)
-                    {
-                        throw temp.GetException();
-                    }
-                }
-                finally
-                {
-                    ReleaseAfterRetainInternal();
+                    throw CanceledExceptionInternal.GetOrCreate();
                 }
             }
 
             [MethodImpl(InlineOption)]
-            internal static Type GetCanceledType(CancelationRef _this, short tokenId)
+            internal static void MaybeAddLinkedCancelation(CancelationRef listener, CancelationRef _this, short tokenId, bool isCanceled)
             {
-                Type type;
-                if (_this != null && _this.TryGetCanceledType(tokenId, out type))
+                if (isCanceled)
                 {
-                    return type;
+                    listener.TryInvokeCallbacks();
                 }
-                throw new InvalidOperationException("CancelationToken.CancelationValueType: token has not been canceled.", GetFormattedStacktrace(2));
-            }
-
-            [MethodImpl(InlineOption)]
-            private bool TryGetCanceledType(short tokenId, out Type type)
-            {
-                // Retain for thread safety.
-                if (!TryRetainInternal(tokenId))
+                else if (_this != null)
                 {
-                    type = null;
-                    return false;
+                    _this.MaybeAddLinkedCancelation(listener, tokenId);
                 }
-                var temp = _valueContainer;
-                bool isCanceled = temp != null & temp != DisposedRef.instance;
-                type = isCanceled ? temp.ValueType : null;
-                ReleaseAfterRetainInternal();
-                return isCanceled;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal static object GetCanceledValue(CancelationRef _this, short tokenId)
-            {
-                object value;
-                if (_this != null && _this.TryGetCanceledValue(tokenId, out value))
-                {
-                    return value;
-                }
-                throw new InvalidOperationException("CancelationToken.CancelationValue: token has not been canceled.", GetFormattedStacktrace(2));
-            }
-
-            [MethodImpl(InlineOption)]
-            private bool TryGetCanceledValue(short tokenId, out object value)
-            {
-                // Retain for thread safety.
-                if (!TryRetainInternal(tokenId))
-                {
-                    value = null;
-                    return false;
-                }
-                var temp = _valueContainer;
-                bool isCanceled = temp != null & temp != DisposedRef.instance;
-                value = isCanceled ? temp.Value : null;
-                ReleaseAfterRetainInternal();
-                return isCanceled;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal static bool TryGetCanceledValueAs<T>(CancelationRef _this, short tokenId, out T value)
-            {
-                bool didConvert;
-                if (_this != null && _this.TryGetCanceledValueAs(tokenId, out didConvert, out value))
-                {
-                    return didConvert;
-                }
-                throw new InvalidOperationException("CancelationToken.TryGetCancelationValueAs: token has not been canceled.", GetFormattedStacktrace(2));
-            }
-
-            [MethodImpl(InlineOption)]
-            private bool TryGetCanceledValueAs<T>(short tokenId, out bool didConvert, out T value)
-            {
-                // Retain for thread safety.
-                if (!TryRetainInternal(tokenId))
-                {
-                    value = default(T);
-                    return didConvert = false;
-                }
-                var temp = _valueContainer;
-                if (temp == null | temp == DisposedRef.instance)
-                {
-                    value = default(T);
-                    ReleaseAfterRetainInternal();
-                    return didConvert = false;
-                }
-                didConvert = TryGetValue(ValueContainer, out value);
-                ReleaseAfterRetainInternal();
-                return true;
             }
 
             [MethodImpl(InlineOption)]
@@ -599,22 +510,22 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                var temp = _valueContainer;
-                if (temp != null)
+                State state = (State) _state;
+                if (state != State.Pending)
                 {
                     goto MaybeInvokeAndReturn;
                 }
                 lock (listener._registeredCallbacks)
                 {
-                    if (listener._valueContainer != null) // Make sure listener wasn't canceled from another token on another thread.
+                    if (listener._state != (int) State.Pending) // Make sure listener wasn't canceled from another token on another thread.
                     {
                         goto Return;
                     }
                     uint order;
                     lock (_registeredCallbacks)
                     {
-                        temp = _valueContainer;
-                        if (temp != null) // Double-checked locking! In this case it works because we're not writing back to the field.
+                        state = (State) _state;
+                        if (state != State.Pending) // Double-checked locking! In this case it works because we're not writing back to the field.
                         {
                             goto MaybeInvokeAndReturn;
                         }
@@ -625,42 +536,84 @@ namespace Proto.Promises
                         listener._idsAndRetains.InterlockedRetainInternal();
                         _registeredCallbacks.Add(new RegisteredDelegate(order, listener));
                     }
-                    listener._links.Push(new CancelationRegistration(this, TokenId, order));
+                    listener._links.Push(new CancelationRegistration(this, TokenId, order, false));
                 }
                 goto Return;
 
             MaybeInvokeAndReturn:
-                if (temp != DisposedRef.instance)
+                if (state == State.Canceled)
                 {
-                    listener.TryInvokeCallbacks(temp);
+                    listener.TryInvokeCallbacks();
                 }
             Return:
                 ReleaseAfterRetainInternal();
             }
 
-
             [MethodImpl(InlineOption)]
-            internal static bool TryRegisterInternal(CancelationRef _this, short tokenId, ICancelDelegate listener, out CancelationRegistration cancelationRegistration)
+            internal static bool TryRegister<TCancelable>(CancelationRef _this, short tokenId, bool isCanceled,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCancelable cancelable, out CancelationRegistration registration) where TCancelable : ICancelable
             {
-                // Retain for thread safety.
-                if (_this == null || !_this.TryRetainInternal(tokenId))
+                if (isCanceled)
                 {
-                    cancelationRegistration = default(CancelationRegistration);
+                    registration = new CancelationRegistration(null, ValidIdFromApi, 0, isCanceled);
+                    cancelable.Cancel();
+                    return true;
+                }
+                if (_this == null)
+                {
+                    registration = default(CancelationRegistration);
                     return false;
                 }
-                bool success = _this.TryRegister(listener, out cancelationRegistration);
-                _this.ReleaseAfterRetainInternal();
-                return success;
+                return _this.TryRegister(cancelable, tokenId, out registration);
             }
 
-            private bool TryRegister(ICancelDelegate callback, out CancelationRegistration registration)
+            [MethodImpl(InlineOption)]
+            private bool TryRegister<TCancelable>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCancelable cancelable, short tokenId, out CancelationRegistration registration) where TCancelable : ICancelable
+            {
+                // Retain for thread safety.
+                if (!TryRetainInternal(tokenId))
+                {
+                    registration = default(CancelationRegistration);
+                    return false;
+                }
+                try
+                {
+                    State state = (State) _state;
+                    if (state != State.Pending)
+                    {
+                        if (state == State.Canceled)
+                        {
+                            registration = new CancelationRegistration(this, TokenId, 0, false);
+                            cancelable.Cancel();
+                            return true;
+                        }
+                        registration = default(CancelationRegistration);
+                        return false;
+                    }
+                    return TryRegister(CancelableWrappe<TCancelable>.GetOrCreate(cancelable), out registration);
+                }
+                finally
+                {
+                    ReleaseAfterRetainInternal();
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            private bool TryRegister(CancelableBase callback, out CancelationRegistration registration)
             {
                 uint order;
-                ICancelValueContainer temp;
+                State state;
                 lock (_registeredCallbacks)
                 {
-                    temp = _valueContainer;
-                    if (temp != null)
+                    state = (State) _state;
+                    if (state != State.Pending)
                     {
                         goto MaybeInvoke;
                     }
@@ -670,114 +623,19 @@ namespace Proto.Promises
                     }
                     _registeredCallbacks.Add(new RegisteredDelegate(order, callback));
                 }
-                registration = new CancelationRegistration(this, TokenId, order);
+                registration = new CancelationRegistration(this, TokenId, order, false);
                 return true;
 
             MaybeInvoke:
-                if (temp != DisposedRef.instance)
+                if (state == State.Canceled)
                 {
-                    registration = new CancelationRegistration(this, TokenId, 0);
-                    callback.Invoke(temp);
+                    registration = new CancelationRegistration(this, TokenId, 0, false);
+                    callback.Invoke();
                     return true;
                 }
+                callback.Dispose();
                 registration = default(CancelationRegistration);
                 return false;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal static bool TryRegister(CancelationRef _this, short tokenId, Promise.CanceledAction callback, out CancelationRegistration registration)
-            {
-                if (_this == null)
-                {
-                    registration = default(CancelationRegistration);
-                    return false;
-                }
-                return _this.TryRegister(callback, tokenId, out registration);
-            }
-
-            [MethodImpl(InlineOption)]
-            private bool TryRegister(Promise.CanceledAction callback, short tokenId, out CancelationRegistration registration)
-            {
-                // Retain for thread safety.
-                if (!TryRetainInternal(tokenId))
-                {
-                    registration = default(CancelationRegistration);
-                    return false;
-                }
-                try
-                {
-                    var temp = _valueContainer;
-                    if (temp != null)
-                    {
-                        if (temp != DisposedRef.instance)
-                        {
-                            registration = new CancelationRegistration(this, TokenId, 0);
-                            callback.Invoke(new ReasonContainer(temp, InvokeId));
-                            return true;
-                        }
-                        registration = default(CancelationRegistration);
-                        return false;
-                    }
-                    var cancelDelegate = CancelDelegate<CancelDelegateTokenVoid>.GetOrCreate(new CancelDelegateTokenVoid(callback));
-                    return TryRegister(cancelDelegate, out registration);
-                }
-                finally
-                {
-                    ReleaseAfterRetainInternal();
-                }
-            }
-
-            [MethodImpl(InlineOption)]
-            internal static bool TryRegister<TCapture>(CancelationRef _this, short tokenId,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue,
-                    Promise.CanceledAction<TCapture> callback,
-                    out CancelationRegistration registration)
-            {
-                if (_this == null)
-                {
-                    registration = default(CancelationRegistration);
-                    return false;
-                }
-                return _this.TryRegister(capturedValue, callback, tokenId, out registration);
-            }
-
-            [MethodImpl(InlineOption)]
-            private bool TryRegister<TCapture>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise.CanceledAction<TCapture> callback, short tokenId, out CancelationRegistration registration)
-            {
-                // Retain for thread safety.
-                if (!TryRetainInternal(tokenId))
-                {
-                    registration = default(CancelationRegistration);
-                    return false;
-                }
-                try
-                {
-                    var temp = _valueContainer;
-                    if (temp != null)
-                    {
-                        if (temp != DisposedRef.instance)
-                        {
-                            registration = new CancelationRegistration(this, TokenId, 0);
-                            callback.Invoke(capturedValue, new ReasonContainer(temp, InvokeId));
-                            return true;
-                        }
-                        registration = default(CancelationRegistration);
-                        return false;
-                    }
-                    var cancelDelegate = CancelDelegate<CancelDelegateToken<TCapture>>.GetOrCreate(new CancelDelegateToken<TCapture>(capturedValue, callback));
-                    return TryRegister(cancelDelegate, out registration);
-                }
-                finally
-                {
-                    ReleaseAfterRetainInternal();
-                }
             }
 
             [MethodImpl(InlineOption)]
@@ -796,21 +654,20 @@ namespace Proto.Promises
                     return isCanceled = false;
                 }
                 bool validOrder;
-                var temp = _valueContainer;
-                if (temp != null)
+                State state = (State) _state;
+                isCanceled = state == State.Canceled;
+                if (state != State.Pending)
                 {
-                    isCanceled = temp != DisposedRef.instance;
                     validOrder = false;
                 }
                 else
                 {
                     lock (_registeredCallbacks)
                     {
-                        temp = _valueContainer;
-                        isCanceled = temp != null;
+                        state = (State) _state;
+                        isCanceled = state == State.Canceled;
                         validOrder = !isCanceled && IndexOf(order) >= 0;
                     }
-                    isCanceled &= temp != DisposedRef.instance;
                 }
                 ReleaseAfterRetainInternal();
                 return validOrder;
@@ -835,25 +692,24 @@ namespace Proto.Promises
                     return isCanceled = false;
                 }
                 bool unregistered = false;
-                ICancelDelegate del;
+                CancelableBase cancelable;
                 lock (_registeredCallbacks)
                 {
-                    var temp = _valueContainer;
-                    if (temp != null)
+                    State state = (State) _state;
+                    isCanceled = state == State.Canceled;
+                    if (state != State.Pending)
                     {
-                        isCanceled = temp != DisposedRef.instance;
                         goto ReleaseAndReturn;
                     }
-                    isCanceled = false;
                     int index = IndexOf(order);
                     if (index < 0)
                     {
                         goto ReleaseAndReturn;
                     }
-                    del = _registeredCallbacks[index].callback;
+                    cancelable = _registeredCallbacks[index].cancelable;
                     _registeredCallbacks.RemoveAt(index);
                 }
-                del.Dispose();
+                cancelable.Dispose();
                 unregistered = true;
             ReleaseAndReturn:
                 ReleaseAfterRetainInternal();
@@ -882,7 +738,7 @@ namespace Proto.Promises
                 }
                 try
                 {
-                    return _valueContainer == null && TryInvokeCallbacks(CancelContainerVoid.GetOrCreate(0));
+                    return TryInvokeCallbacks();
                 }
                 finally
                 {
@@ -890,49 +746,14 @@ namespace Proto.Promises
                 }
             }
 
-
-            [MethodImpl(InlineOption)]
-            internal static bool TrySetCanceled<T>(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                T reason, CancelationRef _this, short sourceId)
+            private bool TryInvokeCallbacks()
             {
-                return _this != null && _this.TrySetCanceled(reason, sourceId);
-            }
-
-            [MethodImpl(InlineOption)]
-            private bool TrySetCanceled<T>(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                T reason, short sourceId)
-            {
-                // Retain for thread safety and recursive calls.
-                if (!TryRetainInternal(sourceId))
+                if (Interlocked.CompareExchange(ref _state, (int) State.Canceled, (int) State.Pending) != (int) State.Pending)
                 {
-                    return false;
-                }
-                try
-                {
-                    return _valueContainer == null && TryInvokeCallbacks(CreateCancelContainer(reason));
-                }
-                finally
-                {
-                    ReleaseAfterRetainInternal();
-                }
-            }
-
-            private bool TryInvokeCallbacks(ICancelValueContainer valueContainer)
-            {
-                valueContainer.Retain();
-                if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) != null)
-                {
-                    valueContainer.Release();
                     return false;
                 }
                 // Wait for a callback currently being added/removed in another thread.
-                // When other threads enter the lock, they will see the _valueContainer was already set, so we don't need any further callback synchronization.
+                // When other threads enter the lock, they will see the _state was already set, so we don't need any further callback synchronization.
                 lock (_registeredCallbacks) { }
                 Unlink();
                 List<Exception> exceptions = null;
@@ -940,7 +761,7 @@ namespace Proto.Promises
                 {
                     try
                     {
-                        _registeredCallbacks[i].callback.Invoke(valueContainer);
+                        _registeredCallbacks[i].cancelable.Invoke();
                     }
                     catch (Exception e)
                     {
@@ -975,16 +796,15 @@ namespace Proto.Promises
                 }
                 ThrowIfInPool(this);
                 // In case Dispose is called concurrently with Cancel.
-                if (Interlocked.CompareExchange(ref _valueContainer, DisposedRef.instance, null) == null)
+                if (Interlocked.CompareExchange(ref _state, (int) State.Disposed, (int) State.Pending) == (int) State.Pending)
                 {
                     // Wait for a callback currently being added/removed in another thread.
-                    // When other threads enter the lock, they will see the _valueContainer was already set, so we don't need any further callback synchronization.
+                    // When other threads enter the lock, they will see the _state was already set, so we don't need any further callback synchronization.
                     lock (_registeredCallbacks) { }
                     Unlink();
-                    // No need to lock on _registeredCallbacks since it won't be modified after WaitForCallbacks().
                     for (int i = 0, max = _registeredCallbacks.Count; i < max; ++i)
                     {
-                        _registeredCallbacks[i].callback.Dispose();
+                        _registeredCallbacks[i].cancelable.Dispose();
                     }
                     _registeredCallbacks.Clear();
                 }
@@ -1074,20 +894,22 @@ namespace Proto.Promises
             private void ResetAndRepool()
             {
                 ThrowIfInPool(this);
-                var oldContainer = Interlocked.Exchange(ref _valueContainer, DisposedRef.instance);
-                if (oldContainer != null)
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                if (_registeredCallbacks.Count != 0)
                 {
-                    oldContainer.Release();
+                    throw new System.InvalidOperationException("CancelationToken callbacks have not been unregistered.");
                 }
+#endif
+                _state = (int) State.Disposed;
                 ObjectPool<CancelationRef>.MaybeRepool(this);
             }
 
-            void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+            internal override void Invoke()
             {
                 ThrowIfInPool(this);
                 try
                 {
-                    TryInvokeCallbacks(valueContainer);
+                    TryInvokeCallbacks();
                 }
                 finally
                 {
@@ -1095,7 +917,7 @@ namespace Proto.Promises
                 }
             }
 
-            void ICancelDelegate.Dispose()
+            internal override void Dispose()
             {
                 ThrowIfInPool(this);
                 ReleaseAfterRetainInternal();

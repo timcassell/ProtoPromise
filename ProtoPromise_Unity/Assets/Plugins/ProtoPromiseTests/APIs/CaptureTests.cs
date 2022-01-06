@@ -72,7 +72,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.CatchCancelation(100, default(Promise.CanceledAction<int>));
+                promise.CatchCancelation(100, default(Action<int>));
             });
 
             deferred.Resolve();
@@ -87,7 +87,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.CatchCancelation(100, default(Promise.CanceledAction<int>));
+                promise.CatchCancelation(100, default(Action<int>));
             });
 
             deferred.Resolve(1);
@@ -662,7 +662,7 @@ namespace ProtoPromiseTests.APIs
 #endif
 
         [Test]
-        public void OnCanceledWillBeInvokedWithCapturedValue_void0()
+        public void OnCanceledWillBeInvokedWithCapturedValue_void()
         {
             string expected = "expected";
             bool invoked = false;
@@ -671,10 +671,9 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
             deferred.Promise
-                .CatchCancelation(expected, (cv, reason) =>
+                .CatchCancelation(expected, cv =>
                 {
                     Assert.AreEqual(expected, cv);
-                    Assert.IsNull(reason.ValueType);
                     invoked = true;
                 })
                 .Forget();
@@ -687,33 +686,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void OnCanceledWillBeInvokedWithCapturedValue_void1()
-        {
-            string expected = "expected";
-            int cancelValue = 50;
-            bool invoked = false;
-
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-
-            deferred.Promise
-                .CatchCancelation(expected, (cv, reason) =>
-                {
-                    Assert.AreEqual(expected, cv);
-                    Assert.AreEqual(cancelValue, reason.Value);
-                    invoked = true;
-                })
-                .Forget();
-
-            cancelationSource.Cancel(cancelValue);
-
-            Assert.IsTrue(invoked);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void OnCanceledWillBeInvokedWithCapturedValue_T0()
+        public void OnCanceledWillBeInvokedWithCapturedValue_T()
         {
             string expected = "expected";
             bool invoked = false;
@@ -722,41 +695,14 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
             deferred.Promise
-                .CatchCancelation(expected, (cv, reason) =>
+                .CatchCancelation(expected, cv =>
                 {
                     Assert.AreEqual(expected, cv);
-                    Assert.IsNull(reason.ValueType);
                     invoked = true;
                 })
                 .Forget();
 
             cancelationSource.Cancel();
-
-            Assert.IsTrue(invoked);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void OnCanceledWillBeInvokedWithCapturedValue_T1()
-        {
-            string expected = "expected";
-            int cancelValue = 50;
-            bool invoked = false;
-
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-
-            deferred.Promise
-                .CatchCancelation(expected, (cv, reason) =>
-                {
-                    Assert.AreEqual(expected, cv);
-                    Assert.AreEqual(cancelValue, reason.Value);
-                    invoked = true;
-                })
-                .Forget();
-
-            cancelationSource.Cancel(cancelValue);
 
             Assert.IsTrue(invoked);
 
@@ -855,8 +801,6 @@ namespace ProtoPromiseTests.APIs
         public void OnFinallyWillBeInvokedWithCapturedValue_canceled_void()
         {
             string expected = "expected";
-            bool repeat = true;
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
@@ -870,30 +814,16 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
+            cancelationSource.Cancel();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
 
         [Test]
         public void OnFinallyWillBeInvokedWithCapturedValue_canceled_T()
         {
             string expected = "expected";
-            bool repeat = true;
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
@@ -907,22 +837,10 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
+            cancelationSource.Cancel();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
 
         [Test]
@@ -1042,9 +960,7 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void PromiseIsRejectedWithThrownExceptionWhenOnFinallyWithCapturedValueThrows_cancel_void()
         {
-            bool repeat = true;
             Exception expected = new Exception();
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
@@ -1059,32 +975,16 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
-
+            cancelationSource.Cancel();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
 
         [Test]
         public void PromiseIsRejectedWithThrownExceptionWhenOnFinallyWithCapturedValueThrows_cancel_T()
         {
-            bool repeat = true;
             Exception expected = new Exception();
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
@@ -1099,24 +999,10 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
-
+            cancelationSource.Cancel();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
-
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
 
         [Test]
@@ -1223,8 +1109,6 @@ namespace ProtoPromiseTests.APIs
         public void OnContinueWillBeInvokedWithCapturedValue_canceled_void()
         {
             string expected = "expected";
-            bool repeat = true;
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
             var promise = deferred.Promise.Preserve();
@@ -1240,31 +1124,16 @@ namespace ProtoPromiseTests.APIs
                 }
             );
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
-
+            cancelationSource.Cancel();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
             promise.Forget();
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
 
         [Test]
         public void OnContinueWillBeInvokedWithCapturedValue_canceled_T()
         {
-            bool repeat = true;
-        Repeat:
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
             var promise = deferred.Promise.Preserve();
@@ -1281,24 +1150,11 @@ namespace ProtoPromiseTests.APIs
                 }
             );
 
-            if (repeat)
-            {
-                cancelationSource.Cancel();
-            }
-            else
-            {
-                cancelationSource.Cancel("Cancel");
-            }
-
+            cancelationSource.Cancel();
             Assert.IsTrue(invoked);
 
             cancelationSource.Dispose();
             promise.Forget();
-            if (repeat)
-            {
-                repeat = false;
-                goto Repeat;
-            }
         }
 
         [Test]

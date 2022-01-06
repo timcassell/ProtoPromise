@@ -190,8 +190,8 @@ namespace ProtoPromiseTests.Threading
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    (promise, token) => promise.CatchCancelation(_ => { }, token),
-                    (promise, token) => promise.CatchCancelation(1, (cv, _) => { }, token),
+                    (promise, token) => promise.CatchCancelation(() => { }, token),
+                    (promise, token) => promise.CatchCancelation(1, cv => { }, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -212,7 +212,7 @@ namespace ProtoPromiseTests.Threading
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => deferred.Cancel(1)
+                    () => deferred.Cancel()
                 );
             }
         }
@@ -227,8 +227,8 @@ namespace ProtoPromiseTests.Threading
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise<int>, CancelationToken, Promise<int>>[]
                 {
-                    (promise, token) => promise.CatchCancelation(_ => { }, token),
-                    (promise, token) => promise.CatchCancelation(1, (cv, _) => { }, token),
+                    (promise, token) => promise.CatchCancelation(() => { }, token),
+                    (promise, token) => promise.CatchCancelation(1, cv => { }, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -249,7 +249,7 @@ namespace ProtoPromiseTests.Threading
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => deferred.Cancel(1)
+                    () => deferred.Cancel()
                 );
             }
         }
@@ -509,8 +509,8 @@ namespace ProtoPromiseTests.Threading
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    (p, token) => p.CatchCancelation(_ => { }, token),
-                    (p, token) => p.CatchCancelation(1, (cv, _) => { }, token),
+                    (p, token) => p.CatchCancelation(() => { }, token),
+                    (p, token) => p.CatchCancelation(1, cv => { }, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -538,7 +538,7 @@ namespace ProtoPromiseTests.Threading
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => deferred.Cancel(1),
+                    () => deferred.Cancel(),
                     () => action(promise.ConfigureAwait(configureAwaitType), cancelationToken)
                         .Finally(() =>
                         {
@@ -568,8 +568,8 @@ namespace ProtoPromiseTests.Threading
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise<int>, CancelationToken, Promise<int>>[]
                 {
-                    (p, token) => p.CatchCancelation(_ => { }, token),
-                    (p, token) => p.CatchCancelation(1, (cv, _) => { }, token),
+                    (p, token) => p.CatchCancelation(() => { }, token),
+                    (p, token) => p.CatchCancelation(1, cv => { }, token),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -597,7 +597,7 @@ namespace ProtoPromiseTests.Threading
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => deferred.Cancel(1),
+                    () => deferred.Cancel(),
                     () => action(promise.ConfigureAwait(configureAwaitType), cancelationToken)
                         .Finally(() =>
                         {

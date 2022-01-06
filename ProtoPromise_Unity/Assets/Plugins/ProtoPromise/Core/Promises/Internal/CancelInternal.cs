@@ -26,10 +26,10 @@ namespace Proto.Promises
             internal partial struct CancelationHelper
             {
                 [MethodImpl(InlineOption)]
-                internal void Register(CancelationToken cancelationToken, ICancelDelegate cancelable)
+                internal void Register(CancelationToken cancelationToken, ICancelable cancelable)
                 {
                     _retainAndCanceled = (1 << 16) + 1; // 17th bit set is not canceled, 1 retain until TryMakeReady or TryUnregister .
-                    cancelationToken.TryRegisterInternal(cancelable, out _cancelationRegistration);
+                    cancelationToken.TryRegister(cancelable, out _cancelationRegistration);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -51,12 +51,12 @@ namespace Proto.Promises
                     return Interlocked.Decrement(ref _retainAndCanceled) == 0; // If all bits are 0, canceled was set and all calls are complete.
                 }
 
-                internal void SetCanceled(PromiseSingleAwait owner, IValueContainer valueContainer)
+                internal void SetCanceled(PromiseSingleAwait owner)
                 {
                     ThrowIfInPool(owner);
                     RetainAndSetCanceled();
+                    IValueContainer valueContainer = CancelContainerVoid.GetOrCreate(1);
                     object currentValue = Interlocked.Exchange(ref owner._valueOrPrevious, valueContainer);
-                    valueContainer.Retain();
                     owner.State = Promise.State.Canceled;
 
 #if CSHARP_7_3_OR_NEWER
@@ -106,9 +106,7 @@ namespace Proto.Promises
                 {
                     Thread.MemoryBarrier();
                     object oldContainer = owner._valueOrPrevious;
-                    bool _, isCancelationRequested;
-                    _cancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out _, out isCancelationRequested);
-                    if (!isCancelationRequested & !IsCanceled()) // Was the token not in the process of canceling and not already canceled?
+                    if (!_cancelationRegistration.Token.IsCancelationRequested & !IsCanceled()) // Was the token not in the process of canceling and not already canceled?
                     {
                         valueContainer.Retain();
                         if (Interlocked.CompareExchange(ref owner._valueOrPrevious, valueContainer, oldContainer) == oldContainer) // Are we able to set the value container before the token?
@@ -154,7 +152,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolve<TResolver> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolve<TResolver> : PromiseSingleAwait, ITreeHandleable, ICancelable
                 where TResolver : IDelegateResolve
             {
                 private CancelablePromiseResolve() { }
@@ -203,18 +201,16 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this, valueContainer);
+                    _cancelationHelper.SetCanceled(this);
                 }
-
-                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise, ITreeHandleable, ICancelable
                 where TResolver : IDelegateResolvePromise
             {
                 private CancelablePromiseResolvePromise() { }
@@ -271,18 +267,16 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this, valueContainer);
+                    _cancelationHelper.SetCanceled(this);
                 }
-
-                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait, ITreeHandleable, ICancelable
                 where TResolver : IDelegateResolve
                 where TRejecter : IDelegateReject
             {
@@ -342,18 +336,16 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this, valueContainer);
+                    _cancelationHelper.SetCanceled(this);
                 }
-
-                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise, ITreeHandleable, ICancelable
                 where TResolver : IDelegateResolvePromise
                 where TRejecter : IDelegateRejectPromise
             {
@@ -421,18 +413,16 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this, valueContainer);
+                    _cancelationHelper.SetCanceled(this);
                 }
-
-                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseContinue<TContinuer> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseContinue<TContinuer> : PromiseSingleAwait, ITreeHandleable, ICancelable
                 where TContinuer : IDelegateContinue
             {
                 private CancelablePromiseContinue() { }
@@ -473,18 +463,16 @@ namespace Proto.Promises
                     _continuer.Invoke(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                 }
 
-                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this, valueContainer);
+                    _cancelationHelper.SetCanceled(this);
                 }
-
-                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseContinuePromise<TContinuer> : PromiseWaitPromise, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseContinuePromise<TContinuer> : PromiseWaitPromise, ITreeHandleable, ICancelable
                 where TContinuer : IDelegateContinuePromise
             {
                 private CancelablePromiseContinuePromise() { }
@@ -534,18 +522,16 @@ namespace Proto.Promises
                     callback.Invoke(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                 }
 
-                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this, valueContainer);
+                    _cancelationHelper.SetCanceled(this);
                 }
-
-                void ICancelDelegate.Dispose() { }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseCancel<TCanceler> : PromiseSingleAwait, ITreeHandleable, ICancelDelegate
+            private sealed partial class CancelablePromiseCancel<TCanceler> : PromiseSingleAwait, ITreeHandleable, ICancelable
                 where TCanceler : IDelegateSimple
             {
                 private CancelablePromiseCancel() { }
@@ -602,7 +588,7 @@ namespace Proto.Promises
                             ClearCurrentInvoker();
                             return;
                         }
-                        callback.Invoke(valueContainer);
+                        callback.Invoke();
                     }
                     catch (Exception e)
                     {
@@ -613,12 +599,10 @@ namespace Proto.Promises
                     HandleSelf(valueContainer, ref executionScheduler);
                 }
 
-                void ICancelDelegate.Invoke(ICancelValueContainer valueContainer)
+                void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this, valueContainer);
+                    _cancelationHelper.SetCanceled(this);
                 }
-
-                void ICancelDelegate.Dispose() { }
             }
         } // PromiseRef
     } // Internal

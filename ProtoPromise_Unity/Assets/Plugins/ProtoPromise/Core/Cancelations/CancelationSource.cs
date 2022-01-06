@@ -18,7 +18,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
         readonly
 #endif
-        struct CancelationSource : ICancelableAny, IDisposable, IEquatable<CancelationSource>
+        struct CancelationSource : ICancelable, IDisposable, IEquatable<CancelationSource>
     {
         private readonly Internal.CancelationRef _ref;
         private readonly short _sourceId;
@@ -91,7 +91,7 @@ namespace Proto.Promises
         {
             get
             {
-                return new CancelationToken(_ref, _tokenId);
+                return new CancelationToken(_ref, _tokenId, false);
             }
         }
 
@@ -119,7 +119,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Try to communicate a request for cancelation without providing a reason, and invoke all callbacks that are registered to the associated <see cref="Token"/>. Returns true if successful, false otherwise.
+        /// Try to communicate a request for cancelation, and invoke all callbacks that are registered to the associated <see cref="Token"/>. Returns true if successful, false otherwise.
         /// </summary>
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel()
@@ -128,33 +128,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Try to communicate a request for cancelation with the provided reason, and invoke all callbacks that are registered to the associated <see cref="Token"/>.
-        /// </summary>
-        /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
-        public bool TryCancel<TCancel>(TCancel reason)
-        {
-            return Internal.CancelationRef.TrySetCanceled(reason, _ref, _sourceId);
-        }
-
-        /// <summary>
-        /// Communicate a request for cancelation without providing a reason, and invoke all callbacks that are registered to the associated <see cref="Token"/>.
+        /// Communicate a request for cancelation, and invoke all callbacks that are registered to the associated <see cref="Token"/>.
         /// </summary>
         /// <exception cref="InvalidOperationException"/>
         public void Cancel()
         {
             if (!TryCancel())
-            {
-                throw new InvalidOperationException("CancelationSource.Cancel: source is not valid or was already canceled.", Internal.GetFormattedStacktrace(1));
-            }
-        }
-
-        /// <summary>
-        /// Communicate a request for cancelation with the provided reason, and invoke all callbacks that are registered to the associated <see cref="Token"/>.
-        /// </summary>
-        /// <exception cref="InvalidOperationException"/>
-        public void Cancel<TCancel>(TCancel reason)
-        {
-            if (!TryCancel(reason))
             {
                 throw new InvalidOperationException("CancelationSource.Cancel: source is not valid or was already canceled.", Internal.GetFormattedStacktrace(1));
             }
@@ -208,6 +187,18 @@ namespace Proto.Promises
         public static bool operator !=(CancelationSource c1, CancelationSource c2)
         {
             return !(c1 == c2);
+        }
+
+        [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true)]
+        public bool TryCancel<TCancel>(TCancel reason)
+        {
+            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
+        }
+
+        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
+        public void Cancel<TCancel>(TCancel reason)
+        {
+            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
         }
     }
 }

@@ -270,7 +270,7 @@ namespace ProtoPromiseTests.APIs
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
-            string expected = "Cancel";
+            //System.Diagnostics.Debugger.Launch();
             bool canceled = false;
 
             async Promise Func()
@@ -279,15 +279,14 @@ namespace ProtoPromiseTests.APIs
             }
 
             Func()
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(expected, e.Value);
                     canceled = true;
                 })
                 .Forget();
 
             Assert.IsFalse(canceled);
-            cancelationSource.Cancel(expected);
+            cancelationSource.Cancel();
             Assert.IsTrue(canceled);
 
             cancelationSource.Dispose();
@@ -299,7 +298,6 @@ namespace ProtoPromiseTests.APIs
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
-            string expected = "Cancel";
             bool canceled = false;
 
             async Promise<int> Func()
@@ -308,15 +306,14 @@ namespace ProtoPromiseTests.APIs
             }
 
             Func()
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(expected, e.Value);
                     canceled = true;
                 })
                 .Forget();
 
             Assert.IsFalse(canceled);
-            cancelationSource.Cancel(expected);
+            cancelationSource.Cancel();
             Assert.IsTrue(canceled);
 
             cancelationSource.Dispose();
@@ -335,9 +332,8 @@ namespace ProtoPromiseTests.APIs
             }
 
             Func()
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(e.ValueType);
                     canceled = true;
                 })
                 .Forget();
@@ -358,9 +354,8 @@ namespace ProtoPromiseTests.APIs
             }
 
             Func()
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(e.ValueType);
                     canceled = true;
                 })
                 .Forget();
@@ -371,20 +366,18 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void AsyncPromiseIsCanceledFromThrow3()
         {
-            string expected = "Cancel";
             bool canceled = false;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
             async Promise Func()
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
             {
-                throw Promise.CancelException(expected);
+                throw Promise.CancelException();
             }
 
             Func()
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(expected, e.Value);
                     canceled = true;
                 })
                 .Forget();
@@ -395,20 +388,18 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void AsyncPromiseIsCanceledFromThrow4()
         {
-            string expected = "Cancel";
             bool canceled = false;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
             async Promise<int> Func()
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
             {
-                throw Promise.CancelException(expected);
+                throw Promise.CancelException();
             }
 
             Func()
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(expected, e.Value);
                     canceled = true;
                 })
                 .Forget();
@@ -428,9 +419,8 @@ namespace ProtoPromiseTests.APIs
             }
 
             Func()
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(e.ValueType);
                     canceled = true;
                 })
                 .Forget();
@@ -450,9 +440,8 @@ namespace ProtoPromiseTests.APIs
             }
 
             Func()
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.IsNull(e.ValueType);
                     canceled = true;
                 })
                 .Forget();
@@ -463,19 +452,17 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void AsyncPromiseIsCanceledFromThrow7()
         {
-            string expected = "Cancel";
             bool canceled = false;
 
             async Promise Func()
             {
                 await Promise.Resolved();
-                throw Promise.CancelException(expected);
+                throw Promise.CancelException();
             }
 
             Func()
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(expected, e.Value);
                     canceled = true;
                 })
                 .Forget();
@@ -486,19 +473,17 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void AsyncPromiseIsCanceledFromThrow8()
         {
-            string expected = "Cancel";
             bool canceled = false;
 
             async Promise<int> Func()
             {
                 await Promise.Resolved();
-                throw Promise.CancelException(expected);
+                throw Promise.CancelException();
             }
 
             Func()
-                .CatchCancelation(e =>
+                .CatchCancelation(() =>
                 {
-                    Assert.AreEqual(expected, e.Value);
                     canceled = true;
                 })
                 .Forget();

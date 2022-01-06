@@ -214,13 +214,12 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void CancelAwaitedPromiseThrowsOperationCanceled1()
+        public void CancelAwaitedPromiseThrowsOperationCanceled_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
             bool continued = false;
-            string cancelValue = "Cancel";
 
             async void Func()
             {
@@ -228,9 +227,8 @@ namespace ProtoPromiseTests.APIs
                 {
                     await deferred.Promise;
                 }
-                catch (CanceledException e)
+                catch (CanceledException)
                 {
-                    Assert.AreEqual(cancelValue, e.Value);
                     continued = true;
                 }
             }
@@ -238,19 +236,18 @@ namespace ProtoPromiseTests.APIs
             Func();
             Assert.IsFalse(continued);
 
-            cancelationSource.Cancel(cancelValue);
+            cancelationSource.Cancel();
             Assert.IsTrue(continued);
 
             cancelationSource.Dispose();
         }
 
         [Test]
-        public void CancelAwaitedPromiseThrowsOperationCanceled2()
+        public void CancelAwaitedPromiseThrowsOperationCanceled_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
-            string cancelValue = "Cancel";
             bool continued = false;
 
             async void Func()
@@ -259,9 +256,8 @@ namespace ProtoPromiseTests.APIs
                 {
                     int value = await deferred.Promise;
                 }
-                catch (CanceledException e)
+                catch (CanceledException)
                 {
-                    Assert.AreEqual(cancelValue, e.Value);
                     continued = true;
                 }
             }
@@ -269,27 +265,25 @@ namespace ProtoPromiseTests.APIs
             Func();
             Assert.IsFalse(continued);
 
-            cancelationSource.Cancel(cancelValue);
+            cancelationSource.Cancel();
             Assert.IsTrue(continued);
 
             cancelationSource.Dispose();
         }
 
         [Test]
-        public void AwaitAlreadyCanceledPromiseThrowsOperationCanceled1()
+        public void AwaitAlreadyCanceledPromiseThrowsOperationCanceled_void()
         {
-            string cancelValue = "Cancel";
             bool continued = false;
 
             async void Func()
             {
                 try
                 {
-                    await Promise.Canceled(cancelValue);
+                    await Promise.Canceled();
                 }
-                catch (CanceledException e)
+                catch (CanceledException)
                 {
-                    Assert.AreEqual(cancelValue, e.Value);
                     continued = true;
                 }
             }
@@ -302,20 +296,18 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void AwaitAlreadyCanceledPromiseThrowsOperationCanceled2()
+        public void AwaitAlreadyCanceledPromiseThrowsOperationCanceled_T()
         {
-            string cancelValue = "Cancel";
             bool continued = false;
 
             async void Func()
             {
                 try
                 {
-                    int value = await Promise<int>.Canceled(cancelValue);
+                    int value = await Promise<int>.Canceled();
                 }
-                catch (CanceledException e)
+                catch (CanceledException)
                 {
-                    Assert.AreEqual(cancelValue, e.Value);
                     continued = true;
                 }
             }
@@ -546,7 +538,6 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred(cancelationSource.Token);
             var promise = deferred.Promise.Preserve();
 
-            string cancelValue = "Cancel";
             int continuedCount = 0;
 
             async void Func()
@@ -555,9 +546,8 @@ namespace ProtoPromiseTests.APIs
                 {
                     await promise;
                 }
-                catch (CanceledException e)
+                catch (CanceledException)
                 {
-                    Assert.AreEqual(cancelValue, e.Value);
                     ++continuedCount;
                 }
             }
@@ -567,7 +557,7 @@ namespace ProtoPromiseTests.APIs
             promise.Forget();
             Assert.AreEqual(0, continuedCount);
 
-            cancelationSource.Cancel(cancelValue);
+            cancelationSource.Cancel();
             Assert.AreEqual(2, continuedCount);
 
             cancelationSource.Dispose();
@@ -580,7 +570,6 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
             var promise = deferred.Promise.Preserve();
 
-            string cancelValue = "Cancel";
             int continuedCount = 0;
 
             async void Func()
@@ -589,9 +578,8 @@ namespace ProtoPromiseTests.APIs
                 {
                     int value = await promise;
                 }
-                catch (CanceledException e)
+                catch (CanceledException)
                 {
-                    Assert.AreEqual(cancelValue, e.Value);
                     ++continuedCount;
                 }
             }
@@ -601,7 +589,7 @@ namespace ProtoPromiseTests.APIs
             promise.Forget();
             Assert.AreEqual(0, continuedCount);
 
-            cancelationSource.Cancel(cancelValue);
+            cancelationSource.Cancel();
             Assert.AreEqual(2, continuedCount);
 
             cancelationSource.Dispose();
@@ -610,8 +598,7 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void DoubleAwaitAlreadyCanceledPromiseThrowsOperationCanceled_void()
         {
-            string cancelValue = "Cancel";
-            var promise = Promise.Canceled(cancelValue).Preserve();
+            var promise = Promise.Canceled().Preserve();
             int continuedCount = 0;
 
             async void Func()
@@ -620,9 +607,8 @@ namespace ProtoPromiseTests.APIs
                 {
                     await promise;
                 }
-                catch (CanceledException e)
+                catch (CanceledException)
                 {
-                    Assert.AreEqual(cancelValue, e.Value);
                     ++continuedCount;
                 }
             }
@@ -639,8 +625,7 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void DoubleAwaitAlreadyCanceledPromiseThrowsOperationCanceled_T()
         {
-            string cancelValue = "Cancel";
-            var promise = Promise<int>.Canceled(cancelValue).Preserve();
+            var promise = Promise<int>.Canceled().Preserve();
             int continuedCount = 0;
 
             async void Func()
@@ -649,9 +634,8 @@ namespace ProtoPromiseTests.APIs
                 {
                     int value = await promise;
                 }
-                catch (CanceledException e)
+                catch (CanceledException)
                 {
-                    Assert.AreEqual(cancelValue, e.Value);
                     ++continuedCount;
                 }
             }
