@@ -48,8 +48,8 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
-                    .CatchCancelation(() => state = Canceled)
                     .Then(() => state = Resolved, () => state = Rejected)
+                    .CatchCancelation(() => state = Canceled)
                     .Forget();
                 Assert.IsNull(state);
 
@@ -63,8 +63,8 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
-                    .CatchCancelation(() => state = Canceled)
                     .Then(() => state = Resolved, () => state = Rejected)
+                    .CatchCancelation(() => state = Canceled)
                     .Forget();
                 Assert.IsNull(state);
 
@@ -77,8 +77,8 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
-                    .CatchCancelation(() => state = Canceled)
                     .Then(() => state = Resolved, () => state = Rejected)
+                    .CatchCancelation(() => state = Canceled)
                     .Forget();
                 Assert.IsNull(state);
 
@@ -94,8 +94,8 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
-                    .CatchCancelation(() => state = Canceled)
                     .Then(() => state = Resolved, () => state = Rejected)
+                    .CatchCancelation(() => state = Canceled)
                     .Forget();
                 Assert.IsNull(state);
 
@@ -459,6 +459,7 @@ namespace ProtoPromiseTests.APIs
                 Assert.True(canceled);
 
                 cancelationSource.Dispose();
+                promise.Forget();
             }
 
             [Test]
@@ -509,7 +510,8 @@ namespace ProtoPromiseTests.APIs
                 var cancelCount = 0;
 
                 TestHelper.AddCancelCallbacks<float>(deferred.Promise,
-                    onCancel: () => ++cancelCount
+                    onCancel: () => ++cancelCount,
+                    onCancelCapture: cv => ++cancelCount
                 );
                 cancelationSource.Cancel();
 
@@ -530,7 +532,8 @@ namespace ProtoPromiseTests.APIs
                 var cancelCount = 0;
 
                 TestHelper.AddCancelCallbacks<int, float>(deferred.Promise,
-                    onCancel: () => ++cancelCount
+                    onCancel: () => ++cancelCount,
+                    onCancelCapture: cv => ++cancelCount
                 );
                 cancelationSource.Cancel();
 
@@ -618,13 +621,22 @@ namespace ProtoPromiseTests.APIs
                     }
                 };
 
-                TestHelper.AddCancelCallbacks<float>(promise, () => callback(0));
-                TestHelper.AddCancelCallbacks<float>(promise, () => callback(1));
-                TestHelper.AddCancelCallbacks<float>(promise, () => callback(2));
+                TestHelper.AddCancelCallbacks<float>(promise,
+                    onCancel: () => callback(0),
+                    onCancelCapture: cv => callback(0)
+                );
+                TestHelper.AddCancelCallbacks<float>(promise,
+                    onCancel: () => callback(1),
+                    onCancelCapture: cv => callback(1)
+                );
+                TestHelper.AddCancelCallbacks<float>(promise,
+                    onCancel: () => callback(2),
+                    onCancelCapture: cv => callback(2)
+                );
 
                 cancelationSource.Cancel();
 
-                Assert.AreEqual(3, counter);
+                Assert.AreEqual(3, order);
 
                 cancelationSource.Dispose();
                 promise.Forget();
@@ -650,13 +662,22 @@ namespace ProtoPromiseTests.APIs
                     }
                 };
 
-                TestHelper.AddCancelCallbacks<int, float>(promise, onCancel: () => callback(0));
-                TestHelper.AddCancelCallbacks<int, float>(promise, onCancel: () => callback(1));
-                TestHelper.AddCancelCallbacks<int, float>(promise, onCancel: () => callback(2));
+                TestHelper.AddCancelCallbacks<int, float>(promise,
+                    onCancel: () => callback(0),
+                    onCancelCapture: cv => callback(0)
+                );
+                TestHelper.AddCancelCallbacks<int, float>(promise,
+                    onCancel: () => callback(1),
+                    onCancelCapture: cv => callback(1)
+                );
+                TestHelper.AddCancelCallbacks<int, float>(promise,
+                    onCancel: () => callback(2),
+                    onCancelCapture: cv => callback(2)
+                );
 
                 cancelationSource.Cancel();
 
-                Assert.AreEqual(3, counter);
+                Assert.AreEqual(3, order);
 
                 cancelationSource.Dispose();
                 promise.Forget();
@@ -917,7 +938,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    (4 + (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2) * 2,
+                    (TestHelper.onCancelCallbacks * 2) + TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks,
                     exceptionCounter
                 );
 
@@ -969,7 +990,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    (4 + (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2) * 2,
+                    (TestHelper.onCancelCallbacks * 2) + TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks,
                     exceptionCounter
                 );
 
@@ -1006,54 +1027,40 @@ namespace ProtoPromiseTests.APIs
 
                     var resolveWaitPromise = resolveWaitDeferred.Promise.Preserve();
                     var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
-                    var cancelWaitPromise = rejectWaitDeferred.Promise.Preserve();
+                    var cancelWaitPromise = cancelWaitDeferred.Promise.Preserve();
 
-                    TestAction<Promise> onCallbackAdded = (ref Promise p) =>
+                    TestAction<Promise> onAdoptCallbackAdded = (ref Promise p) =>
                     {
-                        var preserved = p = p.Preserve();
-                        preserved
-                            .Catch(() => { })
-                            .Finally(() => preserved.Forget())
-                            .Forget();
+                        p = p.Finally(() => ++completeCounter)
+                            .Catch(() => { });
                     };
 
                     TestHelper.AddCancelCallbacks<float>(cancelPromise,
-                        promiseToPromise: p =>
-                        {
-                            p.Finally(() => ++completeCounter).Forget();
-                            return resolveWaitPromise;
-                        },
-                        onCallbackAdded: onCallbackAdded
+                        promiseToPromise: p => resolveWaitPromise,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
                     TestHelper.AddCancelCallbacks<float>(cancelPromise,
-                        promiseToPromise: p =>
-                        {
-                            p.Finally(() => ++completeCounter).Forget();
-                            return rejectWaitPromise;
-                        },
-                        onCallbackAdded: onCallbackAdded
+                        promiseToPromise: p => rejectWaitPromise,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
                     TestHelper.AddCancelCallbacks<float>(cancelPromise,
-                        promiseToPromise: p =>
-                        {
-                            p.Finally(() => ++completeCounter).Forget();
-                            return cancelWaitPromise;
-                        },
-                        onCallbackAdded: onCallbackAdded
+                        promiseToPromise: p => cancelWaitPromise,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
+
                     cancelDeferred.Cancel();
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     resolveWaitDeferred.Resolve();
-                    expectedCompleteCount += TestHelper.onCancelCallbacks * 2;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     rejectWaitDeferred.Reject("Reject");
-                    expectedCompleteCount += TestHelper.onCancelCallbacks * 2;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelWaitDeferred.Cancel();
-                    expectedCompleteCount += TestHelper.onCancelCallbacks * 2;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelPromise.Forget();
@@ -1077,54 +1084,40 @@ namespace ProtoPromiseTests.APIs
 
                     var resolveWaitPromise = resolveWaitDeferred.Promise.Preserve();
                     var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
-                    var cancelWaitPromise = rejectWaitDeferred.Promise.Preserve();
+                    var cancelWaitPromise = cancelWaitDeferred.Promise.Preserve();
 
-                    TestAction<Promise<int>> onCallbackAdded = (ref Promise<int> p) =>
+                    TestAction<Promise<int>> onAdoptCallbackAdded = (ref Promise<int> p) =>
                     {
-                        var preserved = p = p.Preserve();
-                        preserved
-                            .Catch(() => { })
-                            .Finally(() => preserved.Forget())
-                            .Forget();
+                        p = p.Finally(() => ++completeCounter)
+                            .Catch(() => 1);
                     };
 
                     TestHelper.AddCancelCallbacks<int, float>(cancelPromise,
-                        promiseToPromise: p =>
-                        {
-                            p.Finally(() => ++completeCounter).Forget();
-                            return resolveWaitPromise;
-                        },
-                        onCallbackAdded: onCallbackAdded
+                        promiseToPromise: p => resolveWaitPromise,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
                     TestHelper.AddCancelCallbacks<int, float>(cancelPromise,
-                        promiseToPromise: p =>
-                        {
-                            p.Finally(() => ++completeCounter).Forget();
-                            return rejectWaitPromise;
-                        },
-                        onCallbackAdded: onCallbackAdded
+                        promiseToPromise: p => rejectWaitPromise,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
                     TestHelper.AddCancelCallbacks<int, float>(cancelPromise,
-                        promiseToPromise: p =>
-                        {
-                            p.Finally(() => ++completeCounter).Forget();
-                            return cancelWaitPromise;
-                        },
-                        onCallbackAdded: onCallbackAdded
+                        promiseToPromise: p => cancelWaitPromise,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
+
                     cancelDeferred.Cancel();
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     resolveWaitDeferred.Resolve(1);
-                    expectedCompleteCount += TestHelper.onCancelCallbacks * 2;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     rejectWaitDeferred.Reject("Reject");
-                    expectedCompleteCount += TestHelper.onCancelCallbacks * 2;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelWaitDeferred.Cancel();
-                    expectedCompleteCount += TestHelper.onCancelCallbacks * 2;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelPromise.Forget();
@@ -1145,10 +1138,10 @@ namespace ProtoPromiseTests.APIs
 
                     TestAction<Promise> onAdoptCallbackAdded = (ref Promise p) =>
                     {
-                        p.Then(() =>
+                        p = p.Then(() =>
                         {
                             ++resolveCounter;
-                        }).Forget();
+                        });
                     };
 
                     var resolveWaitDeferred = Promise.NewDeferred();
@@ -1172,7 +1165,7 @@ namespace ProtoPromiseTests.APIs
                         resolveWaitDeferred.Resolve();
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks * 2, resolveCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks, resolveCounter);
 
                     if (firstRun)
                     {
@@ -1197,11 +1190,12 @@ namespace ProtoPromiseTests.APIs
 
                     TestAction<Promise<int>> onAdoptCallbackAdded = (ref Promise<int> p) =>
                     {
-                        p.Then(v =>
+                        p = p.Then(v =>
                         {
                             Assert.AreEqual(resolveValue, v);
                             ++resolveCounter;
-                        }).Forget();
+                            return v;
+                        });
                     };
 
                     var resolveWaitDeferred = Promise.NewDeferred<int>();
@@ -1225,7 +1219,7 @@ namespace ProtoPromiseTests.APIs
                         resolveWaitDeferred.Resolve(resolveValue);
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks * 2, resolveCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks, resolveCounter);
 
                     if (firstRun)
                     {
@@ -1250,11 +1244,11 @@ namespace ProtoPromiseTests.APIs
 
                     TestAction<Promise> onAdoptCallbackAdded = (ref Promise p) =>
                     {
-                        p.Catch((float reason) =>
+                        p = p.Catch((float reason) =>
                         {
                             Assert.AreEqual(rejectReason, reason);
                             ++rejectCounter;
-                        }).Forget();
+                        });
                     };
 
                     var rejectWaitDeferred = Promise.NewDeferred();
@@ -1278,7 +1272,7 @@ namespace ProtoPromiseTests.APIs
                         rejectWaitDeferred.Reject(rejectReason);
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks * 2, rejectCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks, rejectCounter);
 
                     if (firstRun)
                     {
@@ -1303,11 +1297,12 @@ namespace ProtoPromiseTests.APIs
 
                     TestAction<Promise<int>> onAdoptCallbackAdded = (ref Promise<int> p) =>
                     {
-                        p.Catch((float reason) =>
+                        p = p.Catch((float reason) =>
                         {
                             Assert.AreEqual(rejectReason, reason);
                             ++rejectCounter;
-                        }).Forget();
+                            return 1;
+                        });
                     };
 
                     var rejectWaitDeferred = Promise.NewDeferred<int>();
@@ -1331,7 +1326,7 @@ namespace ProtoPromiseTests.APIs
                         rejectWaitDeferred.Reject(rejectReason);
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks * 2, rejectCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks, rejectCounter);
 
                     if (firstRun)
                     {
@@ -1437,11 +1432,11 @@ namespace ProtoPromiseTests.APIs
 
                 deferred.Cancel();
 
-                Assert.AreEqual(TestHelper.onCancelCallbacks * 2, exceptionCounter);
+                Assert.AreEqual(TestHelper.onCancelCallbacks, exceptionCounter);
             }
 
             [Test]
-            public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_T()
+            public void IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_T()
             {
                 var deferred = Promise.NewDeferred<int>();
 
@@ -1475,7 +1470,7 @@ namespace ProtoPromiseTests.APIs
 
                 deferred.Cancel();
 
-                Assert.AreEqual(TestHelper.onCancelCallbacks * 2, exceptionCounter);
+                Assert.AreEqual(TestHelper.onCancelCallbacks, exceptionCounter);
             }
 #endif
         }
