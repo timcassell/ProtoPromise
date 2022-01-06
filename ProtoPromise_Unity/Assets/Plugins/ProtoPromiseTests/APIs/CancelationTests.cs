@@ -546,10 +546,24 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
+            public void CancelationTokenCanceledCanBeCanceled()
+            {
+                CancelationToken cancelationToken = CancelationToken.Canceled();
+                Assert.IsTrue(cancelationToken.CanBeCanceled);
+            }
+
+            [Test]
             public void NewCancelationTokenCannotBeCanceled()
             {
                 CancelationToken cancelationToken = new CancelationToken();
                 Assert.IsFalse(cancelationToken.CanBeCanceled);
+            }
+
+            [Test]
+            public void CancelationTokenCanceledCancelationIsRequested()
+            {
+                CancelationToken cancelationToken = CancelationToken.Canceled();
+                Assert.IsTrue(cancelationToken.IsCancelationRequested);
             }
 
             [Test]
@@ -673,7 +687,23 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationTokenThrowIfCancelationRequested()
+            public void CancelationTokenCanceledThrowIfCancelationRequested()
+            {
+                CancelationToken cancelationToken = CancelationToken.Canceled();
+                bool caughtException = false;
+                try
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                }
+                catch (CanceledException)
+                {
+                    caughtException = true;
+                }
+                Assert.IsTrue(caughtException);
+            }
+
+            [Test]
+            public void CancelationTokenFromSourceThrowIfCancelationRequested()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
@@ -778,6 +808,22 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
+            public void RegistrationFromCancelationTokenCanceledIsNotRegisteredAfterInvoked0()
+            {
+                CancelationToken cancelationToken = CancelationToken.Canceled();
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(() => { });
+                Assert.IsFalse(cancelationRegistration.IsRegistered);
+            }
+
+            [Test]
+            public void RegistrationFromCancelationTokenCanceledIsNotRegisteredAfterInvoked1()
+            {
+                CancelationToken cancelationToken = CancelationToken.Canceled();
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(0, i => { });
+                Assert.IsFalse(cancelationRegistration.IsRegistered);
+            }
+
+            [Test]
             public void RegistrationFromCancelationTokenIsNotRegisteredAfterSourceIsDisposed0()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
@@ -819,6 +865,22 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Cancel();
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationTokenRegisterCallbackIsInvoked2()
+            {
+                bool invoked = false;
+                CancelationToken.Canceled().Register(() => invoked = true);
+                Assert.IsTrue(invoked);
+            }
+
+            [Test]
+            public void CancelationTokenRegisterCallbackIsInvoked3()
+            {
+                bool invoked = false;
+                CancelationToken.Canceled().Register(0, i => invoked = true);
+                Assert.IsTrue(invoked);
             }
 
             [Test]
