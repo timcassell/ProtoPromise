@@ -68,12 +68,14 @@ jobs:
           sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
       - name: Run tests
+        id: tests
         uses: game-ci/unity-test-runner@v2 #timcassell/unity-test-runner@targetPlatform
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}
         with:
           projectPath: ProtoPromise_Unity
           testMode: ${{ matrix.testMode }}
+          artifactsPath: artifacts/unity-test-results/${{ matrix.buildTarget }}-${{ matrix.scriptingRuntime }}-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.pooling }}
         timeout-minutes: 90
 
       # Workaround for NUnit XML (see https://github.com/dorny/test-reporter/issues/98#issuecomment-867106931)
@@ -91,7 +93,7 @@ jobs:
       - name: Transform NUnit3 to JUnit
         if: always()
         run: |
-          Get-ChildItem . -Filter artifacts/*.xml | Foreach-Object {
+          Get-ChildItem . -Filter ${{ steps.tests.outputs.artifactsPath }}/*.xml | Foreach-Object {
             $xml = Resolve-Path $_.FullName
             $output = Join-Path ($pwd) ($_.BaseName + '_junit.xml')
             $xslt = New-Object System.Xml.Xsl.XslCompiledTransform;
@@ -111,4 +113,4 @@ jobs:
         if: always()
         with:
           name: Test results
-          path: artifacts
+          path: ${{ steps.tests.outputs.artifactsPath }}
