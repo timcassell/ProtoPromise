@@ -822,9 +822,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryRetainUser(CancelationRef _this, short tokenId)
+            internal static bool TryRetainUser(CancelationRef _this, short tokenId, bool isCanceled)
             {
-                return _this != null && _this.TryRetainUser(tokenId);
+                return isCanceled | (_this != null && _this.TryRetainUser(tokenId));
             }
 
             [MethodImpl(InlineOption)]
@@ -839,9 +839,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryReleaseUser(CancelationRef _this, short tokenId)
+            internal static bool TryReleaseUser(CancelationRef _this, short tokenId, bool isCanceled)
             {
-                return _this != null && _this.TryReleaseUser(tokenId);
+                return isCanceled | (_this != null && _this.TryReleaseUser(tokenId));
             }
 
             [MethodImpl(InlineOption)]

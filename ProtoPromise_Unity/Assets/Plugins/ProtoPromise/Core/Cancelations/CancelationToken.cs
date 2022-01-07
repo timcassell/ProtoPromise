@@ -183,13 +183,13 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Try to retain this instance. Return true if successful, false otherwise.
+        /// Try to retain this instance. Returns true if successful, false otherwise.
         /// <para/>If successful, allows continued use of this instance, even after the associated <see cref="CancelationSource"/> has been disposed, until this is released.
         /// If successful, this should be paired with a call to <see cref="Release"/>.
         /// </summary>
         public bool TryRetain()
         {
-            return Internal.CancelationRef.TryRetainUser(_ref, _id);
+            return Internal.CancelationRef.TryRetainUser(_ref, _id, _isCanceled);
         }
 
         /// <summary>
@@ -212,7 +212,7 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public void Release()
         {
-            if (!Internal.CancelationRef.TryReleaseUser(_ref, _id))
+            if (!Internal.CancelationRef.TryReleaseUser(_ref, _id, _isCanceled))
             {
                 throw new InvalidOperationException("CancelationToken.Release: you must call Retain before you call Release.", Internal.GetFormattedStacktrace(1));
             }
