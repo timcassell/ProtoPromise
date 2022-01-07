@@ -374,9 +374,6 @@ namespace ProtoPromiseTests.Threading
                 promiseCompleter.Setup();
             };
             bool waitForSubscribeTeardown = !waitForSubscribeSetup && completePlace == ActionPlace.InTeardown;
-            bool waitForReportTeardown = !waitForReportSetup && completePlace == ActionPlace.InTeardown
-                && (subscribePlace != ActionPlace.Parallel || reportPlace != ActionPlace.Parallel)
-                && (waitForSubscribeSetup || !waitForSubscribeTeardown || reportPlace == ActionPlace.InTeardown);
             Action teardownAction = () =>
             {
                 progressSubscriber.Teardown();
