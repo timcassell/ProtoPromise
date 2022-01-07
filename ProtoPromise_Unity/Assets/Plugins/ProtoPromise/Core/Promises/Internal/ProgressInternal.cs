@@ -1104,7 +1104,7 @@ namespace Proto.Promises
                 {
                     // If this is coming from hookup progress, we can possibly report without updating the progress.
                     // This is to handle race condition on separate threads.
-                    if ((_progressAndLocker._currentProgress.InterlockedTrySet(progress) | !progress.HasReported)
+                    if ((_progressAndLocker._currentProgress.InterlockedTrySet(progress) | !progress.IsPriority)
                         && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();
