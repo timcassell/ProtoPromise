@@ -75,7 +75,6 @@ jobs:
         with:
           projectPath: ProtoPromise_Unity
           testMode: ${{ matrix.testMode }}
-          artifactsPath: artifacts/unity-test-results/${{ matrix.buildTarget }}-${{ matrix.scriptingRuntime }}-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.pooling }}
         timeout-minutes: 90
 
       # Workaround for NUnit XML (see https://github.com/dorny/test-reporter/issues/98#issuecomment-867106931)
@@ -93,7 +92,7 @@ jobs:
       - name: Transform NUnit3 to JUnit
         if: always()
         run: |
-          Get-ChildItem . -Filter ${{ steps.tests.outputs.artifactsPath }}/*.xml | Foreach-Object {
+          Get-ChildItem . -Filter artifacts/*.xml | Foreach-Object {
             $xml = Resolve-Path $_.FullName
             $output = Join-Path ($pwd) ($_.BaseName + '_junit.xml')
             $xslt = New-Object System.Xml.Xsl.XslCompiledTransform;
@@ -112,5 +111,5 @@ jobs:
       - uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: Test results
-          path: ${{ steps.tests.outputs.artifactsPath }}
+          name: unity-test-results-${{ matrix.buildTarget }}-${{ matrix.scriptingRuntime }}-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.pooling }}
+          path: artifacts
