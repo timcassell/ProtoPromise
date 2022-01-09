@@ -971,7 +971,7 @@ namespace Proto.Promises
                     IProgressListener progressListener = Interlocked.Exchange(ref _progressListener, null);
                     if (progressListener != null)
                     {
-                        WaitWhileProgressFlags(PromiseFlags.Reporting | PromiseFlags.SettingInitial);
+                        WaitWhileProgressFlags(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial | PromiseFlags.SettingInitial);
                         if (state == Promise.State.Resolved)
                         {
                             progressListener.ResolveOrSetProgress(this, progress, ref executionScheduler);
@@ -988,7 +988,7 @@ namespace Proto.Promises
                     PromiseSingleAwaitWithProgress setter = this;
                     do
                     {
-                        PromiseFlags setFlag = progress.IsPriority ? PromiseFlags.Reporting : PromiseFlags.SettingInitial;
+                        PromiseFlags setFlag = progress.IsPriority ? PromiseFlags.ReportingPriority : PromiseFlags.ReportingInitial;
                         if ((setter._smallFields.InterlockedSetFlags(setFlag) & setFlag) != 0)
                         {
                             break;
@@ -1082,7 +1082,7 @@ namespace Proto.Promises
                     {
                         return;
                     }
-                    WaitWhileProgressFlags(PromiseFlags.Reporting | PromiseFlags.SettingInitial);
+                    WaitWhileProgressFlags(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial | PromiseFlags.SettingInitial);
 
                     Fixed32 progress = _progressAndLocker._depthAndProgress.GetIncrementedWholeTruncatedForResolve();
                     if (state == Promise.State.Resolved)

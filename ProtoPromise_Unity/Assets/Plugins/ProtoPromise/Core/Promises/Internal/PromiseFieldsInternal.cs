@@ -146,8 +146,9 @@ namespace Proto.Promises
             InProgressQueue = 1 << 2,
             Subscribing = 1 << 3,
             SettingInitial = 1 << 4,
-            Reporting = 1 << 5,
-            Subscribed = 1 << 6,
+            ReportingPriority = 1 << 5,
+            ReportingInitial = 1 << 6,
+            Subscribed = 1 << 7,
 
             All = byte.MaxValue
         }
