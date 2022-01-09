@@ -1106,7 +1106,7 @@ namespace ProtoPromiseTests.APIs
             var promise = deferred.Promise.Preserve();
             ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
 
-            TimeSpan timeout = TimeSpan.FromSeconds(MultiProgressCount);
+            TimeSpan timeout = TimeSpan.FromSeconds(20);
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
@@ -1162,7 +1162,7 @@ namespace ProtoPromiseTests.APIs
             var promise = deferred.Promise.Preserve();
             ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
 
-            TimeSpan timeout = TimeSpan.FromSeconds(MultiProgressCount);
+            TimeSpan timeout = TimeSpan.FromSeconds(20);
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {

@@ -140,7 +140,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        private readonly TimeSpan timeout = TimeSpan.FromSeconds(1);
+        private readonly TimeSpan timeout = TimeSpan.FromSeconds(20);
 
         // promise
         //     .Then(() => otherPromise.WaitAsync(SynchronizationOption))
