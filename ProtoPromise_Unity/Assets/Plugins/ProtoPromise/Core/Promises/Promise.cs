@@ -185,20 +185,6 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Add a cancel callback. Returns a new <see cref="Promise"/> that inherits the state of <see cref="this"/> and can be awaited once.
-        /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
-        /// </summary>
-        public Promise CatchCancelation(Action onCanceled, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            ValidateOperation(1);
-            ValidateArgument(onCanceled, "onCanceled", 1);
-
-            return Internal.PromiseRef.CallbackHelper.AddCancel(_target, new Internal.PromiseRef.DelegateCancel(onCanceled), cancelationToken);
-        }
-
-        /// <summary>
         /// Add a finally callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onFinally"/> will be invoked.
         /// <para/>If <paramref name="onFinally"/> throws an exception, the new <see cref="Promise"/> will be rejected with that exception,
@@ -208,6 +194,40 @@ namespace Proto.Promises
         public Promise Finally(Action onFinally)
         {
             return _target.Finally(onFinally);
+        }
+
+        /// <summary>
+        /// Add a cancel callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is canceled, <paramref name="onCanceled"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
+        /// </summary>
+        public Promise CatchCancelation(Action onCanceled, CancelationToken cancelationToken = default(CancelationToken))
+        {
+            ValidateOperation(1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddCancel(_target, Internal.PromiseRef.DelegateWrapper.Create(onCanceled), cancelationToken);
+        }
+
+        /// <summary>
+        /// Add a cancel callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is canceled, <paramref name="onCanceled"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
+        /// </summary>
+        public Promise CatchCancelation(Func<Promise> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
+        {
+            ValidateOperation(1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddCancelWait(_target, Internal.PromiseRef.DelegateWrapper.Create(onCanceled), cancelationToken);
         }
 
         #region Resolve Callbacks
@@ -790,20 +810,6 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Capture a value and add a cancel callback. Returns a new <see cref="Promise"/> that inherits the state of <see cref="this"/> and can be awaited once.
-        /// <para/>If/when this instance is canceled, <paramref name="onCanceled"/> will be invoked with <paramref name="cancelCaptureValue"/>.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onCanceled"/> will not be invoked.
-        /// </summary>
-        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            ValidateOperation(1);
-            ValidateArgument(onCanceled, "onCanceled", 1);
-
-            return Internal.PromiseRef.CallbackHelper.AddCancel(_target, new Internal.PromiseRef.DelegateCaptureCancel<TCaptureCancel>(cancelCaptureValue, onCanceled), cancelationToken);
-        }
-
-        /// <summary>
         /// Capture a value and add a finally callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onFinally"/> will be invoked with <paramref name="finallyCaptureValue"/>.
         /// <para/>If <paramref name="onFinally"/> throws an exception, the new <see cref="Promise"/> will be rejected with that exception,
@@ -813,6 +819,40 @@ namespace Proto.Promises
         public Promise Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
             return _target.Finally(finallyCaptureValue, onFinally);
+        }
+
+        /// <summary>
+        /// Capture a value and add a cancel callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is canceled, <paramref name="onCanceled"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
+        /// </summary>
+        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
+        {
+            ValidateOperation(1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddCancel(_target, Internal.PromiseRef.DelegateWrapper.Create(cancelCaptureValue, onCanceled), cancelationToken);
+        }
+
+        /// <summary>
+        /// Capture a value and add a cancel callback. Returns a new <see cref="Promise"/>.
+        /// <para/>If/when this is canceled, <paramref name="onCanceled"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
+        /// </summary>
+        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Func<TCaptureCancel, Promise> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
+        {
+            ValidateOperation(1);
+            ValidateArgument(onCanceled, "onCanceled", 1);
+
+            return Internal.PromiseRef.CallbackHelper.AddCancelWait(_target, Internal.PromiseRef.DelegateWrapper.Create(cancelCaptureValue, onCanceled), cancelationToken);
         }
 
         #region Resolve Callbacks

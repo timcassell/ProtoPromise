@@ -655,9 +655,9 @@ namespace Proto.Promises
                 }
                 bool validOrder;
                 State state = (State) _state;
-                isCanceled = state == State.Canceled;
                 if (state != State.Pending)
                 {
+                    isCanceled = state == State.Canceled;
                     validOrder = false;
                 }
                 else
@@ -666,7 +666,7 @@ namespace Proto.Promises
                     {
                         state = (State) _state;
                         isCanceled = state == State.Canceled;
-                        validOrder = !isCanceled && IndexOf(order) >= 0;
+                        validOrder = state == State.Pending && IndexOf(order) >= 0;
                     }
                 }
                 ReleaseAfterRetainInternal();
@@ -822,9 +822,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryRetainUser(CancelationRef _this, short tokenId)
+            internal static bool TryRetainUser(CancelationRef _this, short tokenId, bool isCanceled)
             {
-                return _this != null && _this.TryRetainUser(tokenId);
+                return isCanceled | (_this != null && _this.TryRetainUser(tokenId));
             }
 
             [MethodImpl(InlineOption)]
@@ -839,9 +839,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryReleaseUser(CancelationRef _this, short tokenId)
+            internal static bool TryReleaseUser(CancelationRef _this, short tokenId, bool isCanceled)
             {
-                return _this != null && _this.TryReleaseUser(tokenId);
+                return isCanceled | (_this != null && _this.TryReleaseUser(tokenId));
             }
 
             [MethodImpl(InlineOption)]

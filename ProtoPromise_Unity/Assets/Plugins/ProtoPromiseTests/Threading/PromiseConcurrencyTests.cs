@@ -265,6 +265,8 @@ namespace ProtoPromiseTests.Threading
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
+        private static readonly TimeSpan progressConcurrencyTimeout = TimeSpan.FromSeconds(20);
+
         [Test]
         public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReportedConcurrently_Pending_void(
             [Values] ActionPlace subscribePlace,
@@ -374,9 +376,6 @@ namespace ProtoPromiseTests.Threading
                 promiseCompleter.Setup();
             };
             bool waitForSubscribeTeardown = !waitForSubscribeSetup && completePlace == ActionPlace.InTeardown;
-            bool waitForReportTeardown = !waitForReportSetup && completePlace == ActionPlace.InTeardown
-                && (subscribePlace != ActionPlace.Parallel || reportPlace != ActionPlace.Parallel)
-                && (waitForSubscribeSetup || !waitForSubscribeTeardown || reportPlace == ActionPlace.InTeardown);
             Action teardownAction = () =>
             {
                 progressSubscriber.Teardown();
@@ -384,7 +383,7 @@ namespace ProtoPromiseTests.Threading
                 {
                     for (int i = 0; i < progressHelpers.Length; ++i)
                     {
-                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
+                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, progressConcurrencyTimeout); // Only need to execute foreground the first time.
                         progressHelpers[i].PrepareForInvoke();
                     }
                 }
@@ -398,7 +397,7 @@ namespace ProtoPromiseTests.Threading
                 {
                     // Progress may have been invoked simultaneously, so we can't know what the progress value is here.
                     // We must only WaitForInvoke instead of AssertCurrentProgress.
-                    progressHelpers[i].MaybeWaitForInvoke(completeType == CompleteType.Resolve, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
+                    progressHelpers[i].MaybeWaitForInvoke(completeType == CompleteType.Resolve, i == 0, progressConcurrencyTimeout); // Only need to execute foreground the first time.
                     progressHelpers[i].MaybeExitLock();
                 }
                 AssertInvokes();
@@ -526,7 +525,7 @@ namespace ProtoPromiseTests.Threading
                 {
                     for (int i = 0; i < progressHelpers.Length; ++i)
                     {
-                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
+                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, progressConcurrencyTimeout); // Only need to execute foreground the first time.
                         progressHelpers[i].PrepareForInvoke();
                     }
                 }
@@ -540,7 +539,7 @@ namespace ProtoPromiseTests.Threading
                 {
                     // Progress may have been invoked simultaneously, so we can't know what the progress value is here.
                     // We must only WaitForInvoke instead of AssertCurrentProgress.
-                    progressHelpers[i].MaybeWaitForInvoke(completeType == CompleteType.Resolve, i == 0, TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount)); // Only need to execute foreground the first time.
+                    progressHelpers[i].MaybeWaitForInvoke(completeType == CompleteType.Resolve, i == 0, progressConcurrencyTimeout); // Only need to execute foreground the first time.
                     progressHelpers[i].MaybeExitLock();
                 }
                 AssertInvokes();

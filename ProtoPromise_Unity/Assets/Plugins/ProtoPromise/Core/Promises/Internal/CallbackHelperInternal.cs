@@ -415,6 +415,7 @@ namespace Proto.Promises
                     }
                     return new Promise<TResult>(promise, promise.Id, nextDepth);
                 }
+
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddResolveReject<TArgResolve, TDelegateReject, TResult>(Promise<TArgResolve> _this,
                     Delegate<TArgResolve, TResult> resolver,
@@ -883,25 +884,70 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddCancel<TCanceler, TResult>(Promise<TResult> _this, TCanceler canceler, CancelationToken cancelationToken)
-                    where TCanceler : IDelegateSimple
+                internal static Promise<TResult> AddCancel<TDelegateCancel, TResult>(Promise<TResult> _this, TDelegateCancel canceler, CancelationToken cancelationToken)
+                    where TDelegateCancel : IDelegateResolveOrCancel
                 {
+                    PromiseRef promise;
                     if (_this._ref == null)
                     {
-                        return _this;
-                    }
-
-                    PromiseRef promise;
-                    _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                    if (cancelationToken.CanBeCanceled)
-                    {
-                        promise = CancelablePromiseCancel<TCanceler>.GetOrCreate(canceler, cancelationToken);
-                        _this._ref.HookupNewCancelablePromise(promise);
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseCancel<TDelegateCancel>.GetOrCreate(canceler, cancelationToken);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return _this;
+                        }
                     }
                     else
                     {
-                        promise = PromiseCancel<TCanceler>.GetOrCreate(canceler);
-                        _this._ref.HookupNewPromise(promise);
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseCancel<TDelegateCancel>.GetOrCreate(canceler, cancelationToken);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseCancel<TDelegateCancel>.GetOrCreate(canceler);
+                            _this._ref.HookupNewPromise(promise);
+                        }
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddCancelWait<TDelegateCancel, TResult>(Promise<TResult> _this, TDelegateCancel canceler, CancelationToken cancelationToken)
+                    where TDelegateCancel : IDelegateResolveOrCancelPromise
+                {
+                    int nextDepth = GetNextDepth(_this.Depth);
+                    PromiseRef promise;
+                    if (_this._ref == null)
+                    {
+                        if (cancelationToken.IsCancelationRequested)
+                        {
+                            promise = CancelablePromiseCancelPromise<TDelegateCancel>.GetOrCreate(canceler, cancelationToken, nextDepth);
+                            promise._smallFields.InterlockedTryReleaseComplete();
+                        }
+                        else
+                        {
+                            return _this;
+                        }
+                    }
+                    else
+                    {
+                        _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
+                        if (cancelationToken.CanBeCanceled)
+                        {
+                            promise = CancelablePromiseCancelPromise<TDelegateCancel>.GetOrCreate(canceler, cancelationToken, nextDepth);
+                            _this._ref.HookupNewCancelablePromise(promise);
+                        }
+                        else
+                        {
+                            promise = PromiseCancelPromise<TDelegateCancel>.GetOrCreate(canceler, nextDepth);
+                            _this._ref.HookupNewPromise(promise);
+                        }
                     }
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }

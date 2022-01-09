@@ -68,6 +68,7 @@ jobs:
           sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
       - name: Run tests
+        id: tests
         uses: game-ci/unity-test-runner@v2 #timcassell/unity-test-runner@targetPlatform
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}
@@ -110,5 +111,5 @@ jobs:
       - uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: Test results
+          name: unity-test-results-${{ matrix.buildTarget }}-${{ matrix.scriptingRuntime }}-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.pooling }}
           path: artifacts
