@@ -12,7 +12,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Disabled Standalone and WebGL as they do not work in a docker image.
         buildTarget: [Standalone, WebGL, Android]
         scriptingRuntime: [Net3.5, Net4.x]
         scriptingBackend: [Mono, IL2CPP]
