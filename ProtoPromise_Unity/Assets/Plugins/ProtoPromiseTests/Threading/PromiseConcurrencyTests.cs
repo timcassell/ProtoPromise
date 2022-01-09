@@ -265,7 +265,7 @@ namespace ProtoPromiseTests.Threading
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
-        private static readonly TimeSpan progressConcurrencyTimeout = TimeSpan.FromSeconds(20);
+        private static readonly TimeSpan progressConcurrencyTimeout = TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount);
 
         [Test]
         public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReportedConcurrently_Pending_void(
