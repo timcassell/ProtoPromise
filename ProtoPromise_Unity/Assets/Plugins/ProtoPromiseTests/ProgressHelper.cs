@@ -82,7 +82,7 @@ namespace ProtoPromiseTests
                         }
                         if (!Monitor.Wait(_locker, waitTimeout))
                         {
-                            throw new TimeoutException("Progress was not invoked after " + waitTimeout);
+                            throw new TimeoutException("Progress was not invoked after " + waitTimeout + ", _currentProgress: " + _currentProgress + ", current thread is background: " + Thread.CurrentThread.IsBackground);
                         }
                     }
                 }
@@ -91,14 +91,21 @@ namespace ProtoPromiseTests
 
         public void AssertCurrentProgress(float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
-            float currentProgress = GetCurrentProgress(waitForInvoke, executeForeground, timeout);
-            if (float.IsNaN(expectedProgress))
+            try
             {
-                Assert.IsNaN(currentProgress);
+                float currentProgress = GetCurrentProgress(waitForInvoke, executeForeground, timeout);
+                if (float.IsNaN(expectedProgress))
+                {
+                    Assert.IsNaN(currentProgress);
+                }
+                else
+                {
+                    Assert.AreEqual(expectedProgress, currentProgress, TestHelper.progressEpsilon);
+                }
             }
-            else
+            catch (TimeoutException e)
             {
-                Assert.AreEqual(expectedProgress, currentProgress, TestHelper.progressEpsilon);
+                throw new TimeoutException("expectedProgress: " + expectedProgress + ", executeForeground: " + executeForeground, e);
             }
         }
 
