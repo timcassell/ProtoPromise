@@ -738,7 +738,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class PromiseResolve<TResolver> : PromiseSingleAwait
-                where TResolver : IDelegateResolve
+                where TResolver : IDelegateResolveOrCancel
             {
                 private PromiseResolve() { }
 
@@ -765,11 +765,6 @@ namespace Proto.Promises
                     if (valueContainer.GetState() == Promise.State.Resolved)
                     {
                         resolveCallback.InvokeResolver(valueContainer, this, ref executionScheduler);
-                        //TArg arg = valueContainer.GetValue<TArg>();
-                        //TResult result = resolveCallback.Invoke(arg);
-                        //valueContainer.Release();
-                        //ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
-                        //return;
                     }
                     else
                     {
@@ -783,7 +778,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class PromiseResolvePromise<TResolver> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
+                where TResolver : IDelegateResolveOrCancelPromise
             {
                 private PromiseResolvePromise() { }
 
@@ -817,11 +812,6 @@ namespace Proto.Promises
                     if (valueContainer.GetState() == Promise.State.Resolved)
                     {
                         resolveCallback.InvokeResolver(valueContainer, this, ref executionScheduler);
-                        //TArg arg = valueContainer.GetValue<TArg>();
-                        //Promise<TResult> result = resolveCallback.Invoke(arg);
-                        //WaitFor(result, ref executionScheduler);
-                        //valueContainer.Release();
-                        //return;
                     }
                     else
                     {
@@ -835,7 +825,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class PromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait
-                where TResolver : IDelegateResolve
+                where TResolver : IDelegateResolveOrCancel
                 where TRejecter : IDelegateReject
             {
                 private PromiseResolveReject() { }
@@ -867,25 +857,12 @@ namespace Proto.Promises
                     if (state == Promise.State.Resolved)
                     {
                         resolveCallback.InvokeResolver(valueContainer, this, ref executionScheduler);
-                        //TArgResolve arg = valueContainer.GetValue<TArgResolve>();
-                        //TResult result = resolveCallback.Invoke(arg);
-                        //valueContainer.Release();
-                        //ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
-                        //return;
                     }
                     else if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
                         suppressRejection = true;
                         rejectCallback.InvokeRejecter(valueContainer, this, ref executionScheduler);
-                        //TArgReject arg;
-                        //if (valueContainer.TryGetValue(out arg))
-                        //{
-                        //    TResult result = rejectCallback.Invoke(arg);
-                        //    valueContainer.Release();
-                        //    ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
-                        //    return;
-                        //}
                     }
                     else
                     {
@@ -899,7 +876,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
+                where TResolver : IDelegateResolveOrCancelPromise
                 where TRejecter : IDelegateRejectPromise
             {
                 private PromiseResolveRejectPromise() { }
@@ -938,25 +915,12 @@ namespace Proto.Promises
                     if (state == Promise.State.Resolved)
                     {
                         resolveCallback.InvokeResolver(valueContainer, this, ref executionScheduler);
-                        //TArgResolve arg = valueContainer.GetValue<TArgResolve>();
-                        //Promise<TResult> result = resolveCallback.Invoke(arg);
-                        //WaitFor(result, ref executionScheduler);
-                        //valueContainer.Release();
-                        //return;
                     }
                     else if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
                         suppressRejection = true;
                         rejectCallback.InvokeRejecter(valueContainer, this, ref executionScheduler);
-                        //TArgReject arg;
-                        //if (valueContainer.TryGetValue(out arg))
-                        //{
-                        //    Promise<TResult> result = rejectCallback.Invoke(arg);
-                        //    WaitFor(result, ref executionScheduler);
-                        //    valueContainer.Release();
-                        //    return;
-                        //}
                     }
                     else
                     {
@@ -1076,7 +1040,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class PromiseCancel<TCanceler> : PromiseSingleAwait, ITreeHandleable
-                where TCanceler : IDelegateSimple
+                where TCanceler : IDelegateResolveOrCancel
             {
                 private PromiseCancel() { }
 
@@ -1096,31 +1060,64 @@ namespace Proto.Promises
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
-                public override void Handle(ref ExecutionScheduler executionScheduler)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
-                    ThrowIfInPool(this);
-                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
-
-                    if (valueContainer.GetState() != Promise.State.Canceled)
+                    var callback = _canceler;
+                    _canceler = default(TCanceler);
+                    if (valueContainer.GetState() == Promise.State.Canceled)
                     {
+                        callback.InvokeResolver(valueContainer, this, ref executionScheduler);
+                    }
+                    else
+                    {
+                        HandleSelf(valueContainer, ref executionScheduler);
+                    }
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            private sealed partial class PromiseCancelPromise<TCanceler> : PromiseWaitPromise
+                where TCanceler : IDelegateResolveOrCancelPromise
+            {
+                private PromiseCancelPromise() { }
+
+                [MethodImpl(InlineOption)]
+                internal static PromiseCancelPromise<TCanceler> GetOrCreate(TCanceler resolver, int depth)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseCancelPromise<TCanceler>>()
+                        ?? new PromiseCancelPromise<TCanceler>();
+                    promise.Reset(depth);
+                    promise._canceler = resolver;
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
+                {
+                    if (_canceler.IsNull)
+                    {
+                        // The returned promise is handling this.
                         HandleSelf(valueContainer, ref executionScheduler);
                         return;
                     }
 
                     var callback = _canceler;
                     _canceler = default(TCanceler);
-                    SetCurrentInvoker(this);
-                    try
+                    if (valueContainer.GetState() == Promise.State.Canceled)
                     {
-                        callback.Invoke();
+                        callback.InvokeResolver(valueContainer, this, ref executionScheduler);
                     }
-                    catch (Exception e)
+                    else
                     {
-                        AddRejectionToUnhandledStack(e, this);
+                        HandleSelf(valueContainer, ref executionScheduler);
                     }
-                    ClearCurrentInvoker();
-
-                    HandleSelf(valueContainer, ref executionScheduler);
                 }
             }
 

@@ -153,7 +153,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class CancelablePromiseResolve<TResolver> : PromiseSingleAwait, ITreeHandleable, ICancelable
-                where TResolver : IDelegateResolve
+                where TResolver : IDelegateResolveOrCancel
             {
                 private CancelablePromiseResolve() { }
 
@@ -211,7 +211,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise, ITreeHandleable, ICancelable
-                where TResolver : IDelegateResolvePromise
+                where TResolver : IDelegateResolveOrCancelPromise
             {
                 private CancelablePromiseResolvePromise() { }
 
@@ -277,7 +277,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait, ITreeHandleable, ICancelable
-                where TResolver : IDelegateResolve
+                where TResolver : IDelegateResolveOrCancel
                 where TRejecter : IDelegateReject
             {
                 private CancelablePromiseResolveReject() { }
@@ -346,7 +346,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise, ITreeHandleable, ICancelable
-                where TResolver : IDelegateResolvePromise
+                where TResolver : IDelegateResolveOrCancelPromise
                 where TRejecter : IDelegateRejectPromise
             {
                 private CancelablePromiseResolveRejectPromise() { }
@@ -532,7 +532,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class CancelablePromiseCancel<TCanceler> : PromiseSingleAwait, ITreeHandleable, ICancelable
-                where TCanceler : IDelegateSimple
+                where TCanceler : IDelegateResolveOrCancel
             {
                 private CancelablePromiseCancel() { }
 
@@ -550,6 +550,8 @@ namespace Proto.Promises
                 protected override void Dispose()
                 {
                     base.Dispose();
+                    _cancelationHelper = default(CancelationHelper);
+                    _canceler = default(TCanceler);
                     ObjectPool<ITreeHandleable>.MaybeRepool(this);
                 }
 
@@ -564,39 +566,83 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
-                public override void Handle(ref ExecutionScheduler executionScheduler)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
+                {
+                    var callback = _canceler;
+                    if (valueContainer.GetState() == Promise.State.Canceled)
+                    {
+                        callback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
+                    }
+                    else if (_cancelationHelper.TryUnregister(this))
+                    {
+                        HandleSelf(valueContainer, ref executionScheduler);
+                    }
+                }
+
+                void ICancelable.Cancel()
+                {
+                    _cancelationHelper.SetCanceled(this);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            private sealed partial class CancelablePromiseCancelPromise<TCanceler> : PromiseWaitPromise, ITreeHandleable, ICancelable
+                where TCanceler : IDelegateResolveOrCancelPromise
+            {
+                private CancelablePromiseCancelPromise() { }
+
+                [MethodImpl(InlineOption)]
+                internal static CancelablePromiseCancelPromise<TCanceler> GetOrCreate(TCanceler canceler, CancelationToken cancelationToken, int depth)
+                {
+                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseCancelPromise<TCanceler>>()
+                        ?? new CancelablePromiseCancelPromise<TCanceler>();
+                    promise.Reset(depth);
+                    promise._canceler = canceler;
+                    promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
+                    return promise;
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationHelper = default(CancelationHelper);
+                    _canceler = default(TCanceler);
+                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                }
+
+                protected override void OnHookupFailed()
+                {
+                    _cancelationHelper.MaybeReleaseComplete(this);
+                }
+
+                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+                    _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
+                }
 
-                    if (valueContainer.GetState() != Promise.State.Canceled)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
+                {
+                    if (_canceler.IsNull)
                     {
-                        if (_cancelationHelper.TryUnregister(this))
-                        {
-                            HandleSelf(valueContainer, ref executionScheduler);
-                        }
+                        // The returned promise is handling this.
+                        HandleSelf(valueContainer, ref executionScheduler);
                         return;
                     }
 
                     var callback = _canceler;
                     _canceler = default(TCanceler);
-                    SetCurrentInvoker(this);
-                    try
+                    if (valueContainer.GetState() == Promise.State.Canceled)
                     {
-                        if (!_cancelationHelper.TryUnregister(this))
-                        {
-                            ClearCurrentInvoker();
-                            return;
-                        }
-                        callback.Invoke();
+                        callback.InvokeResolver(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
                     }
-                    catch (Exception e)
+                    else if (_cancelationHelper.TryUnregister(this))
                     {
-                        AddRejectionToUnhandledStack(e, this);
+                        RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        valueContainer.Release();
                     }
-                    ClearCurrentInvoker();
-
-                    HandleSelf(valueContainer, ref executionScheduler);
                 }
 
                 void ICancelable.Cancel()

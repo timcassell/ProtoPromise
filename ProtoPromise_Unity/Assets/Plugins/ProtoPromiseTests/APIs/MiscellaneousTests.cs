@@ -771,12 +771,12 @@ namespace ProtoPromiseTests.APIs
             bool resolved = false;
 
             Promise.Resolved(expected)
-                .CatchCancelation(() => Assert.Fail("Promise was canceled when it should have been resolved"))
                 .Then(val =>
                 {
                     Assert.AreEqual(expected, val);
                     resolved = true;
                 }, () => Assert.Fail("Promise was rejected when it should have been resolved"))
+                .CatchCancelation(() => Assert.Fail("Promise was canceled when it should have been resolved"))
                 .Forget();
 
             Assert.IsTrue(resolved);
@@ -830,7 +830,6 @@ namespace ProtoPromiseTests.APIs
                 {
                     canceled = true;
                 })
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"), () => Assert.Fail("Promise was rejected when it should have been canceled"))
                 .Forget();
 
             Assert.IsTrue(canceled);
@@ -846,7 +845,6 @@ namespace ProtoPromiseTests.APIs
                 {
                     canceled = true;
                 })
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled"), () => Assert.Fail("Promise was rejected when it should have been canceled"))
                 .Forget();
 
             Assert.IsTrue(canceled);

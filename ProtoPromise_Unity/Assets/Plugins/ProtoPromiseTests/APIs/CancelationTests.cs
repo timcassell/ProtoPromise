@@ -641,6 +641,22 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
+            public void CancelationTokenCanceledMaybeBeRetainedAndReleased0()
+            {
+                CancelationToken cancelationToken = CancelationToken.Canceled();
+                cancelationToken.Retain();
+                cancelationToken.Release();
+            }
+
+            [Test]
+            public void CancelationTokenCanceledMaybeBeRetainedAndReleased1()
+            {
+                CancelationToken cancelationToken = CancelationToken.Canceled();
+                Assert.IsTrue(cancelationToken.TryRetain());
+                cancelationToken.Release();
+            }
+
+            [Test]
             public void RetainedCancelationTokenFromSourceCanBeCanceledAfterSourceIsDisposed()
             {
                 CancelationSource cancelationSource = CancelationSource.New();

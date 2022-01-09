@@ -146,8 +146,9 @@ namespace Proto.Promises
             InProgressQueue = 1 << 2,
             Subscribing = 1 << 3,
             SettingInitial = 1 << 4,
-            Reporting = 1 << 5,
-            Subscribed = 1 << 6,
+            ReportingPriority = 1 << 5,
+            ReportingInitial = 1 << 6,
+            Subscribed = 1 << 7,
 
             All = byte.MaxValue
         }
@@ -272,19 +273,19 @@ namespace Proto.Promises
 
             #region Non-cancelable Promises
             partial class PromiseResolve<TResolver> : PromiseSingleAwait
-                where TResolver : IDelegateResolve
+                where TResolver : IDelegateResolveOrCancel
             {
                 private TResolver _resolver;
             }
 
             partial class PromiseResolvePromise<TResolver> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
+                where TResolver : IDelegateResolveOrCancelPromise
             {
                 private TResolver _resolver;
             }
 
             partial class PromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait
-                where TResolver : IDelegateResolve
+                where TResolver : IDelegateResolveOrCancel
                 where TRejecter : IDelegateReject
             {
                 private TResolver _resolver;
@@ -292,7 +293,7 @@ namespace Proto.Promises
             }
 
             partial class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
+                where TResolver : IDelegateResolveOrCancelPromise
                 where TRejecter : IDelegateRejectPromise
             {
                 private TResolver _resolver;
@@ -318,7 +319,13 @@ namespace Proto.Promises
             }
 
             partial class PromiseCancel<TCanceler> : PromiseSingleAwait
-                where TCanceler : IDelegateSimple
+                where TCanceler : IDelegateResolveOrCancel
+            {
+                private TCanceler _canceler;
+            }
+
+            partial class PromiseCancelPromise<TCanceler> : PromiseWaitPromise
+                where TCanceler : IDelegateResolveOrCancelPromise
             {
                 private TCanceler _canceler;
             }
@@ -337,21 +344,21 @@ namespace Proto.Promises
             }
 
             partial class CancelablePromiseResolve<TResolver> : PromiseSingleAwait
-                where TResolver : IDelegateResolve
+                where TResolver : IDelegateResolveOrCancel
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
             }
 
             partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
+                where TResolver : IDelegateResolveOrCancelPromise
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
             }
 
             partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait
-                where TResolver : IDelegateResolve
+                where TResolver : IDelegateResolveOrCancel
                 where TRejecter : IDelegateReject
             {
                 private CancelationHelper _cancelationHelper;
@@ -360,7 +367,7 @@ namespace Proto.Promises
             }
 
             partial class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
-                where TResolver : IDelegateResolvePromise
+                where TResolver : IDelegateResolveOrCancelPromise
                 where TRejecter : IDelegateRejectPromise
             {
                 private CancelationHelper _cancelationHelper;
@@ -383,7 +390,14 @@ namespace Proto.Promises
             }
 
             partial class CancelablePromiseCancel<TCanceler> : PromiseSingleAwait
-                where TCanceler : IDelegateSimple
+                where TCanceler : IDelegateResolveOrCancel
+            {
+                private CancelationHelper _cancelationHelper;
+                private TCanceler _canceler;
+            }
+
+            partial class CancelablePromiseCancelPromise<TCanceler> : PromiseWaitPromise
+                where TCanceler : IDelegateResolveOrCancelPromise
             {
                 private CancelationHelper _cancelationHelper;
                 private TCanceler _canceler;
