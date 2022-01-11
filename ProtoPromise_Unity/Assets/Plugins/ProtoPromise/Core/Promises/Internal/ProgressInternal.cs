@@ -21,28 +21,35 @@ namespace Proto.Promises
 {
     public static class Dummy
     {
-        private static readonly System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        private static readonly System.Collections.Generic.List<ValueTuple<Thread, string, object[]>> lines = new System.Collections.Generic.List<ValueTuple<Thread, string, object[]>>();
 
         public static void Clear()
         {
-            lock(sb)
+            lock(lines)
             {
-                sb.Length = 0;
+                lines.Clear();
             }
         }
 
-        public static void WriteLine(string line)
+        public static void WriteLine(string format, params object[] args)
         {
-            lock(sb)
+            lock(lines)
             {
-                sb.AppendLine("Background: " + System.Threading.Thread.CurrentThread.IsBackground + ", " + line);
+                lines.Add(ValueTuple.Create(Thread.CurrentThread, format, args));
             }
         }
 
         public static string Read()
         {
-            lock(sb)
+            lock(lines)
             {
+                var sb = new System.Text.StringBuilder();
+                foreach (var line in lines)
+                {
+                    sb.AppendLine();
+                    sb.AppendFormat("Thread ID: " + line.Item1.ManagedThreadId + ", Background: " + line.Item1.IsBackground + ", " + line.Item2, line.Item3);
+
+                }
                 return sb.ToString();
             }
         }
@@ -738,7 +745,7 @@ namespace Proto.Promises
                     {
                         CallbackHelper.InvokeAndCatchProgress(_progress, value, this);
                     }
-                    Dummy.WriteLine("PromiseProgress id: " + id + " Invoke, invoke: " + invoke + ", IsComplete: " + IsComplete + ", IsCanceled: " + IsCanceled + ", progress: " + progress);
+                    Dummy.WriteLine("PromiseProgress id: {0} Invoke, invoke: {1}, IsComplete: {2}, IsCanceled: {3}, progress: {4}", id, invoke, IsComplete, IsCanceled, progress);
                     MaybeDispose();
                 }
 
@@ -764,11 +771,11 @@ namespace Proto.Promises
                         }
                         //else
                         {
-                            Dummy.WriteLine("PromiseProgress id: " + id + " TrySetProgress needsInvoke: " + needsInvoke + ", inProgressQueue: " + inProgressQueue + ", progress: " + progress + ", oldProgress: " + oldProgress);
+                            Dummy.WriteLine("PromiseProgress id: {0} TrySetProgress, needsInvoke: {1}, inProgressQueue: {2}, progress: {3}, oldProgress: {4}", id, needsInvoke, inProgressQueue, progress, oldProgress);
                         }
                         return true;
                     }
-                    Dummy.WriteLine("PromiseProgress id: " + id + " TrySetProgress needsInvoke: " + needsInvoke + ", progress: " + progress + ", oldProgress: " + oldProgress);
+                    Dummy.WriteLine("PromiseProgress id: {0} TrySetProgress, needsInvoke: {1}, progress: {2}, oldProgress: {3}", id, needsInvoke, progress, oldProgress);
                     return false;
                 }
 
@@ -842,7 +849,7 @@ namespace Proto.Promises
                     bool notInQueue = didSet && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0; // Was not already in progress queue?
                     //if (!notInQueue)
                     {
-                        Dummy.WriteLine("PromiseProgress id: " + id + " TrySetInitialProgressAndMarkInQueue didSet: " + didSet + ", notInQueue: " + notInQueue + ", progress: " + progress + ", oldProgress: " + oldProgress);
+                        Dummy.WriteLine("PromiseProgress id: {0} TrySetInitialProgressAndMarkInQueue, didSet: {1}, notInQueue: {2}, progress: {3}, oldProgress: {4}", id, didSet, notInQueue, progress, oldProgress);
                     }
                     return notInQueue;
                     //return _smallProgressFields._currentProgress.InterlockedTrySet(progress)
@@ -890,7 +897,7 @@ namespace Proto.Promises
                     {
                         CallbackHelper.InvokeAndCatchProgress(_progress, 1f, this);
                     }
-                    Dummy.WriteLine("PromiseProgress id: " + id + " Handle, invoke: " + invoke + ", state: " + state + ", didUnregister: " + didUnregister + ", IsCanceled: " + IsCanceled);
+                    Dummy.WriteLine("PromiseProgress id: {0} Handle, invoke: {1}, state: {2}, didUnregister: {3}, IsCanceled: {4}", id, invoke, state, didUnregister, IsCanceled);
                     State = state; // Set state after callback is executed to make sure it completes before the next waiter begins execution (in another thread).
                     HandleWaiter(valueContainer, ref executionScheduler);
                     HandleProgressListener(state, ref executionScheduler);
@@ -1054,7 +1061,7 @@ namespace Proto.Promises
                         PromiseFlags setFlag = progress.IsPriority ? PromiseFlags.ReportingPriority : PromiseFlags.ReportingInitial;
                         if ((setter._smallFields.InterlockedSetFlags(setFlag) & setFlag) != 0)
                         {
-                            Dummy.WriteLine("ReportProgress " + progress.ToDouble() + ", failed to set flag: " + setFlag);
+                            Dummy.WriteLine("PromiseSingleAwaitWithProgress ReportProgress, failed to set flag: {0} , progress: {1}", setFlag, progress);
                             break;
                         }
                         PromiseSingleAwaitWithProgress unsetter = setter;
@@ -1180,11 +1187,11 @@ namespace Proto.Promises
                         }
                         //else
                         {
-                            Dummy.WriteLine("PromiseMultiAwait SetProgress didSet: " + didSet + ", notInQueue: " + notInQueue + ", progress: " + progress + ", oldProgress: " + oldProgress);
+                            Dummy.WriteLine("PromiseMultiAwait SetProgress didSet: {0}, notInQueue: {1}, progress: {2}, oldProgress: {3}", didSet, notInQueue, progress, oldProgress);
                         }
                         return;
                     }
-                    Dummy.WriteLine("PromiseMultiAwait SetProgress didSet: " + didSet + ", progress: " + progress + ", oldProgress: " + oldProgress);
+                    Dummy.WriteLine("PromiseMultiAwait SetProgress didSet: {0}, progress: {1}, oldProgress: {2}", didSet, progress, oldProgress);
                 }
 
                 void IProgressListener.MaybeCancelProgress(Fixed32 progress)
@@ -1240,7 +1247,7 @@ namespace Proto.Promises
                     bool notInQueue = didSet && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0; // Was not already in progress queue?
                     //if (!notInQueue)
                     {
-                        Dummy.WriteLine("PromiseMultiAwait TrySetInitialProgressAndMarkInQueue didSet: " + didSet + ", notInQueue: " + notInQueue + ", progress: " + progress + ", oldProgress: " + oldProgress);
+                        Dummy.WriteLine("PromiseMultiAwait TrySetInitialProgressAndMarkInQueue didSet: {0}, notInQueue: {1}, progress: {2}, oldProgress: {3}", didSet, notInQueue, progress, oldProgress);
                     }
                     return notInQueue;
                     //return _progressAndLocker._currentProgress.InterlockedTrySet(progress)
