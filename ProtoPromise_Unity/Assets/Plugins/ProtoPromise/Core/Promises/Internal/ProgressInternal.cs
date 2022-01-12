@@ -19,42 +19,6 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-    public static class Dummy
-    {
-        private static readonly System.Collections.Generic.List<ValueTuple<Thread, string, object[]>> lines = new System.Collections.Generic.List<ValueTuple<Thread, string, object[]>>();
-
-        public static void Clear()
-        {
-            lock(lines)
-            {
-                lines.Clear();
-            }
-        }
-
-        public static void WriteLine(string format, params object[] args)
-        {
-            lock(lines)
-            {
-                lines.Add(ValueTuple.Create(Thread.CurrentThread, format, args));
-            }
-        }
-
-        public static string Read()
-        {
-            lock(lines)
-            {
-                var sb = new System.Text.StringBuilder();
-                foreach (var line in lines)
-                {
-                    sb.AppendLine();
-                    sb.AppendFormat("Thread ID: " + line.Item1.ManagedThreadId + ", Background: " + line.Item1.IsBackground + ", " + line.Item2, line.Item3);
-
-                }
-                return sb.ToString();
-            }
-        }
-    }
-
     partial class Internal
     {
 #if PROMISE_PROGRESS
@@ -299,14 +263,6 @@ namespace Proto.Promises
 
                 private volatile int _value; // int for Interlocked.
 
-                public override string ToString()
-                {
-                    return "{ DoubleValue: " + ToDouble()
-                        + ", HasReported: " + HasReported
-                        + ", IsPriority: " + IsPriority
-                        + ", IsSuspended: " + IsSuspended + " }";
-                }
-
                 [MethodImpl(InlineOption)]
                 internal Fixed32(int wholePart)
                 {
@@ -484,12 +440,10 @@ namespace Proto.Promises
                     return success;
                 }
 
-                internal bool InterlockedTrySet(Fixed32 other, out Fixed32 oldProgress)
+                internal bool InterlockedTrySet(Fixed32 other)
                 {
-                    int oldValue;
-                    bool didSet = InterlockedTrySet(other, out oldValue);
-                    oldProgress = new Fixed32(oldValue, true);
-                    return didSet;
+                    int _;
+                    return InterlockedTrySet(other, out _);
                 }
 
                 private bool InterlockedTrySet(Fixed32 other, out int oldValue)
@@ -699,12 +653,7 @@ namespace Proto.Promises
                     set { _smallProgressFields._canceled = value; }
                 }
 
-                private static int idCount;
-                private int id;
-
-                private PromiseProgress() {
-                    id = Interlocked.Increment(ref idCount);
-                }
+                private PromiseProgress() { }
 
                 internal static PromiseProgress<TProgress> GetOrCreate(TProgress progress, CancelationToken cancelationToken, int depth, bool isSynchronous, SynchronizationContext synchronizationContext)
                 {
@@ -740,19 +689,16 @@ namespace Proto.Promises
                     // Use double for better precision.
                     double expected = _smallProgressFields._depthAndProgress.WholePart + 1u;
                     float value = (float) (progress.ToDouble() / expected);
-                    bool invoke = !progress.IsSuspended & !IsComplete & !IsCanceled & !_cancelationRegistration.Token.IsCancelationRequested;
-                    if (invoke)
+                    if (!progress.IsSuspended & !IsComplete & !IsCanceled & !_cancelationRegistration.Token.IsCancelationRequested)
                     {
                         CallbackHelper.InvokeAndCatchProgress(_progress, value, this);
                     }
-                    Dummy.WriteLine("PromiseProgress id: {0} Invoke, invoke: {1}, IsComplete: {2}, IsCanceled: {3}, progress: {4}", id, invoke, IsComplete, IsCanceled, progress);
                     MaybeDispose();
                 }
 
                 private bool TrySetProgress(Fixed32 progress, ref ExecutionScheduler executionScheduler)
                 {
-                    Fixed32 oldProgress;
-                    bool needsInvoke = _smallProgressFields._currentProgress.InterlockedTrySet(progress, out oldProgress);
+                    bool needsInvoke = _smallProgressFields._currentProgress.InterlockedTrySet(progress);
                     if (needsInvoke & !IsComplete & !IsCanceled)
                     {
                         PromiseFlags oldFlags = _smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue);
@@ -769,13 +715,8 @@ namespace Proto.Promises
                                 executionScheduler.ScheduleProgressOnContext(_synchronizationContext, this);
                             }
                         }
-                        //else
-                        {
-                            Dummy.WriteLine("PromiseProgress id: {0} TrySetProgress, needsInvoke: {1}, inProgressQueue: {2}, progress: {3}, oldProgress: {4}", id, needsInvoke, inProgressQueue, progress, oldProgress);
-                        }
                         return true;
                     }
-                    Dummy.WriteLine("PromiseProgress id: {0} TrySetProgress, needsInvoke: {1}, progress: {2}, oldProgress: {3}", id, needsInvoke, progress, oldProgress);
                     return false;
                 }
 
@@ -844,16 +785,8 @@ namespace Proto.Promises
 
                 private bool TrySetInitialProgressAndMarkInQueue(Fixed32 progress)
                 {
-                    Fixed32 oldProgress;
-                    bool didSet = _smallProgressFields._currentProgress.InterlockedTrySet(progress, out oldProgress);
-                    bool notInQueue = didSet && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0; // Was not already in progress queue?
-                    //if (!notInQueue)
-                    {
-                        Dummy.WriteLine("PromiseProgress id: {0} TrySetInitialProgressAndMarkInQueue, didSet: {1}, notInQueue: {2}, progress: {3}, oldProgress: {4}", id, didSet, notInQueue, progress, oldProgress);
-                    }
-                    return notInQueue;
-                    //return _smallProgressFields._currentProgress.InterlockedTrySet(progress)
-                    //    && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0; // Was not already in progress queue?
+                    return _smallProgressFields._currentProgress.InterlockedTrySet(progress)
+                        && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0; // Was not already in progress queue?
                 }
 
                 void IProgressListener.MaybeCancelProgress(Fixed32 progress)
@@ -886,18 +819,15 @@ namespace Proto.Promises
                 public override void Handle(ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    bool didUnregister = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration);
-                    bool notCanceled = didUnregister & !IsCanceled;
+                    bool notCanceled = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !IsCanceled;
 
                     // HandleSelf
                     IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
                     Promise.State state = valueContainer.GetState();
-                    bool invoke = state == Promise.State.Resolved & notCanceled;
-                    if (invoke)
+                    if (state == Promise.State.Resolved & notCanceled)
                     {
                         CallbackHelper.InvokeAndCatchProgress(_progress, 1f, this);
                     }
-                    Dummy.WriteLine("PromiseProgress id: {0} Handle, invoke: {1}, state: {2}, didUnregister: {3}, IsCanceled: {4}", id, invoke, state, didUnregister, IsCanceled);
                     State = state; // Set state after callback is executed to make sure it completes before the next waiter begins execution (in another thread).
                     HandleWaiter(valueContainer, ref executionScheduler);
                     HandleProgressListener(state, ref executionScheduler);
@@ -990,7 +920,6 @@ namespace Proto.Promises
                     {
                         executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                     }
-                    Dummy.WriteLine("PromiseProgress id: {0} MakeReady, _isSynchronous: {1}", id, _smallProgressFields._isSynchronous);
                     WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
             } // PromiseProgress<TProgress>
@@ -1062,7 +991,6 @@ namespace Proto.Promises
                         PromiseFlags setFlag = progress.IsPriority ? PromiseFlags.ReportingPriority : PromiseFlags.ReportingInitial;
                         if ((setter._smallFields.InterlockedSetFlags(setFlag) & setFlag) != 0)
                         {
-                            Dummy.WriteLine("PromiseSingleAwaitWithProgress ReportProgress, failed to set flag: {0} , progress: {1}", setFlag, progress);
                             break;
                         }
                         PromiseSingleAwaitWithProgress unsetter = setter;
@@ -1176,23 +1104,12 @@ namespace Proto.Promises
                 {
                     // If this is coming from hookup progress, we can possibly report without updating the progress.
                     // This is to handle race condition on separate threads.
-                    Fixed32 oldProgress;
-                    bool didSet = _progressAndLocker._currentProgress.InterlockedTrySet(progress, out oldProgress);
-                    if (didSet | !progress.IsPriority)
+                    if ((_progressAndLocker._currentProgress.InterlockedTrySet(progress) | !progress.IsPriority)
+                        && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
-                        bool notInQueue = (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0; // Was not already in progress queue?
-                        if (notInQueue)
-                        {
-                            InterlockedRetainDisregardId();
-                            executionScheduler.ScheduleProgressSynchronous(this);
-                        }
-                        //else
-                        {
-                            Dummy.WriteLine("PromiseMultiAwait SetProgress didSet: {0}, notInQueue: {1}, progress: {2}, oldProgress: {3}", didSet, notInQueue, progress, oldProgress);
-                        }
-                        return;
+                        InterlockedRetainDisregardId();
+                        executionScheduler.ScheduleProgressSynchronous(this);
                     }
-                    Dummy.WriteLine("PromiseMultiAwait SetProgress didSet: {0}, progress: {1}, oldProgress: {2}", didSet, progress, oldProgress);
                 }
 
                 void IProgressListener.MaybeCancelProgress(Fixed32 progress)
@@ -1243,16 +1160,8 @@ namespace Proto.Promises
 
                 private bool TrySetInitialProgressAndMarkInQueue(Fixed32 progress)
                 {
-                    Fixed32 oldProgress;
-                    bool didSet = _progressAndLocker._currentProgress.InterlockedTrySet(progress, out oldProgress);
-                    bool notInQueue = didSet && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0; // Was not already in progress queue?
-                    //if (!notInQueue)
-                    {
-                        Dummy.WriteLine("PromiseMultiAwait TrySetInitialProgressAndMarkInQueue didSet: {0}, notInQueue: {1}, progress: {2}, oldProgress: {3}", didSet, notInQueue, progress, oldProgress);
-                    }
-                    return notInQueue;
-                    //return _progressAndLocker._currentProgress.InterlockedTrySet(progress)
-                    //    && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0; // Was not already in progress queue?
+                    return _progressAndLocker._currentProgress.InterlockedTrySet(progress)
+                        && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0; // Was not already in progress queue?
                 }
 
                 void IProgressListener.SetProgress(PromiseRef sender, Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler)
@@ -1616,8 +1525,7 @@ namespace Proto.Promises
                     {
                         _smallFields._settingInitialProgress = true;
                         // InterlockedTrySet has a MemoryBarrier in it, so we know _owner is read after _settingInitialProgress is written.
-                        Fixed32 oldProgress;
-                        bool didSet = _smallFields._currentProgress.InterlockedTrySet(progress, out oldProgress);
+                        bool didSet = _smallFields._currentProgress.InterlockedTrySet(progress);
                         var owner = _owner;
                         if (didSet & owner != null)
                         {

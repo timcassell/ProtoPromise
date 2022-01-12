@@ -68,7 +68,6 @@ namespace ProtoPromiseTests
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void Setup()
         {
-            Dummy.Clear();
             if (Promise.Config.ForegroundContext != _foregroundContext)
             {
                 // Set the foreground context to execute foreground promise callbacks.

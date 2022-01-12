@@ -344,7 +344,6 @@ namespace ProtoPromiseTests.Threading
             bool waitForReportSetup = subscribePlace == ActionPlace.InSetup && reportPlace == ActionPlace.InSetup;
             Action setupAction = () =>
             {
-                Dummy.Clear();
                 index = -1;
                 for (int i = 0; i < progressHelpers.Length; ++i)
                 {
@@ -414,24 +413,11 @@ namespace ProtoPromiseTests.Threading
                 }
                 AssertInvokes();
             };
-            try
-            {
-                new ThreadHelper().ExecuteParallelActions(ThreadHelper.multiExecutionCount,
-                    setupAction,
-                    teardownAction,
-                    parallelActions.ToArray()
-                );
-            }
-            catch (Exception e)
-            {
-                throw new Exception("subscribePlace: " + subscribePlace
-                    + ", reportPlace: " + reportPlace
-                    + ", completePlace: " + completePlace
-                    + ", completeType: " + completeType
-                    + ", progressType: " + progressType
-                    + ", synchronizationType: " + synchronizationType
-                    + "\ninternal logs:\n\n" + Dummy.Read(), e);
-            }
+            new ThreadHelper().ExecuteParallelActions(ThreadHelper.multiExecutionCount,
+                setupAction,
+                teardownAction,
+                parallelActions.ToArray()
+            );
         }
 
         [Test]
@@ -511,7 +497,6 @@ namespace ProtoPromiseTests.Threading
             bool waitForReportSetup = subscribePlace == ActionPlace.InSetup && reportPlace == ActionPlace.InSetup;
             Action setupAction = () =>
             {
-                Dummy.Clear();
                 index = -1;
                 for (int i = 0; i < progressHelpers.Length; ++i)
                 {
@@ -580,24 +565,11 @@ namespace ProtoPromiseTests.Threading
                 }
                 AssertInvokes();
             };
-            try
-            {
-                new ThreadHelper().ExecuteParallelActions(ThreadHelper.multiExecutionCount,
-                    setupAction,
-                    teardownAction,
-                    parallelActions.ToArray()
-                );
-            }
-            catch (Exception e)
-            {
-                throw new Exception("subscribePlace: " + subscribePlace
-                    + ", reportPlace: " + reportPlace
-                    + ", completePlace: " + completePlace
-                    + ", completeType: " + completeType
-                    + ", progressType: " + progressType
-                    + ", synchronizationType: " + synchronizationType
-                    + "\ninternal logs:\n\n" + Dummy.Read(), e);
-            }
+            new ThreadHelper().ExecuteParallelActions(ThreadHelper.multiExecutionCount,
+                setupAction,
+                teardownAction,
+                parallelActions.ToArray()
+            );
         }
 #endif
 
