@@ -265,7 +265,7 @@ namespace ProtoPromiseTests.Threading
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
-        private static readonly TimeSpan progressConcurrencyTimeout = TimeSpan.FromSeconds(20);
+        private static readonly TimeSpan progressConcurrencyTimeout = TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount);
 
         [Test]
         public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReportedConcurrently_Pending_void(
@@ -376,6 +376,9 @@ namespace ProtoPromiseTests.Threading
                 promiseCompleter.Setup();
             };
             bool waitForSubscribeTeardown = !waitForSubscribeSetup && completePlace == ActionPlace.InTeardown;
+            bool waitForReportTeardown = !waitForReportSetup && completePlace == ActionPlace.InTeardown
+                && (subscribePlace != ActionPlace.Parallel || reportPlace != ActionPlace.Parallel)
+                && (waitForSubscribeSetup || !waitForSubscribeTeardown || reportPlace == ActionPlace.InTeardown);
             Action teardownAction = () =>
             {
                 progressSubscriber.Teardown();
@@ -389,6 +392,14 @@ namespace ProtoPromiseTests.Threading
                 }
                 progressReporter.Teardown();
                 // Not checking for report invoke here because of background thread race conditions.
+                if (waitForReportTeardown)
+                {
+                    for (int i = 0; i < progressHelpers.Length; ++i)
+                    {
+                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, progressConcurrencyTimeout); // Only need to execute foreground the first time.
+                        progressHelpers[i].PrepareForInvoke();
+                    }
+                }
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
@@ -518,6 +529,9 @@ namespace ProtoPromiseTests.Threading
                 promiseCompleter.Setup();
             };
             bool waitForSubscribeTeardown = !waitForSubscribeSetup && completePlace == ActionPlace.InTeardown;
+            bool waitForReportTeardown = !waitForReportSetup && completePlace == ActionPlace.InTeardown
+                && (subscribePlace != ActionPlace.Parallel || reportPlace != ActionPlace.Parallel)
+                && (waitForSubscribeSetup || !waitForSubscribeTeardown || reportPlace == ActionPlace.InTeardown);
             Action teardownAction = () =>
             {
                 progressSubscriber.Teardown();
@@ -530,7 +544,14 @@ namespace ProtoPromiseTests.Threading
                     }
                 }
                 progressReporter.Teardown();
-                // Not checking for report invoke here because of background thread race conditions.
+                if (waitForReportTeardown)
+                {
+                    for (int i = 0; i < progressHelpers.Length; ++i)
+                    {
+                        progressHelpers[i].MaybeWaitForInvoke(true, i == 0, progressConcurrencyTimeout); // Only need to execute foreground the first time.
+                        progressHelpers[i].PrepareForInvoke();
+                    }
+                }
                 promiseCompleter.Teardown();
                 cancelationSource.TryDispose();
                 promise.Forget();
