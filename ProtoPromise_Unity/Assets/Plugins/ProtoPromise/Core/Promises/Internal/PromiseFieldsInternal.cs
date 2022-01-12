@@ -237,7 +237,7 @@ namespace Proto.Promises
                 }
 
 #if PROTO_PROMISE_DEVELOPER_MODE // Must use a queue instead of a stack in developer mode so that the ExecutionSchedule.ScheduleSynchronous can invoke immediately and still be in proper order.
-                private ValueLinkedQueue<ITreeHandleable> _nextBranches = new ValueLinkedQueue<ITreeHandleable>();
+                private ValueLinkedQueue<HandleablePromiseBase> _nextBranches = new ValueLinkedQueue<HandleablePromiseBase>();
 #else
                 private ValueLinkedStack<HandleablePromiseBase> _nextBranches = new ValueLinkedStack<HandleablePromiseBase>();
 #endif
