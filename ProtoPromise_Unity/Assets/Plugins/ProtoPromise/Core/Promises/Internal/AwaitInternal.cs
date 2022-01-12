@@ -24,7 +24,7 @@ namespace Proto.Promises
                 IncrementIdAndSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                 if (State == Promise.State.Resolved)
                 {
-                    T result = ((IValueContainer) _valueOrPrevious).GetValue<T>();
+                    T result = ((ValueContainer) _valueOrPrevious).GetValue<T>();
                     MaybeDispose();
                     return result;
                 }
@@ -48,12 +48,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
 #endif
-            private sealed class AwaiterRef : ITreeHandleable, ITraceable
+            private sealed class AwaiterRef : HandleablePromiseBase, ITraceable
             {
 #if PROMISE_DEBUG
                 CausalityTrace ITraceable.Trace { get; set; }
 #endif
-                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
 
                 private Action _continuation;
 
@@ -62,7 +61,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static AwaiterRef GetOrCreate(Action continuation)
                 {
-                    var awaiter = ObjectPool<ITreeHandleable>.TryTake<AwaiterRef>()
+                    var awaiter = ObjectPool<HandleablePromiseBase>.TryTake<AwaiterRef>()
                         ?? new AwaiterRef();
                     awaiter._continuation = continuation;
                     SetCreatedStacktrace(awaiter, 3);
@@ -73,10 +72,10 @@ namespace Proto.Promises
                 private void Dispose()
                 {
                     _continuation = null;
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                void ITreeHandleable.Handle(ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     var callback = _continuation;
@@ -100,7 +99,7 @@ namespace Proto.Promises
 #endif
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     executionScheduler.ScheduleSynchronous(this);

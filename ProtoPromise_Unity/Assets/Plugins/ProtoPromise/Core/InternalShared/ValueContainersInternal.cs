@@ -18,7 +18,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        internal abstract class ValueContainer<T> : IValueContainer, IValueContainer<T>, ITraceable
+        internal abstract class ValueContainer<T> : ValueContainer, ITraceable
         {
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
@@ -26,7 +26,7 @@ namespace Proto.Promises
             private int _retainCounter;
             public T value;
 
-            public T Value
+            internal override sealed object Value
             {
                 get
                 {
@@ -37,18 +37,7 @@ namespace Proto.Promises
                 }
             }
 
-            object IValueContainer.Value
-            {
-                get
-                {
-                    // Don't throw if in pool, just return either way.
-                    // If it's in the pool, it means the promise was canceled, and it will check the cancelation before using the value.
-                    //ThrowIfInPool(this);
-                    return value;
-                }
-            }
-
-            Type IValueContainer.ValueType
+            internal override sealed Type ValueType
             {
                 get
                 {
@@ -77,7 +66,7 @@ namespace Proto.Promises
             }
 #endif
 
-            public virtual void Retain()
+            internal override void Retain()
             {
                 ThrowIfInPool(this);
                 int _;
@@ -104,16 +93,11 @@ namespace Proto.Promises
                 return newValue == 0;
             }
 
-            public abstract void Release();
-
             protected void Reset(int retainCount)
             {
                 _retainCounter = retainCount;
                 SetCreatedStacktrace(this, 2);
             }
-
-            public abstract Promise.State GetState();
-            public abstract void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -151,12 +135,12 @@ namespace Proto.Promises
                 return container;
             }
 
-            public override Promise.State GetState()
+            internal override Promise.State GetState()
             {
                 return Promise.State.Rejected;
             }
 
-            public override void Release()
+            internal override void Release()
             {
                 ThrowIfInPool(this);
                 if (TryReleaseComplete())
@@ -165,7 +149,7 @@ namespace Proto.Promises
                 }
             }
 
-            public override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
                 if (shouldAdd)
                 {
@@ -224,7 +208,7 @@ namespace Proto.Promises
                 return ToException();
             }
 
-            IRejectValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+            ValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
             {
                 ThrowIfInPool(this);
                 return this;
@@ -245,7 +229,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        internal abstract class SingletonValueContainer<TValueContainer, TConstructor> : ValueContainer<VoidResult>, IValueContainer
+        internal abstract class SingletonValueContainer<TValueContainer, TConstructor> : ValueContainer<VoidResult>
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             , ILinked<TValueContainer>
 #endif
@@ -261,23 +245,6 @@ namespace Proto.Promises
             private static readonly TValueContainer _instance = default(TConstructor).Construct();
 #endif
 
-            object IValueContainer.Value
-            {
-                get
-                {
-                    ThrowIfInPool(this);
-                    return null;
-                }
-            }
-            Type IValueContainer.ValueType
-            {
-                get
-                {
-                    ThrowIfInPool(this);
-                    return null;
-                }
-            }
-
             protected static TValueContainer GetOrCreateBase(int retainCount)
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -291,7 +258,7 @@ namespace Proto.Promises
             }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            public override void Release()
+            internal override void Release()
             {
                 if (TryReleaseComplete())
                 {
@@ -299,21 +266,20 @@ namespace Proto.Promises
                 }
             }
 
-            public override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
                 Release();
             }
 #else
-            public override void Retain() { }
-            public override void Release() { }
-            public override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
+            internal override void Release() { }
+            internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
 #endif
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        internal sealed class CancelContainerVoid : SingletonValueContainer<CancelContainerVoid, CancelContainerVoid.Constructor>, ICancelValueContainer
+        internal sealed class CancelContainerVoid : SingletonValueContainer<CancelContainerVoid, CancelContainerVoid.Constructor>, IThrowable
         {
             internal struct Constructor : IConstructor<CancelContainerVoid>
             {
@@ -330,7 +296,7 @@ namespace Proto.Promises
                 return GetOrCreateBase(retainCount);
             }
 
-            public override Promise.State GetState()
+            internal override Promise.State GetState()
             {
                 return Promise.State.Canceled;
             }
@@ -363,12 +329,12 @@ namespace Proto.Promises
                 return container;
             }
 
-            public override Promise.State GetState()
+            internal override Promise.State GetState()
             {
                 return Promise.State.Resolved;
             }
 
-            public override void Release()
+            internal override void Release()
             {
                 ThrowIfInPool(this);
                 if (TryReleaseComplete())
@@ -377,7 +343,7 @@ namespace Proto.Promises
                 }
             }
 
-            public override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
                 Release();
             }
@@ -409,7 +375,7 @@ namespace Proto.Promises
                 return GetOrCreateBase(retainCount);
             }
 
-            public override Promise.State GetState()
+            internal override Promise.State GetState()
             {
                 return Promise.State.Resolved;
             }

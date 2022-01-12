@@ -18,47 +18,25 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal sealed class UnhandledExceptionInternal : UnhandledException, IRejectionToContainer, IRejectValueContainer, ICantHandleException
+        internal sealed class UnhandledExceptionInternal : UnhandledException, IRejectionToContainer, ICantHandleException
         {
             internal UnhandledExceptionInternal(object value, Type valueType, string message, string stackTrace, Exception innerException) :
                 base(value, valueType, message, stackTrace, innerException)
             { }
-
-            Promise.State IValueContainer.GetState()
-            {
-                return Promise.State.Rejected;
-            }
-
-            void IValueContainer.Retain() { }
-
-            void IValueContainer.Release() { }
-
-            void IValueContainer.ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
-            {
-                if (shouldAdd)
-                {
-                    AddUnhandledException(this);
-                }
-            }
-
-            Exception IThrowable.GetException()
-            {
-                return this;
-            }
 
             void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
             {
                 AddUnhandledException(this);
             }
 
-            IRejectValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+            ValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
             {
-                return this;
-            }
-
+                var rejection = CreateRejectContainer(Value, int.MinValue, traceable);
 #if PROMISE_DEBUG
-            void IRejectValueContainer.SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces) { }
+                ((IRejectValueContainer) rejection).SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
 #endif
+                return rejection;
+            }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -109,11 +87,11 @@ namespace Proto.Promises
                 Value = value;
             }
 
-            public IRejectValueContainer ToContainer(ITraceable traceable)
+            public ValueContainer ToContainer(ITraceable traceable)
             {
                 var rejection = CreateRejectContainer(Value, int.MinValue, traceable);
 #if PROMISE_DEBUG
-                rejection.SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
+                ((IRejectValueContainer) rejection).SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
 #endif
                 return rejection;
             }

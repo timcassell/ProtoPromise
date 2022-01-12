@@ -155,13 +155,17 @@ namespace Proto.Promises
 
         internal struct VoidResult { }
 
-        partial class PromiseRef
+        partial class HandleablePromiseBase
+        {
+            private HandleablePromiseBase _next;
+        }
+
+        partial class PromiseRef : HandleablePromiseBase
         {
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
 #endif
 
-            private ITreeHandleable _next;
             volatile private object _valueOrPrevious;
             private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
 
@@ -194,7 +198,7 @@ namespace Proto.Promises
 
             partial class PromiseSingleAwait : PromiseRef
             {
-                volatile protected ITreeHandleable _waiter;
+                volatile protected HandleablePromiseBase _waiter;
             }
 
             partial class PromiseConfigured : PromiseSingleAwait
@@ -235,7 +239,7 @@ namespace Proto.Promises
 #if PROTO_PROMISE_DEVELOPER_MODE // Must use a queue instead of a stack in developer mode so that the ExecutionSchedule.ScheduleSynchronous can invoke immediately and still be in proper order.
                 private ValueLinkedQueue<ITreeHandleable> _nextBranches = new ValueLinkedQueue<ITreeHandleable>();
 #else
-                private ValueLinkedStack<ITreeHandleable> _nextBranches = new ValueLinkedStack<ITreeHandleable>();
+                private ValueLinkedStack<HandleablePromiseBase> _nextBranches = new ValueLinkedStack<HandleablePromiseBase>();
 #endif
                 private ProgressAndLocker _progressAndLocker;
 
@@ -405,13 +409,17 @@ namespace Proto.Promises
             #endregion
 
             #region Multi Promises
-            partial class MergePromise : PromiseSingleAwaitWithProgress
+            partial class MultiHandleablePromiseBase : PromiseSingleAwaitWithProgress
+            {
+#if PROMISE_DEBUG
+                protected readonly object _locker = new object();
+                protected ValueLinkedStack<PromisePassThrough> _passThroughs = new ValueLinkedStack<PromisePassThrough>();
+#endif
+            }
+
+            partial class MergePromise : MultiHandleablePromiseBase
             {
                 private int _waitCount;
-#if PROMISE_DEBUG
-                private readonly object _locker = new object();
-                private ValueLinkedStack<PromisePassThrough> _passThroughs = new ValueLinkedStack<PromisePassThrough>();
-#endif
 
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
@@ -424,7 +432,7 @@ namespace Proto.Promises
 #endif
             }
 
-            partial class RacePromise : PromiseSingleAwaitWithProgress
+            partial class RacePromise : MultiHandleablePromiseBase
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
@@ -438,16 +446,12 @@ namespace Proto.Promises
                 }
 
                 private RaceSmallFields _raceSmallFields;
-#if PROMISE_DEBUG
-                private readonly object _locker = new object();
-                private ValueLinkedStack<PromisePassThrough> _passThroughs = new ValueLinkedStack<PromisePassThrough>();
-#endif
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
 #endif
             }
 
-            partial class FirstPromise : PromiseSingleAwaitWithProgress
+            partial class FirstPromise : MultiHandleablePromiseBase
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
@@ -461,16 +465,12 @@ namespace Proto.Promises
                 }
 
                 private FirstSmallFields _firstSmallFields;
-#if PROMISE_DEBUG
-                private readonly object _locker = new object();
-                private ValueLinkedStack<PromisePassThrough> _passThroughs = new ValueLinkedStack<PromisePassThrough>();
-#endif
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
 #endif
             }
 
-            partial class PromisePassThrough : ITreeHandleable, ILinked<PromisePassThrough>, IProgressListener
+            partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>, IProgressListener
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
@@ -487,10 +487,9 @@ namespace Proto.Promises
                 }
 
                 volatile private PromiseRef _owner;
-                volatile private IMultiTreeHandleable _target;
+                volatile private MultiHandleablePromiseBase _target;
                 private PassThroughSmallFields _smallFields;
 
-                ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
 
 #if PROMISE_PROGRESS

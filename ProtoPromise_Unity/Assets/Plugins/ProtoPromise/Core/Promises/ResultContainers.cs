@@ -24,7 +24,7 @@ namespace Proto.Promises
 #endif
         partial struct ReasonContainer
     {
-        private readonly Internal.IValueContainer _valueContainer;
+        private readonly Internal.ValueContainer _valueContainer;
 #if PROMISE_DEBUG
         private readonly long _id;
 #endif
@@ -32,7 +32,7 @@ namespace Proto.Promises
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal ReasonContainer(Internal.IValueContainer valueContainer, long id)
+        internal ReasonContainer(Internal.ValueContainer valueContainer, long id)
         {
             _valueContainer = valueContainer;
 #if PROMISE_DEBUG
@@ -111,7 +111,7 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.IValueContainer valueContainer)
+            internal ResultContainer(Internal.ValueContainer valueContainer)
             {
                 _target = new Promise<Internal.VoidResult>.ResultContainer(valueContainer);
             }
@@ -191,7 +191,7 @@ namespace Proto.Promises
             /// <summary>
             /// FOR INTERNAL USE ONLY!
             /// </summary>
-            internal readonly Internal.IValueContainer _valueContainer;
+            internal readonly Internal.ValueContainer _valueContainer;
             private readonly T _result;
 #if PROMISE_DEBUG
             private readonly long _id;
@@ -229,7 +229,7 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.IValueContainer valueContainer)
+            internal ResultContainer(Internal.ValueContainer valueContainer)
             {
                 _valueContainer = valueContainer;
                 _result = default(T);
@@ -239,7 +239,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            private ResultContainer(Internal.IValueContainer valueContainer, long id, T result = default(T))
+            private ResultContainer(Internal.ValueContainer valueContainer, long id, T result = default(T))
             {
                 _valueContainer = valueContainer;
                 _result = result;

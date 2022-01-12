@@ -240,7 +240,7 @@ namespace Proto.Promises
 #endif
         }
 
-        Internal.IRejectValueContainer Internal.IRejectionToContainer.ToContainer(Internal.ITraceable traceable)
+        Internal.ValueContainer Internal.IRejectionToContainer.ToContainer(Internal.ITraceable traceable)
         {
 #if PROMISE_DEBUG
             string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(this, true) });

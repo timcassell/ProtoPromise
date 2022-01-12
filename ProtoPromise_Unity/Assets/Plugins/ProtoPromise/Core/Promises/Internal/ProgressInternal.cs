@@ -619,16 +619,16 @@ namespace Proto.Promises
                 void Retain();
             }
 
-            partial interface IMultiTreeHandleable
+            partial class MultiHandleablePromiseBase
             {
-                void IncrementProgress(uint increment, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler);
+                internal abstract void IncrementProgress(uint increment, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler);
             }
 
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress, IProgressListener, IProgressInvokable, ICancelable, ITreeHandleable
+            internal sealed partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress, IProgressListener, IProgressInvokable, ICancelable
                 where TProgress : IProgress<float>
             {
                 [MethodImpl(InlineOption)]
@@ -657,7 +657,7 @@ namespace Proto.Promises
 
                 internal static PromiseProgress<TProgress> GetOrCreate(TProgress progress, CancelationToken cancelationToken, int depth, bool isSynchronous, SynchronizationContext synchronizationContext)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<PromiseProgress<TProgress>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseProgress<TProgress>>()
                         ?? new PromiseProgress<TProgress>();
                     promise.Reset();
                     promise._progress = progress;
@@ -676,7 +676,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationRegistration = default(CancelationRegistration);
                     _progress = default(TProgress);
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 void IProgressInvokable.Invoke(ref ExecutionScheduler executionScheduler)
@@ -816,13 +816,13 @@ namespace Proto.Promises
                     }
                 }
 
-                public override void Handle(ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     bool notCanceled = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !IsCanceled;
 
                     // HandleSelf
-                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+                    ValueContainer valueContainer = (ValueContainer) _valueOrPrevious;
                     Promise.State state = valueContainer.GetState();
                     if (state == Promise.State.Resolved & notCanceled)
                     {
@@ -860,7 +860,7 @@ namespace Proto.Promises
                     HandleProgressListener(state, _smallProgressFields._depthAndProgress.GetIncrementedWholeTruncatedForResolve(), ref executionScheduler);
                 }
 
-                internal override void AddWaiter(ITreeHandleable waiter, ref ExecutionScheduler executionScheduler)
+                internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
                 {
 #if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
@@ -879,7 +879,7 @@ namespace Proto.Promises
                             {
                                 if (_smallProgressFields._isSynchronous)
                                 {
-                                    waiter.MakeReady(this, (IValueContainer) _valueOrPrevious, ref executionScheduler);
+                                    waiter.MakeReady(this, (ValueContainer) _valueOrPrevious, ref executionScheduler);
                                 }
                                 else
                                 {
@@ -888,7 +888,7 @@ namespace Proto.Promises
                                     // Taking advantage of an implementation detail that MakeReady will only add itself or nothing to the stack, so we can just send it to the context instead.
                                     // This is better than adding a new method to the interface.
                                     ExecutionScheduler overrideScheduler = executionScheduler.GetEmptyCopy();
-                                    waiter.MakeReady(this, (IValueContainer) _valueOrPrevious, ref overrideScheduler);
+                                    waiter.MakeReady(this, (ValueContainer) _valueOrPrevious, ref overrideScheduler);
                                     if (overrideScheduler._handleStack.IsNotEmpty)
                                     {
                                         executionScheduler.ScheduleOnContext(_synchronizationContext, overrideScheduler._handleStack.Pop());
@@ -906,7 +906,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     IsComplete = true;
@@ -1480,7 +1480,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     // Don't set progress if this is resolved by the second wait.
                     // Have to check the value's type since MakeReady is called before this.
-                    if (!(_valueOrPrevious is IValueContainer))
+                    if (!(_valueOrPrevious is ValueContainer))
                     {
                         SetProgressAndMaybeAddToQueue(progress, ref executionScheduler);
                     }
