@@ -25,7 +25,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal partial class MergePromise : PromiseSingleAwaitWithProgress, IMultiTreeHandleable
+            internal partial class MergePromise : MultiHandleablePromiseBase
             {
                 private MergePromise() { }
 
@@ -41,7 +41,7 @@ namespace Proto.Promises
                         }
                     }
 #endif
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -52,7 +52,7 @@ namespace Proto.Promises
 
                 internal static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<MergePromise>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<MergePromise>()
                         ?? new MergePromise();
                     promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
                     return promise;
@@ -65,7 +65,7 @@ namespace Proto.Promises
                     in
 #endif
                     T value,
-                    Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved,
+                    Action<ValueContainer, ResolveContainer<T>, int> onPromiseResolved,
                     uint pendingAwaits,
                     uint totalAwaits,
                     ulong completedProgress)
@@ -119,9 +119,9 @@ namespace Proto.Promises
                     }
                 }
 
-                public override void Handle(ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref ExecutionScheduler executionScheduler)
                 {
-                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+                    ValueContainer valueContainer = (ValueContainer) _valueOrPrevious;
                     Promise.State state = valueContainer.GetState();
                     State = state;
                     HandleWaiter(valueContainer, ref executionScheduler);
@@ -133,7 +133,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public virtual void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler) // IMultiTreeHandleable.Handle
+                internal override void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                 {
                     // Retain while handling, then release when complete for thread safety.
                     InterlockedRetainDisregardId();
@@ -188,9 +188,9 @@ namespace Proto.Promises
                 partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress);
 
-                private sealed class MergePromiseT<T> : MergePromise, IMultiTreeHandleable
+                private sealed class MergePromiseT<T> : MergePromise
                 {
-                    private Action<IValueContainer, ResolveContainer<T>, int> _onPromiseResolved;
+                    private Action<ValueContainer, ResolveContainer<T>, int> _onPromiseResolved;
                     private ResolveContainer<T> _valueContainer;
 
                     private MergePromiseT() { }
@@ -213,23 +213,23 @@ namespace Proto.Promises
                             }
                         }
 #endif
-                        ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                        ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                     }
 
                     internal static MergePromiseT<T> GetOrCreate(
 #if CSHARP_7_3_OR_NEWER
                         in
 #endif
-                        T value, Action<IValueContainer, ResolveContainer<T>, int> onPromiseResolved)
+                        T value, Action<ValueContainer, ResolveContainer<T>, int> onPromiseResolved)
                     {
-                        var promise = ObjectPool<ITreeHandleable>.TryTake<MergePromiseT<T>>()
+                        var promise = ObjectPool<HandleablePromiseBase>.TryTake<MergePromiseT<T>>()
                             ?? new MergePromiseT<T>();
                         promise._onPromiseResolved = onPromiseResolved;
                         promise._valueContainer = ResolveContainer<T>.GetOrCreate(value, 1);
                         return promise;
                     }
 
-                    public override void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
+                    internal override void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                     {
                         // Retain while handling, then release when complete for thread safety.
                         InterlockedRetainDisregardId();
@@ -332,7 +332,7 @@ namespace Proto.Promises
                     return Fixed32.GetScaled(_unscaledProgress, _progressScaler);
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)
+                internal override void IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     IncrementProgress(amount, senderAmount, ref executionScheduler);

@@ -55,14 +55,14 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(owner);
                     RetainAndSetCanceled();
-                    IValueContainer valueContainer = CancelContainerVoid.GetOrCreate(1);
+                    ValueContainer valueContainer = CancelContainerVoid.GetOrCreate(1);
                     object currentValue = Interlocked.Exchange(ref owner._valueOrPrevious, valueContainer);
                     owner.State = Promise.State.Canceled;
 
 #if CSHARP_7_3_OR_NEWER
-                    if (currentValue is IValueContainer previousValue)
+                    if (currentValue is ValueContainer previousValue)
 #else
-                    IValueContainer previousValue = currentValue as IValueContainer;
+                    ValueContainer previousValue = currentValue as ValueContainer;
                     if (previousValue != null)
 #endif
                     {
@@ -76,7 +76,7 @@ namespace Proto.Promises
                     executionScheduler.Execute();
                 }
 
-                internal void MaybeMakeReady(PromiseSingleAwait owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal void MaybeMakeReady(PromiseSingleAwait owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (TryMakeReady(owner, valueContainer))
                     {
@@ -85,7 +85,7 @@ namespace Proto.Promises
                     owner.WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
-                internal void MaybeMakeReady(PromiseSingleAwait owner, bool isSecondReady, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal void MaybeMakeReady(PromiseSingleAwait owner, bool isSecondReady, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     if (isSecondReady)
                     {
@@ -102,7 +102,7 @@ namespace Proto.Promises
                     owner.WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
-                private bool TryMakeReady(PromiseSingleAwait owner, IValueContainer valueContainer)
+                private bool TryMakeReady(PromiseSingleAwait owner, ValueContainer valueContainer)
                 {
                     Thread.MemoryBarrier();
                     object oldContainer = owner._valueOrPrevious;
@@ -152,7 +152,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolve<TResolver> : PromiseSingleAwait, ITreeHandleable, ICancelable
+            private sealed partial class CancelablePromiseResolve<TResolver> : PromiseSingleAwait, ICancelable
                 where TResolver : IDelegateResolveOrCancel
             {
                 private CancelablePromiseResolve() { }
@@ -160,7 +160,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolve<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolve<TResolver>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolve<TResolver>>()
                         ?? new CancelablePromiseResolve<TResolver>();
                     promise.Reset();
                     promise._resolver = resolver;
@@ -173,7 +173,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _resolver = default(TResolver);
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 protected override void OnHookupFailed()
@@ -181,13 +181,13 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, ValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     var resolveCallback = _resolver;
                     if (valueContainer.GetState() == Promise.State.Resolved)
@@ -210,7 +210,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise, ITreeHandleable, ICancelable
+            private sealed partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise, ICancelable
                 where TResolver : IDelegateResolveOrCancelPromise
             {
                 private CancelablePromiseResolvePromise() { }
@@ -218,7 +218,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken, int depth)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolvePromise<TResolver>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolvePromise<TResolver>>()
                         ?? new CancelablePromiseResolvePromise<TResolver>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
@@ -231,7 +231,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _resolver = default(TResolver);
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 protected override void OnHookupFailed()
@@ -239,13 +239,13 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     _cancelationHelper.MaybeMakeReady(this, _resolver.IsNull, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, ValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_resolver.IsNull)
                     {
@@ -276,7 +276,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait, ITreeHandleable, ICancelable
+            private sealed partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait, ICancelable
                 where TResolver : IDelegateResolveOrCancel
                 where TRejecter : IDelegateReject
             {
@@ -285,7 +285,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolveReject<TResolver, TRejecter>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolveReject<TResolver, TRejecter>>()
                         ?? new CancelablePromiseResolveReject<TResolver, TRejecter>();
                     promise.Reset();
                     promise._resolver = resolver;
@@ -300,7 +300,7 @@ namespace Proto.Promises
                     _cancelationHelper = default(CancelationHelper);
                     _resolver = default(TResolver);
                     _rejecter = default(TRejecter);
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 protected override void OnHookupFailed()
@@ -308,13 +308,13 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, ValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     var resolveCallback = _resolver;
                     var rejectCallback = _rejecter;
@@ -345,7 +345,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise, ITreeHandleable, ICancelable
+            private sealed partial class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise, ICancelable
                 where TResolver : IDelegateResolveOrCancelPromise
                 where TRejecter : IDelegateRejectPromise
             {
@@ -354,7 +354,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken, int depth)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>>()
                         ?? new CancelablePromiseResolveRejectPromise<TResolver, TRejecter>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
@@ -369,7 +369,7 @@ namespace Proto.Promises
                     _cancelationHelper = default(CancelationHelper);
                     _resolver = default(TResolver);
                     _rejecter = default(TRejecter);
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 protected override void OnHookupFailed()
@@ -377,13 +377,13 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     _cancelationHelper.MaybeMakeReady(this, _resolver.IsNull, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, ValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_resolver.IsNull)
                     {
@@ -422,7 +422,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseContinue<TContinuer> : PromiseSingleAwait, ITreeHandleable, ICancelable
+            private sealed partial class CancelablePromiseContinue<TContinuer> : PromiseSingleAwait, ICancelable
                 where TContinuer : IDelegateContinue
             {
                 private CancelablePromiseContinue() { }
@@ -430,7 +430,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseContinue<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseContinue<TContinuer>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseContinue<TContinuer>>()
                         ?? new CancelablePromiseContinue<TContinuer>();
                     promise.Reset();
                     promise._continuer = continuer;
@@ -443,7 +443,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _continuer = default(TContinuer);
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 protected override void OnHookupFailed()
@@ -451,13 +451,13 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, ValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     suppressRejection = true;
                     _continuer.Invoke(valueContainer, this, ref _cancelationHelper, ref executionScheduler);
@@ -472,7 +472,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseContinuePromise<TContinuer> : PromiseWaitPromise, ITreeHandleable, ICancelable
+            private sealed partial class CancelablePromiseContinuePromise<TContinuer> : PromiseWaitPromise, ICancelable
                 where TContinuer : IDelegateContinuePromise
             {
                 private CancelablePromiseContinuePromise() { }
@@ -480,7 +480,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken, int depth)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseContinuePromise<TContinuer>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseContinuePromise<TContinuer>>()
                         ?? new CancelablePromiseContinuePromise<TContinuer>();
                     promise.Reset(depth);
                     promise._continuer = continuer;
@@ -493,7 +493,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _continuer = default(TContinuer);
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 protected override void OnHookupFailed()
@@ -501,13 +501,13 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     _cancelationHelper.MaybeMakeReady(this, _continuer.IsNull, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, ValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_continuer.IsNull)
                     {
@@ -531,7 +531,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseCancel<TCanceler> : PromiseSingleAwait, ITreeHandleable, ICancelable
+            private sealed partial class CancelablePromiseCancel<TCanceler> : PromiseSingleAwait, ICancelable
                 where TCanceler : IDelegateResolveOrCancel
             {
                 private CancelablePromiseCancel() { }
@@ -539,7 +539,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseCancel<TCanceler> GetOrCreate(TCanceler canceler, CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseCancel<TCanceler>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseCancel<TCanceler>>()
                         ?? new CancelablePromiseCancel<TCanceler>();
                     promise.Reset();
                     promise._canceler = canceler;
@@ -552,7 +552,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _canceler = default(TCanceler);
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 protected override void OnHookupFailed()
@@ -560,13 +560,13 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, ValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     var callback = _canceler;
                     if (valueContainer.GetState() == Promise.State.Canceled)
@@ -588,7 +588,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            private sealed partial class CancelablePromiseCancelPromise<TCanceler> : PromiseWaitPromise, ITreeHandleable, ICancelable
+            private sealed partial class CancelablePromiseCancelPromise<TCanceler> : PromiseWaitPromise, ICancelable
                 where TCanceler : IDelegateResolveOrCancelPromise
             {
                 private CancelablePromiseCancelPromise() { }
@@ -596,7 +596,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseCancelPromise<TCanceler> GetOrCreate(TCanceler canceler, CancelationToken cancelationToken, int depth)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<CancelablePromiseCancelPromise<TCanceler>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseCancelPromise<TCanceler>>()
                         ?? new CancelablePromiseCancelPromise<TCanceler>();
                     promise.Reset(depth);
                     promise._canceler = canceler;
@@ -609,7 +609,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _canceler = default(TCanceler);
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 protected override void OnHookupFailed()
@@ -617,13 +617,13 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                void ITreeHandleable.MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     _cancelationHelper.MaybeMakeReady(this, valueContainer, ref executionScheduler);
                 }
 
-                protected override void Execute(ref ExecutionScheduler executionScheduler, IValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
+                protected override void Execute(ref ExecutionScheduler executionScheduler, ValueContainer valueContainer, ref bool invokingRejected, ref bool suppressRejection)
                 {
                     if (_canceler.IsNull)
                     {

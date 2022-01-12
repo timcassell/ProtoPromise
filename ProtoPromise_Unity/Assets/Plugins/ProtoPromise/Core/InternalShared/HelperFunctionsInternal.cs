@@ -35,22 +35,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal sealed partial class SynchronizationHandler : ILinked<ITreeHandleable>
+        internal sealed partial class SynchronizationHandler : ILinked<HandleablePromiseBase>
         {
             private static readonly SendOrPostCallback _synchronizationContextCallback = ExecuteFromContext;
 
-            ITreeHandleable ILinked<ITreeHandleable>.Next { get; set; }
+            HandleablePromiseBase ILinked<HandleablePromiseBase>.Next { get; set; }
 
             internal readonly SynchronizationContext _context;
             // These must not be readonly.
-            private ValueWriteOnlyLinkedQueue<ITreeHandleable> _handleQueue;
+            private ValueWriteOnlyLinkedQueue<HandleablePromiseBase> _handleQueue;
             private SpinLocker _locker;
             volatile private bool _isScheduled = false;
 
             internal SynchronizationHandler(SynchronizationContext synchronizationContext)
             {
                 _context = synchronizationContext;
-                _handleQueue = new ValueWriteOnlyLinkedQueue<ITreeHandleable>(this);
+                _handleQueue = new ValueWriteOnlyLinkedQueue<HandleablePromiseBase>(this);
                 InitProgress();
             }
 
@@ -59,7 +59,7 @@ namespace Proto.Promises
                 ((SynchronizationHandler) state).Execute();
             }
 
-            internal void PostHandleable(ITreeHandleable handleable)
+            internal void PostHandleable(HandleablePromiseBase handleable)
             {
                 _locker.Enter();
                 bool wasScheduled = _isScheduled;
@@ -77,7 +77,7 @@ namespace Proto.Promises
             {
                 ValueLinkedQueue<IProgressInvokable> progressStack = new ValueLinkedQueue<IProgressInvokable>();
                 _locker.Enter();
-                ValueLinkedStack<ITreeHandleable> handleStack = _handleQueue.MoveElementsToStack();
+                ValueLinkedStack<HandleablePromiseBase> handleStack = _handleQueue.MoveElementsToStack();
                 TakeProgress(ref progressStack);
                 _isScheduled = false;
                 _locker.Exit();
@@ -101,7 +101,7 @@ namespace Proto.Promises
             private static readonly WaitCallback _threadPoolCallback = ExecuteFromContext;
             private static readonly SendOrPostCallback _synchronizationContextCallback = ExecuteFromContext;
 
-            internal ValueLinkedStack<ITreeHandleable> _handleStack;
+            internal ValueLinkedStack<HandleablePromiseBase> _handleStack;
             private readonly SynchronizationHandler _synchronizationHandler;
 #if PROMISE_PROGRESS
             private ValueLinkedQueue<IProgressInvokable> _progressQueue;
@@ -111,7 +111,7 @@ namespace Proto.Promises
 #endif
 
             [MethodImpl(InlineOption)]
-            internal ExecutionScheduler(SynchronizationHandler synchronizationHandler, ValueLinkedStack<ITreeHandleable> handleStack, ValueLinkedQueue<IProgressInvokable> progressQueue)
+            internal ExecutionScheduler(SynchronizationHandler synchronizationHandler, ValueLinkedStack<HandleablePromiseBase> handleStack, ValueLinkedQueue<IProgressInvokable> progressQueue)
             {
                 _handleStack = handleStack;
                 _synchronizationHandler = synchronizationHandler;
@@ -129,7 +129,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private ExecutionScheduler(SynchronizationHandler synchronizationHandler, bool isExecutingProgress)
             {
-                _handleStack = new ValueLinkedStack<ITreeHandleable>();
+                _handleStack = new ValueLinkedStack<HandleablePromiseBase>();
                 _synchronizationHandler = null;
 #if PROMISE_PROGRESS
                 _progressQueue = new ValueLinkedQueue<IProgressInvokable>();
@@ -154,7 +154,7 @@ namespace Proto.Promises
             internal void Execute()
             {
                 // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
-                ITreeHandleable lastExecuted = null;
+                HandleablePromiseBase lastExecuted = null;
                 try
                 {
                     while (_handleStack.IsNotEmpty)
@@ -176,7 +176,7 @@ namespace Proto.Promises
             partial void AssertNotExecutingProgress();
 
             [MethodImpl(InlineOption)]
-            internal void ScheduleSynchronous(ITreeHandleable handleable)
+            internal void ScheduleSynchronous(HandleablePromiseBase handleable)
             {
                 AssertNotExecutingProgress();
 #if PROTO_PROMISE_DEVELOPER_MODE // Helps to see full causality trace with internal stacktraces in exceptions (may cause StackOverflowException if the chain is very long).
@@ -186,7 +186,7 @@ namespace Proto.Promises
 #endif
             }
 
-            internal void ScheduleOnContext(SynchronizationContext synchronizationContext, ITreeHandleable handleable)
+            internal void ScheduleOnContext(SynchronizationContext synchronizationContext, HandleablePromiseBase handleable)
             {
                 AssertNotExecutingProgress();
                 if (_synchronizationHandler != null && _synchronizationHandler._context == synchronizationContext)
@@ -198,7 +198,7 @@ namespace Proto.Promises
                 ScheduleOnContextStatic(synchronizationContext, handleable);
             }
 
-            internal static void ScheduleOnContextStatic(SynchronizationContext synchronizationContext, ITreeHandleable handleable)
+            internal static void ScheduleOnContextStatic(SynchronizationContext synchronizationContext, HandleablePromiseBase handleable)
             {
                 if (synchronizationContext == null)
                 {
@@ -222,7 +222,7 @@ namespace Proto.Promises
                 try
                 {
                     ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
-                    ((ITreeHandleable) state).Handle(ref executionScheduler);
+                    ((HandleablePromiseBase) state).Handle(ref executionScheduler);
                     executionScheduler.Execute();
                 }
                 catch (Exception e)
@@ -234,7 +234,7 @@ namespace Proto.Promises
         }
 
         [MethodImpl(InlineOption)]
-        internal static IValueContainer CreateResolveContainer<TValue>(
+        internal static ValueContainer CreateResolveContainer<TValue>(
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
@@ -249,7 +249,7 @@ namespace Proto.Promises
         }
 
         [MethodImpl(InlineOption)]
-        internal static TValue GetValue<TValue>(this IValueContainer valueContainer)
+        internal static TValue GetValue<TValue>(this ValueContainer valueContainer)
         {
             // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
             if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
@@ -260,8 +260,8 @@ namespace Proto.Promises
             return ((ResolveContainer<TValue>) valueContainer).value;
         }
 
-        // IValueContainer.TryGetValue<TValue>() must be implemented as an extension instead of interface member, because AOT might not compile the virtual method when TValue is a value-type.
-        internal static bool TryGetValue<TValue>(this IValueContainer valueContainer, out TValue converted)
+        // ValueContainer.TryGetValue<TValue>() must be implemented as an extension instead of interface member, because AOT might not compile the virtual method when TValue is a value-type.
+        internal static bool TryGetValue<TValue>(this ValueContainer valueContainer, out TValue converted)
         {
             // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
             if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
@@ -272,13 +272,13 @@ namespace Proto.Promises
 
             // Try to avoid boxing value types.
 #if CSHARP_7_3_OR_NEWER
-            if (valueContainer is IValueContainer<TValue> directContainer)
+            if (valueContainer is ValueContainer<TValue> directContainer)
 #else
-            var directContainer = valueContainer as IValueContainer<TValue>;
+            var directContainer = valueContainer as ValueContainer<TValue>;
             if (directContainer != null)
 #endif
             {
-                converted = directContainer.Value;
+                converted = directContainer.value;
                 return true;
             }
 
@@ -295,13 +295,13 @@ namespace Proto.Promises
             return false;
         }
 
-        internal static IRejectValueContainer CreateRejectContainer<TReject>(
+        internal static ValueContainer CreateRejectContainer<TReject>(
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
                 TReject reason, int rejectSkipFrames, ITraceable traceable)
         {
-            IRejectValueContainer valueContainer;
+            ValueContainer valueContainer;
 
             // Avoid boxing value types.
             Type type = typeof(TReject);
@@ -327,7 +327,7 @@ namespace Proto.Promises
                 // Only need to create one object pool for reference types.
                 valueContainer = RejectionContainer<object>.GetOrCreate(o, 0);
             }
-            SetCreatedAndRejectedStacktrace(valueContainer, rejectSkipFrames + 1, traceable);
+            SetCreatedAndRejectedStacktrace((IRejectValueContainer) valueContainer, rejectSkipFrames + 1, traceable);
             return valueContainer;
         }
 

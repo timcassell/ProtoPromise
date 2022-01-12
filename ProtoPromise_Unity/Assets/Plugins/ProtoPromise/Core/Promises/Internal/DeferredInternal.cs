@@ -106,7 +106,7 @@ namespace Proto.Promises
                 protected override void Dispose()
                 {
                     base.Dispose();
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 // Used for child to call base dispose without repooling for both types.
@@ -119,7 +119,7 @@ namespace Proto.Promises
 
                 internal static DeferredPromise<T> GetOrCreate()
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromise<T>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<DeferredPromise<T>>()
                         ?? new DeferredPromise<T>();
                     promise.Reset();
                     return promise;
@@ -152,12 +152,12 @@ namespace Proto.Promises
                 {
                     SuperDispose();
                     _cancelationRegistration = default(CancelationRegistration);
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 internal static DeferredPromiseCancel<T> GetOrCreate(CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<DeferredPromiseCancel<T>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<DeferredPromiseCancel<T>>()
                         ?? new DeferredPromiseCancel<T>();
                     promise.Reset();
                     cancelationToken.TryRegister(promise, out promise._cancelationRegistration);

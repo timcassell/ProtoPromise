@@ -334,23 +334,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class MergePromise
-            {
-                protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
-                {
-                    ExchangePassthroughs(ref _passThroughs, borrower, _locker);
-                }
-            }
-
-            partial class RacePromise
-            {
-                protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
-                {
-                    ExchangePassthroughs(ref _passThroughs, borrower, _locker);
-                }
-            }
-
-            partial class FirstPromise
+            partial class MultiHandleablePromiseBase
             {
                 protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
                 {

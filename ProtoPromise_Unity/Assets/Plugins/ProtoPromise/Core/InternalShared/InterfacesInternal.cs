@@ -1,36 +1,41 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
     internal static partial class Internal
     {
+        // Abstract classes are used instead of interfaces, because virtual calls on interfaces are twice as slow as virtual calls on classes.
+        internal abstract partial class HandleablePromiseBase : ILinked<HandleablePromiseBase>
+        {
+            HandleablePromiseBase ILinked<HandleablePromiseBase>.Next
+            {
+                [MethodImpl(InlineOption)]
+                get { return _next; }
+                [MethodImpl(InlineOption)]
+                set { _next = value; }
+            }
+
+            internal abstract void Handle(ref ExecutionScheduler executionScheduler);
+            internal abstract void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler);
+        }
+
+        internal abstract class ValueContainer
+        {
+            internal abstract void Retain();
+            internal abstract void Release();
+            internal abstract Promise.State GetState();
+            internal abstract Type ValueType { get; }
+            internal abstract object Value { get; }
+
+            internal abstract void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd);
+        }
+
         internal partial interface ITraceable { }
 
         internal interface ILinked<T> where T : class, ILinked<T>
         {
             T Next { get; set; }
-        }
-
-        internal interface IValueContainer<T>
-        {
-            T Value { get; }
-        }
-
-        internal interface IValueContainer
-        {
-            void Retain();
-            void Release();
-            Promise.State GetState();
-            Type ValueType { get; }
-            object Value { get; }
-
-            void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd);
-        }
-
-        internal interface ITreeHandleable : ILinked<ITreeHandleable>
-        {
-            void Handle(ref ExecutionScheduler executionScheduler);
-            void MakeReady(PromiseRef owner, IValueContainer valueContainer, ref ExecutionScheduler executionScheduler);
         }
 
         internal interface IProgressInvokable : ILinked<IProgressInvokable>
@@ -40,7 +45,7 @@ namespace Proto.Promises
 
         internal interface IRejectionToContainer
         {
-            IRejectValueContainer ToContainer(ITraceable traceable);
+            ValueContainer ToContainer(ITraceable traceable);
         }
 
         internal interface ICantHandleException
@@ -53,9 +58,7 @@ namespace Proto.Promises
             Exception GetException();
         }
 
-        internal partial interface IRejectValueContainer : IValueContainer, IThrowable { }
-
-        internal interface ICancelValueContainer : IValueContainer, IThrowable { }
+        internal partial interface IRejectValueContainer : IThrowable { }
 
         internal interface IDelegateSimple
         {

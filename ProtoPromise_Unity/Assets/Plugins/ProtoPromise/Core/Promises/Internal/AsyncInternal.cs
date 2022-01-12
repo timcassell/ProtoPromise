@@ -360,7 +360,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public static AsyncPromiseRef GetOrCreate()
             {
-                var promise = ObjectPool<ITreeHandleable>.TryTake<AsyncPromiseRef>()
+                var promise = ObjectPool<HandleablePromiseBase>.TryTake<AsyncPromiseRef>()
                     ?? new AsyncPromiseRef();
                 promise.Reset();
                 return promise;
@@ -502,7 +502,7 @@ namespace Proto.Promises
                     _continuer.Dispose();
                     _continuer = null;
                 }
-                ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
             }
         } // class AsyncPromiseRef
 
@@ -523,7 +523,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
                         ?? new AsyncPromiseRefMachine<TStateMachine>();
                     promise.Reset();
                     // ORDER VERY IMPORTANT, Task must be set before copying stateMachine.
@@ -535,7 +535,7 @@ namespace Proto.Promises
                 {
                     SuperDispose();
                     _stateMachine = default;
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 protected override void ContinueMethod()
@@ -562,7 +562,7 @@ namespace Proto.Promises
             protected override void Dispose()
             {
                 base.Dispose();
-                ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
             }
 
             // Used for child to call base dispose without repooling for both types.

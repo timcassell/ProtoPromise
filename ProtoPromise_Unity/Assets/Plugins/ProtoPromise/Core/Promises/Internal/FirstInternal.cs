@@ -25,7 +25,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class FirstPromise : PromiseSingleAwaitWithProgress, IMultiTreeHandleable
+            internal sealed partial class FirstPromise : MultiHandleablePromiseBase
             {
                 private FirstPromise() { }
 
@@ -41,12 +41,12 @@ namespace Proto.Promises
                         }
                     }
 #endif
-                    ObjectPool<ITreeHandleable>.MaybeRepool(this);
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 internal static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits)
                 {
-                    var promise = ObjectPool<ITreeHandleable>.TryTake<FirstPromise>()
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<FirstPromise>()
                         ?? new FirstPromise();
 
                     checked
@@ -93,9 +93,9 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                public override void Handle(ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref ExecutionScheduler executionScheduler)
                 {
-                    IValueContainer valueContainer = (IValueContainer) _valueOrPrevious;
+                    ValueContainer valueContainer = (ValueContainer) _valueOrPrevious;
                     Promise.State state = valueContainer.GetState();
                     State = state;
                     HandleWaiter(valueContainer, ref executionScheduler);
@@ -107,7 +107,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void Handle(PromiseRef owner, IValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler) // IMultiTreeHandleable.Handle
+                internal override void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                 {
                     // Retain while handling, then release when complete for thread safety.
                     InterlockedRetainDisregardId();
@@ -194,7 +194,7 @@ namespace Proto.Promises
                     _firstSmallFields._depthAndProgress = new Fixed32(minWaitDepth);
                 }
 
-                void IMultiTreeHandleable.IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)
+                internal override void IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
 
