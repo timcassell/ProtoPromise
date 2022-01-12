@@ -75,6 +75,7 @@ jobs:
         with:
           projectPath: ProtoPromise_Unity
           testMode: ${{ matrix.testMode }}
+          customParameters: -testFilter "PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReportedConcurrently_Pending_T;PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReportedConcurrently_Pending_void"
         timeout-minutes: 90
 
       # Workaround for NUnit XML (see https://github.com/dorny/test-reporter/issues/98#issuecomment-867106931)

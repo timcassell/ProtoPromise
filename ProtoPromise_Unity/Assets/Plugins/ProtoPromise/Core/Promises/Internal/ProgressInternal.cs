@@ -990,6 +990,7 @@ namespace Proto.Promises
                     {
                         executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                     }
+                    Dummy.WriteLine("PromiseProgress id: {0} MakeReady, _isSynchronous: {1}", id, _smallProgressFields._isSynchronous);
                     WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
             } // PromiseProgress<TProgress>
