@@ -73,6 +73,10 @@ namespace ProtoPromiseTests
             {
                 // Set the foreground context to execute foreground promise callbacks.
                 Promise.Config.ForegroundContext = _foregroundContext;
+#if !CSHARP_7_3_OR_NEWER
+                // Used instead of ThreadPool, because ThreadPool has issues in old runtime, causing tests to fail.
+                Promise.Config.BackgroundContext = new BackgroundSynchronizationContext();
+#endif
                 // Set uncaught rejection handler.
                 Promise.Config.UncaughtRejectionHandler = e =>
                 {
