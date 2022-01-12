@@ -221,6 +221,7 @@ namespace Proto.Promises
                 // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
                 try
                 {
+                    Dummy.WriteLine("ExecuteFromContext, state: {0}", state);
                     ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
                     ((ITreeHandleable) state).Handle(ref executionScheduler);
                     executionScheduler.Execute();
