@@ -969,9 +969,9 @@ namespace Proto.Promises
                 protected void HandleProgressListener(Promise.State state, Fixed32 progress, ref ExecutionScheduler executionScheduler)
                 {
                     IProgressListener progressListener = Interlocked.Exchange(ref _progressListener, null);
+                    WaitWhileProgressFlags(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial | PromiseFlags.SettingInitial);
                     if (progressListener != null)
                     {
-                        WaitWhileProgressFlags(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial | PromiseFlags.SettingInitial);
                         if (state == Promise.State.Resolved)
                         {
                             progressListener.ResolveOrSetProgress(this, progress, ref executionScheduler);
@@ -1078,11 +1078,11 @@ namespace Proto.Promises
                     var progressListeners = _progressListeners.MoveElementsToStack();
                     _progressAndLocker._progressCollectionLocker.Exit();
 
+                    WaitWhileProgressFlags(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial | PromiseFlags.SettingInitial);
                     if (progressListeners.IsEmpty)
                     {
                         return;
                     }
-                    WaitWhileProgressFlags(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial | PromiseFlags.SettingInitial);
 
                     Fixed32 progress = _progressAndLocker._depthAndProgress.GetIncrementedWholeTruncatedForResolve();
                     if (state == Promise.State.Resolved)
