@@ -10,6 +10,15 @@
                 internal abstract void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
             }
 
+            partial class PromiseSingleAwait
+            {
+                internal interface IDelegateHandle
+                {
+                    void InvokeAndHandle(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler);
+                    void InvokeAndHandle(ValueContainer valueContainer, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler);
+                }
+            }
+
             internal interface IDelegateResolveOrCancel
             {
                 void InvokeResolver(ValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);

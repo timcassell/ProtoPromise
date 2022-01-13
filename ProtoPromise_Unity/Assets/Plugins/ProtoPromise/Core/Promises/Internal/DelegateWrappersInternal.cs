@@ -24,61 +24,61 @@ namespace Proto.Promises
                 // These static functions help with the implementation so we don't need to type the generics in every method.
 
                 [MethodImpl(InlineOption)]
-                public static DelegateResolvePassthrough CreatePassthrough()
+                internal static DelegateResolvePassthrough CreatePassthrough()
                 {
                     return new DelegateResolvePassthrough(true);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static Delegate<VoidResult, VoidResult> Create(Action callback)
+                internal static Delegate<VoidResult, VoidResult> Create(Action callback)
                 {
                     return new Delegate<VoidResult, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static Delegate<VoidResult, TResult> Create<TResult>(Func<TResult> callback)
+                internal static Delegate<VoidResult, TResult> Create<TResult>(Func<TResult> callback)
                 {
                     return new Delegate<VoidResult, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static Delegate<TArg, VoidResult> Create<TArg>(Action<TArg> callback)
+                internal static Delegate<TArg, VoidResult> Create<TArg>(Action<TArg> callback)
                 {
                     return new Delegate<TArg, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static Delegate<TArg, TResult> Create<TArg, TResult>(Func<TArg, TResult> callback)
+                internal static Delegate<TArg, TResult> Create<TArg, TResult>(Func<TArg, TResult> callback)
                 {
                     return new Delegate<TArg, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegatePromise<VoidResult, VoidResult> Create(Func<Promise> callback)
+                internal static DelegatePromise<VoidResult, VoidResult> Create(Func<Promise> callback)
                 {
                     return new DelegatePromise<VoidResult, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegatePromise<VoidResult, TResult> Create<TResult>(Func<Promise<TResult>> callback)
+                internal static DelegatePromise<VoidResult, TResult> Create<TResult>(Func<Promise<TResult>> callback)
                 {
                     return new DelegatePromise<VoidResult, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegatePromise<TArg, VoidResult> Create<TArg>(Func<TArg, Promise> callback)
+                internal static DelegatePromise<TArg, VoidResult> Create<TArg>(Func<TArg, Promise> callback)
                 {
                     return new DelegatePromise<TArg, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegatePromise<TArg, TResult> Create<TArg, TResult>(Func<TArg, Promise<TResult>> callback)
+                internal static DelegatePromise<TArg, TResult> Create<TArg, TResult>(Func<TArg, Promise<TResult>> callback)
                 {
                     return new DelegatePromise<TArg, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
+                internal static DelegateCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -88,7 +88,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
+                internal static DelegateCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -98,7 +98,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
+                internal static DelegateCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -108,7 +108,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
+                internal static DelegateCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -118,7 +118,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegatePromiseCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
+                internal static DelegatePromiseCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -128,7 +128,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegatePromiseCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
+                internal static DelegatePromiseCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -138,7 +138,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegatePromiseCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
+                internal static DelegatePromiseCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -148,7 +148,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegatePromiseCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
+                internal static DelegatePromiseCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -158,31 +158,31 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinue<VoidResult, VoidResult> Create(Promise.ContinueAction callback)
+                internal static DelegateContinue<VoidResult, VoidResult> Create(Promise.ContinueAction callback)
                 {
                     return new DelegateContinue<VoidResult, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinue<VoidResult, TResult> Create<TResult>(Promise.ContinueFunc<TResult> callback)
+                internal static DelegateContinue<VoidResult, TResult> Create<TResult>(Promise.ContinueFunc<TResult> callback)
                 {
                     return new DelegateContinue<VoidResult, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinue<TArg, VoidResult> Create<TArg>(Promise<TArg>.ContinueAction callback)
+                internal static DelegateContinue<TArg, VoidResult> Create<TArg>(Promise<TArg>.ContinueAction callback)
                 {
                     return new DelegateContinue<TArg, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinue<TArg, TResult> Create<TArg, TResult>(Promise<TArg>.ContinueFunc<TResult> callback)
+                internal static DelegateContinue<TArg, TResult> Create<TArg, TResult>(Promise<TArg>.ContinueFunc<TResult> callback)
                 {
                     return new DelegateContinue<TArg, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinueCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
+                internal static DelegateContinueCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -192,7 +192,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinueCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
+                internal static DelegateContinueCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -202,7 +202,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinueCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
+                internal static DelegateContinueCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -212,7 +212,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinueCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
+                internal static DelegateContinueCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -222,31 +222,31 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinuePromise<VoidResult, VoidResult> Create(Promise.ContinueFunc<Promise> callback)
+                internal static DelegateContinuePromise<VoidResult, VoidResult> Create(Promise.ContinueFunc<Promise> callback)
                 {
                     return new DelegateContinuePromise<VoidResult, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinuePromise<VoidResult, TResult> Create<TResult>(Promise.ContinueFunc<Promise<TResult>> callback)
+                internal static DelegateContinuePromise<VoidResult, TResult> Create<TResult>(Promise.ContinueFunc<Promise<TResult>> callback)
                 {
                     return new DelegateContinuePromise<VoidResult, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinuePromise<TArg, VoidResult> Create<TArg>(Promise<TArg>.ContinueFunc<Promise> callback)
+                internal static DelegateContinuePromise<TArg, VoidResult> Create<TArg>(Promise<TArg>.ContinueFunc<Promise> callback)
                 {
                     return new DelegateContinuePromise<TArg, VoidResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinuePromise<TArg, TResult> Create<TArg, TResult>(Promise<TArg>.ContinueFunc<Promise<TResult>> callback)
+                internal static DelegateContinuePromise<TArg, TResult> Create<TArg, TResult>(Promise<TArg>.ContinueFunc<Promise<TResult>> callback)
                 {
                     return new DelegateContinuePromise<TArg, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinuePromiseCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
+                internal static DelegateContinuePromiseCapture<TCapture, VoidResult, VoidResult> Create<TCapture>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -256,7 +256,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinuePromiseCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
+                internal static DelegateContinuePromiseCapture<TCapture, VoidResult, TResult> Create<TCapture, TResult>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -266,7 +266,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinuePromiseCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
+                internal static DelegateContinuePromiseCapture<TCapture, TArg, VoidResult> Create<TCapture, TArg>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -276,13 +276,232 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public static DelegateContinuePromiseCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
+                internal static DelegateContinuePromiseCapture<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
                     TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>> callback)
                 {
                     return new DelegateContinuePromiseCapture<TCapture, TArg, TResult>(capturedValue, callback);
+                }
+            }
+
+            partial class PromiseSingleAwait
+            {
+                [MethodImpl(InlineOption)]
+                protected static DelegateHandleResolve<TDelegate> CreateResolveWrapper<TDelegate>(PromiseSingleAwait owner, TDelegate del) where TDelegate : IDelegateResolveOrCancel
+                {
+                    return new DelegateHandleResolve<TDelegate>(owner, del);
+                }
+
+                [MethodImpl(InlineOption)]
+                protected static DelegateHandleReject<TDelegate> CreateRejectWrapper<TDelegate>(PromiseSingleAwait owner, TDelegate del) where TDelegate : IDelegateReject
+                {
+                    return new DelegateHandleReject<TDelegate>(owner, del);
+                }
+
+                [MethodImpl(InlineOption)]
+                protected static DelegateHandleContinue<TDelegate> CreateContinueWrapper<TDelegate>(PromiseSingleAwait owner, TDelegate del) where TDelegate : IDelegateContinue
+                {
+                    return new DelegateHandleContinue<TDelegate>(owner, del);
+                }
+
+                protected struct DelegateHandleResolve<TDelegate> : IDelegateHandle where TDelegate : IDelegateResolveOrCancel
+                {
+                    private readonly PromiseSingleAwait _owner;
+                    private readonly TDelegate _del;
+
+                    [MethodImpl(InlineOption)]
+                    internal DelegateHandleResolve(PromiseSingleAwait owner, TDelegate del)
+                    {
+                        _owner = owner;
+                        _del = del;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.InvokeResolver(valueContainer, _owner, ref executionScheduler);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.InvokeResolver(valueContainer, _owner, ref cancelationHelper, ref executionScheduler);
+                    }
+                }
+
+                protected struct DelegateHandleReject<TDelegate> : IDelegateHandle where TDelegate : IDelegateReject
+                {
+                    private readonly PromiseSingleAwait _owner;
+                    private readonly TDelegate _del;
+
+                    [MethodImpl(InlineOption)]
+                    internal DelegateHandleReject(PromiseSingleAwait owner, TDelegate del)
+                    {
+                        _owner = owner;
+                        _del = del;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.InvokeRejecter(valueContainer, _owner, ref executionScheduler);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.InvokeRejecter(valueContainer, _owner, ref cancelationHelper, ref executionScheduler);
+                    }
+                }
+
+                protected struct DelegateHandleContinue<TDelegate> : IDelegateHandle where TDelegate : IDelegateContinue
+                {
+                    private readonly PromiseSingleAwait _owner;
+                    private readonly TDelegate _del;
+
+                    [MethodImpl(InlineOption)]
+                    internal DelegateHandleContinue(PromiseSingleAwait owner, TDelegate del)
+                    {
+                        _owner = owner;
+                        _del = del;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.Invoke(valueContainer, _owner, ref executionScheduler);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.Invoke(valueContainer, _owner, ref cancelationHelper, ref executionScheduler);
+                    }
+                }
+
+                protected struct DelegateHandleFinally<TDelegate> : IDelegateHandle where TDelegate : IDelegateSimple
+                {
+                    private readonly PromiseSingleAwait _owner;
+                    private readonly TDelegate _del;
+
+                    [MethodImpl(InlineOption)]
+                    internal DelegateHandleFinally(PromiseSingleAwait owner, TDelegate del)
+                    {
+                        _owner = owner;
+                        _del = del;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.Invoke();
+                        _owner.HandleSelf(valueContainer, ref executionScheduler);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.Invoke();
+                        _owner.HandleSelf(valueContainer, ref executionScheduler);
+                    }
+                }
+            }
+
+            partial class PromiseWaitPromise
+            {
+                [MethodImpl(InlineOption)]
+                protected static DelegateHandleResolvePromise<TDelegate> CreateResolveWrapper<TDelegate>(PromiseWaitPromise owner, TDelegate del) where TDelegate : IDelegateResolveOrCancelPromise
+                {
+                    return new DelegateHandleResolvePromise<TDelegate>(owner, del);
+                }
+
+                [MethodImpl(InlineOption)]
+                protected static DelegateHandleRejectPromise<TDelegate> CreateRejectWrapper<TDelegate>(PromiseWaitPromise owner, TDelegate del) where TDelegate : IDelegateRejectPromise
+                {
+                    return new DelegateHandleRejectPromise<TDelegate>(owner, del);
+                }
+
+                [MethodImpl(InlineOption)]
+                protected static DelegateHandleContinuePromise<TDelegate> CreateContinueWrapper<TDelegate>(PromiseWaitPromise owner, TDelegate del) where TDelegate : IDelegateContinuePromise
+                {
+                    return new DelegateHandleContinuePromise<TDelegate>(owner, del);
+                }
+
+                protected struct DelegateHandleResolvePromise<TDelegate> : IDelegateHandle where TDelegate : IDelegateResolveOrCancelPromise
+                {
+                    private readonly PromiseWaitPromise _owner;
+                    private readonly TDelegate _del;
+
+                    [MethodImpl(InlineOption)]
+                    internal DelegateHandleResolvePromise(PromiseWaitPromise owner, TDelegate del)
+                    {
+                        _owner = owner;
+                        _del = del;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.InvokeResolver(valueContainer, _owner, ref executionScheduler);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.InvokeResolver(valueContainer, _owner, ref cancelationHelper, ref executionScheduler);
+                    }
+                }
+
+                protected struct DelegateHandleRejectPromise<TDelegate> : IDelegateHandle where TDelegate : IDelegateRejectPromise
+                {
+                    private readonly PromiseWaitPromise _owner;
+                    private readonly TDelegate _del;
+
+                    [MethodImpl(InlineOption)]
+                    internal DelegateHandleRejectPromise(PromiseWaitPromise owner, TDelegate del)
+                    {
+                        _owner = owner;
+                        _del = del;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.InvokeRejecter(valueContainer, _owner, ref executionScheduler);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.InvokeRejecter(valueContainer, _owner, ref cancelationHelper, ref executionScheduler);
+                    }
+                }
+
+                protected struct DelegateHandleContinuePromise<TDelegate> : IDelegateHandle where TDelegate : IDelegateContinuePromise
+                {
+                    private readonly PromiseWaitPromise _owner;
+                    private readonly TDelegate _del;
+
+                    [MethodImpl(InlineOption)]
+                    internal DelegateHandleContinuePromise(PromiseWaitPromise owner, TDelegate del)
+                    {
+                        _owner = owner;
+                        _del = del;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.Invoke(valueContainer, _owner, ref executionScheduler);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IDelegateHandle.InvokeAndHandle(ValueContainer valueContainer, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                    {
+                        _del.Invoke(valueContainer, _owner, ref cancelationHelper, ref executionScheduler);
+                    }
                 }
             }
 
@@ -808,26 +1027,6 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateCancel : IDelegateSimple
-            {
-                private readonly Action _callback;
-
-                [MethodImpl(InlineOption)]
-                public DelegateCancel(Action callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke()
-                {
-                    _callback.Invoke();
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
             internal struct DelegateProgress : IProgress<float>
             {
                 private readonly Action<float> _callback;
@@ -1337,32 +1536,6 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 public DelegateCaptureFinally(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke()
-                {
-                    _callback.Invoke(_capturedValue);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal struct DelegateCaptureCancel<TCapture> : IDelegateSimple
-            {
-                private readonly Action<TCapture> _callback;
-                private readonly TCapture _capturedValue;
-
-                [MethodImpl(InlineOption)]
-                public DelegateCaptureCancel(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
