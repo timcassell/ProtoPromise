@@ -142,6 +142,7 @@ namespace Proto.Promises
 
             SuppressRejection = 1 << 0,
             WasAwaitedOrForgotten = 1 << 1,
+            HadCallback = 1 << 7, // Shares bit with Subscribed, since HadCallback is only used for SingleAwait and Subscribed is only used for MultiAwait.
             // For progress below
             InProgressQueue = 1 << 2,
             Subscribing = 1 << 3,
@@ -478,6 +479,8 @@ namespace Proto.Promises
                 {
                     internal int _index;
                     internal int _retainCounter;
+                    internal short _ownerId;
+                    internal PromiseFlags _ownerSetFlags;
 #if PROMISE_PROGRESS
                     internal Fixed32 _depth;
                     internal Fixed32 _currentProgress;

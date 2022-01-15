@@ -175,6 +175,14 @@ namespace Proto.Promises
                 Reset();
             }
 #else
+            private void HookupNewWaiterWithProgress<TWaiter>(TWaiter newWaiter, short promiseId, int depth, PromiseFlags flags) where TWaiter : HandleablePromiseBase, IProgressListener
+            {
+                ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+                HookupNewWaiterWithProgress(newWaiter, promiseId, depth, flags, ref executionScheduler);
+                executionScheduler.Execute();
+            }
+
+            protected abstract void HookupNewWaiterWithProgress<TWaiter>(TWaiter newWaiter, short promiseId, int depth, PromiseFlags flags, ref ExecutionScheduler executionScheduler) where TWaiter : HandleablePromiseBase, IProgressListener;
 
             private void SubscribeListener(IProgressListener progressListener, Fixed32 depthAndProgress, ref ExecutionScheduler executionScheduler)
             {
@@ -655,11 +663,12 @@ namespace Proto.Promises
 
                 private PromiseProgress() { }
 
-                internal static PromiseProgress<TProgress> GetOrCreate(TProgress progress, CancelationToken cancelationToken, int depth, bool isSynchronous, SynchronizationContext synchronizationContext)
+                internal static PromiseProgress<TProgress> GetOrCreate(object valueOrPrevious, TProgress progress, CancelationToken cancelationToken, int depth, bool isSynchronous, SynchronizationContext synchronizationContext)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseProgress<TProgress>>()
                         ?? new PromiseProgress<TProgress>();
                     promise.Reset();
+                    promise._valueOrPrevious = valueOrPrevious;
                     promise._progress = progress;
                     promise.IsComplete = false;
                     promise.IsCanceled = false;
@@ -860,7 +869,42 @@ namespace Proto.Promises
                     HandleProgressListener(state, _smallProgressFields._depthAndProgress.GetIncrementedWholeTruncatedForResolve(), ref executionScheduler);
                 }
 
-                internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
+                protected override void HookupWaitPromise(PromiseWaitPromise waitPromise, short promiseId, int depth, ref ExecutionScheduler executionScheduler)
+                {
+                    IncrementIdAndSetFlags(null, promiseId, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
+                    waitPromise.SetPreviousAndSubscribeProgress(this, depth, ref executionScheduler);
+                    AddWaiter(waitPromise, ref executionScheduler);
+                }
+
+                protected override void HookupNewWaiter(HandleablePromiseBase newPromise, short promiseId, PromiseFlags flags, ref ExecutionScheduler executionScheduler)
+                {
+                    IncrementIdAndSetFlags(newPromise, promiseId, flags | PromiseFlags.HadCallback);
+                    AddWaiter(newPromise, ref executionScheduler);
+                }
+
+                protected override void HookupNewCancelablePromise(PromiseRef newPromise, short promiseId, ref ExecutionScheduler executionScheduler)
+                {
+                    IncrementIdAndSetFlags(newPromise, promiseId, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
+                    // If _valueOrPrevious is not null, it means newPromise was already canceled from the token.
+                    if (Interlocked.CompareExchange(ref newPromise._valueOrPrevious, this, null) == null)
+                    {
+                        AddWaiter(newPromise, ref executionScheduler);
+                    }
+                    else
+                    {
+                        newPromise.OnHookupFailed();
+                        OnForgetOrHookupFailed();
+                    }
+                }
+
+                protected override void HookupNewWaiterWithProgress<TWaiter>(TWaiter newWaiter, short promiseId, int depth, PromiseFlags flags, ref ExecutionScheduler executionScheduler)
+                {
+                    IncrementIdAndSetFlags(newWaiter, promiseId, flags);
+                    SubscribeListener(newWaiter, new Fixed32(depth), ref executionScheduler);
+                    AddWaiter(newWaiter, ref executionScheduler);
+                }
+
+                private void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
                 {
 #if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
@@ -927,6 +971,13 @@ namespace Proto.Promises
             partial class PromiseSingleAwait
             {
                 internal virtual void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler) { }
+
+                protected override void HookupNewWaiterWithProgress<TWaiter>(TWaiter newWaiter, short promiseId, int depth, PromiseFlags flags, ref ExecutionScheduler executionScheduler)
+                {
+                    IncrementIdAndSetFlags(newWaiter, promiseId, flags);
+                    SubscribeListener(newWaiter, new Fixed32(depth), ref executionScheduler);
+                    AddWaiter(newWaiter, ref executionScheduler);
+                }
             }
 
             partial class PromiseSingleAwaitWithProgress
@@ -1017,6 +1068,13 @@ namespace Proto.Promises
                     _progressAndLocker._currentProgress = default(Fixed32);
                     _progressAndLocker._depthAndProgress = new Fixed32(depth);
                     Reset();
+                }
+
+                protected override void HookupNewWaiterWithProgress<TWaiter>(TWaiter newWaiter, short promiseId, int depth, PromiseFlags flags, ref ExecutionScheduler executionScheduler)
+                {
+                    InterlockedRetainAndSetFlagsInternal(newWaiter, promiseId, flags);
+                    SubscribeListener(newWaiter, new Fixed32(depth), ref executionScheduler);
+                    AddWaiter(newWaiter, ref executionScheduler);
                 }
 
                 protected override PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
@@ -1330,20 +1388,8 @@ namespace Proto.Promises
                     return _progressFields._depthAndProgress.IsSuspended;
                 }
 
-                internal void WaitForWithProgress<T>(Promise<T> other)
-                {
-                    ThrowIfInPool(this);
-                    var _ref = other._ref;
-                    _ref.MarkAwaited(other.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-
-                    ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
-                    SetPreviousAndSubscribeProgress(_ref, other.Depth, ref executionScheduler);
-                    _ref.AddWaiter(this, ref executionScheduler);
-                    executionScheduler.Execute();
-                }
-
                 [MethodImpl(InlineOption)]
-                private void SetPreviousAndSubscribeProgress(PromiseRef other, int depth, ref ExecutionScheduler executionScheduler)
+                internal void SetPreviousAndSubscribeProgress(PromiseRef other, int depth, ref ExecutionScheduler executionScheduler)
                 {
                     // Write SecondPrevious flag before writing previous to fix race condition with hookup MaybeAddProgressListenerAndGetPreviousRetained.
                     _progressFields.InterlockedSetFlags(WaitFlags.SecondPrevious);

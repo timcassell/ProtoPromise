@@ -82,9 +82,9 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// If cancelation was requested on this token, throws a <see cref="CancelException"/>.
+        /// If cancelation was requested on this token, throws a <see cref="CanceledException"/>.
         /// </summary>
-        /// <exception cref="CancelException"/>
+        /// <exception cref="CanceledException"/>
         public void ThrowIfCancelationRequested()
         {
             Internal.CancelationRef.ThrowIfCanceled(_ref, _id, _isCanceled);
