@@ -238,14 +238,14 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
-                TValue value, int retainCount)
+                TValue value)
         {
             // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
             if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
             {
-                return ResolveContainerVoid.GetOrCreate(retainCount);
+                return ResolveContainerVoid.GetOrCreate();
             }
-            return ResolveContainer<TValue>.GetOrCreate(value, retainCount);
+            return ResolveContainer<TValue>.GetOrCreate(value);
         }
 
         [MethodImpl(InlineOption)]
@@ -307,7 +307,7 @@ namespace Proto.Promises
             Type type = typeof(TReject);
             if (type.IsValueType)
             {
-                valueContainer = RejectionContainer<TReject>.GetOrCreate(reason, 0);
+                valueContainer = RejectionContainer<TReject>.GetOrCreate(reason);
             }
             else
             {
@@ -325,7 +325,7 @@ namespace Proto.Promises
                 // If reason is null, behave the same way .Net behaves if you throw null.
                 object o = reason == null ? new NullReferenceException() : (object) reason;
                 // Only need to create one object pool for reference types.
-                valueContainer = RejectionContainer<object>.GetOrCreate(o, 0);
+                valueContainer = RejectionContainer<object>.GetOrCreate(o);
             }
             SetCreatedAndRejectedStacktrace((IRejectValueContainer) valueContainer, rejectSkipFrames + 1, traceable);
             return valueContainer;

@@ -309,7 +309,6 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancel.InvokeResolver(ValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     owner.ResolveInternal(valueContainer, ref executionScheduler);
-                    valueContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -318,14 +317,12 @@ namespace Proto.Promises
                     if (cancelationHelper.TryUnregister(owner))
                     {
                         owner.ResolveInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
                 void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     owner.ResolveInternal(valueContainer, ref executionScheduler);
-                    valueContainer.Release();
                 }
 
                 void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
@@ -333,7 +330,6 @@ namespace Proto.Promises
                     if (cancelationHelper.TryUnregister(owner))
                     {
                         owner.ResolveInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
             }
@@ -390,7 +386,7 @@ namespace Proto.Promises
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
                     valueContainer.Release();
-                    owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                    owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -401,7 +397,7 @@ namespace Proto.Promises
                     {
                         TResult result = Invoke(arg);
                         valueContainer.Release();
-                        owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                        owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
                     }
                 }
 
@@ -432,12 +428,11 @@ namespace Proto.Promises
                     {
                         TResult result = Invoke(arg);
                         valueContainer.Release();
-                        owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                        owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
                     }
                     else
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -450,13 +445,12 @@ namespace Proto.Promises
                         {
                             TResult result = Invoke(arg);
                             valueContainer.Release();
-                            owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                            owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -472,7 +466,6 @@ namespace Proto.Promises
                     else
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -491,7 +484,6 @@ namespace Proto.Promises
                     else if (cancelationHelper.TryUnregister(owner))
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
             }
@@ -573,7 +565,6 @@ namespace Proto.Promises
                     else
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -592,7 +583,6 @@ namespace Proto.Promises
                     else if (cancelationHelper.TryUnregister(owner))
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
             }
@@ -659,7 +649,8 @@ namespace Proto.Promises
                         {
                             ((Promise<TArg>.ContinueAction) _callback).Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                         }
-                        resolveContainer = ResolveContainerVoid.GetOrCreate(0);
+                        valueContainer.Release();
+                        resolveContainer = ResolveContainerVoid.GetOrCreate();
                     }
                     else
                     {
@@ -672,9 +663,9 @@ namespace Proto.Promises
                         {
                             result = ((Promise<TArg>.ContinueFunc<TResult>) _callback).Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                         }
-                        resolveContainer = CreateResolveContainer(result, 0);
+                        valueContainer.Release();
+                        resolveContainer = CreateResolveContainer(result);
                     }
-                    valueContainer.Release();
                     owner.ResolveInternal(resolveContainer, ref executionScheduler);
                 }
 
@@ -908,7 +899,7 @@ namespace Proto.Promises
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
                     valueContainer.Release();
-                    owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                    owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -919,7 +910,7 @@ namespace Proto.Promises
                     {
                         TResult result = Invoke(arg);
                         valueContainer.Release();
-                        owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                        owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
                     }
                 }
 
@@ -950,12 +941,11 @@ namespace Proto.Promises
                     {
                         TResult result = Invoke(arg);
                         valueContainer.Release();
-                        owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                        owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
                     }
                     else
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -968,13 +958,12 @@ namespace Proto.Promises
                         {
                             TResult result = Invoke(arg);
                             valueContainer.Release();
-                            owner.ResolveInternal(CreateResolveContainer(result, 0), ref executionScheduler);
+                            owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -990,7 +979,6 @@ namespace Proto.Promises
                     else
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -1009,7 +997,6 @@ namespace Proto.Promises
                     else if (cancelationHelper.TryUnregister(owner))
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
             }
@@ -1103,7 +1090,6 @@ namespace Proto.Promises
                     else
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -1122,7 +1108,6 @@ namespace Proto.Promises
                     else if (cancelationHelper.TryUnregister(owner))
                     {
                         owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
             }
@@ -1195,7 +1180,8 @@ namespace Proto.Promises
                         {
                             ((Promise<TArg>.ContinueAction<TCapture>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                         }
-                        resolveContainer = ResolveContainerVoid.GetOrCreate(0);
+                        valueContainer.Release();
+                        resolveContainer = ResolveContainerVoid.GetOrCreate();
                     }
                     else
                     {
@@ -1208,9 +1194,9 @@ namespace Proto.Promises
                         {
                             result = ((Promise<TArg>.ContinueFunc<TCapture, TResult>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                         }
-                        resolveContainer = CreateResolveContainer(result, 0);
+                        valueContainer.Release();
+                        resolveContainer = CreateResolveContainer(result);
                     }
-                    valueContainer.Release();
                     owner.ResolveInternal(resolveContainer, ref executionScheduler);
                 }
 
