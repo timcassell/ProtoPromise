@@ -93,10 +93,7 @@ namespace Proto.Promises
                 }
             }
 
-            protected virtual void MarkAwaited(short promiseId, PromiseFlags flags)
-            {
-                IncrementIdAndSetFlags(promiseId, flags);
-            }
+            protected abstract void MarkAwaited(short promiseId, PromiseFlags flags);
 
             internal void Forget(short promiseId)
             {
@@ -252,6 +249,11 @@ namespace Proto.Promises
                 {
                     IncrementIdAndSetFlags(promiseId, PromiseFlags.None);
                     return this;
+                }
+
+                protected override void MarkAwaited(short promiseId, PromiseFlags flags)
+                {
+                    IncrementIdAndSetFlags(promiseId, flags | PromiseFlags.HadCallback);
                 }
 
                 internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
