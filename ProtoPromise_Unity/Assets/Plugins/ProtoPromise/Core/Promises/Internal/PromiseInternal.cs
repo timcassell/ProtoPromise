@@ -311,7 +311,6 @@ namespace Proto.Promises
                         if (invokingRejected || (e is ForcedRethrowException && valueContainer.GetState() != Promise.State.Resolved))
                         {
                             RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                            valueContainer.Release(); // Must release since RejectOrCancelInternal adds an extra retain.
                         }
                         else
                         {
@@ -322,7 +321,7 @@ namespace Proto.Promises
                     catch (OperationCanceledException)
                     {
                         valueContainer.ReleaseAndMaybeAddToUnhandledStack(!suppressRejection);
-                        RejectOrCancelInternal(CancelContainerVoid.GetOrCreate(0), ref executionScheduler);
+                        RejectOrCancelInternal(CancelContainerVoid.GetOrCreate(), ref executionScheduler);
                     }
                     catch (Exception e)
                     {
@@ -336,7 +335,6 @@ namespace Proto.Promises
 
                 internal virtual void ResolveInternal(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     State = Promise.State.Resolved;
                     HandleWaiter(valueContainer, ref executionScheduler);
@@ -346,7 +344,6 @@ namespace Proto.Promises
 
                 internal virtual void RejectOrCancelInternal(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     State = valueContainer.GetState();
                     HandleWaiter(valueContainer, ref executionScheduler);
@@ -468,7 +465,6 @@ namespace Proto.Promises
             {
                 internal override sealed void ResolveInternal(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     State = Promise.State.Resolved;
                     HandleWaiter(valueContainer, ref executionScheduler);
@@ -479,7 +475,6 @@ namespace Proto.Promises
 
                 internal override sealed void RejectOrCancelInternal(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     var state = valueContainer.GetState();
                     State = state;
@@ -559,7 +554,7 @@ namespace Proto.Promises
                     TResult result)
                 {
                     var promise = GetOrCreate(synchronizationContext);
-                    promise._valueOrPrevious = CreateResolveContainer(result, 1);
+                    promise._valueOrPrevious = CreateResolveContainer(result);
                     promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.MakeReady;
                     return promise;
                 }
@@ -647,7 +642,7 @@ namespace Proto.Promises
                     var _ref = other._ref;
                     if (_ref == null)
                     {
-                        ResolveInternal(CreateResolveContainer(other.Result, 0), ref executionScheduler);
+                        ResolveInternal(CreateResolveContainer(other.Result), ref executionScheduler);
                     }
                     else
                     {
@@ -693,7 +688,7 @@ namespace Proto.Promises
                     T value)
                 {
                     ThrowIfInPool(this);
-                    ResolveInternal(CreateResolveContainer(value, 0));
+                    ResolveInternal(CreateResolveContainer(value));
                 }
 
                 protected void RejectDirect<TReject>(
@@ -710,7 +705,7 @@ namespace Proto.Promises
                 protected void CancelDirect()
                 {
                     ThrowIfInPool(this);
-                    RejectOrCancelInternal(CancelContainerVoid.GetOrCreate(0));
+                    RejectOrCancelInternal(CancelContainerVoid.GetOrCreate());
                 }
 
                 internal sealed override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
@@ -758,7 +753,6 @@ namespace Proto.Promises
                     else
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
             }
@@ -805,7 +799,6 @@ namespace Proto.Promises
                     else
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
             }
@@ -856,7 +849,6 @@ namespace Proto.Promises
                     else
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
             }
@@ -914,7 +906,6 @@ namespace Proto.Promises
                     else
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
             }

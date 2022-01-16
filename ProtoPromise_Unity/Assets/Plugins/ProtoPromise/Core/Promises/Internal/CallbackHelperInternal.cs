@@ -1042,7 +1042,7 @@ namespace Proto.Promises
                             if (_this._ref == null)
                             {
                                 promise = PromiseProgress<TProgress>.GetOrCreate(progress, cancelationToken, _this.Depth, false, synchronizationContext);
-                                promise._valueOrPrevious = CreateResolveContainer(_this.Result, 1);
+                                promise._valueOrPrevious = CreateResolveContainer(_this.Result);
                                 promise.IsComplete = true;
                                 ExecutionScheduler.ScheduleOnContextStatic(synchronizationContext, promise);
                                 return new Promise<TResult>(promise, promise.Id, _this.Depth);

@@ -93,9 +93,9 @@ namespace Proto.Promises
                 return newValue == 0;
             }
 
-            protected void Reset(int retainCount)
+            protected void Reset()
             {
-                _retainCounter = retainCount;
+                _retainCounter = 1;
                 SetCreatedStacktrace(this, 2);
             }
         }
@@ -126,12 +126,12 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
-                T value, int retainCount)
+                T value)
             {
                 var container = ObjectPool<RejectionContainer<T>>.TryTake<RejectionContainer<T>>()
                     ?? new RejectionContainer<T>();
                 container.value = value;
-                container.Reset(retainCount);
+                container.Reset();
                 return container;
             }
 
@@ -245,12 +245,12 @@ namespace Proto.Promises
             private static readonly TValueContainer _instance = default(TConstructor).Construct();
 #endif
 
-            protected static TValueContainer GetOrCreateBase(int retainCount)
+            protected static TValueContainer GetOrCreateBase()
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 var container = ObjectPool<TValueContainer>.TryTake<TValueContainer>()
                     ?? default(TConstructor).Construct();
-                container.Reset(retainCount);
+                container.Reset();
                 return container;
 #else
                 return _instance;
@@ -291,9 +291,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static CancelContainerVoid GetOrCreate(int retainCount)
+            internal static CancelContainerVoid GetOrCreate()
             {
-                return GetOrCreateBase(retainCount);
+                return GetOrCreateBase();
             }
 
             internal override Promise.State GetState()
@@ -320,12 +320,12 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
-                T value, int retainCount)
+                T value)
             {
                 var container = ObjectPool<ResolveContainer<T>>.TryTake<ResolveContainer<T>>()
                     ?? new ResolveContainer<T>();
                 container.value = value;
-                container.Reset(retainCount);
+                container.Reset();
                 return container;
             }
 
@@ -370,9 +370,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static ResolveContainerVoid GetOrCreate(int retainCount)
+            internal static ResolveContainerVoid GetOrCreate()
             {
-                return GetOrCreateBase(retainCount);
+                return GetOrCreateBase();
             }
 
             internal override Promise.State GetState()

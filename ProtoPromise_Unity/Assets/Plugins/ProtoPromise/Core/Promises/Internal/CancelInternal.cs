@@ -55,7 +55,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(owner);
                     RetainAndSetCanceled();
-                    ValueContainer valueContainer = CancelContainerVoid.GetOrCreate(1);
+                    ValueContainer valueContainer = CancelContainerVoid.GetOrCreate();
                     object currentValue = Interlocked.Exchange(ref owner._valueOrPrevious, valueContainer);
                     owner.State = Promise.State.Canceled;
 
@@ -197,7 +197,6 @@ namespace Proto.Promises
                     else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -263,7 +262,6 @@ namespace Proto.Promises
                     else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -332,7 +330,6 @@ namespace Proto.Promises
                     else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -409,7 +406,6 @@ namespace Proto.Promises
                     else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 
@@ -641,7 +637,6 @@ namespace Proto.Promises
                     else if (_cancelationHelper.TryUnregister(this))
                     {
                         RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                        valueContainer.Release();
                     }
                 }
 

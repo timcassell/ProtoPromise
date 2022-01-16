@@ -225,7 +225,7 @@ namespace Proto.Promises
                         var promise = ObjectPool<HandleablePromiseBase>.TryTake<MergePromiseT<T>>()
                             ?? new MergePromiseT<T>();
                         promise._onPromiseResolved = onPromiseResolved;
-                        promise._valueContainer = ResolveContainer<T>.GetOrCreate(value, 1);
+                        promise._valueContainer = ResolveContainer<T>.GetOrCreate(value);
                         return promise;
                     }
 
