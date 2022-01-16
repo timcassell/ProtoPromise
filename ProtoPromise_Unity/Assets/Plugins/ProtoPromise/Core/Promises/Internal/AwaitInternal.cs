@@ -95,7 +95,8 @@ namespace Proto.Promises
             internal T GetResult<T>(short promiseId)
             {
                 bool released = TryIncrementIdAndSetFlagsAndRelease(promiseId);
-                if (State == Promise.State.Resolved)
+                Promise.State state = State;
+                if (state == Promise.State.Resolved)
                 {
                     T result = ((ValueContainer) _valueOrPrevious).GetValue<T>();
                     if (released)
@@ -104,7 +105,7 @@ namespace Proto.Promises
                     }
                     return result;
                 }
-                if (State == Promise.State.Pending)
+                if (state == Promise.State.Pending)
                 {
                     throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
                 }

@@ -1,4 +1,9 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
@@ -37,7 +42,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsFalse(promise.IsValid);
 
-#if CSHARP_7_3_OR_NEWER
+#if CSHARP_7_3_OR_NEWER && PROMISE_DEBUG
             Assert.Throws<InvalidOperationException>(() => promise.GetAwaiter());
 #endif
             Assert.Throws<InvalidOperationException>(() => promise.Preserve());
@@ -168,7 +173,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsFalse(promise.IsValid);
 
-#if CSHARP_7_3_OR_NEWER
+#if CSHARP_7_3_OR_NEWER && PROMISE_DEBUG
             Assert.Throws<InvalidOperationException>(() => promise.GetAwaiter());
 #endif
             Assert.Throws<InvalidOperationException>(() => promise.Preserve());
