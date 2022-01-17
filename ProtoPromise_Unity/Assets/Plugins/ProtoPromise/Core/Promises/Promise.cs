@@ -12,7 +12,6 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;

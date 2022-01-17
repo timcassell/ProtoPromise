@@ -46,10 +46,10 @@ namespace Proto.Promises
 
                 static Dummy()
                 {
-#pragma warning disable CS0612 // Type or member is obsolete
+#pragma warning disable 0612 // Type or member is obsolete
                     // Set default warning handler to route to UnityEngine.Debug.
                     Promise.Config.WarningHandler = Debug.LogWarning;
-#pragma warning restore CS0612 // Type or member is obsolete
+#pragma warning restore 0612 // Type or member is obsolete
 
 #if UNITY_EDITOR
                     // TODO: make foreground context work in edit mode also.
