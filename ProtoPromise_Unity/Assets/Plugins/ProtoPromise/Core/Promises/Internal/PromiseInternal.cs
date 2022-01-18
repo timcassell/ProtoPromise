@@ -1141,7 +1141,7 @@ namespace Proto.Promises
                             + ", _reportingProgress: " + _smallFields._reportingProgress + ", _settingInitialProgress: " + _smallFields._settingInitialProgress + ", _currentProgress: " + _smallFields._currentProgress.ToDouble()
 #endif
                             ;
-                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), _target as ITraceable);
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), _target);
                     }
                 }
 
