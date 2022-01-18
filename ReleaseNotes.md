@@ -1,5 +1,91 @@
 # Release Notes
 
+## v 2.0 - TBD
+
+Enhancements:
+
+- Full library thread-safety with minimal locks
+- Added `CLSCompliant(true)` to the assembly.
+- `Promise<T>.ResultContainer` now has an implicit conversion to `Promise.ResultContainer`.
+- Added `Promise<T>.{All, Race, First, New, NewDeferred, Resolved, Rejected, Canceled}`.
+- Added `Promise.DeferredBase.AsDeferred(<T>)`.
+- Added optional `valueContainer` parameter to `Promise<T>.All` functions to be used instead of a new list.
+- Added `Deferred.{Cancel, TryCancel}`.
+- `Deferred`s now implement `IProgress<float>` and `ICancelable`.
+- Added `CancelationSource.TryDispose` and `CancelationSource.TryCancel` methods.
+- Added `CancelationToken.TryRetain`.
+- Added `CancelationToken.TryRegister`.
+- Added `CancelationRegistration.Token` property.
+- Added `CancelationRegistration.GetIsRegisteredAndIsCancelationRequested(out bool)` and `CancelationRegistration.TryUnregister(out bool)`.
+- Added `CancelationToken.(Try)Register<TCancelable>(TCancelable cancelable) where TCancelable : ICancelable`.
+- Added static `CancelationToken.Canceled()` to get a token already in the canceled state without allocating.
+- Added `Promise(<T>).Progress<TProgress>(TProgress progressListener, ...) where TProgress : IProgress<float>)` overload.
+- Added `Promise.Config.IsProgressEnabled`.
+- Added `Promise(<T>).WaitAsync(SynchronizationOption)` and `Promise(<T>).WaitAsync(SynchronizationContext)` to schedule the next callback/await on the desired context. (Continuations now execute synchronously without `WaitAsync`.)
+- Added `Promise.Config.ForegroundContext` and `Promise.Config.BackgroundContext` to compliment `SynchronizationOption`s.
+- Added `Promise.Run` static functions.
+- Added `Promise.SwitchToForeground()`, `Promise.SwitchToBackground()`, and `Promise.SwitchToContext(SynchronizationContext)` static functions.
+- Added synchronization options for `Promise.Progress` and `Promise.New`.
+
+Performance:
+
+- Promises are now structs, making already resolved promises live only on the stack, increasing performance
+- Optimized progress to consume O(1) memory instead of O(n).
+- Increased performance when object pooling is disabled (though still not as efficient as when it is enabled).
+
+Breaking Changes:
+
+- `Promise` and `Promise<T>` are now readonly (c# 7.3+) structs instead of classes (`Promise<T>` has an implicit cast to `Promise`).
+- `Promise.{ResultContainer, ReasonContainer}` and `Promise<T>.ResultContainer` are now readonly ref structs (c# 7.3+).
+- Added `Promise(<T>).{ContinueAction, ContinueFunc}` delegates to deal with ref structs, and changed signature of `Promise(<T>).ContinueWith` to use them.
+- `Promise(<T>).GetAwaiter()` now return `Proto.Promises.Async.CompilerServices.PromiseAwaiter(<T>)`.
+- Removed `PromiseYielder.ClearPooledObjects` as its pool is now controlled by `Promise.Config.ObjectPoolingEnabled` and `Promise.Manager.ClearObjectPool`.
+- Removed `Proto.Utils` namespace.
+- Promise callbacks and awaits now execute synchronously by default.
+- Changed `PromiseYielder`'s `public static Promise<TYieldInstruction> WaitFor<TYieldInstruction>(TYieldInstruction)` to `public static Promise WaitFor(object yieldInstruction, MonoBehaviour runner = null)`.
+- Removed `Promise(<T>).ResultType`.
+- Changed behavior of `Promise.CatchCancelation` to return a new promise and behave more like `Promise.Catch`, where `onCanceled` resolves the returned promise when it returns, or adopts the state of the returned promise.
+- Removed cancelation reasons.
+
+Minor Changes:
+
+- Object pooling is enabled by default.
+- Changed `Promise.DeferredBase.ToDeferred(<T>)` to throw if the cast fails.
+- Adjusted `CancelationRegistration.{IsRegistered, TryUnregister}` to return false if the token has been canceled and the callback not yet invoked. (Can no longer unregister callbacks once the source has been canceled.)
+- Updated `Promise.New` to cancel the returned promise if the resolver throws an `OperationCanceledException`.
+- `CancelationSource.Token` no longer throws (may return a token whose `CanBeCanceled` is false).
+- Changed `Promise.Finally` to overwrite current rejection if an exception is thrown (follows same behavior as normal try/finally blocks).
+- `Promise.CatchCancelation` now returns a new promise that behaves similar to `Promise.Catch` (instead of returning the same promise).
+- Renamed `ElementNullException` to `InvalidElementException`.
+- Removed `PromiseDisposedException`.
+- Removed `CancelException`, replaced with already existing `CanceledException`.
+- `Promise.Progress` now returns a new promise that inherits the state (instead of returning the same promise).
+- Progress `Obsolete` attributes are now warnings instead of errors when progress is disabled.
+- Changed behavior of `Deferred.ReportProgress` to do nothing when progress is disabled.
+- Changed behavior of `Promise.Progress` to return `Duplicate` when progress is disabled.
+- If `Promise.Config.UncaughtRejectionHandler` is null, uncaught rejections will now be thrown as `AggregateException` in the `ForegroundContext`, or in the background if it's null.
+- Changed behavior of cancelations to suppress rejections.
+
+Deprecated:
+
+- `Promise.Manager.ObjectPooling` deprecated, replaced with `ObjectPoolingEnabled`.
+- Deprecated (with error) `Promise(<T>).{Retain, Release}`, added `Promise(<T>).{Preserve, Forget, Duplicate}`.
+- Deprecated (with error) `Deferred(<T>).{State, Retain, Release}` (can no longer check the completed state of a Deferred, only whether it's still pending).
+- Deprecated (with warning) `Deferred(<T>).IsValid`, replaced with `IsValidAndPending`.
+- Deprecated all functions in `Promise.Manager` with error except `ClearObjectPool`.
+- Deprecated `Promise.Config.WarningHandler`.
+
+Misc:
+
+- In Unity, moved ProtoPromise from `Third Party` to `Plugins`.
+- Renamed `Scripts` folder to `Core`.
+- Added support for installing from a git url in Unity's package manager. https://github.com/timcassell/ProtoPromise.git?path=ProtoPromise_Unity/Assets/Plugins/ProtoPromise
+- Added `InvalidArgumentException`.
+- Fixed FormatStacktrace in Unity when a stack frame is captured that it can't inspect.
+- Added version `2.0.0` to csproj with appending `.0` without progress or `.1` with progress.
+- Added `PromiseSynchronizationContext` and updated `PromiseBehaviour` to utilize it.
+- Change `UnreleasedObjectException` to `UnobservedPromiseException` when a promise is garbage collected without being awaited or forgotten.
+
 ## v 1.0.3 - December 11, 2021
 
 - Fixed a compile error when building with IL2CPP runtime.
