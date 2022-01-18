@@ -1,4 +1,6 @@
 using Proto.Promises;
+using System;
+using System.Collections;
 using UnityEngine;
 #if UNITY_2017_2_OR_NEWER
 using UnityEngine.Networking;
@@ -6,52 +8,88 @@ using UnityEngine.Networking;
 
 public static class DownloadHelper
 {
-#if CSHARP_7_3_OR_NEWER
-    public static async Promise<Texture2D> DownloadTexture(string url)
+#if UNITY_2017_2_OR_NEWER
+    private static IEnumerator WaitForWebRequestWithProgress(Promise.DeferredBase deferred, UnityWebRequestAsyncOperation asyncOp, CancelationToken cancelationToken)
     {
-        using (var www = UnityWebRequestTexture.GetTexture(url))
+        while (!asyncOp.isDone && !cancelationToken.IsCancelationRequested)
         {
-            await PromiseYielder.WaitFor(www.SendWebRequest());
-#if UNITY_2020_2_OR_NEWER
-            if (www.result == UnityWebRequest.Result.ConnectionError || www.result == UnityWebRequest.Result.DataProcessingError || www.result == UnityWebRequest.Result.ProtocolError)
-#else
-            if (www.isHttpError || www.isNetworkError)
-#endif
-            {
-                throw Promise.RejectException(www.error);
-            }
-            return ((DownloadHandlerTexture) www.downloadHandler).texture;
+            deferred.ReportProgress(asyncOp.progress);
+            yield return null;
         }
     }
-#elif UNITY_2017_2_OR_NEWER
-            public static Promise<Texture2D> DownloadTexture(string url)
+
+    public static Promise<Texture2D> DownloadTexture(string url, CancelationToken cancelationToken = default(CancelationToken))
     {
+        var deferred = Promise.NewDeferred<Texture2D>(cancelationToken);
         var www = UnityWebRequestTexture.GetTexture(url);
-        return PromiseYielder.WaitFor(www.SendWebRequest())
-            .Then(www, webRequest =>
+        PromiseYielder.WaitFor(WaitForWebRequestWithProgress(deferred, www.SendWebRequest(), cancelationToken))
+            .Finally(ValueTuple.Create(www, deferred), tuple =>
             {
-                if (webRequest.isHttpError || webRequest.isNetworkError)
+                var webRequest = tuple.Item1;
+                var def = tuple.Item2;
+                if (!def.IsValidAndPending) // Was the deferred already canceled from the token?
                 {
-                    throw Promise.RejectException(webRequest.error);
+                    webRequest.Abort();
+                    webRequest.Dispose();
                 }
-                return ((DownloadHandlerTexture) webRequest.downloadHandler).texture;
+#if UNITY_2020_2_OR_NEWER
+                else if (webRequest.result == UnityWebRequest.Result.ConnectionError || webRequest.result == UnityWebRequest.Result.DataProcessingError || webRequest.result == UnityWebRequest.Result.ProtocolError)
+#else
+                else if (webRequest.isHttpError || webRequest.isNetworkError)
+#endif
+                {
+                    string error = webRequest.error;
+                    webRequest.Dispose();
+                    def.Reject(error);
+                }
+                else
+                {
+                    Texture2D result = ((DownloadHandlerTexture) webRequest.downloadHandler).texture;
+                    webRequest.Dispose();
+                    def.Resolve(result);
+                }
             })
-            .Finally(www.Dispose);
+            .Forget();
+        return deferred.Promise;
     }
 #else
-    public static Promise<Texture2D> DownloadTexture(string url)
+    private static IEnumerator WaitForWebRequestWithProgress(Promise.DeferredBase deferred, WWW asyncOp, CancelationToken cancelationToken)
     {
+        while (!asyncOp.isDone && !cancelationToken.IsCancelationRequested)
+        {
+            deferred.ReportProgress(asyncOp.progress);
+            yield return null;
+        }
+    }
+
+    public static Promise<Texture2D> DownloadTexture(string url, CancelationToken cancelationToken = default(CancelationToken))
+    {
+        var deferred = Promise.NewDeferred<Texture2D>(cancelationToken);
         var www = new WWW(url);
-        return PromiseYielder.WaitFor(www)
-            .Then(www, asyncOperation =>
+        PromiseYielder.WaitFor(WaitForWebRequestWithProgress(deferred, www, cancelationToken))
+            .Finally(ValueTuple.Create(www, deferred), tuple =>
             {
-                if (!string.IsNullOrEmpty(asyncOperation.error))
+                var webRequest = tuple.Item1;
+                var def = tuple.Item2;
+                if (!def.IsValidAndPending) // Was the deferred already canceled from the token?
                 {
-                    throw Promise.RejectException(asyncOperation.error);
+                    webRequest.Dispose();
                 }
-                return asyncOperation.texture;
+                else if (!string.IsNullOrEmpty(webRequest.error))
+                {
+                    string error = webRequest.error;
+                    webRequest.Dispose();
+                    def.Reject(error);
+                }
+                else
+                {
+                    Texture2D result = webRequest.texture;
+                    webRequest.Dispose();
+                    def.Resolve(result);
+                }
             })
-            .Finally(www.Dispose);
+            .Forget();
+        return deferred.Promise;
     }
 #endif
 }
