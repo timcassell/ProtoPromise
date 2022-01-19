@@ -23,7 +23,7 @@ namespace Proto.Promises
             partial struct SmallFields
             {
                 [MethodImpl(InlineOption)]
-                internal bool InterlockedIncrementPromiseIdAndSetFlagsAndMaybeReleaseComplete(short promiseId, PromiseFlags flags)
+                internal bool InterlockedIncrementPromiseIdAndSetFlagsAndRetain(short promiseId, PromiseFlags flags)
                 {
                     unchecked // We want the id to wrap around.
                     {
@@ -39,9 +39,9 @@ namespace Proto.Promises
                                 throw new InvalidOperationException("Attempted to GetResult on an invalid PromiseAwaiter.", GetFormattedStacktrace(3));
                             }
                             newValue = initialValue;
-                            // If HadCallback is false, we must release. Convert the flag to 0 or 1 without branching.
-                            ushort retainSubtract = (ushort) ((byte) (~initialValue._flags & PromiseFlags.HadCallback) >> 7);
-                            newValue._retains -= retainSubtract;
+                            // If HadCallback is false, we should not retain. Convert the flag to 0 or 1 without branching.
+                            ushort retainAdd = (ushort) (1 - ((byte) (~initialValue._flags & PromiseFlags.HadCallback) >> 7));
+                            newValue._retains += retainAdd;
                             ++newValue._promiseId;
                             newValue._flags |= flags;
                         } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
@@ -50,7 +50,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void InterlockedSetFlags(short promiseId, PromiseFlags flags)
+                internal void InterlockedSetFlagsAndRetain(short promiseId, PromiseFlags flags)
                 {
                     Thread.MemoryBarrier();
                     short idPlusOne = (short) (promiseId + 1);
@@ -64,45 +64,41 @@ namespace Proto.Promises
                             throw new InvalidOperationException("Attempted to GetResult on an invalid PromiseAwaiter.", GetFormattedStacktrace(3));
                         }
                         newValue = initialValue;
+                        ++newValue._retains;
                         newValue._flags |= flags;
                     } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
                 }
             }
 
-            protected abstract bool TryIncrementIdAndSetFlagsAndRelease(short promiseId);
+            protected abstract void IncrementIdAndSetFlags(short promiseId);
 
             partial class PromiseSingleAwait
             {
-                protected override bool TryIncrementIdAndSetFlagsAndRelease(short promiseId)
+                protected override void IncrementIdAndSetFlags(short promiseId)
                 {
-                    bool released = _smallFields.InterlockedIncrementPromiseIdAndSetFlagsAndMaybeReleaseComplete(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
+                    _smallFields.InterlockedIncrementPromiseIdAndSetFlagsAndRetain(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                     ThrowIfInPool(this);
-                    return released;
                 }
             }
 
             partial class PromiseMultiAwait
             {
-                protected override bool TryIncrementIdAndSetFlagsAndRelease(short promiseId)
+                protected override void IncrementIdAndSetFlags(short promiseId)
                 {
-                    _smallFields.InterlockedSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
+                    _smallFields.InterlockedSetFlagsAndRetain(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                     ThrowIfInPool(this);
-                    return false;
                 }
             }
 
             [MethodImpl(InlineOption)]
             internal T GetResult<T>(short promiseId)
             {
-                bool released = TryIncrementIdAndSetFlagsAndRelease(promiseId);
+                IncrementIdAndSetFlags(promiseId);
                 Promise.State state = State;
                 if (state == Promise.State.Resolved)
                 {
                     T result = ((ValueContainer) _valueOrPrevious).GetValue<T>();
-                    if (released)
-                    {
-                        Dispose();
-                    }
+                    MaybeDispose();
                     return result;
                 }
                 if (state == Promise.State.Pending)
@@ -111,10 +107,7 @@ namespace Proto.Promises
                 }
                 // Throw unhandled exception or canceled exception.
                 Exception exception = ((IThrowable) _valueOrPrevious).GetException();
-                if (released)
-                {
-                    Dispose();
-                }
+                MaybeDispose();
                 throw exception;
             }
 

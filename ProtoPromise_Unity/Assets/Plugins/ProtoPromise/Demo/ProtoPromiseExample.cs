@@ -1,14 +1,16 @@
 ﻿using Proto.Promises;
 using UnityEngine;
 using UnityEngine.UI;
-#if UNITY_2017_2_OR_NEWER
-using UnityEngine.Networking;
-#endif
 
 public class ProtoPromiseExample : MonoBehaviour
 {
     public Image image;
     public string imageUrl = "https://promisesaplus.com/assets/logo-small.png";
+    public Image progressBar;
+    public Text progressText;
+    public Button cancelButton;
+
+    private CancelationSource cancelationSource;
 
     private void Awake()
     {
@@ -23,64 +25,52 @@ public class ProtoPromiseExample : MonoBehaviour
 
         async Promise _OnClick()
         {
-            Texture2D texture = await DownloadTexture(imageUrl);
-            image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+            cancelationSource.TryCancel(); // Cancel previous download if it's not yet completed.
+            using (var cs = CancelationSource.New())
+            {
+                cancelationSource = cs;
+                cancelButton.interactable = true;
+                Texture2D texture = await DownloadHelper.DownloadTexture(imageUrl, cs.Token)
+                    .Progress(this, (_this, progress) => // Capture `this` to prevent closure allocation.
+                    {
+                        _this.progressBar.fillAmount = progress;
+                        _this.progressText.text = (progress * 100f).ToString("0.##") + "%";
+                    });
+                cancelButton.interactable = false;
+                image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+            }
         }
     }
 #else
     public void OnClick()
     {
-        DownloadTexture(imageUrl)
+        cancelationSource.TryCancel(); // Cancel previous download if it's not yet completed.
+        var cs = CancelationSource.New();
+        cancelationSource = cs;
+        cancelButton.interactable = true;
+        DownloadHelper.DownloadTexture(imageUrl, cs.Token)
+            .Progress(this, (_this, progress) => // Capture `this` to prevent closure allocation.
+            {
+                _this.progressBar.fillAmount = progress;
+                _this.progressText.text = (progress * 100f).ToString("0.##") + "%";
+            })
             .Then(texture =>
             {
+                cancelButton.interactable = false;
                 image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
             })
+            .Finally(cs, source => source.Dispose()) // Must dispose the source after the async operation completes.
             .Forget();
     }
 #endif
 
-#if CSHARP_7_3_OR_NEWER
-    public static async Promise<Texture2D> DownloadTexture(string url)
+    public void OnCancelClick()
     {
-        using (var www = UnityWebRequestTexture.GetTexture(url))
+        // Cancel download if it's not yet completed.
+        if (cancelationSource.TryCancel())
         {
-            await PromiseYielder.WaitFor(www.SendWebRequest());
-            if (www.isHttpError || www.isNetworkError)
-            {
-                throw Promise.RejectException(www.error);
-            }
-            return ((DownloadHandlerTexture) www.downloadHandler).texture;
+            cancelButton.interactable = false;
+            progressText.text = "Canceled";
         }
     }
-#elif UNITY_2017_2_OR_NEWER
-    public static Promise<Texture2D> DownloadTexture(string url)
-    {
-        var www = UnityWebRequestTexture.GetTexture(url);
-        return PromiseYielder.WaitFor(www.SendWebRequest())
-            .Then(www, webRequest =>
-            {
-                if (webRequest.isHttpError || webRequest.isNetworkError)
-                {
-                    throw Promise.RejectException(webRequest.error);
-                }
-                return ((DownloadHandlerTexture) webRequest.downloadHandler).texture;
-            })
-            .Finally(www.Dispose);
-    }
-#else
-    public static Promise<Texture2D> DownloadTexture(string url)
-    {
-        var www = new WWW(url);
-        return PromiseYielder.WaitFor(www)
-            .Then(www, asyncOperation =>
-            {
-                if (!string.IsNullOrEmpty(asyncOperation.error))
-                {
-                    throw Promise.RejectException(asyncOperation.error);
-                }
-                return asyncOperation.texture;
-            })
-            .Finally(www.Dispose);
-    }
-#endif
 }

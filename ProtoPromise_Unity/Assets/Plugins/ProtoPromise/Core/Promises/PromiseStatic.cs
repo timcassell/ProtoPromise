@@ -1686,7 +1686,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Get a <see cref="CancelException"/> that can be thrown to cancel the promise from an onResolved or onRejected callback, or in an async Promise function.
+        /// Get a <see cref="CanceledException"/> that can be thrown to cancel the promise from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.CancelException();"
         /// </summary>
         public static CanceledException CancelException()

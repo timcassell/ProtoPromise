@@ -76,11 +76,6 @@ namespace Proto.Promises
             _stackTrace = stackTrace;
         }
 
-        public ArgumentOutOfRangeException(string paramName, object actualValue, string message, string stackTrace = null) : base(paramName, actualValue, message)
-        {
-            _stackTrace = stackTrace;
-        }
-
         private readonly string _stackTrace;
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
