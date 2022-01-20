@@ -177,8 +177,7 @@ namespace Proto.Promises
                 string innerStacktrace = null;
 #endif
                 string message = null;
-                Type type = Value.GetType();
-                Exception innerException = Value as Exception;
+                Exception innerException = value as Exception;
                 if (innerException != null)
                 {
 #if PROMISE_DEBUG
@@ -191,7 +190,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    message = "A rejected value was not handled, type: " + type + ", value: " + Value.ToString();
+                    message = "A rejected value was not handled, type: " + value.GetType() + ", value: " + value.ToString();
                     innerException = new RejectionException(message, innerStacktrace, null);
                 }
 #if PROMISE_DEBUG
@@ -199,7 +198,90 @@ namespace Proto.Promises
 #else
                 string outerStacktrace = null;
 #endif
-                return new UnhandledExceptionInternal(Value, type, message + CausalityTraceMessage, outerStacktrace, innerException);
+                return new UnhandledExceptionInternal(Value, message + CausalityTraceMessage, outerStacktrace, innerException);
+            }
+
+            Exception IThrowable.GetException()
+            {
+                ThrowIfInPool(this);
+                return ToException();
+            }
+
+            ValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+            {
+                ThrowIfInPool(this);
+                return this;
+            }
+
+            void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
+            {
+                ThrowIfInPool(this);
+                AddUnhandledException(ToException());
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
+        internal sealed class RethrownRejectionContainer : ValueContainer<object>, ILinked<RethrownRejectionContainer>, IRejectValueContainer, IRejectionToContainer, ICantHandleException
+        {
+            RethrownRejectionContainer ILinked<RethrownRejectionContainer>.Next { get; set; }
+
+            private UnhandledExceptionInternal _exception;
+
+#if PROMISE_DEBUG
+            public void SetCreatedAndRejectedStacktrace(System.Diagnostics.StackTrace rejectedStacktrace, CausalityTrace createdStacktraces)
+            {
+                ThrowIfInPool(this);
+            }
+#endif
+
+            private RethrownRejectionContainer() { }
+
+            internal static RethrownRejectionContainer GetOrCreate(UnhandledExceptionInternal exception)
+            {
+                var container = ObjectPool<RethrownRejectionContainer>.TryTake<RethrownRejectionContainer>()
+                    ?? new RethrownRejectionContainer();
+                container.value = exception.Value;
+                container._exception = exception;
+                container.Reset();
+                return container;
+            }
+
+            internal override Promise.State GetState()
+            {
+                return Promise.State.Rejected;
+            }
+
+            internal override void Release()
+            {
+                ThrowIfInPool(this);
+                if (TryReleaseComplete())
+                {
+                    Dispose();
+                }
+            }
+
+            internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            {
+                if (shouldAdd)
+                {
+                    AddUnhandledException(ToException());
+                }
+                Release();
+            }
+
+            private void Dispose()
+            {
+                value = null;
+                _exception = null;
+                ObjectPool<RethrownRejectionContainer>.MaybeRepool(this);
+            }
+
+            private UnhandledException ToException()
+            {
+                ThrowIfInPool(this);
+                return _exception;
             }
 
             Exception IThrowable.GetException()
