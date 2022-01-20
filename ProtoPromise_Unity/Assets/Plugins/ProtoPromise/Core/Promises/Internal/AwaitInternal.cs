@@ -70,11 +70,28 @@ namespace Proto.Promises
                 }
             }
 
-            protected abstract void IncrementIdAndSetFlags(short promiseId);
+            internal abstract void IncrementIdAndSetFlags(short promiseId);
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            internal System.Runtime.ExceptionServices.ExceptionDispatchInfo GetExceptionDispatchInfo(Promise.State state)
+            {
+                if (state == Promise.State.Canceled)
+                {
+                    MaybeDispose();
+                    throw CanceledExceptionInternal.GetOrCreate();
+                }
+                if (state == Promise.State.Rejected)
+                {
+                    var exceptionDispatchInfo = ((IRejectValueContainer) _valueOrPrevious).GetExceptionDispatchInfo();
+                    MaybeDispose();
+                    return exceptionDispatchInfo;
+                }
+                throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+            }
 
             partial class PromiseSingleAwait
             {
-                protected override void IncrementIdAndSetFlags(short promiseId)
+                internal override void IncrementIdAndSetFlags(short promiseId)
                 {
                     _smallFields.InterlockedIncrementPromiseIdAndSetFlagsAndRetain(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                     ThrowIfInPool(this);
@@ -83,32 +100,11 @@ namespace Proto.Promises
 
             partial class PromiseMultiAwait
             {
-                protected override void IncrementIdAndSetFlags(short promiseId)
+                internal override void IncrementIdAndSetFlags(short promiseId)
                 {
                     _smallFields.InterlockedSetFlagsAndRetain(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                     ThrowIfInPool(this);
                 }
-            }
-
-            [MethodImpl(InlineOption)]
-            internal T GetResult<T>(short promiseId)
-            {
-                IncrementIdAndSetFlags(promiseId);
-                Promise.State state = State;
-                if (state == Promise.State.Resolved)
-                {
-                    T result = ((ValueContainer) _valueOrPrevious).GetValue<T>();
-                    MaybeDispose();
-                    return result;
-                }
-                if (state == Promise.State.Pending)
-                {
-                    throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
-                }
-                // Throw unhandled exception or canceled exception.
-                Exception exception = ((IThrowable) _valueOrPrevious).GetException();
-                MaybeDispose();
-                throw exception;
             }
 
             [MethodImpl(InlineOption)]
@@ -175,26 +171,121 @@ namespace Proto.Promises
                 internal override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
             }
         }
+    }
 
+    namespace Async.CompilerServices
+    {
+        /// <summary>
+        /// Used to support the await keyword.
+        /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal readonly partial struct PromiseAwaiterInternal<T>
+        public
+#if CSHARP_7_3_OR_NEWER
+            readonly
+#endif
+            partial struct PromiseAwaiterVoid : ICriticalNotifyCompletion
         {
-            private readonly Promise<T> _promise;
+            private readonly PromiseAwaiter<Internal.VoidResult> _awaiter;
 
             /// <summary>
             /// Internal use.
             /// </summary>
-            [MethodImpl(InlineOption)]
-            internal PromiseAwaiterInternal(Promise<T> promise)
+            [MethodImpl(Internal.InlineOption)]
+            internal PromiseAwaiterVoid(Promise promise)
+            {
+                _awaiter = new PromiseAwaiter<Internal.VoidResult>(promise._target);
+            }
+
+            public bool IsCompleted
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get
+                {
+                    return _awaiter.IsCompleted;
+                }
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            public void GetResult()
+            {
+                var promise = _awaiter._promise;
+                ValidateGetResult(promise, 1);
+                var _ref = promise._ref;
+                if (_ref == null)
+                {
+                    return;
+                }
+                _ref.IncrementIdAndSetFlags(promise.Id);
+                var state = _ref.State;
+                if (state == Promise.State.Resolved)
+                {
+                    _ref.MaybeDispose();
+                    return;
+                }
+                _ref.GetExceptionDispatchInfo(state).Throw();
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            public void OnCompleted(Action continuation)
+            {
+                _awaiter.OnCompleted(continuation);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            public void UnsafeOnCompleted(Action continuation)
+            {
+                _awaiter.UnsafeOnCompleted(continuation);
+            }
+
+            static partial void ValidateGetResult(Promise<Internal.VoidResult> promise, int skipFrames);
+            static partial void ValidateOperation(Promise<Internal.VoidResult> promise, int skipFrames);
+#if PROMISE_DEBUG
+            static partial void ValidateGetResult(Promise<Internal.VoidResult> promise, int skipFrames)
+            {
+                if (promise._ref == null)
+                {
+                    ValidateOperation(promise, skipFrames + 1);
+                }
+            }
+
+            static partial void ValidateOperation(Promise<Internal.VoidResult> promise, int skipFrames)
+            {
+                if (!promise.IsValid)
+                {
+                    throw new InvalidOperationException("Attempted to use PromiseAwaiter incorrectly. You must call IsCompleted, then maybe OnCompleted, then GetResult when it is complete.", Internal.GetFormattedStacktrace(skipFrames + 1));
+                }
+            }
+#endif
+        }
+
+        /// <summary>
+        /// Used to support the await keyword.
+        /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        public
+#if CSHARP_7_3_OR_NEWER
+            readonly
+#endif
+            partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion
+        {
+            internal readonly Promise<T> _promise;
+
+            /// <summary>
+            /// Internal use.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            internal PromiseAwaiter(Promise<T> promise)
             {
                 _promise = promise;
             }
 
-            internal bool IsCompleted
+            public bool IsCompleted
             {
-                [MethodImpl(InlineOption)]
+                [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     var promise = _promise;
@@ -203,18 +294,30 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl(InlineOption)]
-            internal T GetResult()
+            [MethodImpl(Internal.InlineOption)]
+            public T GetResult()
             {
                 var promise = _promise;
                 ValidateGetResult(promise, 1);
-                return promise._ref == null
-                    ? promise.Result
-                    : promise._ref.GetResult<T>(promise.Id);
+                var _ref = promise._ref;
+                if (_ref == null)
+                {
+                    return promise.Result;
+                }
+                _ref.IncrementIdAndSetFlags(promise.Id);
+                var state = _ref.State;
+                if (state == Promise.State.Resolved)
+                {
+                    T result = ((Internal.ValueContainer) _ref._valueOrPrevious).GetValue<T>();
+                    _ref.MaybeDispose();
+                    return result;
+                }
+                _ref.GetExceptionDispatchInfo(state).Throw();
+                throw new Exception(); // This will never be reached, but the compiler needs help understanding that.
             }
 
-            [MethodImpl(InlineOption)]
-            internal void OnCompleted(Action continuation)
+            [MethodImpl(Internal.InlineOption)]
+            public void OnCompleted(Action continuation)
             {
                 ValidateArgument(continuation, "continuation", 1);
                 var promise = _promise;
@@ -227,8 +330,8 @@ namespace Proto.Promises
                 promise._ref.OnCompleted(continuation, promise.Id);
             }
 
-            [MethodImpl(InlineOption)]
-            internal void UnsafeOnCompleted(Action continuation)
+            [MethodImpl(Internal.InlineOption)]
+            public void UnsafeOnCompleted(Action continuation)
             {
                 OnCompleted(continuation);
             }
@@ -254,115 +357,10 @@ namespace Proto.Promises
             {
                 if (!promise.IsValid)
                 {
-                    throw new InvalidOperationException("Attempted to use PromiseAwaiter incorrectly. You must call IsCompleted, then maybe OnCompleted, then GetResult when it is complete.", GetFormattedStacktrace(skipFrames + 1));
+                    throw new InvalidOperationException("Attempted to use PromiseAwaiter incorrectly. You must call IsCompleted, then maybe OnCompleted, then GetResult when it is complete.", Internal.GetFormattedStacktrace(skipFrames + 1));
                 }
             }
 #endif
-        }
-    }
-
-    namespace Async.CompilerServices
-    {
-        /// <summary>
-        /// Used to support the await keyword.
-        /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct PromiseAwaiterVoid : ICriticalNotifyCompletion
-        {
-            private readonly Internal.PromiseAwaiterInternal<Internal.VoidResult> _awaiter;
-
-            /// <summary>
-            /// Internal use.
-            /// </summary>
-            [MethodImpl(Internal.InlineOption)]
-            internal PromiseAwaiterVoid(Promise promise)
-            {
-                _awaiter = new Internal.PromiseAwaiterInternal<Internal.VoidResult>(promise._target);
-            }
-
-            public bool IsCompleted
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    return _awaiter.IsCompleted;
-                }
-            }
-
-            [MethodImpl(Internal.InlineOption)]
-            public void GetResult()
-            {
-                _awaiter.GetResult();
-            }
-
-            [MethodImpl(Internal.InlineOption)]
-            public void OnCompleted(Action continuation)
-            {
-                _awaiter.OnCompleted(continuation);
-            }
-
-            [MethodImpl(Internal.InlineOption)]
-            public void UnsafeOnCompleted(Action continuation)
-            {
-                _awaiter.UnsafeOnCompleted(continuation);
-            }
-        }
-
-        /// <summary>
-        /// Used to support the await keyword.
-        /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            struct PromiseAwaiter<T> : ICriticalNotifyCompletion
-        {
-            private readonly Internal.PromiseAwaiterInternal<T> _awaiter;
-
-            /// <summary>
-            /// Internal use.
-            /// </summary>
-            [MethodImpl(Internal.InlineOption)]
-            internal PromiseAwaiter(Promise<T> promise)
-            {
-                _awaiter = new Internal.PromiseAwaiterInternal<T>(promise);
-            }
-
-            public bool IsCompleted
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    return _awaiter.IsCompleted;
-                }
-            }
-
-            [MethodImpl(Internal.InlineOption)]
-            public T GetResult()
-            {
-                return _awaiter.GetResult();
-            }
-
-            [MethodImpl(Internal.InlineOption)]
-            public void OnCompleted(Action continuation)
-            {
-                _awaiter.OnCompleted(continuation);
-            }
-
-            [MethodImpl(Internal.InlineOption)]
-            public void UnsafeOnCompleted(Action continuation)
-            {
-                _awaiter.UnsafeOnCompleted(continuation);
-            }
         }
     }
 

@@ -167,7 +167,7 @@ namespace Proto.Promises
             CausalityTrace ITraceable.Trace { get; set; }
 #endif
 
-            volatile private object _valueOrPrevious;
+            volatile internal object _valueOrPrevious;
             private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
 
             [StructLayout(LayoutKind.Explicit)]

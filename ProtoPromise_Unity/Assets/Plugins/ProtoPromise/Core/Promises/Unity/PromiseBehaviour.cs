@@ -151,19 +151,22 @@ namespace Proto.Promises
                     {
                         Debug.LogException(e);
                     }
+                }
+            }
 
-                    // Pop and pass to UnityEngine.Debug here so Unity won't add extra stackframes that we don't care about.
-                    _unhandledExceptionsLocker.Enter();
-                    var unhandledExceptions = _unhandledExceptions;
-                    _unhandledExceptions = new Internal.ValueLinkedStack<UnhandledException>();
-                    _unhandledExceptionsLocker.Exit();
+            private void Update()
+            {
+                // Pop and pass to UnityEngine.Debug here so Unity won't add extra stackframes that we don't care about.
+                _unhandledExceptionsLocker.Enter();
+                var unhandledExceptions = _unhandledExceptions;
+                _unhandledExceptions = new Internal.ValueLinkedStack<UnhandledException>();
+                _unhandledExceptionsLocker.Exit();
 
-                    while (unhandledExceptions.IsNotEmpty)
-                    {
-                        // Unfortunately, Unity does not provide a means to completely eliminate the stack trace at the point of calling `Debug.Log`, so the log will always have at least 1 extra stack frame.
-                        // This implementation minimizes it to 1 extra stack frame always (because `IEnumerator.MoveNext()` is called from Unity's side, and they do not include their own internal stack traces).
-                        Debug.LogException(unhandledExceptions.Pop());
-                    }
+                while (unhandledExceptions.IsNotEmpty)
+                {
+                    // Unfortunately, Unity does not provide a means to completely eliminate the stack trace at the point of calling `Debug.Log`, so the log will always have at least 1 extra stack frame.
+                    // This implementation minimizes it to 1 extra stack frame always (because `Update()` is called from Unity's side, and they do not include their own internal stack traces).
+                    Debug.LogException(unhandledExceptions.Pop());
                 }
             }
         }

@@ -284,11 +284,19 @@ namespace Proto.Promises
                 return _exception;
             }
 
-            Exception IThrowable.GetException()
+#if CSHARP_7_3_OR_NEWER
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo IRejectValueContainer.GetExceptionDispatchInfo()
+            {
+                ThrowIfInPool(this);
+                return System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(value as Exception ?? ToException());
+            }
+#else
+            Exception IRejectValueContainer.GetException()
             {
                 ThrowIfInPool(this);
                 return ToException();
             }
+#endif
 
             ValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
             {
@@ -361,7 +369,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        internal sealed class CancelContainerVoid : SingletonValueContainer<CancelContainerVoid, CancelContainerVoid.Constructor>, IThrowable
+        internal sealed class CancelContainerVoid : SingletonValueContainer<CancelContainerVoid, CancelContainerVoid.Constructor>
         {
             internal struct Constructor : IConstructor<CancelContainerVoid>
             {
@@ -381,11 +389,6 @@ namespace Proto.Promises
             internal override Promise.State GetState()
             {
                 return Promise.State.Canceled;
-            }
-
-            Exception IThrowable.GetException()
-            {
-                return CanceledExceptionInternal.GetOrCreate();
             }
         }
 
