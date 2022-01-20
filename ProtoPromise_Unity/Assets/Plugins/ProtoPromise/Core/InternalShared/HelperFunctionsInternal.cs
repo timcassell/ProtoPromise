@@ -364,7 +364,7 @@ namespace Proto.Promises
             Exception innerException = unhandledValue as Exception;
             string message = innerException != null ? "An exception was not handled." : "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
 
-            AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, type, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
+            AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
         }
 
         internal static void MaybeReportUnhandledRejections()

@@ -147,25 +147,23 @@ namespace Proto.Promises
         UnhandledException Internal.ILinked<UnhandledException>.Next { get; set; }
 
         private readonly object _value;
-        private readonly Type _type;
         private readonly string _stackTrace;
 
-        internal UnhandledException(object value, Type valueType, string message, string stackTrace, Exception innerException) : base(message, innerException)
+        internal UnhandledException(object value, string message, string stackTrace, Exception innerException) : base(message, innerException)
         {
             _value = value;
-            _type = valueType;
             _stackTrace = stackTrace;
         }
 
         public override string StackTrace { get { return _stackTrace; } }
 
-        public Type ValueType { get { return _type; } }
+        public Type ValueType { get { return _value.GetType(); } }
 
         public object Value { get { return _value; } }
 
         public bool TryGetValueAs<T>(out T value)
         {
-            if (typeof(T).IsAssignableFrom(_type))
+            if (typeof(T).IsAssignableFrom(ValueType))
             {
                 value = (T) _value;
                 return true;

@@ -16,8 +16,8 @@ namespace Proto.Promises
 #endif
         internal sealed class UnhandledExceptionInternal : UnhandledException, IRejectionToContainer, ICantHandleException
         {
-            internal UnhandledExceptionInternal(object value, Type valueType, string message, string stackTrace, Exception innerException) :
-                base(value, valueType, message, stackTrace, innerException)
+            internal UnhandledExceptionInternal(object value, string message, string stackTrace, Exception innerException) :
+                base(value, message, stackTrace, innerException)
             { }
 
             void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
@@ -27,11 +27,7 @@ namespace Proto.Promises
 
             ValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
             {
-                var rejection = CreateRejectContainer(Value, int.MinValue, traceable);
-#if PROMISE_DEBUG
-                ((IRejectValueContainer) rejection).SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
-#endif
-                return rejection;
+                return RethrownRejectionContainer.GetOrCreate(this);
             }
         }
 
