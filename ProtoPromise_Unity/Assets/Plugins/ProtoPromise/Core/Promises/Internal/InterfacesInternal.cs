@@ -4,7 +4,7 @@
     {
         partial class PromiseRef
         {
-            // Abstract classes is used instead of interface, because virtual calls on interfaces are twice as slow as virtual calls on classes.
+            // Abstract class is used instead of interface, because virtual calls on interfaces are twice as slow as virtual calls on classes.
             internal abstract partial class MultiHandleablePromiseBase : PromiseSingleAwaitWithProgress
             {
                 internal abstract void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);

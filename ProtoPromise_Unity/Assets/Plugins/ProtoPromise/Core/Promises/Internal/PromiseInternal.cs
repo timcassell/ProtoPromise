@@ -99,6 +99,7 @@ namespace Proto.Promises
             {
                 IncrementIdAndSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten);
                 OnForgetOrHookupFailed();
+                MaybeReportUnhandledRejections();
             }
 
             private void IncrementIdAndSetFlags(short promiseId, PromiseFlags flags)
