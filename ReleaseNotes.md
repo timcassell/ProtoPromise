@@ -27,11 +27,12 @@ Enhancements:
 - Added `Promise.SwitchToForeground()`, `Promise.SwitchToBackground()`, and `Promise.SwitchToContext(SynchronizationContext)` static functions.
 - Added synchronization options for `Promise.Progress` and `Promise.New`.
 
-Performance:
+Optimizations:
 
 - Promises are now structs, making already resolved promises live only on the stack, increasing performance
 - Optimized progress to consume O(1) memory instead of O(n).
-- Increased performance when object pooling is disabled (though still not as efficient as when it is enabled).
+- Decreased cost of garbage collecting promises when object pooling is disabled.
+- Optimized `async Promise(<T>)` functions in Unity 2021.2 or newer when IL2CPP is used.
 
 Breaking Changes:
 
@@ -46,9 +47,14 @@ Breaking Changes:
 - Removed `Promise(<T>).ResultType`.
 - Changed behavior of `Promise.CatchCancelation` to return a new promise and behave more like `Promise.Catch`, where `onCanceled` resolves the returned promise when it returns, or adopts the state of the returned promise.
 - Removed cancelation reasons.
+- Deprecated with error `Promise(<T>).{Retain, Release}`, added `Promise(<T>).{Preserve, Forget, Duplicate}`.
+- Deprecated with error `Deferred(<T>).{State, Retain, Release}` (can no longer check the completed state of a Deferred, only whether it's still pending).
+- Deprecated with error all functions in `Promise.Manager` with error except `ClearObjectPool`.
+- A rejected promise awaited in an async function now throws the original exception, if the promise was rejected with an exception.
 
 Minor Changes:
 
+- Continuations (`await` keyword or `promise.Then(callback)`) now execute synchronously by default. Use `Promise.WaitAsync()` to execute on a different context or asynchronously.
 - Object pooling is enabled by default.
 - Changed `Promise.DeferredBase.ToDeferred(<T>)` to throw if the cast fails.
 - Adjusted `CancelationRegistration.{IsRegistered, TryUnregister}` to return false if the token has been canceled and the callback not yet invoked. (Can no longer unregister callbacks once the source has been canceled.)
@@ -69,10 +75,7 @@ Minor Changes:
 Deprecated:
 
 - `Promise.Manager.ObjectPooling` deprecated, replaced with `ObjectPoolingEnabled`.
-- Deprecated (with error) `Promise(<T>).{Retain, Release}`, added `Promise(<T>).{Preserve, Forget, Duplicate}`.
-- Deprecated (with error) `Deferred(<T>).{State, Retain, Release}` (can no longer check the completed state of a Deferred, only whether it's still pending).
-- Deprecated (with warning) `Deferred(<T>).IsValid`, replaced with `IsValidAndPending`.
-- Deprecated all functions in `Promise.Manager` with error except `ClearObjectPool`.
+- Deprecated `Deferred(<T>).IsValid`, replaced with `IsValidAndPending`.
 - Deprecated `Promise.Config.WarningHandler`.
 
 Misc:
