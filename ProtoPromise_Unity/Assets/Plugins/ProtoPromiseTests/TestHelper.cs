@@ -68,6 +68,8 @@ namespace ProtoPromiseTests
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void Setup()
         {
+            TestContext.Progress.WriteLine("Begin " + TestContext.CurrentContext.Test.FullName);
+
             if (Promise.Config.ForegroundContext != _foregroundContext)
             {
                 // Set the foreground context to execute foreground promise callbacks.
@@ -115,6 +117,8 @@ namespace ProtoPromiseTests
                 throw new AggregateException(exceptions);
 #endif
             }
+
+            TestContext.Progress.WriteLine("Success " + TestContext.CurrentContext.Test.FullName);
         }
 
         public static void ExecuteForegroundCallbacks()

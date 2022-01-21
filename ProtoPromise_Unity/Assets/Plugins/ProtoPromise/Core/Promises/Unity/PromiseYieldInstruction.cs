@@ -75,16 +75,30 @@ namespace Proto.Promises
         {
             ValidateOperation();
 
-            if (_state == Promise.State.Resolved)
+            switch (_state)
             {
-                return;
+                case Promise.State.Resolved:
+                {
+                    return;
+                }
+                case Promise.State.Canceled:
+                {
+                    throw Internal.CanceledExceptionInternal.GetOrCreate();
+                }
+                case Promise.State.Rejected:
+                {
+#if CSHARP_7_3_OR_NEWER
+                    ((Internal.IRejectValueContainer) _value).GetExceptionDispatchInfo().Throw();
+                    throw new Exception(); // This point will never be reached, but the C# compiler thinks it might.
+#else
+                    throw ((Internal.IRejectValueContainer) _value).GetException();
+#endif
+                }
+                default:
+                {
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
+                }
             }
-            if (_state == Promise.State.Pending)
-            {
-                throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
-            }
-            // Throw unhandled exception or canceled exception.
-            throw ((Internal.IThrowable) _value).GetException();
         }
 
         /// <summary>
@@ -106,7 +120,7 @@ namespace Proto.Promises
         {
             if (_retainCounter == 0)
             {
-                throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a validate yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
+                throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
             }
         }
     }
@@ -133,16 +147,30 @@ namespace Proto.Promises
         {
             ValidateOperation();
 
-            if (_state == Promise.State.Resolved)
+            switch (_state)
             {
-                return _result;
+                case Promise.State.Resolved:
+                {
+                    return _result;
+                }
+                case Promise.State.Canceled:
+                {
+                    throw Internal.CanceledExceptionInternal.GetOrCreate();
+                }
+                case Promise.State.Rejected:
+                {
+#if CSHARP_7_3_OR_NEWER
+                    ((Internal.IRejectValueContainer) _value).GetExceptionDispatchInfo().Throw();
+                    throw new Exception(); // This point will never be reached, but the C# compiler thinks it might.
+#else
+                    throw ((Internal.IRejectValueContainer) _value).GetException();
+#endif
+                }
+                default:
+                {
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
+                }
             }
-            if (_state == Promise.State.Pending)
-            {
-                throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
-            }
-            // Throw unhandled exception or canceled exception.
-            throw ((Internal.IThrowable) _value).GetException();
         }
     }
 
@@ -189,7 +217,7 @@ namespace Proto.Promises
             {
                 if (Interlocked.Exchange(ref _disposeChecker, 1) == 1)
                 {
-                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a validate yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
                 }
                 MaybeDispose();
             }

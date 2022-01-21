@@ -148,7 +148,7 @@ namespace Proto.Promises
                 SetCreatedStacktrace(this, 3);
             }
 
-            protected void MaybeDispose()
+            internal void MaybeDispose()
             {
                 ThrowIfInPool(this);
                 if (_smallFields.InterlockedTryReleaseComplete())

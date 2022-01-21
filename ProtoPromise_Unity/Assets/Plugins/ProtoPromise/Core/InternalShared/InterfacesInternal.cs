@@ -53,12 +53,14 @@ namespace Proto.Promises
             void AddToUnhandledStack(ITraceable traceable);
         }
 
-        internal interface IThrowable
+        internal partial interface IRejectValueContainer
         {
+#if CSHARP_7_3_OR_NEWER
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo GetExceptionDispatchInfo();
+#else
             Exception GetException();
+#endif
         }
-
-        internal partial interface IRejectValueContainer : IThrowable { }
 
         internal interface IDelegateSimple
         {
