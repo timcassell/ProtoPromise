@@ -10,6 +10,7 @@
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0019 // Use pattern matching
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
@@ -270,12 +271,8 @@ namespace Proto.Promises
             }
 
             // Try to avoid boxing value types.
-#if CSHARP_7_3_OR_NEWER
-            if (valueContainer is ValueContainer<TValue> directContainer)
-#else
             var directContainer = valueContainer as ValueContainer<TValue>;
             if (directContainer != null)
-#endif
             {
                 converted = directContainer.value;
                 return true;
@@ -310,12 +307,8 @@ namespace Proto.Promises
             }
             else
             {
-#if CSHARP_7_3_OR_NEWER
-                if (reason is IRejectionToContainer internalRejection)
-#else
                 IRejectionToContainer internalRejection = reason as IRejectionToContainer;
                 if (internalRejection != null)
-#endif
                 {
                     // reason is an internal rejection object, get its container instead of wrapping it.
                     return internalRejection.ToContainer(traceable);
@@ -323,8 +316,16 @@ namespace Proto.Promises
 
                 // If reason is null, behave the same way .Net behaves if you throw null.
                 object o = reason == null ? new NullReferenceException() : (object) reason;
-                // Only need to create one object pool for reference types.
-                valueContainer = RejectionContainer<object>.GetOrCreate(o);
+                Exception e = o as Exception;
+                if (e != null)
+                {
+                    valueContainer = RejectionContainerException.GetOrCreate(e);
+                }
+                else
+                {
+                    // Only need to create one object pool for reference types.
+                    valueContainer = RejectionContainer<object>.GetOrCreate(o);
+                }
             }
             SetCreatedAndRejectedStacktrace((IRejectValueContainer) valueContainer, rejectSkipFrames + 1, traceable);
             return valueContainer;
@@ -343,12 +344,8 @@ namespace Proto.Promises
 
         internal static void AddRejectionToUnhandledStack(object unhandledValue, ITraceable traceable)
         {
-#if CSHARP_7_3_OR_NEWER
-            if (unhandledValue is ICantHandleException ex)
-#else
             ICantHandleException ex = unhandledValue as ICantHandleException;
             if (ex != null)
-#endif
             {
                 ex.AddToUnhandledStack(traceable);
                 return;

@@ -282,17 +282,8 @@ namespace Proto.Promises
             {
                 // Spin until we successfully get lock.
                 SpinWait spinner = new SpinWait();
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                Stopwatch stopwatch = Stopwatch.StartNew();
-#endif
                 while (Interlocked.Exchange(ref _locker, 1) == 1)
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (stopwatch.Elapsed.TotalSeconds > 10)
-                    {
-                        throw new TimeoutException();
-                    }
-#endif
                     spinner.SpinOnce();
                 }
             }

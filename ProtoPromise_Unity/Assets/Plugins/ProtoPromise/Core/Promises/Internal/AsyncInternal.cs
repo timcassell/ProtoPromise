@@ -384,15 +384,6 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    if (exception is RethrowException)
-                    {
-#if PROMISE_DEBUG
-                        string stacktrace = FormatStackTrace(new StackTrace[1] { new StackTrace(exception, true) });
-#else
-                        string stacktrace = new StackTrace(exception, true).ToString();
-#endif
-                        exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-                    }
                     RejectDirect(exception, int.MinValue);
                 }
             }

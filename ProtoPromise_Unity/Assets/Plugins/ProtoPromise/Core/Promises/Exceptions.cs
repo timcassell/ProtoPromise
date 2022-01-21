@@ -240,8 +240,8 @@ namespace Proto.Promises
 #else
             string stacktrace = new StackTrace(this, true).ToString();
 #endif
-            object exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-            return Internal.RejectionContainer<object>.GetOrCreate(exception);
+            Exception exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
+            return Internal.RejectionContainerException.GetOrCreate(exception);
         }
     }
 
