@@ -57,20 +57,16 @@ namespace Proto.Promises
 #endif
         public static partial class Config
         {
+            [Obsolete("Use ProgressPrecision to get the precision of progress reports.")]
+            public static readonly int ProgressDecimalBits = Internal.PromiseRef.Fixed32.ProgressDecimalBits;
+
             /// <summary>
-            /// If you need to support longer promise chains, decrease decimalBits. If you need higher precision, increase decimalBits.
-            /// <para/>
-            /// Wait promise chain limit: 2^(31-<see cref="ProgressDecimalBits"/>),
-            /// Precision: 1/(N*2^<see cref="ProgressDecimalBits"/>) where N is the number of wait promises in the chain where Progress is subscribed.
-            /// <para/>
-            /// NOTE: promises that don't wait (.Then with an onResolved that simply returns a value or void) don't count towards the promise chain limit.
-            /// The limit is removed when progress is disabled (this is compiled with the symbol PROTO_PROMISE_PROGRESS_DISABLE defined).
+            /// The maximum precision of progress reports.
             /// </summary>
 #if !PROMISE_PROGRESS
             [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
 #endif
-            // TODO: just use (u)short in Fixed32 instead of bit shift.
-            public const int ProgressDecimalBits = 13; // Must be const. Allowing this to change at runtime could mess up progress in flight.
+            public static readonly float ProgressPrecision = (float) (1d / Math.Pow(2d, Internal.PromiseRef.Fixed32.ProgressDecimalBits));
 
             [Obsolete("Use ObjectPoolingEnabled instead.")]
             public static PoolType ObjectPooling 

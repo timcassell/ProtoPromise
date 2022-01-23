@@ -32,7 +32,7 @@ namespace Proto.Promises
         /// Internal use.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRef promiseRef, short id, int depth)
+        internal Promise(Internal.PromiseRef promiseRef, short id, ushort depth)
         {
             _target = new Promise<Internal.VoidResult>(promiseRef, id, depth);
         }
@@ -61,13 +61,13 @@ namespace Proto.Promises
             struct SmallFields
         {
 #if PROMISE_PROGRESS
-            internal readonly int _depth;
+            internal readonly ushort _depth;
 #endif
             internal readonly short _id;
             internal readonly T _result;
 
             [MethodImpl(Internal.InlineOption)]
-            internal SmallFields(short id, int depth,
+            internal SmallFields(short id, ushort depth,
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
@@ -108,7 +108,7 @@ namespace Proto.Promises
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal int Depth
+        internal ushort Depth
         {
             [MethodImpl(Internal.InlineOption)]
 #if PROMISE_PROGRESS
@@ -122,7 +122,7 @@ namespace Proto.Promises
         /// Internal use.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRef promiseRef, short id, int depth,
+        internal Promise(Internal.PromiseRef promiseRef, short id, ushort depth,
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
@@ -184,9 +184,11 @@ namespace Proto.Promises
                 private ushort _retains;
                 [FieldOffset(4)]
                 internal short _promiseId;
-                // TODO: use [FieldOffset(6)] for depth to utilize the byte space for non-deferred promises.
                 [FieldOffset(6)]
                 internal short _deferredId;
+                // _depth shares bit space with _deferredId, because it is always 0 on deferred promises, and _deferredId is not used in non-deferred promises.
+                [FieldOffset(6)]
+                internal ushort _depth;
 
                 [MethodImpl(InlineOption)]
                 internal SmallFields(short initialId)
@@ -232,7 +234,6 @@ namespace Proto.Promises
                     internal SpinLocker _branchLocker;
 #if PROMISE_PROGRESS
                     internal SpinLocker _progressCollectionLocker;
-                    internal Fixed32 _depthAndProgress;
                     internal Fixed32 _currentProgress;
 #endif
                 }
@@ -267,7 +268,7 @@ namespace Proto.Promises
                 private partial struct PromiseWaitSmallFields
                 {
                     volatile private int _previousDepthPlusOneAndFlags;
-                    internal Fixed32 _depthAndProgress;
+                    internal Fixed32 _currentProgress;
                 }
                 private PromiseWaitSmallFields _progressFields;
 
@@ -429,7 +430,6 @@ namespace Proto.Promises
                 // Use 64 bits to allow combining many promises with very deep chains.
                 private double _progressScaler;
                 private UnsignedFixed64 _unscaledProgress;
-                private int _maxWaitDepth;
 #endif
             }
 
@@ -441,7 +441,6 @@ namespace Proto.Promises
                 {
                     internal int _waitCount;
 #if PROMISE_PROGRESS
-                    internal Fixed32 _depthAndProgress;
                     internal Fixed32 _currentProgress;
 #endif
                 }
@@ -460,7 +459,6 @@ namespace Proto.Promises
                 {
                     internal int _waitCount;
 #if PROMISE_PROGRESS
-                    internal Fixed32 _depthAndProgress;
                     internal Fixed32 _currentProgress;
 #endif
                 }
@@ -480,8 +478,8 @@ namespace Proto.Promises
                     internal int _index;
                     internal int _retainCounter;
 #if PROMISE_PROGRESS
-                    internal Fixed32 _depth;
                     internal Fixed32 _currentProgress;
+                    internal ushort _depth;
                     internal volatile bool _settingInitialProgress;
                     internal volatile bool _reportingProgress;
 #endif
@@ -507,7 +505,6 @@ namespace Proto.Promises
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
                 private struct ProgressSmallFields
                 {
-                    internal Fixed32 _depthAndProgress;
                     internal Fixed32 _currentProgress;
                     volatile internal bool _complete;
                     volatile internal bool _canceled;

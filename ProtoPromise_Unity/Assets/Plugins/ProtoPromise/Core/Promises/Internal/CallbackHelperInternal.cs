@@ -77,38 +77,40 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> InvokeCallbackAndAdoptDirect(DelegatePromise<TArg, TResult> resolver, Promise<TArg> resolved)
                 {
+                    ushort nextDepth = CallbackHelper.GetNextDepth(resolved.Depth);
                     try
                     {
-                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
+                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), nextDepth);
                     }
                     catch (OperationCanceledException)
                     {
                         var promise = Promise<TResult>.Canceled();
-                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                        return new Promise<TResult>(promise._ref, promise.Id, nextDepth, promise.Result);
                     }
                     catch (Exception e)
                     {
                         var promise = Promise<TResult>.Rejected(e);
-                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                        return new Promise<TResult>(promise._ref, promise.Id, nextDepth, promise.Result);
                     }
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> InvokeCallbackAndAdoptDirect<TCapture>(DelegatePromiseCapture<TCapture, TArg, TResult> resolver, Promise<TArg> resolved)
                 {
+                    ushort nextDepth = CallbackHelper.GetNextDepth(resolved.Depth);
                     try
                     {
-                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
+                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), nextDepth);
                     }
                     catch (OperationCanceledException)
                     {
                         var promise = Promise<TResult>.Canceled();
-                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                        return new Promise<TResult>(promise._ref, promise.Id, nextDepth, promise.Result);
                     }
                     catch (Exception e)
                     {
                         var promise = Promise<TResult>.Rejected(e);
-                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                        return new Promise<TResult>(promise._ref, promise.Id, nextDepth, promise.Result);
                     }
                 }
 
@@ -155,38 +157,40 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> InvokeCallbackAndAdoptDirect(DelegateContinuePromise<TArg, TResult> resolver, Promise<TArg> resolved)
                 {
+                    ushort nextDepth = CallbackHelper.GetNextDepth(resolved.Depth);
                     try
                     {
-                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
+                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), nextDepth);
                     }
                     catch (OperationCanceledException)
                     {
                         var promise = Promise<TResult>.Canceled();
-                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                        return new Promise<TResult>(promise._ref, promise.Id, nextDepth, promise.Result);
                     }
                     catch (Exception e)
                     {
                         var promise = Promise<TResult>.Rejected(e);
-                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                        return new Promise<TResult>(promise._ref, promise.Id, nextDepth, promise.Result);
                     }
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> InvokeCallbackAndAdoptDirect<TCapture>(DelegateContinuePromiseCapture<TCapture, TArg, TResult> resolver, Promise<TArg> resolved)
                 {
+                    ushort nextDepth = CallbackHelper.GetNextDepth(resolved.Depth);
                     try
                     {
-                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), resolved.Depth);
+                        return CallbackHelper.AdoptDirect(resolver.Invoke(resolved.Result), nextDepth);
                     }
                     catch (OperationCanceledException)
                     {
                         var promise = Promise<TResult>.Canceled();
-                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                        return new Promise<TResult>(promise._ref, promise.Id, nextDepth, promise.Result);
                     }
                     catch (Exception e)
                     {
                         var promise = Promise<TResult>.Rejected(e);
-                        return new Promise<TResult>(promise._ref, promise.Id, resolved.Depth + 1, promise.Result);
+                        return new Promise<TResult>(promise._ref, promise.Id, nextDepth, promise.Result);
                     }
                 }
             }
@@ -201,14 +205,14 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
                 [MethodImpl(InlineOption)]
 #endif
-                internal static Promise<TResult> AdoptDirect<TResult>(Promise<TResult> promise, int currentDepth)
+                internal static Promise<TResult> AdoptDirect<TResult>(Promise<TResult> promise, ushort nextDepth)
                 {
 #if !PROMISE_PROGRESS
                     return promise;
 #else
                     if (promise._ref == null)
                     {
-                        return new Promise<TResult>(null, ValidIdFromApi, currentDepth + 1, promise.Result);
+                        return new Promise<TResult>(null, ValidIdFromApi, nextDepth, promise.Result);
                     }
                     // TODO
 //#if !PROMISE_DEBUG
@@ -217,13 +221,13 @@ namespace Proto.Promises
 //                        promise._ref.MarkAwaited(promise.Id);
 //                        TResult result = ((IValueContainer) promise._ref._valueOrPrevious).GetValue<TResult>();
 //                        promise._ref.MaybeDispose();
-//                        return new Promise<TResult>(null, ValidIdFromApi, currentDepth + 1, result);
+//                        return new Promise<TResult>(null, ValidIdFromApi, nextDepth, result);
 //                    }
 //#endif
                     // Normalize progress. Passing a default resolver makes the Execute method adopt the promise's state without attempting to invoke.
-                    var newRef = PromiseResolvePromise<DelegateResolvePassthrough>.GetOrCreate(default(DelegateResolvePassthrough), currentDepth + 1);
+                    var newRef = PromiseResolvePromise<DelegateResolvePassthrough>.GetOrCreate(default(DelegateResolvePassthrough), nextDepth);
                     newRef.WaitForWithProgress(promise);
-                    return new Promise<TResult>(newRef, newRef.Id, currentDepth + 1);
+                    return new Promise<TResult>(newRef, newRef.Id, nextDepth);
 #endif
                 }
 
@@ -233,7 +237,7 @@ namespace Proto.Promises
                     {
                         return _this;
                     }
-                    var newRef = _this._ref.GetDuplicate(_this.Id);
+                    var newRef = _this._ref.GetDuplicate(_this.Id, _this.Depth);
                     return new Promise<TResult>(newRef, newRef.Id, _this.Depth, _this.Result);
                 }
 
@@ -265,8 +269,8 @@ namespace Proto.Promises
                         default: // SynchronizationOption.Explicit
                         {
                             var newRef = _this._ref == null
-                                ? PromiseConfigured.GetOrCreateFromNull(synchronizationContext, _this.Result)
-                                : _this._ref.GetConfigured(_this.Id, synchronizationContext);
+                                ? PromiseConfigured.GetOrCreateFromNull(synchronizationContext, _this.Result, _this.Depth)
+                                : _this._ref.GetConfigured(_this.Id, synchronizationContext, _this.Depth);
                             return new Promise<TResult>(newRef, newRef.Id, _this.Depth, _this.Result);
                         }
                     }
@@ -280,10 +284,8 @@ namespace Proto.Promises
                     {
                         if (cancelationToken.IsCancelationRequested)
                         {
-                            promise = CancelablePromiseResolve<Delegate<TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise = CancelablePromiseResolve<Delegate<TArg, TResult>>.GetOrCreate(resolver, cancelationToken, _this.Depth);
                             promise._smallFields.InterlockedTryReleaseComplete();
-                            //Interlocked.CompareExchange(ref promise._valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null);
-                            //AddToHandleQueueBack(promise);
                         }
                         else
                         {
@@ -294,16 +296,15 @@ namespace Proto.Promises
                     // else if (_this._ref.State != Promise.State.Pending) { }
                     else
                     {
-                        // TODO: refactor to reduce this from 2 virtual calls to 1.
                         _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
-                            promise = CancelablePromiseResolve<Delegate<TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise = CancelablePromiseResolve<Delegate<TArg, TResult>>.GetOrCreate(resolver, cancelationToken, _this.Depth);
                             _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
-                            promise = PromiseResolve<Delegate<TArg, TResult>>.GetOrCreate(resolver);
+                            promise = PromiseResolve<Delegate<TArg, TResult>>.GetOrCreate(resolver, _this.Depth);
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
@@ -313,7 +314,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddResolveWait<TArg, TResult>(Promise<TArg> _this, DelegatePromise<TArg, TResult> resolver, CancelationToken cancelationToken)
                 {
-                    int nextDepth = GetNextDepth(_this.Depth);
+                    ushort nextDepth = GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
@@ -352,10 +353,8 @@ namespace Proto.Promises
                     {
                         if (cancelationToken.IsCancelationRequested)
                         {
-                            promise = CancelablePromiseResolve<DelegateCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise = CancelablePromiseResolve<DelegateCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken, _this.Depth);
                             promise._smallFields.InterlockedTryReleaseComplete();
-                            //Interlocked.CompareExchange(ref promise._valueOrPrevious, ResolveContainerVoid.GetOrCreate(), null);
-                            //AddToHandleQueueBack(promise);
                         }
                         else
                         {
@@ -366,16 +365,15 @@ namespace Proto.Promises
                     // else if (_this._ref.State != Promise.State.Pending) { }
                     else
                     {
-                        // TODO: refactor to reduce this from 2 virtual calls to 1.
                         _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
-                            promise = CancelablePromiseResolve<DelegateCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise = CancelablePromiseResolve<DelegateCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken, _this.Depth);
                             _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
-                            promise = PromiseResolve<DelegateCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver);
+                            promise = PromiseResolve<DelegateCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, _this.Depth);
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
@@ -385,7 +383,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddResolveWait<TCapture, TArg, TResult>(Promise<TArg> _this, DelegatePromiseCapture<TCapture, TArg, TResult> resolver, CancelationToken cancelationToken)
                 {
-                    int nextDepth = GetNextDepth(_this.Depth);
+                    ushort nextDepth = GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
@@ -428,7 +426,7 @@ namespace Proto.Promises
                     {
                         if (cancelationToken.IsCancelationRequested)
                         {
-                            promise = CancelablePromiseResolveReject<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            promise = CancelablePromiseResolveReject<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, _this.Depth);
                             promise._smallFields.InterlockedTryReleaseComplete();
                         }
                         else
@@ -441,12 +439,12 @@ namespace Proto.Promises
                         _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
-                            promise = CancelablePromiseResolveReject<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            promise = CancelablePromiseResolveReject<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, _this.Depth);
                             _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
-                            promise = PromiseResolveReject<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter);
+                            promise = PromiseResolveReject<Delegate<TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, _this.Depth);
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
@@ -465,7 +463,7 @@ namespace Proto.Promises
                     {
                         if (cancelationToken.IsCancelationRequested)
                         {
-                            promise = CancelablePromiseResolveReject<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            promise = CancelablePromiseResolveReject<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, _this.Depth);
                             promise._smallFields.InterlockedTryReleaseComplete();
                         }
                         else
@@ -478,12 +476,12 @@ namespace Proto.Promises
                         _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
-                            promise = CancelablePromiseResolveReject<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            promise = CancelablePromiseResolveReject<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, _this.Depth);
                             _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
-                            promise = PromiseResolveReject<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter);
+                            promise = PromiseResolveReject<DelegateCapture<TCaptureResolve, TArgResolve, TResult>, TDelegateReject>.GetOrCreate(resolver, rejecter, _this.Depth);
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
@@ -497,7 +495,7 @@ namespace Proto.Promises
                     CancelationToken cancelationToken)
                     where TDelegateReject : IDelegateRejectPromise
                 {
-                    int nextDepth = GetNextDepth(_this.Depth);
+                    ushort nextDepth = GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
@@ -535,7 +533,7 @@ namespace Proto.Promises
                     CancelationToken cancelationToken)
                     where TDelegateReject : IDelegateRejectPromise
                 {
-                    int nextDepth = GetNextDepth(_this.Depth);
+                    ushort nextDepth = GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
@@ -573,7 +571,7 @@ namespace Proto.Promises
                     CancelationToken cancelationToken)
                     where TDelegateReject : IDelegateRejectPromise
                 {
-                    int nextDepth = GetNextDepth(_this.Depth);
+                    ushort nextDepth = GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
@@ -611,7 +609,7 @@ namespace Proto.Promises
                     CancelationToken cancelationToken)
                     where TDelegateReject : IDelegateRejectPromise
                 {
-                    int nextDepth = GetNextDepth(_this.Depth);
+                    ushort nextDepth = GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
@@ -654,7 +652,7 @@ namespace Proto.Promises
                     {
                         if (cancelationToken.IsCancelationRequested)
                         {
-                            promise = CancelablePromiseResolveReject<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            promise = CancelablePromiseResolveReject<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, _this.Depth);
                             promise._smallFields.InterlockedTryReleaseComplete();
                         }
                         else
@@ -667,12 +665,12 @@ namespace Proto.Promises
                         _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
-                            promise = CancelablePromiseResolveReject<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken);
+                            promise = CancelablePromiseResolveReject<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, cancelationToken, _this.Depth);
                             _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
-                            promise = PromiseResolveReject<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter);
+                            promise = PromiseResolveReject<DelegateResolvePassthrough, TDelegateReject>.GetOrCreate(resolver, rejecter, _this.Depth);
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
@@ -686,7 +684,7 @@ namespace Proto.Promises
                     CancelationToken cancelationToken)
                     where TDelegateReject : IDelegateRejectPromise
                 {
-                    int nextDepth = GetNextDepth(_this.Depth);
+                    ushort nextDepth = GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
@@ -725,7 +723,7 @@ namespace Proto.Promises
                     {
                         if (cancelationToken.IsCancelationRequested)
                         {
-                            promise = CancelablePromiseContinue<DelegateContinue<TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise = CancelablePromiseContinue<DelegateContinue<TArg, TResult>>.GetOrCreate(resolver, cancelationToken, _this.Depth);
                             promise._smallFields.InterlockedTryReleaseComplete();
                         }
                         else
@@ -738,12 +736,12 @@ namespace Proto.Promises
                         _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
-                            promise = CancelablePromiseContinue<DelegateContinue<TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise = CancelablePromiseContinue<DelegateContinue<TArg, TResult>>.GetOrCreate(resolver, cancelationToken, _this.Depth);
                             _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
-                            promise = PromiseContinue<DelegateContinue<TArg, TResult>>.GetOrCreate(resolver);
+                            promise = PromiseContinue<DelegateContinue<TArg, TResult>>.GetOrCreate(resolver, _this.Depth);
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
@@ -753,7 +751,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinueWait<TArg, TResult>(Promise<TArg> _this, DelegateContinuePromise<TArg, TResult> resolver, CancelationToken cancelationToken)
                 {
-                    int nextDepth = GetNextDepth(_this.Depth);
+                    ushort nextDepth = GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
@@ -792,7 +790,7 @@ namespace Proto.Promises
                     {
                         if (cancelationToken.IsCancelationRequested)
                         {
-                            promise = CancelablePromiseContinue<DelegateContinueCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise = CancelablePromiseContinue<DelegateContinueCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken, _this.Depth);
                             promise._smallFields.InterlockedTryReleaseComplete();
                         }
                         else
@@ -805,12 +803,12 @@ namespace Proto.Promises
                         _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
-                            promise = CancelablePromiseContinue<DelegateContinueCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken);
+                            promise = CancelablePromiseContinue<DelegateContinueCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, cancelationToken, _this.Depth);
                             _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
-                            promise = PromiseContinue<DelegateContinueCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver);
+                            promise = PromiseContinue<DelegateContinueCapture<TCapture, TArg, TResult>>.GetOrCreate(resolver, _this.Depth);
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
@@ -820,7 +818,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinueWait<TCapture, TArg, TResult>(Promise<TArg> _this, DelegateContinuePromiseCapture<TCapture, TArg, TResult> resolver, CancelationToken cancelationToken)
                 {
-                    int nextDepth = GetNextDepth(_this.Depth);
+                    ushort nextDepth = GetNextDepth(_this.Depth);
                     PromiseWaitPromise promise;
                     if (_this._ref == null)
                     {
@@ -860,7 +858,7 @@ namespace Proto.Promises
                         return new Promise<TResult>(p._ref, p.Id, p.Depth, _this.Result);
                     }
                     _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                    PromiseRef promise = PromiseFinally<DelegateFinally>.GetOrCreate(new DelegateFinally(onFinally));
+                    PromiseRef promise = PromiseFinally<DelegateFinally>.GetOrCreate(new DelegateFinally(onFinally), _this.Depth);
                     _this._ref.HookupNewPromise(promise);
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
@@ -878,7 +876,7 @@ namespace Proto.Promises
                         return new Promise<TResult>(p._ref, p.Id, p.Depth, _this.Result);
                     }
                     _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                    PromiseRef promise = PromiseFinally<DelegateCaptureFinally<TCapture>>.GetOrCreate(new DelegateCaptureFinally<TCapture>(capturedValue, onFinally));
+                    PromiseRef promise = PromiseFinally<DelegateCaptureFinally<TCapture>>.GetOrCreate(new DelegateCaptureFinally<TCapture>(capturedValue, onFinally), _this.Depth);
                     _this._ref.HookupNewPromise(promise);
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
@@ -892,7 +890,7 @@ namespace Proto.Promises
                     {
                         if (cancelationToken.IsCancelationRequested)
                         {
-                            promise = CancelablePromiseCancel<TDelegateCancel>.GetOrCreate(canceler, cancelationToken);
+                            promise = CancelablePromiseCancel<TDelegateCancel>.GetOrCreate(canceler, cancelationToken, _this.Depth);
                             promise._smallFields.InterlockedTryReleaseComplete();
                         }
                         else
@@ -905,12 +903,12 @@ namespace Proto.Promises
                         _this._ref.MarkAwaited(_this.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
                         if (cancelationToken.CanBeCanceled)
                         {
-                            promise = CancelablePromiseCancel<TDelegateCancel>.GetOrCreate(canceler, cancelationToken);
+                            promise = CancelablePromiseCancel<TDelegateCancel>.GetOrCreate(canceler, cancelationToken, _this.Depth);
                             _this._ref.HookupNewCancelablePromise(promise);
                         }
                         else
                         {
-                            promise = PromiseCancel<TDelegateCancel>.GetOrCreate(canceler);
+                            promise = PromiseCancel<TDelegateCancel>.GetOrCreate(canceler, _this.Depth);
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
@@ -921,7 +919,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> AddCancelWait<TDelegateCancel, TResult>(Promise<TResult> _this, TDelegateCancel canceler, CancelationToken cancelationToken)
                     where TDelegateCancel : IDelegateResolveOrCancelPromise
                 {
-                    int nextDepth = GetNextDepth(_this.Depth);
+                    ushort nextDepth = GetNextDepth(_this.Depth);
                     PromiseRef promise;
                     if (_this._ref == null)
                     {
@@ -953,12 +951,16 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static int GetNextDepth(int depth)
+                internal static ushort GetNextDepth(ushort depth)
                 {
-#if !PROMISE_PROGRESS
-                    return 0;
-#else
+#if PROMISE_PROGRESS
                     return Fixed32.GetNextDepth(depth);
+#else
+                    // Depth is unused, but it can help with debugging.
+                    unchecked
+                    {
+                        return (ushort) (depth + 1);
+                    }
 #endif
                 }
 

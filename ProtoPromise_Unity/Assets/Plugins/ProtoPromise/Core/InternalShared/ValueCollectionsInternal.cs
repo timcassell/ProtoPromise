@@ -214,6 +214,12 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
+            internal T Peek()
+            {
+                return _head;
+            }
+
+            [MethodImpl(InlineOption)]
             internal T Pop()
             {
                 T temp = _head;

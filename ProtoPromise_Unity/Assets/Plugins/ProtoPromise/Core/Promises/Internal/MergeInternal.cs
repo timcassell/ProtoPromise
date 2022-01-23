@@ -85,8 +85,9 @@ namespace Proto.Promises
                     {
                         _waitCount = (int) pendingAwaits;
                     }
-                    Reset();
-                    SetupProgress(promisePassThroughs, totalAwaits, completedProgress);
+                    ushort depth = promisePassThroughs.Peek().Depth;
+                    SetupProgress(promisePassThroughs, totalAwaits, completedProgress, ref depth);
+                    Reset(depth);
 
                     while (promisePassThroughs.IsNotEmpty)
                     {
@@ -173,19 +174,8 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
-                internal int Depth
-                {
-#if PROMISE_PROGRESS
-                    [MethodImpl(InlineOption)]
-                    get { return _maxWaitDepth; }
-#else
-                    [MethodImpl(InlineOption)]
-                    get { return 0; }
-#endif
-                }
-
                 partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
-                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress);
+                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress, ref ushort depth);
 
                 private sealed class MergePromiseT<T> : MergePromise
                 {
@@ -278,7 +268,7 @@ namespace Proto.Promises
             {
                 internal override void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler)
                 {
-                    HandleProgressListener(state, new Fixed32(_maxWaitDepth + 1), ref executionScheduler);
+                    HandleProgressListener(state, Fixed32.FromWholePlusOne(Depth), ref executionScheduler);
                 }
 
                 protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
@@ -292,10 +282,10 @@ namespace Proto.Promises
 
                 protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, ref ExecutionScheduler executionScheduler)
                 {
-                    SetInitialProgress(progressListener, CurrentProgress(), new Fixed32(_maxWaitDepth + 1), ref executionScheduler);
+                    SetInitialProgress(progressListener, CurrentProgress(), Fixed32.FromWholePlusOne(Depth), ref executionScheduler);
                 }
 
-                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress)
+                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress, ref ushort depth)
                 {
 #if PROMISE_DEBUG
                     checked
@@ -313,8 +303,8 @@ namespace Proto.Promises
                         }
 
                         // Use the longest chain as this depth.
-                        _maxWaitDepth = maxWaitDepth;
-                        _progressScaler = (double) (_maxWaitDepth + 1) / (double) expectedProgressCounter;
+                        depth = (ushort) maxWaitDepth;
+                        _progressScaler = (double) (maxWaitDepth + 1d) / (double) expectedProgressCounter;
                     }
                 }
 

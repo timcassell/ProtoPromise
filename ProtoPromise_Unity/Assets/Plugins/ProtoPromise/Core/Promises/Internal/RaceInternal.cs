@@ -58,8 +58,9 @@ namespace Proto.Promises
                     {
                         promise._raceSmallFields._waitCount = (int) pendingAwaits;
                     }
-                    promise.Reset();
-                    promise.SetupProgress(promisePassThroughs);
+                    ushort depth = promisePassThroughs.Peek().Depth;
+                    promise.SetupProgress(promisePassThroughs, ref depth);
+                    promise.Reset(depth);
 
                     while (promisePassThroughs.IsNotEmpty)
                     {
@@ -126,18 +127,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal int Depth
-                {
-#if PROMISE_PROGRESS
-                    [MethodImpl(InlineOption)]
-                    get { return _raceSmallFields._depthAndProgress.WholePart; }
-#else
-                    [MethodImpl(InlineOption)]
-                    get { return 0; }
-#endif
-                }
-
-                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs);
+                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref ushort depth);
             }
 
 #if PROMISE_PROGRESS
@@ -145,7 +135,7 @@ namespace Proto.Promises
             {
                 internal override void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler)
                 {
-                    HandleProgressListener(state, _raceSmallFields._depthAndProgress.GetIncrementedWholeTruncated(), ref executionScheduler);
+                    HandleProgressListener(state, Fixed32.FromWholePlusOne(Depth), ref executionScheduler);
                 }
 
                 protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
@@ -159,28 +149,27 @@ namespace Proto.Promises
 
                 protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, ref ExecutionScheduler executionScheduler)
                 {
-                    SetInitialProgress(progressListener, _raceSmallFields._currentProgress, _raceSmallFields._depthAndProgress.GetIncrementedWholeTruncated(), ref executionScheduler);
+                    SetInitialProgress(progressListener, _raceSmallFields._currentProgress, Fixed32.FromWholePlusOne(Depth), ref executionScheduler);
                 }
 
-                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs)
+                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref ushort depth)
                 {
                     _raceSmallFields._currentProgress = default(Fixed32);
 
                     // Expect the shortest chain to finish first.
-                    int minWaitDepth = int.MaxValue;
+                    int minWaitDepth = depth;
                     foreach (var passThrough in promisePassThroughs)
                     {
                         minWaitDepth = Math.Min(minWaitDepth, passThrough.Depth);
                     }
-                    _raceSmallFields._depthAndProgress = new Fixed32(minWaitDepth);
+                    depth = (ushort) minWaitDepth;
                 }
 
                 internal override void IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
 
-                    // Use double for better precision.
-                    var newAmount = new Fixed32(senderAmount.ToDouble() * (_raceSmallFields._depthAndProgress.WholePart + 1) / (double) (ownerAmount.WholePart + 1));
+                    var newAmount = senderAmount.MultiplyAndDivide(Depth + 1, ownerAmount.WholePart + 1);
                     if (_raceSmallFields._currentProgress.InterlockedTrySetIfGreater(newAmount, senderAmount))
                     {
                         if ((_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?

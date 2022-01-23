@@ -8,6 +8,9 @@ namespace Proto.Promises
 {
     public partial struct Promise
     {
+        // TODO: make sure already resolved promises from Race/First/All/Merge have the proper depth for consistent progress.
+        // Need to add unit tests for it.
+
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
@@ -424,7 +427,7 @@ namespace Proto.Promises
             }
 
             // Invoke funcs and normalize the progress.
-            Promise promise = new Promise(null, Internal.ValidIdFromApi, -1);
+            Promise promise = new Promise(null, Internal.ValidIdFromApi, Internal.NegativeOneDepth);
             do
             {
                 promise = promise.Then(promiseFuncs.Current, cancelationToken);
@@ -1490,7 +1493,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationOption);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, -1)
+            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
                 .Then(function);
         }
 
@@ -1504,7 +1507,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationOption);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, -1)
+            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
                 .Then(captureValue, function);
         }
 
@@ -1518,7 +1521,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationContext);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, -1)
+            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
                 .Then(function);
         }
 
@@ -1532,7 +1535,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationContext);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, -1)
+            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
                 .Then(captureValue, function);
         }
 
@@ -1546,7 +1549,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationOption);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, -1)
+            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
                 .Then(function);
         }
 
@@ -1560,7 +1563,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationOption);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, -1)
+            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
                 .Then(captureValue, function);
         }
 
@@ -1574,7 +1577,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationContext);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, -1)
+            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
                 .Then(function);
         }
 
@@ -1588,7 +1591,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationContext);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, -1)
+            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
                 .Then(captureValue, function);
         }
 
