@@ -246,7 +246,7 @@ namespace Proto.Promises
                 private ProgressAndLocker _progressAndLocker;
 
 #if PROMISE_PROGRESS
-                private ValueLinkedQueue<IProgressListener> _progressListeners = new ValueLinkedQueue<IProgressListener>(); // TODO: change to ValueLinkedStack to use less memory. Make sure progress is still invoked in order.
+                private ValueLinkedQueue<IProgressListener> _progressListeners = new ValueLinkedQueue<IProgressListener>();
 
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
@@ -267,13 +267,12 @@ namespace Proto.Promises
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
                 private partial struct PromiseWaitSmallFields
                 {
-                    volatile private int _previousDepthPlusOneAndFlags;
-                    internal Fixed32 _currentProgress;
+                    volatile private int _previousDepthAndFlags;
+                    internal Fixed32 _currentProgress; // Fixed32 is only used for progress suspension. It's simpler to just re-use the functionality there than to rewrite it for PromiseWaitPromise.
                 }
                 private PromiseWaitSmallFields _progressFields;
 
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
 #endif
             }
 

@@ -147,9 +147,10 @@ namespace Proto.Promises
                     return null;
                 }
 
-                protected override sealed void SetInitialProgress(IProgressListener progressListener, Fixed32 lastKnownProgress, ref ExecutionScheduler executionScheduler)
+                protected override sealed void SetInitialProgress(IProgressListener progressListener, ref Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler)
                 {
-                    SetInitialProgress(progressListener, _raceSmallFields._currentProgress, Fixed32.FromWholePlusOne(Depth), ref executionScheduler);
+                    progress = _raceSmallFields._currentProgress;
+                    SetInitialProgress(progressListener, ref progress, Fixed32.FromWholePlusOne(Depth), out nextRef, ref executionScheduler);
                 }
 
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref ushort depth)
