@@ -8,9 +8,9 @@
 // Unity fixed in 2020.3.20f1 and 2021.1.24f1, but it's simpler to just check for 2021.2 or newer.
 // Don't use optimized mode in DEBUG mode for causality traces.
 #if (ENABLE_IL2CPP && !UNITY_2021_2_OR_NEWER) || PROMISE_DEBUG
-#define OPTIMIZED_ASYNC_MODE
-#else
 #undef OPTIMIZED_ASYNC_MODE
+#else
+#define OPTIMIZED_ASYNC_MODE
 #endif
 
 #pragma warning disable IDE0060 // Remove unused parameter
