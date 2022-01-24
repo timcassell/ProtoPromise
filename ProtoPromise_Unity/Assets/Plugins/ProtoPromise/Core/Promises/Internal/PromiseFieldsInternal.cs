@@ -11,6 +11,15 @@
 #undef PROMISE_PROGRESS
 #endif
 
+// Fix for IL2CPP compile bug. https://issuetracker.unity3d.com/issues/il2cpp-incorrect-results-when-calling-a-method-from-outside-class-in-a-struct
+// Unity fixed in 2020.3.20f1 and 2021.1.24f1, but it's simpler to just check for 2021.2 or newer.
+// Don't use optimized mode in DEBUG mode for causality traces.
+#if (ENABLE_IL2CPP && !UNITY_2021_2_OR_NEWER) || PROMISE_DEBUG
+#undef OPTIMIZED_ASYNC_MODE
+#else
+#define OPTIMIZED_ASYNC_MODE
+#endif
+
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 
@@ -520,5 +529,37 @@ namespace Proto.Promises
             }
 #endif
         } // PromiseRef
+
+#if CSHARP_7_3_OR_NEWER
+        partial class AsyncPromiseRef : PromiseRef.AsyncPromiseBase
+        {
+#if !OPTIMIZED_ASYNC_MODE
+            partial class PromiseMethodContinuer
+            {
+#if PROMISE_DEBUG
+                protected ITraceable _owner;
+#endif
+                // Cache the delegate to prevent new allocations.
+                private Action _moveNext;
+
+                // Generic class to reference the state machine without boxing it.
+                partial class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
+                {
+                    Continuer<TStateMachine> ILinked<Continuer<TStateMachine>>.Next { get; set; }
+                    private TStateMachine _stateMachine;
+                }
+            }
+#else // !OPTIMIZED_ASYNC_MODE
+            // Cache the delegate to prevent new allocations.
+            private Action _moveNext;
+
+            partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
+            {
+                // Using a promiseref object as its own continuer saves 16 bytes of object overhead (x64). 24 bytes if we include the `ILinked<T>.Next` field for object pooling purposes.
+                private TStateMachine _stateMachine;
+            }
+#endif // !OPTIMIZED_ASYNC_MODE
+        } // AsyncPromiseRef
+#endif // CSHARP_7_3_OR_NEWER
     } // Internal
 }
