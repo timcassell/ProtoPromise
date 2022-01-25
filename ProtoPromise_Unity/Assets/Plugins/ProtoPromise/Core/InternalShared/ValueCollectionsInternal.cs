@@ -413,6 +413,54 @@ namespace Proto.Promises
                 }
             }
 
+            internal bool TryRemove(T item)
+            {
+                if (IsEmpty)
+                {
+                    return false;
+                }
+                if (item == _head)
+                {
+                    _head = _head.Next;
+                    if (item == _tail)
+                    {
+                        _tail = null;
+                    }
+                    MarkRemovedFromCollection(item);
+                    return true;
+                }
+                T node = _head;
+                T next = node.Next;
+                while (next != null)
+                {
+                    if (next == item)
+                    {
+                        node.Next = next.Next;
+                        if (item == _tail)
+                        {
+                            _tail = node;
+                        }
+                        MarkRemovedFromCollection(item);
+                        return true;
+                    }
+                    node = next;
+                    next = node.Next;
+                }
+                return false;
+            }
+
+            internal bool Contains(T item)
+            {
+                foreach (T node in this)
+                {
+                    if (item == node)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
             internal ValueLinkedStack<T> MoveElementsToStack()
             {
                 ValueLinkedStack<T> newStack = new ValueLinkedStack<T>(_head);
