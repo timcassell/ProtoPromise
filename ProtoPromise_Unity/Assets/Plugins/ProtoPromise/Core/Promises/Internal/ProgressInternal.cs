@@ -165,7 +165,7 @@ namespace Proto.Promises
 
             partial class PromiseMultiAwait
             {
-                partial void HandleProgressListeners(Promise.State state, ref ExecutionScheduler executionScheduler);
+                partial void HandleProgressListeners(Promise.State state, ref ExecutionScheduler executionScheduler, PromiseFlags waitFlags = PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial | PromiseFlags.SettingInitial);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -784,14 +784,11 @@ namespace Proto.Promises
                     Promise.State state = State;
                     if (state == Promise.State.Pending & !IsCanceled)
                     {
-                        if (_progressListener == progressListener)
-                        {
-                            progress = _smallProgressFields._currentProgress;
-                            progressListener.SetInitialProgress(this, state, ref progress, out nextRef, ref executionScheduler);
-                            return;
-                        }
+                        progress = _smallProgressFields._currentProgress;
+                        progressListener.SetInitialProgress(this, state, ref progress, out nextRef, ref executionScheduler);
+                        return;
                     }
-                    else if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
+                    if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
                     {
                         progress = Fixed32.FromWholePlusOne(Depth);
                         progressListener.SetInitialProgress(this, Promise.State.Canceled, ref progress, out nextRef, ref executionScheduler);
@@ -938,13 +935,10 @@ namespace Proto.Promises
                     Promise.State state = State;
                     if (state == Promise.State.Pending)
                     {
-                        if (_progressListener == progressListener)
-                        {
-                            progressListener.SetInitialProgress(this, state, ref progress, out nextRef, ref executionScheduler);
-                            return;
-                        }
+                        progressListener.SetInitialProgress(this, state, ref progress, out nextRef, ref executionScheduler);
+                        return;
                     }
-                    else if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
+                    if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
                     {
                         progress = expectedProgress;
                         progressListener.SetInitialProgress(this, state, ref progress, out nextRef, ref executionScheduler);
@@ -1002,6 +996,7 @@ namespace Proto.Promises
                 new private void Reset(ushort depth)
                 {
                     _progressAndLocker._currentProgress = default(Fixed32);
+                    _progressAndLocker._handledBranches = false;
                     base.Reset(depth);
                 }
 
@@ -1037,31 +1032,26 @@ namespace Proto.Promises
                     Promise.State state = State;
                     if (state == Promise.State.Pending)
                     {
-                        _progressAndLocker._progressCollectionLocker.Enter();
-                        bool contained = _progressListeners.Contains(progressListener);
-                        _progressAndLocker._progressCollectionLocker.Exit();
-
-                        if (contained)
-                        {
-                            progress = _progressAndLocker._currentProgress;
-                            progressListener.SetInitialProgress(this, state, ref progress, out nextRef, ref executionScheduler);
-                            return;
-                        }
+                        progress = _progressAndLocker._currentProgress;
+                        progressListener.SetInitialProgress(this, state, ref progress, out nextRef, ref executionScheduler);
                     }
                     else
                     {
-                        _progressAndLocker._progressCollectionLocker.Enter();
-                        bool removed = _progressListeners.TryRemove(progressListener);
-                        _progressAndLocker._progressCollectionLocker.Exit();
-
-                        if (removed)
-                        {
-                            progress = Fixed32.FromWholePlusOne(Depth);
-                            progressListener.SetInitialProgress(this, state, ref progress, out nextRef, ref executionScheduler);
-                            return;
-                        }
+                        // Listener was added after this was complete. Handle it here.
+                        HandleListenersAddedAfterComplete(state, ref executionScheduler);
+                        nextRef = null;
                     }
-                    nextRef = null;
+                }
+
+                private void HandleListenersAddedAfterComplete(Promise.State state, ref ExecutionScheduler executionScheduler)
+                {
+                    // Wait until branches have all been handled before handling any remaining listeners.
+                    SpinWait spinner = new SpinWait();
+                    while (!_progressAndLocker._handledBranches)
+                    {
+                        spinner.SpinOnce();
+                    }
+                    HandleProgressListeners(state, ref executionScheduler, PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial);
                 }
 
                 private void WaitWhileProgressFlagsAndProgressRetained(PromiseFlags progressFlags)
@@ -1074,13 +1064,15 @@ namespace Proto.Promises
                     }
                 }
 
-                partial void HandleProgressListeners(Promise.State state, ref ExecutionScheduler executionScheduler)
+                partial void HandleProgressListeners(Promise.State state, ref ExecutionScheduler executionScheduler, PromiseFlags waitFlags)
                 {
+                    _progressAndLocker._handledBranches = true;
+
                     _progressAndLocker._progressCollectionLocker.Enter();
                     var progressListeners = _progressListeners.MoveElementsToStack();
                     _progressAndLocker._progressCollectionLocker.Exit();
 
-                    WaitWhileProgressFlagsAndProgressRetained(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial | PromiseFlags.SettingInitial);
+                    WaitWhileProgressFlagsAndProgressRetained(waitFlags);
                     if (progressListeners.IsEmpty)
                     {
                         return;
@@ -1180,6 +1172,18 @@ namespace Proto.Promises
                     InterlockedRetainDisregardId();
                 }
 
+                [MethodImpl(InlineOption)]
+                private void RetainForProgressReport()
+                {
+                    InterlockedAddWithOverflowCheck(ref _progressAndLocker._progressRetains, 1, -1);
+                }
+
+                [MethodImpl(InlineOption)]
+                private void ReleaseForProgressReport()
+                {
+                    InterlockedAddWithOverflowCheck(ref _progressAndLocker._progressRetains, -1, 0);
+                }
+
                 void IProgressInvokable.Invoke(ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
@@ -1190,7 +1194,7 @@ namespace Proto.Promises
                     {
                         // Retain and release instead of lock.
                         // We don't need to lock because listeners are never unsubscribed. If new listeners are added while we're iterating, that's fine, they will be included.
-                        InterlockedAddWithOverflowCheck(ref _progressAndLocker._progressRetains, 1, -1);
+                        RetainForProgressReport();
                         foreach (var progressListener in _progressListeners)
                         {
                             Fixed32 progressCopy = progress;
@@ -1201,7 +1205,7 @@ namespace Proto.Promises
                                 nextRef.ReportProgress(progressCopy, ref executionScheduler);
                             }
                         }
-                        InterlockedAddWithOverflowCheck(ref _progressAndLocker._progressRetains, -1, 0);
+                        ReleaseForProgressReport();
                     }
                     MaybeDispose();
                 }
