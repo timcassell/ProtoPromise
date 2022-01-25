@@ -1203,28 +1203,13 @@ namespace Proto.Promises
                 internal void Retain()
                 {
                     ThrowIfInPool(this);
-                    int _;
-                    // Don't let counter wrap around past 0.
-                    if (!InterlockedAddIfNotEqual(ref _smallFields._retainCounter, 1, -1, out _))
-                    {
-                        throw new OverflowException();
-                    }
+                    InterlockedAddWithOverflowCheck(ref _smallFields._retainCounter, 1, -1);
                 }
 
                 internal void Release()
                 {
                     ThrowIfInPool(this);
-                    int newValue;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    // Don't let counter go below 0.
-                    if (!InterlockedAddIfNotEqual(ref _smallFields._retainCounter, -1, 0, out newValue))
-                    {
-                        throw new OverflowException(); // This should never happen, but checking just in case.
-                    }
-#else
-                    newValue = Interlocked.Decrement(ref _smallFields._retainCounter);
-#endif
-                    if (newValue == 0)
+                    if (InterlockedAddWithOverflowCheck(ref _smallFields._retainCounter, -1, 0) == 0)
                     {
                         _target = null;
                         ObjectPool<HandleablePromiseBase>.MaybeRepool(this);

@@ -412,18 +412,44 @@ namespace Proto.Promises
             }
         }
 
-        internal static bool InterlockedAddIfNotEqual(ref int location, int value, int comparand, out int newValue)
+        [MethodImpl(InlineOption)]
+        private static long InterlockedAddWithOverflowCheck(ref long location, long value, long comparand)
         {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            long newValue;
+            do
+            {
+                newValue = Interlocked.Read(ref location);
+                if (newValue == comparand)
+                {
+                    throw new OverflowException(); // This should never happen, but checking just in case.
+                }
+            } while (Interlocked.CompareExchange(ref location, newValue + value, newValue) != newValue);
+            return newValue;
+#else
+            return Interlocked.Add(ref location, value);
+#endif
+        }
+
+        [MethodImpl(InlineOption)]
+        private static long InterlockedAddWithOverflowCheck(ref int location, int value, int comparand)
+        {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             Thread.MemoryBarrier();
-            int initialValue;
+            int initialValue, newValue;
             do
             {
                 initialValue = location;
+                if (initialValue == comparand)
+                {
+                    throw new OverflowException(); // This should never happen, but checking just in case.
+                }
                 newValue = initialValue + value;
-                if (initialValue == comparand) return false;
-            }
-            while (Interlocked.CompareExchange(ref location, newValue, initialValue) != initialValue);
-            return true;
+            } while (Interlocked.CompareExchange(ref location, newValue, initialValue) != initialValue);
+            return newValue;
+#else
+            return Interlocked.Add(ref location, value);
+#endif
         }
 
         [MethodImpl(InlineOption)]

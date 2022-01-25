@@ -238,17 +238,8 @@ namespace Proto.Promises
                 // Wait until progressFlags are unset.
                 // This is used to make sure promises and progress listeners aren't disposed while still in use on another thread.
                 SpinWait spinner = new SpinWait();
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
-#endif
                 while (_smallFields.AreFlagsSet(progressFlags))
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (stopwatch.Elapsed.TotalSeconds > 1)
-                    {
-                        throw new TimeoutException();
-                    }
-#endif
                     spinner.SpinOnce();
                 }
             }
@@ -1047,7 +1038,7 @@ namespace Proto.Promises
                     if (state == Promise.State.Pending)
                     {
                         _progressAndLocker._progressCollectionLocker.Enter();
-                        bool contained = _progressListeners.Contains(progressListener); // TODO: progress is no longer unsubscribed, so we only need to check if it's empty.
+                        bool contained = _progressListeners.Contains(progressListener);
                         _progressAndLocker._progressCollectionLocker.Exit();
 
                         if (contained)
@@ -1073,13 +1064,23 @@ namespace Proto.Promises
                     nextRef = null;
                 }
 
+                private void WaitWhileProgressFlagsAndProgressRetained(PromiseFlags progressFlags)
+                {
+                    Thread.MemoryBarrier(); // Make sure any writes happen before we read values.
+                    SpinWait spinner = new SpinWait();
+                    while (_smallFields.AreFlagsSet(progressFlags) | _progressAndLocker._progressRetains != 0)
+                    {
+                        spinner.SpinOnce();
+                    }
+                }
+
                 partial void HandleProgressListeners(Promise.State state, ref ExecutionScheduler executionScheduler)
                 {
                     _progressAndLocker._progressCollectionLocker.Enter();
                     var progressListeners = _progressListeners.MoveElementsToStack();
                     _progressAndLocker._progressCollectionLocker.Exit();
 
-                    WaitWhileProgressFlags(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial | PromiseFlags.SettingInitial);
+                    WaitWhileProgressFlagsAndProgressRetained(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial | PromiseFlags.SettingInitial);
                     if (progressListeners.IsEmpty)
                     {
                         return;
@@ -1187,9 +1188,9 @@ namespace Proto.Promises
                     _smallFields.InterlockedUnsetFlags(PromiseFlags.InProgressQueue);
                     if (!progress.IsSuspended)
                     {
-                        // Lock is necessary for race condition with Handle.
-                        // TODO: refactor to remove the need for a lock here.
-                        _progressAndLocker._progressCollectionLocker.Enter();
+                        // Retain and release instead of lock.
+                        // We don't need to lock because listeners are never unsubscribed. If new listeners are added while we're iterating, that's fine, they will be included.
+                        InterlockedAddWithOverflowCheck(ref _progressAndLocker._progressRetains, 1, -1);
                         foreach (var progressListener in _progressListeners)
                         {
                             Fixed32 progressCopy = progress;
@@ -1200,7 +1201,7 @@ namespace Proto.Promises
                                 nextRef.ReportProgress(progressCopy, ref executionScheduler);
                             }
                         }
-                        _progressAndLocker._progressCollectionLocker.Exit();
+                        InterlockedAddWithOverflowCheck(ref _progressAndLocker._progressRetains, -1, 0);
                     }
                     MaybeDispose();
                 }

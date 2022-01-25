@@ -244,6 +244,7 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                     internal SpinLocker _progressCollectionLocker;
                     internal Fixed32 _currentProgress;
+                    volatile internal int _progressRetains;
 #endif
                 }
 
