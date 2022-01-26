@@ -44,7 +44,7 @@ namespace Proto.Promises
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                internal static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits)
+                internal static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<FirstPromise>()
                         ?? new FirstPromise();
@@ -58,8 +58,6 @@ namespace Proto.Promises
                     {
                         promise._firstSmallFields._waitCount = (int) pendingAwaits;
                     }
-                    ushort depth = promisePassThroughs.Peek().Depth;
-                    promise.SetupProgress(promisePassThroughs, ref depth);
                     promise.Reset(depth);
 
                     while (promisePassThroughs.IsNotEmpty)
@@ -145,13 +143,17 @@ namespace Proto.Promises
 
                     MaybeDispose();
                 }
-
-                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref ushort depth);
             }
 
 #if PROMISE_PROGRESS
             partial class FirstPromise : IProgressInvokable
             {
+                new private void Reset(ushort depth)
+                {
+                    _firstSmallFields._currentProgress = default(Fixed32);
+                    base.Reset(depth);
+                }
+
                 internal override void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler)
                 {
                     HandleProgressListener(state, Fixed32.FromWholePlusOne(Depth), ref executionScheduler);
@@ -170,19 +172,6 @@ namespace Proto.Promises
                 {
                     progress = _firstSmallFields._currentProgress;
                     SetInitialProgress(progressListener, ref progress, Fixed32.FromWholePlusOne(Depth), out nextRef, ref executionScheduler);
-                }
-
-                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ref ushort depth)
-                {
-                    _firstSmallFields._currentProgress = default(Fixed32);
-
-                    // Expect the shortest chain to finish first.
-                    int minWaitDepth = depth;
-                    foreach (var passThrough in promisePassThroughs)
-                    {
-                        minWaitDepth = Math.Min(minWaitDepth, passThrough.Depth);
-                    }
-                    depth = (ushort) minWaitDepth;
                 }
 
                 internal override void IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)

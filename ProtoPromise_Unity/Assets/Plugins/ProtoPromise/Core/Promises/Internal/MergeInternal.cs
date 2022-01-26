@@ -49,11 +49,11 @@ namespace Proto.Promises
                     base.Dispose();
                 }
 
-                internal static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
+                internal static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, ulong completedProgress, ulong totalProgress, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<MergePromise>()
                         ?? new MergePromise();
-                    promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
+                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, totalProgress, depth);
                     return promise;
                 }
 
@@ -65,16 +65,14 @@ namespace Proto.Promises
 #endif
                     T value,
                     Action<ValueContainer, ResolveContainer<T>, int> onPromiseResolved,
-                    uint pendingAwaits,
-                    uint totalAwaits,
-                    ulong completedProgress)
+                    uint pendingAwaits, ulong completedProgress, ulong totalProgress, ushort depth)
                 {
                     var promise = MergePromiseT<T>.GetOrCreate(value, onPromiseResolved);
-                    promise.Setup(promisePassThroughs, pendingAwaits, totalAwaits, completedProgress);
+                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, totalProgress, depth);
                     return promise;
                 }
 
-                private void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, uint totalAwaits, ulong completedProgress)
+                private void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, ulong completedProgress, ulong totalProgress, ushort depth)
                 {
                     checked
                     {
@@ -85,9 +83,8 @@ namespace Proto.Promises
                     {
                         _waitCount = (int) pendingAwaits;
                     }
-                    ushort depth = promisePassThroughs.Peek().Depth;
-                    SetupProgress(promisePassThroughs, totalAwaits, completedProgress, ref depth);
                     Reset(depth);
+                    SetupProgress(promisePassThroughs, completedProgress, totalProgress);
 
                     while (promisePassThroughs.IsNotEmpty)
                     {
@@ -175,7 +172,7 @@ namespace Proto.Promises
                 }
 
                 partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
-                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress, ref ushort depth);
+                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ulong completedProgress, ulong totalProgress);
 
                 private sealed class MergePromiseT<T> : MergePromise
                 {
@@ -286,27 +283,10 @@ namespace Proto.Promises
                     SetInitialProgress(progressListener, ref progress, Fixed32.FromWholePlusOne(Depth), out nextRef, ref executionScheduler);
                 }
 
-                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint totalAwaits, ulong completedProgress, ref ushort depth)
+                partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ulong completedProgress, ulong totalProgress)
                 {
-#if PROMISE_DEBUG
-                    checked
-#endif
-                    {
-                        _unscaledProgress = new UnsignedFixed64(completedProgress);
-
-                        long expectedProgressCounter = totalAwaits;
-                        int maxWaitDepth = 0;
-                        foreach (var passThrough in promisePassThroughs)
-                        {
-                            int waitDepth = passThrough.Depth;
-                            expectedProgressCounter += waitDepth;
-                            maxWaitDepth = Math.Max(maxWaitDepth, waitDepth);
-                        }
-
-                        // Use the longest chain as this depth.
-                        depth = (ushort) maxWaitDepth;
-                        _progressScaler = (double) (maxWaitDepth + 1d) / (double) expectedProgressCounter;
-                    }
+                    _unscaledProgress = new UnsignedFixed64(completedProgress);
+                    _progressScaler = (double) (Depth + 1u) / (double) totalProgress;
                 }
 
                 partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)

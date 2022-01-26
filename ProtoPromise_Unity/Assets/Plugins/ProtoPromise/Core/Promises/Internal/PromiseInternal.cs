@@ -1457,52 +1457,63 @@ namespace Proto.Promises
             PromiseRef.MaybeMarkAwaitedAndDispose(promise, id, flags);
         }
 
-        internal static uint PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, PromiseFlags flags)
+        // Only using uint for maxDepth because Math.Max does not have an overload for ushort. It gets casted back to ushort when used for the final promise.
+        internal static void PrepareForMerge(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs,
+            int index, ref uint pendingAwaits, ref ulong completedProgress, ref ulong totalProgress, ref ushort maxDepth)
         {
-            if (promise._target._ref != null)
-            {
-                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
-                return 1;
-            }
-            return 0;
+            VoidResult voidResult = default(VoidResult);
+            PrepareForMerge(promise._target, ref voidResult, ref passThroughs, index, ref pendingAwaits, ref completedProgress, ref totalProgress, ref maxDepth);
         }
 
-        internal static uint PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ulong completedProgress, PromiseFlags flags)
+        internal static void PrepareForMerge<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs,
+            int index, ref uint pendingAwaits, ref ulong completedProgress, ref ulong totalProgress, ref ushort maxDepth)
         {
-            if (promise._target._ref != null)
+#if PROMISE_DEBUG
+            checked
+#else
+            unchecked
+#endif
             {
-                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
-                return 1;
+                uint expectedProgress = promise.Depth + 1u;
+                if (promise._ref == null)
+                {
+                    completedProgress += expectedProgress;
+                    value = promise.Result;
+                }
+                else
+                {
+                    passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection));
+                    ++pendingAwaits;
+                }
+                totalProgress += expectedProgress;
+                maxDepth = Math.Max(maxDepth, promise.Depth);
             }
-            ++completedProgress;
-            return 0;
         }
 
-        internal static uint PrepareForMulti<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, PromiseFlags flags)
+        // Only using uint for minDepth because Math.Min does not have an overload for ushort. It gets casted back to ushort when used for the final promise.
+        internal static bool TryPrepareForRace(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ushort minDepth, PromiseFlags flags)
         {
-            if (promise._ref != null)
-            {
-                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
-                return 1;
-            }
-            value = promise.Result;
-            return 0;
+            VoidResult voidResult = default(VoidResult);
+            return TryPrepareForRace(promise._target, ref voidResult, ref passThroughs, index, ref minDepth, flags);
         }
 
-        internal static uint PrepareForMulti<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ulong completedProgress, PromiseFlags flags)
+        internal static bool TryPrepareForRace<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ushort minDepth, PromiseFlags flags)
         {
-            if (promise._ref != null)
+            bool isPending = promise._ref != null;
+            if (!isPending)
+            {
+                value = promise.Result;
+            }
+            else
             {
                 passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
-                return 1;
             }
-            ++completedProgress;
-            value = promise.Result;
-            return 0;
+            minDepth = Math.Min(minDepth, promise.Depth);
+            return isPending;
         }
 
         [MethodImpl(InlineOption)]
-        internal static Promise CreateResolved()
+        internal static Promise CreateResolved(ushort depth)
         {
 #if PROMISE_DEBUG
             // Make a promise on the heap to capture causality trace and help with debugging in the finalizer.
@@ -1511,7 +1522,7 @@ namespace Proto.Promises
             return deferred.Promise;
 #else
             // Make a promise on the stack for efficiency.
-            return new Promise(null, ValidIdFromApi, 0);
+            return new Promise(null, ValidIdFromApi, depth);
 #endif
         }
 
@@ -1520,7 +1531,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             in
 #endif
-            T value)
+            T value, ushort depth)
         {
 #if PROMISE_DEBUG
             // Make a promise on the heap to capture causality trace and help with debugging in the finalizer.
@@ -1529,7 +1540,7 @@ namespace Proto.Promises
             return deferred.Promise;
 #else
             // Make a promise on the stack for efficiency.
-            return new Promise<T>(null, ValidIdFromApi, 0, value);
+            return new Promise<T>(null, ValidIdFromApi, depth, value);
 #endif
         }
     } // Internal
