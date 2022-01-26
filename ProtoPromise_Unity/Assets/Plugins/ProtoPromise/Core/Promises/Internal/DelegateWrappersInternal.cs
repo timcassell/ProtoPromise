@@ -405,7 +405,7 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
-                    owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                    owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
                     valueContainer.Release();
                 }
 
@@ -416,7 +416,7 @@ namespace Proto.Promises
                     if (cancelationHelper.TryUnregister(owner))
                     {
                         TResult result = Invoke(arg);
-                        owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                        owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
@@ -460,7 +460,7 @@ namespace Proto.Promises
                     if (valueContainer.TryGetValue(out arg))
                     {
                         TResult result = Invoke(arg);
-                        owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                        owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
                         valueContainer.Release();
                     }
                     else
@@ -477,7 +477,7 @@ namespace Proto.Promises
                         if (cancelationHelper.TryUnregister(owner))
                         {
                             TResult result = Invoke(arg);
-                            owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                            owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
                             valueContainer.Release();
                         }
                     }
@@ -918,7 +918,7 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
-                    owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                    owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
                     valueContainer.Release();
                 }
 
@@ -929,7 +929,7 @@ namespace Proto.Promises
                     if (cancelationHelper.TryUnregister(owner))
                     {
                         TResult result = Invoke(arg);
-                        owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                        owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
                         valueContainer.Release();
                     }
                 }
@@ -973,7 +973,7 @@ namespace Proto.Promises
                     if (valueContainer.TryGetValue(out arg))
                     {
                         TResult result = Invoke(arg);
-                        owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                        owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
                         valueContainer.Release();
                     }
                     else
@@ -990,7 +990,7 @@ namespace Proto.Promises
                         if (cancelationHelper.TryUnregister(owner))
                         {
                             TResult result = Invoke(arg);
-                            owner.WaitFor(CreateResolved(result), ref executionScheduler);
+                            owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
                             valueContainer.Release();
                         }
                     }

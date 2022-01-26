@@ -8,9 +8,9 @@
 // Unity fixed in 2020.3.20f1 and 2021.1.24f1, but it's simpler to just check for 2021.2 or newer.
 // Don't use optimized mode in DEBUG mode for causality traces.
 #if (ENABLE_IL2CPP && !UNITY_2021_2_OR_NEWER) || PROMISE_DEBUG
-#define OPTIMIZED_ASYNC_MODE
-#else
 #undef OPTIMIZED_ASYNC_MODE
+#else
+#define OPTIMIZED_ASYNC_MODE
 #endif
 
 #pragma warning disable IDE0060 // Remove unused parameter
@@ -354,7 +354,7 @@ namespace Proto.Promises
                     AsyncPromiseRef.SetStateMachine(ref stateMachine, ref _ref);
                     _id = _ref.Id;
                 }
-                return _ref.continuation;
+                return _ref.MoveNext;
             }
         }
 #endif // DEBUG or IL2CPP
@@ -402,18 +402,20 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
 #endif
-            private abstract class PromiseMethodContinuer : IDisposable
+            private abstract partial class PromiseMethodContinuer : IDisposable
             {
-                public abstract Action Continuation { get; }
-#if PROMISE_DEBUG
-                protected ITraceable _owner;
-#endif
+                internal Action MoveNext
+                {
+                    [MethodImpl(InlineOption)]
+                    get { return _moveNext; }
+                    [MethodImpl(InlineOption)]
+                    private protected set { _moveNext = value; }
+                }
 
                 private PromiseMethodContinuer() { }
 
                 public abstract void Dispose();
 
-                [MethodImpl(InlineOption)]
                 public static PromiseMethodContinuer GetOrCreate<TStateMachine>(ref TStateMachine stateMachine, ITraceable owner) where TStateMachine : IAsyncStateMachine
                 {
                     var continuer = Continuer<TStateMachine>.GetOrCreate(ref stateMachine);
@@ -423,22 +425,14 @@ namespace Proto.Promises
                     return continuer;
                 }
 
-                /// <summary>
-                /// Generic class to reference the state machine without boxing it.
-                /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode]
 #endif
-                private sealed class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
+                private sealed partial class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
                 {
-                    Continuer<TStateMachine> ILinked<Continuer<TStateMachine>>.Next { get; set; }
-                    public override Action Continuation { get { return _continuation; } }
-                    private readonly Action _continuation;
-                    private TStateMachine _stateMachine;
-
                     private Continuer()
                     {
-                        _continuation = Continue;
+                        _moveNext = ContinueMethod;
                     }
 
                     [MethodImpl(InlineOption)]
@@ -459,7 +453,7 @@ namespace Proto.Promises
                         ObjectPool<Continuer<TStateMachine>>.MaybeRepool(this);
                     }
 
-                    private void Continue()
+                    private void ContinueMethod()
                     {
 #if PROMISE_DEBUG
                         SetCurrentInvoker(_owner);
@@ -487,7 +481,7 @@ namespace Proto.Promises
                 {
                     _continuer = PromiseMethodContinuer.GetOrCreate(ref stateMachine, this);
                 }
-                return _continuer.Continuation;
+                return _continuer.MoveNext;
             }
 
             protected override void Dispose()
@@ -509,20 +503,19 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
 #endif
-            private sealed class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
+            private sealed partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
             {
-                // Using a promiseref object as its own continuer saves 16 bytes of object overhead (x64).
-                private TStateMachine _stateMachine;
+                private AsyncPromiseRefMachine()
+                {
+                    _moveNext = ContinueMethod;
+                }
 
-                private AsyncPromiseRefMachine() { }
-
-                [MethodImpl(InlineOption)]
                 public static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
                         ?? new AsyncPromiseRefMachine<TStateMachine>();
                     promise.Reset();
-                    // ORDER VERY IMPORTANT, Task must be set before copying stateMachine.
+                    // ORDER VERY IMPORTANT, ref must be set before copying stateMachine.
                     _ref = promise;
                     promise._stateMachine = stateMachine;
                 }
@@ -534,21 +527,20 @@ namespace Proto.Promises
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                protected override void ContinueMethod()
+                [MethodImpl(InlineOption)]
+                private void ContinueMethod()
                 {
                     _stateMachine.MoveNext();
                 }
             }
 
-            // Cache the delegate to prevent new allocations.
-            internal readonly Action continuation;
-
-            protected AsyncPromiseRef()
+            internal Action MoveNext
             {
-                continuation = ContinueMethod;
+                [MethodImpl(InlineOption)]
+                get { return _moveNext; }
             }
 
-            protected virtual void ContinueMethod() { }
+            protected AsyncPromiseRef() { }
 
             internal static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref) where TStateMachine : IAsyncStateMachine
             {
@@ -569,8 +561,8 @@ namespace Proto.Promises
                 base.Dispose();
             }
         }
-#endif // DEBUG or IL2CPP
+#endif // OPTIMIZED_ASYNC_MODE
 
     } // class Internal
 #endif // CSHARP_7_3_OR_NEWER
-    } // namespace Proto.Promises
+} // namespace Proto.Promises

@@ -445,24 +445,12 @@ namespace Proto.Promises
 
             internal bool Contains(T item)
             {
-                if (item == _head)
+                foreach (T node in this)
                 {
-                    return true;
-                }
-                if (IsEmpty)
-                {
-                    return false;
-                }
-                T node = _head;
-                T next = node.Next;
-                while (next != null)
-                {
-                    if (next == item)
+                    if (item == node)
                     {
                         return true;
                     }
-                    node = next;
-                    next = node.Next;
                 }
                 return false;
             }

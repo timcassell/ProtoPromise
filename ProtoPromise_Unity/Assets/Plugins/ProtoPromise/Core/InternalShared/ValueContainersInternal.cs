@@ -11,6 +11,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -24,7 +25,8 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
 #endif
-            private int _retainCounter;
+            // This should be nint to be more efficient in 32-bit runtimes, but it's only available in C# 9 and later.
+            private long _retainCounter;
             public T value;
 
             internal override sealed object Value
@@ -70,28 +72,14 @@ namespace Proto.Promises
             internal override void Retain()
             {
                 ThrowIfInPool(this);
-                int _;
-                // Don't let counter wrap around past 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, 1, -1, out _))
-                {
-                    throw new OverflowException();
-                }
+                // Generally it is impossible to overflow the long, but it may be possible if the user is abusing promises.
+                InterlockedAddWithOverflowCheck(ref _retainCounter, 1, -1);
             }
 
             protected bool TryReleaseComplete()
             {
                 ThrowIfInPool(this);
-                int newValue;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                // Don't let counter go below 0.
-                if (!InterlockedAddIfNotEqual(ref _retainCounter, -1, 0, out newValue))
-                {
-                    throw new OverflowException(); // This should never happen, but checking just in case.
-                }
-#else
-                newValue = System.Threading.Interlocked.Decrement(ref _retainCounter);
-#endif
-                return newValue == 0;
+                return InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0;
             }
 
             protected void Reset()
@@ -481,6 +469,7 @@ namespace Proto.Promises
                 Release();
             }
 #else
+            internal override void Retain() { }
             internal override void Release() { }
             internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
 #endif

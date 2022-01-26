@@ -53,6 +53,12 @@ namespace Proto.Promises
                 private set { _smallFields._state = value; }
             }
 
+            internal ushort Depth
+            {
+                [MethodImpl(InlineOption)]
+                get { return _smallFields._depth; }
+            }
+
             private bool SuppressRejection
             {
                 [MethodImpl(InlineOption)]
@@ -142,9 +148,9 @@ namespace Proto.Promises
                 WaitWhileProgressFlags(PromiseFlags.Subscribing);
             }
 
-            protected void Reset()
+            protected void Reset(ushort depth)
             {
-                _smallFields.Reset();
+                _smallFields.Reset(depth);
                 SetCreatedStacktrace(this, 3);
             }
 
@@ -206,22 +212,22 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            private void HookupNewPromiseWithProgress<TPromiseRef>(TPromiseRef newPromise, int depth) where TPromiseRef : PromiseRef, IProgressListener
+            private void HookupNewPromiseWithProgress<TPromiseRef>(TPromiseRef newPromise, ushort depth) where TPromiseRef : PromiseRef, IProgressListener
             {
                 newPromise._valueOrPrevious = this;
                 HookupNewWaiterWithProgress(newPromise, depth);
             }
 
-            private void HookupNewWaiterWithProgress<TWaiter>(TWaiter newWaiter, int depth) where TWaiter : HandleablePromiseBase, IProgressListener
+            private void HookupNewWaiterWithProgress<TWaiter>(TWaiter newWaiter, ushort depth) where TWaiter : HandleablePromiseBase, IProgressListener
             {
                 ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
-                SubscribeListener(newWaiter, new Fixed32(depth), ref executionScheduler);
+                SubscribeListener(newWaiter, Fixed32.FromWhole(depth), ref executionScheduler);
                 AddWaiter(newWaiter, ref executionScheduler);
                 executionScheduler.Execute();
             }
 #endif
 
-            internal PromiseRef GetPreserved(short promiseId, int depth)
+            internal PromiseRef GetPreserved(short promiseId, ushort depth)
             {
                 MarkAwaited(promiseId, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
                 var newPromise = PromiseMultiAwait.GetOrCreate(depth);
@@ -229,15 +235,15 @@ namespace Proto.Promises
                 return newPromise;
             }
 
-            internal virtual PromiseConfigured GetConfigured(short promiseId, SynchronizationContext synchronizationContext)
+            internal virtual PromiseConfigured GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
             {
                 MarkAwaited(promiseId, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
-                var newPromise = PromiseConfigured.GetOrCreate(synchronizationContext);
+                var newPromise = PromiseConfigured.GetOrCreate(synchronizationContext, depth);
                 HookupNewPromise(newPromise);
                 return newPromise;
             }
 
-            internal abstract PromiseRef GetDuplicate(short promiseId);
+            internal abstract PromiseRef GetDuplicate(short promiseId, ushort depth);
 
             internal abstract void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler);
 
@@ -246,7 +252,7 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseSingleAwait : PromiseRef
             {
-                internal sealed override PromiseRef GetDuplicate(short promiseId)
+                internal sealed override PromiseRef GetDuplicate(short promiseId, ushort depth)
                 {
                     IncrementIdAndSetFlags(promiseId, PromiseFlags.None);
                     return this;
@@ -381,7 +387,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseMultiAwait GetOrCreate(int depth)
+                internal static PromiseMultiAwait GetOrCreate(ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseMultiAwait>()
                         ?? new PromiseMultiAwait();
@@ -400,10 +406,10 @@ namespace Proto.Promises
                     InterlockedRetainAndSetFlagsInternal(promiseId, flags);
                 }
 
-                internal override PromiseRef GetDuplicate(short promiseId)
+                internal override PromiseRef GetDuplicate(short promiseId, ushort depth)
                 {
                     MarkAwaited(promiseId, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
-                    var newPromise = PromiseDuplicate.GetOrCreate();
+                    var newPromise = PromiseDuplicate.GetOrCreate(depth);
                     HookupNewPromise(newPromise);
                     return newPromise;
                 }
@@ -512,11 +518,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseDuplicate GetOrCreate()
+                internal static PromiseDuplicate GetOrCreate(ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseDuplicate>()
                         ?? new PromiseDuplicate();
-                    promise.Reset();
+                    promise.Reset(depth);
                     return promise;
                 }
 
@@ -539,11 +545,11 @@ namespace Proto.Promises
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                internal static PromiseConfigured GetOrCreate(SynchronizationContext synchronizationContext)
+                internal static PromiseConfigured GetOrCreate(SynchronizationContext synchronizationContext, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseConfigured>()
                         ?? new PromiseConfigured();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._synchronizationContext = synchronizationContext;
                     promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.None;
                     return promise;
@@ -554,15 +560,15 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
-                    TResult result)
+                    TResult result, ushort depth)
                 {
-                    var promise = GetOrCreate(synchronizationContext);
+                    var promise = GetOrCreate(synchronizationContext, depth);
                     promise._valueOrPrevious = CreateResolveContainer(result);
                     promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.MakeReady;
                     return promise;
                 }
 
-                internal override PromiseConfigured GetConfigured(short promiseId, SynchronizationContext synchronizationContext)
+                internal override PromiseConfigured GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
                 {
                     IncrementIdAndSetFlags(promiseId, PromiseFlags.None);
                     _synchronizationContext = synchronizationContext;
@@ -657,7 +663,7 @@ namespace Proto.Promises
 
 #if !PROMISE_PROGRESS
                 [MethodImpl(InlineOption)]
-                private void SetPreviousAndSubscribeProgress(PromiseRef other, int depth, ref ExecutionScheduler executionScheduler)
+                private void SetPreviousAndSubscribeProgress(PromiseRef other, ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     _valueOrPrevious = other;
                 }
@@ -669,6 +675,15 @@ namespace Proto.Promises
 #endif
             internal abstract partial class AsyncPromiseBase : PromiseSingleAwaitWithProgress
             {
+                protected void Reset()
+                {
+#if PROMISE_PROGRESS
+                    _currentProgress = default(Fixed32);
+#endif
+                    _smallFields.Reset();
+                    SetCreatedStacktrace(this, 3);
+                }
+
                 private void ResolveInternal(ValueContainer valueContainer)
                 {
                     ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
@@ -730,11 +745,11 @@ namespace Proto.Promises
                 private PromiseResolve() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolve<TResolver> GetOrCreate(TResolver resolver)
+                internal static PromiseResolve<TResolver> GetOrCreate(TResolver resolver, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolve<TResolver>>()
                         ?? new PromiseResolve<TResolver>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     return promise;
                 }
@@ -769,7 +784,7 @@ namespace Proto.Promises
                 private PromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, int depth)
+                internal static PromiseResolvePromise<TResolver> GetOrCreate(TResolver resolver, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolvePromise<TResolver>>()
                         ?? new PromiseResolvePromise<TResolver>();
@@ -816,11 +831,11 @@ namespace Proto.Promises
                 private PromiseResolveReject() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
+                internal static PromiseResolveReject<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolveReject<TResolver, TRejecter>>()
                         ?? new PromiseResolveReject<TResolver, TRejecter>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     return promise;
@@ -866,7 +881,7 @@ namespace Proto.Promises
                 private PromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, int depth)
+                internal static PromiseResolveRejectPromise<TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolveRejectPromise<TResolver, TRejecter>>()
                         ?? new PromiseResolveRejectPromise<TResolver, TRejecter>();
@@ -922,11 +937,11 @@ namespace Proto.Promises
                 private PromiseContinue() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseContinue<TContinuer> GetOrCreate(TContinuer continuer)
+                internal static PromiseContinue<TContinuer> GetOrCreate(TContinuer continuer, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseContinue<TContinuer>>()
                         ?? new PromiseContinue<TContinuer>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._continuer = continuer;
                     return promise;
                 }
@@ -955,7 +970,7 @@ namespace Proto.Promises
                 private PromiseContinuePromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, int depth)
+                internal static PromiseContinuePromise<TContinuer> GetOrCreate(TContinuer continuer, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseContinuePromise<TContinuer>>()
                         ?? new PromiseContinuePromise<TContinuer>();
@@ -995,11 +1010,11 @@ namespace Proto.Promises
                 private PromiseFinally() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseFinally<TFinalizer> GetOrCreate(TFinalizer finalizer)
+                internal static PromiseFinally<TFinalizer> GetOrCreate(TFinalizer finalizer, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseFinally<TFinalizer>>()
                         ?? new PromiseFinally<TFinalizer>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._finalizer = finalizer;
                     return promise;
                 }
@@ -1028,11 +1043,11 @@ namespace Proto.Promises
                 private PromiseCancel() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseCancel<TCanceler> GetOrCreate(TCanceler canceler)
+                internal static PromiseCancel<TCanceler> GetOrCreate(TCanceler canceler, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseCancel<TCanceler>>()
                         ?? new PromiseCancel<TCanceler>();
-                    promise.Reset();
+                    promise.Reset(depth);
                     promise._canceler = canceler;
                     return promise;
                 }
@@ -1067,7 +1082,7 @@ namespace Proto.Promises
                 private PromiseCancelPromise() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseCancelPromise<TCanceler> GetOrCreate(TCanceler resolver, int depth)
+                internal static PromiseCancelPromise<TCanceler> GetOrCreate(TCanceler resolver, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseCancelPromise<TCanceler>>()
                         ?? new PromiseCancelPromise<TCanceler>();
@@ -1159,7 +1174,7 @@ namespace Proto.Promises
                     return passThrough;
                 }
 
-                partial void ResetProgress(int depth);
+                partial void ResetProgress(ushort depth);
                 partial void WaitWhileProgressIsBusy();
 
                 internal void SetTargetAndAddToOwner(MultiHandleablePromiseBase target)
@@ -1169,7 +1184,7 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                     // Unfortunately, we have to eagerly subscribe progress. Lazy algorithm would be much more expensive with thread safety, requiring allocations. (see ValidateReturn)
                     // But it's not so bad, because it doesn't allocate any memory (just uses CPU cycles to set it up).
-                    _owner.HookupNewWaiterWithProgress(this, _smallFields._depth.WholePart);
+                    _owner.HookupNewWaiterWithProgress(this, _smallFields._depth);
 #else
                     _owner.HookupNewWaiter(this);
 #endif
@@ -1188,33 +1203,26 @@ namespace Proto.Promises
                 internal void Retain()
                 {
                     ThrowIfInPool(this);
-                    int _;
-                    // Don't let counter wrap around past 0.
-                    if (!InterlockedAddIfNotEqual(ref _smallFields._retainCounter, 1, -1, out _))
-                    {
-                        throw new OverflowException();
-                    }
+                    InterlockedAddWithOverflowCheck(ref _smallFields._retainCounter, 1, -1);
                 }
 
                 internal void Release()
                 {
                     ThrowIfInPool(this);
-                    int newValue;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    // Don't let counter go below 0.
-                    if (!InterlockedAddIfNotEqual(ref _smallFields._retainCounter, -1, 0, out newValue))
-                    {
-                        throw new OverflowException(); // This should never happen, but checking just in case.
-                    }
-#else
-                    newValue = Interlocked.Decrement(ref _smallFields._retainCounter);
-#endif
-                    if (newValue == 0)
+                    if (InterlockedAddWithOverflowCheck(ref _smallFields._retainCounter, -1, 0) == 0)
                     {
                         _target = null;
                         ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                     }
                 }
+
+#if !PROMISE_PROGRESS
+                internal ushort Depth
+                {
+                    [MethodImpl(InlineOption)]
+                    get { return 0; }
+                }
+#endif
 
                 internal override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
             } // PromisePassThrough
@@ -1392,6 +1400,13 @@ namespace Proto.Promises
                     _retains = 2;
                 }
 
+                [MethodImpl(InlineOption)]
+                internal void Reset(ushort depth)
+                {
+                    Reset();
+                    _depth = depth;
+                }
+
                 internal PromiseFlags InterlockedSetFlags(PromiseFlags flags)
                 {
                     Thread.MemoryBarrier();
@@ -1442,52 +1457,63 @@ namespace Proto.Promises
             PromiseRef.MaybeMarkAwaitedAndDispose(promise, id, flags);
         }
 
-        internal static uint PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, PromiseFlags flags)
+        // Only using uint for maxDepth because Math.Max does not have an overload for ushort. It gets casted back to ushort when used for the final promise.
+        internal static void PrepareForMerge(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs,
+            int index, ref uint pendingAwaits, ref ulong completedProgress, ref ulong totalProgress, ref ushort maxDepth)
         {
-            if (promise._target._ref != null)
-            {
-                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
-                return 1;
-            }
-            return 0;
+            VoidResult voidResult = default(VoidResult);
+            PrepareForMerge(promise._target, ref voidResult, ref passThroughs, index, ref pendingAwaits, ref completedProgress, ref totalProgress, ref maxDepth);
         }
 
-        internal static uint PrepareForMulti(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ulong completedProgress, PromiseFlags flags)
+        internal static void PrepareForMerge<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs,
+            int index, ref uint pendingAwaits, ref ulong completedProgress, ref ulong totalProgress, ref ushort maxDepth)
         {
-            if (promise._target._ref != null)
+#if PROMISE_DEBUG
+            checked
+#else
+            unchecked
+#endif
             {
-                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
-                return 1;
+                uint expectedProgress = promise.Depth + 1u;
+                if (promise._ref == null)
+                {
+                    completedProgress += expectedProgress;
+                    value = promise.Result;
+                }
+                else
+                {
+                    passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection));
+                    ++pendingAwaits;
+                }
+                totalProgress += expectedProgress;
+                maxDepth = Math.Max(maxDepth, promise.Depth);
             }
-            ++completedProgress;
-            return 0;
         }
 
-        internal static uint PrepareForMulti<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, PromiseFlags flags)
+        // Only using uint for minDepth because Math.Min does not have an overload for ushort. It gets casted back to ushort when used for the final promise.
+        internal static bool TryPrepareForRace(Promise promise, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ushort minDepth, PromiseFlags flags)
         {
-            if (promise._ref != null)
-            {
-                passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
-                return 1;
-            }
-            value = promise.Result;
-            return 0;
+            VoidResult voidResult = default(VoidResult);
+            return TryPrepareForRace(promise._target, ref voidResult, ref passThroughs, index, ref minDepth, flags);
         }
 
-        internal static uint PrepareForMulti<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ulong completedProgress, PromiseFlags flags)
+        internal static bool TryPrepareForRace<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRef.PromisePassThrough> passThroughs, int index, ref ushort minDepth, PromiseFlags flags)
         {
-            if (promise._ref != null)
+            bool isPending = promise._ref != null;
+            if (!isPending)
+            {
+                value = promise.Result;
+            }
+            else
             {
                 passThroughs.Push(PromiseRef.PromisePassThrough.GetOrCreate(promise, index, flags));
-                return 1;
             }
-            ++completedProgress;
-            value = promise.Result;
-            return 0;
+            minDepth = Math.Min(minDepth, promise.Depth);
+            return isPending;
         }
 
         [MethodImpl(InlineOption)]
-        internal static Promise CreateResolved()
+        internal static Promise CreateResolved(ushort depth)
         {
 #if PROMISE_DEBUG
             // Make a promise on the heap to capture causality trace and help with debugging in the finalizer.
@@ -1496,7 +1522,7 @@ namespace Proto.Promises
             return deferred.Promise;
 #else
             // Make a promise on the stack for efficiency.
-            return new Promise(null, ValidIdFromApi, 0);
+            return new Promise(null, ValidIdFromApi, depth);
 #endif
         }
 
@@ -1505,7 +1531,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             in
 #endif
-            T value)
+            T value, ushort depth)
         {
 #if PROMISE_DEBUG
             // Make a promise on the heap to capture causality trace and help with debugging in the finalizer.
@@ -1514,7 +1540,7 @@ namespace Proto.Promises
             return deferred.Promise;
 #else
             // Make a promise on the stack for efficiency.
-            return new Promise<T>(null, ValidIdFromApi, 0, value);
+            return new Promise<T>(null, ValidIdFromApi, depth, value);
 #endif
         }
     } // Internal

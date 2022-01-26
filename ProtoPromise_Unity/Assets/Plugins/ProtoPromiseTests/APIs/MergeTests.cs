@@ -516,6 +516,80 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.Dispose();
             deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
         }
-#endif
+
+        [Test]
+        public void MergeProgressWillBeInvokedProperlyFromChainedPromise_FlatDepth_void([Values] bool isPending)
+        {
+            // Testing an implementation detail, not guaranteed by the API - Promise.Merge's depth is set to the longest promise chain's depth.
+            // We test if all promises are already resolved to make sure progress reports remain consistent.
+            var maybePendingDeferred = isPending
+                ? Promise.NewDeferred()
+                : default(Promise.Deferred);
+
+            // .Then waiting on another promise increases the depth of the promise chain from 0 to 1.
+            var promise1 = (isPending ? maybePendingDeferred.Promise : Promise.Resolved())
+                .Then(() => Promise.Resolved(1));
+            var promise2 = Promise.Resolved()
+                .Then(() => Promise.Resolved(2f));
+            var promise3 = Promise.Resolved()
+                .Then(() => Promise.Resolved("Success"));
+            var promise4 = Promise.Resolved()
+                .Then(() => Promise.Resolved(true));
+
+            const float initialCompletedProgress = 3f / 4f;
+            const float expectedCompletedProgress = initialCompletedProgress * 2f / 3f;
+
+            var deferredForProgress = Promise.NewDeferred();
+
+            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            Promise.Merge(promise1, promise2, promise3, promise4)
+                .Then(v => deferredForProgress.Promise) // Increases the depth to 2.
+                .SubscribeProgressAndAssert(progressHelper, isPending ? expectedCompletedProgress : 2f / 3f)
+                .Forget();
+
+            maybePendingDeferred.TryResolve();
+
+            progressHelper.AssertCurrentProgress(2f / 3f);
+
+            progressHelper.ReportProgressAndAssertResult(deferredForProgress, 0.5f, 2.5f / 3f);
+            progressHelper.ResolveAndAssertResult(deferredForProgress, 3f / 3f);
+        }
+
+        [Test]
+        public void MergeProgressWillBeInvokedProperlyFromChainedPromise_StaggeredDepth_void([Values] bool isPending)
+        {
+            // Testing an implementation detail, not guaranteed by the API - Promise.Merge's depth is set to the longest promise chain's depth.
+            // We test if all promises are already resolved to make sure progress reports remain consistent.
+            var maybePendingDeferred = isPending
+                ? Promise.NewDeferred()
+                : default(Promise.Deferred);
+
+            // .Then waiting on another promise increases the depth of the promise chain from 0 to 1.
+            var promise1 = (isPending ? maybePendingDeferred.Promise : Promise.Resolved())
+                .Then(() => Promise.Resolved(1));
+            var promise2 = Promise.Resolved(2f);
+            var promise3 = Promise.Resolved("Success");
+            var promise4 = Promise.Resolved(true);
+
+            // Implementation detail - progress isn't divided evenly for each promise, their weights are based on their depth.
+            const float initialCompletedProgress = 3f / 5f;
+            const float expectedCompletedProgress = initialCompletedProgress * 2f / 3f;
+
+            var deferredForProgress = Promise.NewDeferred();
+
+            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            Promise.Merge(promise1, promise2, promise3, promise4)
+                .Then(v => deferredForProgress.Promise) // Increases the depth to 2.
+                .SubscribeProgressAndAssert(progressHelper, isPending ? expectedCompletedProgress : 2f / 3f)
+                .Forget();
+
+            maybePendingDeferred.TryResolve();
+
+            progressHelper.AssertCurrentProgress(2f / 3f);
+
+            progressHelper.ReportProgressAndAssertResult(deferredForProgress, 0.5f, 2.5f / 3f);
+            progressHelper.ResolveAndAssertResult(deferredForProgress, 3f / 3f);
+        }
+#endif // PROMISE_PROGRESS
     }
 }
