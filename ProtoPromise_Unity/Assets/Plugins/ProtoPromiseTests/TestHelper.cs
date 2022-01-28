@@ -13,6 +13,7 @@ using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -65,11 +66,11 @@ namespace ProtoPromiseTests
         public static readonly PromiseSynchronizationContext _foregroundContext = new PromiseSynchronizationContext();
         private static readonly List<Exception> _uncaughtExceptions = new List<Exception>();
 
+        private static Stopwatch _stopwatch;
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void Setup()
         {
-            TestContext.Progress.WriteLine("Begin " + TestContext.CurrentContext.Test.FullName);
-
             if (Promise.Config.ForegroundContext != _foregroundContext)
             {
                 // Set the foreground context to execute foreground promise callbacks.
@@ -92,7 +93,11 @@ namespace ProtoPromiseTests
                 Promise.Config.ObjectPoolingEnabled = true;
 #endif
                 Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
+
+                _stopwatch = Stopwatch.StartNew();
             }
+
+            TestContext.Progress.WriteLine("Begin time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
         }
 
         public static void Cleanup()
@@ -118,7 +123,7 @@ namespace ProtoPromiseTests
 #endif
             }
 
-            TestContext.Progress.WriteLine("Success " + TestContext.CurrentContext.Test.FullName);
+            TestContext.Progress.WriteLine("Success time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
         }
 
         public static void ExecuteForegroundCallbacks()
