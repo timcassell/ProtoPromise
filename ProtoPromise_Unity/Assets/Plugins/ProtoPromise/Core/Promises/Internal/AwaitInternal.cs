@@ -114,6 +114,13 @@ namespace Proto.Promises
                 HookupNewWaiter(AwaiterRef.GetOrCreate(continuation));
             }
 
+            [MethodImpl(InlineOption)]
+            internal void AwaitOnCompletedInternal(AsyncPromiseRef asyncPromiseRef, short promiseId)
+            {
+                MarkAwaited(promiseId, PromiseFlags.None);
+                HookupNewWaiter(asyncPromiseRef);
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
 #endif
@@ -171,6 +178,93 @@ namespace Proto.Promises
                 internal override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
             }
         }
+
+        internal interface IPromiseAwaiter
+        {
+            void AwaitOnCompletedInternal(PromiseRef.AsyncPromiseRef asyncPromiseRef);
+        }
+
+        // TODO: Remove AwaitOverrider in .Net 5+ for a direct call instead.
+        // Override AwaitOnCompleted implementation to prevent boxing in Unity.
+#if UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER // C# 9 added in 2021.2. We can also use this in non-Unity library since CIL has supported function pointers forever.
+        internal unsafe abstract class AwaitOverrider<T> where T : INotifyCompletion
+        {
+            private static delegate*<ref T, PromiseRef.AsyncPromiseRef, void> _awaitOverrider;
+
+            [MethodImpl(InlineOption)]
+            internal static bool IsOverridden()
+            {
+                return _awaitOverrider != null;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal static void Create<TAwaiter>() where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
+            {
+                AwaitOverriderImpl<TAwaiter>.Create();
+            }
+
+            [MethodImpl(InlineOption)]
+            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            {
+                _awaitOverrider(ref awaiter, asyncPromiseRef);
+            }
+
+            private sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
+            {
+                [MethodImpl(InlineOption)]
+                internal static void Create()
+                {
+                    _awaitOverrider = &AwaitOnCompletedVirt;
+                }
+
+                [MethodImpl(InlineOption)]
+                private static void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRef.AsyncPromiseRef asyncPromiseRef)
+                {
+                    awaiter.AwaitOnCompletedInternal(asyncPromiseRef);
+                }
+            }
+        }
+#else // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
+        internal abstract class AwaitOverrider<T> where T : INotifyCompletion
+        {
+            private static AwaitOverrider<T> _awaitOverrider;
+
+            [MethodImpl(Internal.InlineOption)]
+            internal static bool IsOverridden()
+            {
+                return _awaitOverrider != null;
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal static void Create<TAwaiter>() where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
+            {
+                AwaitOverriderImpl<TAwaiter>.Create();
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            {
+                _awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef);
+            }
+
+            protected abstract void AwaitOnCompletedVirt(ref T awaiter, PromiseRef.AsyncPromiseRef asyncPromiseRef);
+
+            private sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
+            {
+                [MethodImpl(Internal.InlineOption)]
+                internal static void Create()
+                {
+                    _awaitOverrider = new AwaitOverriderImpl<TAwaiter>();
+                }
+
+                [MethodImpl(Internal.InlineOption)]
+                protected override void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRef.AsyncPromiseRef asyncPromiseRef)
+                {
+                    awaiter.AwaitOnCompletedInternal(asyncPromiseRef);
+                }
+            }
+        }
+#endif // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
     }
 
     namespace Async.CompilerServices
@@ -185,7 +279,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            partial struct PromiseAwaiterVoid : ICriticalNotifyCompletion
+            partial struct PromiseAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
         {
             private readonly PromiseAwaiter<Internal.VoidResult> _awaiter;
 
@@ -239,6 +333,12 @@ namespace Proto.Promises
                 _awaiter.UnsafeOnCompleted(continuation);
             }
 
+            [MethodImpl(Internal.InlineOption)]
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            {
+                _awaiter._promise._ref.AwaitOnCompletedInternal(asyncPromiseRef, _awaiter._promise.Id);
+            }
+
             static partial void ValidateGetResult(Promise<Internal.VoidResult> promise, int skipFrames);
             static partial void ValidateOperation(Promise<Internal.VoidResult> promise, int skipFrames);
 #if PROMISE_DEBUG
@@ -258,19 +358,19 @@ namespace Proto.Promises
                 }
             }
 #endif
-        }
+        } // struct PromiseAwaiterVoid
 
-        /// <summary>
-        /// Used to support the await keyword.
-        /// </summary>
+    /// <summary>
+    /// Used to support the await keyword.
+    /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+    [DebuggerNonUserCode]
 #endif
         public
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion
+            partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
         {
             internal readonly Promise<T> _promise;
 
@@ -336,6 +436,12 @@ namespace Proto.Promises
                 OnCompleted(continuation);
             }
 
+            [MethodImpl(Internal.InlineOption)]
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            {
+                _promise._ref.AwaitOnCompletedInternal(asyncPromiseRef, _promise.Id);
+            }
+
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
             static partial void ValidateGetResult(Promise<T> promise, int skipFrames);
             static partial void ValidateOperation(Promise<T> promise, int skipFrames);
@@ -361,8 +467,24 @@ namespace Proto.Promises
                 }
             }
 #endif
+        } // struct PromiseAwaiter<T>
+
+        partial struct PromiseAwaiterVoid
+        {
+            static PromiseAwaiterVoid()
+            {
+                Internal.AwaitOverrider<PromiseAwaiterVoid>.Create<PromiseAwaiterVoid>();
+            }
         }
-    }
+
+        partial struct PromiseAwaiter<T>
+        {
+            static PromiseAwaiter()
+            {
+                Internal.AwaitOverrider<PromiseAwaiter<T>>.Create<PromiseAwaiter<T>>();
+            }
+        }
+    } // namespace Async.CompilerServices
 
     partial struct Promise
     {

@@ -528,38 +528,38 @@ namespace Proto.Promises
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
             }
 #endif
-        } // PromiseRef
 
 #if CSHARP_7_3_OR_NEWER
-        partial class AsyncPromiseRef : PromiseRef.AsyncPromiseBase
-        {
-#if !OPTIMIZED_ASYNC_MODE
-            partial class PromiseMethodContinuer
+            partial class AsyncPromiseRef : PromiseRef.AsyncPromiseBase
             {
+#if !OPTIMIZED_ASYNC_MODE
+                partial class PromiseMethodContinuer
+                {
 #if PROMISE_DEBUG
-                protected ITraceable _owner;
+                    protected ITraceable _owner;
 #endif
+                    // Cache the delegate to prevent new allocations.
+                    private Action _moveNext;
+
+                    // Generic class to reference the state machine without boxing it.
+                    partial class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
+                    {
+                        Continuer<TStateMachine> ILinked<Continuer<TStateMachine>>.Next { get; set; }
+                        private TStateMachine _stateMachine;
+                    }
+                }
+#else // !OPTIMIZED_ASYNC_MODE
                 // Cache the delegate to prevent new allocations.
                 private Action _moveNext;
 
-                // Generic class to reference the state machine without boxing it.
-                partial class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
+                partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
                 {
-                    Continuer<TStateMachine> ILinked<Continuer<TStateMachine>>.Next { get; set; }
+                    // Using a promiseref object as its own continuer saves 16 bytes of object overhead (x64). 24 bytes if we include the `ILinked<T>.Next` field for object pooling purposes.
                     private TStateMachine _stateMachine;
                 }
-            }
-#else // !OPTIMIZED_ASYNC_MODE
-            // Cache the delegate to prevent new allocations.
-            private Action _moveNext;
-
-            partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
-            {
-                // Using a promiseref object as its own continuer saves 16 bytes of object overhead (x64). 24 bytes if we include the `ILinked<T>.Next` field for object pooling purposes.
-                private TStateMachine _stateMachine;
-            }
 #endif // !OPTIMIZED_ASYNC_MODE
-        } // AsyncPromiseRef
+            } // AsyncPromiseRef
 #endif // CSHARP_7_3_OR_NEWER
+        } // PromiseRef
     } // Internal
 }

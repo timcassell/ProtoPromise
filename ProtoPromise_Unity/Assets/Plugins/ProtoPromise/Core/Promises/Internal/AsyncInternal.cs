@@ -209,35 +209,35 @@ namespace Proto.Promises
 #endif
         public struct PromiseMethodBuilderInternal<T>
         {
-            private AsyncPromiseRef _promise;
+            private PromiseRef.AsyncPromiseRef _ref;
 
             [MethodImpl(InlineOption)]
-            private PromiseMethodBuilderInternal(AsyncPromiseRef promise)
+            private PromiseMethodBuilderInternal(PromiseRef.AsyncPromiseRef promise)
             {
-                _promise = promise;
+                _ref = promise;
             }
 
             public Promise<T> Task
             {
                 [MethodImpl(InlineOption)]
-                get { return new Promise<T>(_promise, _promise.Id, 0); }
+                get { return new Promise<T>(_ref, _ref.Id, 0); }
             }
 
             [MethodImpl(InlineOption)]
             public static PromiseMethodBuilderInternal<T> Create()
             {
-                return new PromiseMethodBuilderInternal<T>(AsyncPromiseRef.GetOrCreate());
+                return new PromiseMethodBuilderInternal<T>(PromiseRef.AsyncPromiseRef.GetOrCreate());
             }
 
             public void SetException(Exception exception)
             {
-                _promise.SetException(exception);
+                _ref.SetException(exception);
             }
 
             [MethodImpl(InlineOption)]
             public void SetResult(T result)
             {
-                _promise.SetResult(result);
+                _ref.SetResult(result);
             }
 
             [MethodImpl(InlineOption)]
@@ -245,8 +245,15 @@ namespace Proto.Promises
                 where TAwaiter : INotifyCompletion
                 where TStateMachine : IAsyncStateMachine
             {
-                // TODO: check for circular awaits (promise waiting on itself)
-                awaiter.OnCompleted(_promise.GetContinuation(ref stateMachine));
+                _ref.SetStateMachine(ref stateMachine);
+                if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
+                {
+                    AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
+                }
+                else
+                {
+                    awaiter.OnCompleted(_ref.MoveNext);
+                }
             }
 
             [SecuritySafeCritical]
@@ -255,7 +262,15 @@ namespace Proto.Promises
                 where TAwaiter : ICriticalNotifyCompletion
                 where TStateMachine : IAsyncStateMachine
             {
-                awaiter.UnsafeOnCompleted(_promise.GetContinuation(ref stateMachine));
+                _ref.SetStateMachine(ref stateMachine);
+                if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
+                {
+                    AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
+                }
+                else
+                {
+                    awaiter.UnsafeOnCompleted(_ref.MoveNext);
+                }
             }
 
             [MethodImpl(InlineOption)]
@@ -279,7 +294,7 @@ namespace Proto.Promises
         [StructLayout(LayoutKind.Auto)]
         internal struct PromiseMethodBuilderInternal<T>
         {
-            private AsyncPromiseRef _ref;
+            private PromiseRef.AsyncPromiseRef _ref;
             private short _id;
             private T _result;
 
@@ -299,7 +314,7 @@ namespace Proto.Promises
             {
                 if (_ref is null)
                 {
-                    _ref = AsyncPromiseRef.GetOrCreate();
+                    _ref = PromiseRef.AsyncPromiseRef.GetOrCreate();
                     _id = _ref.Id;
                 }
                 _ref.SetException(exception);
@@ -323,7 +338,16 @@ namespace Proto.Promises
                 where TAwaiter : INotifyCompletion
                 where TStateMachine : IAsyncStateMachine
             {
-                awaiter.OnCompleted(GetContinuation(ref stateMachine));
+                SetStateMachine(ref stateMachine);
+                // TODO: optimize this check to call direct in .Net 5 or later. (see https://github.com/dotnet/runtime/discussions/61574)
+                if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
+                {
+                    AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
+                }
+                else
+                {
+                    awaiter.OnCompleted(_ref.MoveNext);
+                }
             }
 
             [SecuritySafeCritical]
@@ -332,7 +356,15 @@ namespace Proto.Promises
                 where TAwaiter : ICriticalNotifyCompletion
                 where TStateMachine : IAsyncStateMachine
             {
-                awaiter.UnsafeOnCompleted(GetContinuation(ref stateMachine));
+                SetStateMachine(ref stateMachine);
+                if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
+                {
+                    AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
+                }
+                else
+                {
+                    awaiter.UnsafeOnCompleted(_ref.MoveNext);
+                }
             }
 
             [MethodImpl(InlineOption)]
@@ -346,223 +378,245 @@ namespace Proto.Promises
             public void SetStateMachine(IAsyncStateMachine stateMachine) { }
 
             [MethodImpl(InlineOption)]
-            private Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine)
+            private void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
                 if (_ref is null)
                 {
-                    AsyncPromiseRef.SetStateMachine(ref stateMachine, ref _ref);
+                    PromiseRef.AsyncPromiseRef.SetStateMachine(ref stateMachine, ref _ref);
                     _id = _ref.Id;
                 }
-                return _ref.MoveNext;
             }
         }
 #endif // DEBUG or IL2CPP
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-        internal partial class AsyncPromiseRef : PromiseRef.AsyncPromiseBase
-        {
-            [MethodImpl(InlineOption)]
-            public static AsyncPromiseRef GetOrCreate()
-            {
-                var promise = ObjectPool<HandleablePromiseBase>.TryTake<AsyncPromiseRef>()
-                    ?? new AsyncPromiseRef();
-                promise.Reset();
-                return promise;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void SetResult<T>(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                T result)
-            {
-                ResolveDirect(result);
-            }
-
-            internal void SetException(Exception exception)
-            {
-                if (exception is OperationCanceledException)
-                {
-                    CancelDirect();
-                }
-                else
-                {
-                    RejectDirect(exception, int.MinValue);
-                }
-            }
-        }
-
-#if !OPTIMIZED_ASYNC_MODE
-        sealed partial class AsyncPromiseRef
+        partial class PromiseRef
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
 #endif
-            private abstract partial class PromiseMethodContinuer : IDisposable
+            internal partial class AsyncPromiseRef : AsyncPromiseBase
+            {
+                [MethodImpl(InlineOption)]
+                public static AsyncPromiseRef GetOrCreate()
+                {
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<AsyncPromiseRef>()
+                        ?? new AsyncPromiseRef();
+                    promise.Reset();
+                    return promise;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void SetResult<T>(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T result)
+                {
+                    ResolveDirect(result);
+                }
+
+                internal void SetException(Exception exception)
+                {
+                    if (exception is OperationCanceledException)
+                    {
+                        CancelDirect();
+                    }
+                    else
+                    {
+                        RejectDirect(exception, int.MinValue);
+                    }
+                }
+            }
+
+#if !OPTIMIZED_ASYNC_MODE
+            sealed partial class AsyncPromiseRef
             {
                 internal Action MoveNext
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _moveNext; }
-                    [MethodImpl(InlineOption)]
-                    private protected set { _moveNext = value; }
-                }
-
-                private PromiseMethodContinuer() { }
-
-                public abstract void Dispose();
-
-                public static PromiseMethodContinuer GetOrCreate<TStateMachine>(ref TStateMachine stateMachine, ITraceable owner) where TStateMachine : IAsyncStateMachine
-                {
-                    var continuer = Continuer<TStateMachine>.GetOrCreate(ref stateMachine);
-#if PROMISE_DEBUG
-                    continuer._owner = owner;
-#endif
-                    return continuer;
+                    get { return _continuer.MoveNext; }
                 }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode]
 #endif
-                private sealed partial class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
+                private abstract partial class PromiseMethodContinuer : IDisposable
                 {
-                    private Continuer()
+                    internal Action MoveNext
                     {
-                        _moveNext = ContinueMethod;
+                        [MethodImpl(InlineOption)]
+                        get { return _moveNext; }
+                        [MethodImpl(InlineOption)]
+                        private protected set { _moveNext = value; }
                     }
 
+                    private PromiseMethodContinuer() { }
+
+                    public abstract void Dispose();
+
                     [MethodImpl(InlineOption)]
-                    public static Continuer<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
+                    public static PromiseMethodContinuer GetOrCreate<TStateMachine>(ref TStateMachine stateMachine, ITraceable owner) where TStateMachine : IAsyncStateMachine
                     {
-                        var continuer = ObjectPool<Continuer<TStateMachine>>.TryTake<Continuer<TStateMachine>>()
-                            ?? new Continuer<TStateMachine>();
-                        continuer._stateMachine = stateMachine;
+                        var continuer = Continuer<TStateMachine>.GetOrCreate(ref stateMachine);
+#if PROMISE_DEBUG
+                        continuer._owner = owner;
+#endif
                         return continuer;
                     }
 
-                    public override void Dispose()
-                    {
-#if PROMISE_DEBUG
-                        _owner = null;
+#if !PROTO_PROMISE_DEVELOPER_MODE
+                    [DebuggerNonUserCode]
 #endif
-                        _stateMachine = default;
-                        ObjectPool<Continuer<TStateMachine>>.MaybeRepool(this);
-                    }
-
-                    private void ContinueMethod()
+                    private sealed partial class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
                     {
+                        private Continuer()
+                        {
+                            _moveNext = ContinueMethod;
+                        }
+
+                        [MethodImpl(InlineOption)]
+                        public static Continuer<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
+                        {
+                            var continuer = ObjectPool<Continuer<TStateMachine>>.TryTake<Continuer<TStateMachine>>()
+                                ?? new Continuer<TStateMachine>();
+                            continuer._stateMachine = stateMachine;
+                            return continuer;
+                        }
+
+                        public override void Dispose()
+                        {
 #if PROMISE_DEBUG
-                        SetCurrentInvoker(_owner);
-                        try
-                        {
-                            _stateMachine.MoveNext();
+                            _owner = null;
+#endif
+                            _stateMachine = default;
+                            ObjectPool<Continuer<TStateMachine>>.MaybeRepool(this);
                         }
-                        finally
+
+                        private void ContinueMethod()
                         {
-                            ClearCurrentInvoker();
-                        }
+#if PROMISE_DEBUG
+                            SetCurrentInvoker(_owner);
+                            try
+                            {
+                                _stateMachine.MoveNext();
+                            }
+                            finally
+                            {
+                                ClearCurrentInvoker();
+                            }
 #else
                         _stateMachine.MoveNext();
 #endif
+                        }
                     }
                 }
-            }
 
-            private PromiseMethodContinuer _continuer;
+                private PromiseMethodContinuer _continuer;
 
-            [MethodImpl(InlineOption)]
-            public Action GetContinuation<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
-            {
-                if (_continuer is null)
+                [MethodImpl(InlineOption)]
+                public void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
                 {
-                    _continuer = PromiseMethodContinuer.GetOrCreate(ref stateMachine, this);
-                }
-                return _continuer.MoveNext;
-            }
-
-            protected override void Dispose()
-            {
-                base.Dispose();
-                if (_continuer != null)
-                {
-                    _continuer.Dispose();
-                    _continuer = null;
-                }
-                ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
-            }
-        } // class AsyncPromiseRef
-
-#else // !OPTIMIZED_ASYNC_MODE
-
-        partial class AsyncPromiseRef
-        {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode]
-#endif
-            private sealed partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
-            {
-                private AsyncPromiseRefMachine()
-                {
-                    _moveNext = ContinueMethod;
-                }
-
-                public static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref)
-                {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
-                        ?? new AsyncPromiseRefMachine<TStateMachine>();
-                    promise.Reset();
-                    // ORDER VERY IMPORTANT, ref must be set before copying stateMachine.
-                    _ref = promise;
-                    promise._stateMachine = stateMachine;
+                    if (_continuer is null)
+                    {
+                        _continuer = PromiseMethodContinuer.GetOrCreate(ref stateMachine, this);
+                    }
                 }
 
                 protected override void Dispose()
                 {
-                    SuperDispose();
-                    _stateMachine = default;
+                    base.Dispose();
+                    if (_continuer != null)
+                    {
+                        _continuer.Dispose();
+                        _continuer = null;
+                    }
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                [MethodImpl(InlineOption)]
-                private void ContinueMethod()
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    _stateMachine.MoveNext();
+                    // TODO: executionScheduler.ScheduleSynchronous and set a flag if this was completed by a promise or an unknown awaiter so that the SetResult or SetException won't have to execute on a new scheduler.
+                    ThrowIfInPool(this);
+                    MoveNext();
+                }
+            } // class AsyncPromiseRef
+
+#else // !OPTIMIZED_ASYNC_MODE
+
+            partial class AsyncPromiseRef
+            {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+                [DebuggerNonUserCode]
+#endif
+                private sealed partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
+                {
+                    private AsyncPromiseRefMachine()
+                    {
+                        _moveNext = ContinueMethod;
+                    }
+
+                    public static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref)
+                    {
+                        var promise = ObjectPool<HandleablePromiseBase>.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
+                            ?? new AsyncPromiseRefMachine<TStateMachine>();
+                        promise.Reset();
+                        // ORDER VERY IMPORTANT, ref must be set before copying stateMachine.
+                        _ref = promise;
+                        promise._stateMachine = stateMachine;
+                    }
+
+                    protected override void Dispose()
+                    {
+                        SuperDispose();
+                        _stateMachine = default;
+                        ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    private void ContinueMethod()
+                    {
+                        _stateMachine.MoveNext();
+                    }
+
+                    internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                    {
+                        // TODO: executionScheduler.ScheduleSynchronous and set a flag if this was completed by a promise or an unknown awaiter so that the SetResult or SetException won't have to execute on a new scheduler.
+                        ThrowIfInPool(this);
+                        ContinueMethod();
+                    }
+                }
+
+                internal Action MoveNext
+                {
+                    [MethodImpl(InlineOption)]
+                    get { return _moveNext; }
+                }
+
+                protected AsyncPromiseRef() { }
+
+                [MethodImpl(InlineOption)]
+                internal static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref) where TStateMachine : IAsyncStateMachine
+                {
+                    AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref);
+                }
+
+                protected override void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                }
+
+                // Used for child to call base dispose without repooling for both types.
+                // This is necessary because C# doesn't allow `base.base.Dispose()`.
+                [MethodImpl(InlineOption)]
+                protected void SuperDispose()
+                {
+                    base.Dispose();
                 }
             }
-
-            internal Action MoveNext
-            {
-                [MethodImpl(InlineOption)]
-                get { return _moveNext; }
-            }
-
-            protected AsyncPromiseRef() { }
-
-            internal static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref) where TStateMachine : IAsyncStateMachine
-            {
-                AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref);
-            }
-
-            protected override void Dispose()
-            {
-                base.Dispose();
-                ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
-            }
-
-            // Used for child to call base dispose without repooling for both types.
-            // This is necessary because C# doesn't allow `base.base.Dispose()`.
-            [MethodImpl(InlineOption)]
-            protected void SuperDispose()
-            {
-                base.Dispose();
-            }
-        }
 #endif // OPTIMIZED_ASYNC_MODE
-
+        } // class PromiseRef
     } // class Internal
 #endif // CSHARP_7_3_OR_NEWER
 } // namespace Proto.Promises

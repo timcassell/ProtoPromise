@@ -726,7 +726,7 @@ namespace Proto.Promises
                     RejectOrCancelInternal(CancelContainerVoid.GetOrCreate());
                 }
 
-                internal sealed override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
+                internal override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
             }
 
             // IDelegate to reduce the amount of classes I would have to write (Composition Over Inheritance).
