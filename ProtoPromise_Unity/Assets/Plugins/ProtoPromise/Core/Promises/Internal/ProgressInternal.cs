@@ -791,6 +791,7 @@ namespace Proto.Promises
                     if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
                     {
                         progress = Fixed32.FromWholePlusOne(Depth);
+                        WaitWhileProgressFlags(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial);
                         progressListener.SetInitialProgress(this, Promise.State.Canceled, ref progress, out nextRef, ref executionScheduler);
                         return;
                     }
@@ -941,6 +942,7 @@ namespace Proto.Promises
                     if (Interlocked.CompareExchange(ref _progressListener, null, progressListener) == progressListener)
                     {
                         progress = expectedProgress;
+                        WaitWhileProgressFlags(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial);
                         progressListener.SetInitialProgress(this, state, ref progress, out nextRef, ref executionScheduler);
                         return;
                     }
@@ -1051,6 +1053,7 @@ namespace Proto.Promises
                         if (removed)
                         {
                             progress = Fixed32.FromWholePlusOne(Depth);
+                            WaitWhileProgressFlags(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial);
                             progressListener.SetInitialProgress(this, state, ref progress, out nextRef, ref executionScheduler);
                             return;
                         }
