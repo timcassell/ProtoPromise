@@ -25,7 +25,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
 #endif
-            // This should be nint to be more efficient in 32-bit runtimes, but it's only available in C# 9 and later.
+            // This should be nint to be more efficient in 32-bit runtimes, but it's only available in C# 9 and later, and Interlocked does not have an overload for nint.
             private long _retainCounter;
             public T value;
 

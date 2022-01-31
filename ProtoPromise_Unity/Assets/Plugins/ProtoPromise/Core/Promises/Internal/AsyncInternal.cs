@@ -3,6 +3,11 @@
 #else
 #undef PROMISE_DEBUG
 #endif
+#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+#endif
 
 // Fix for IL2CPP compile bug. https://issuetracker.unity3d.com/issues/il2cpp-incorrect-results-when-calling-a-method-from-outside-class-in-a-struct
 // Unity fixed in 2020.3.20f1 and 2021.1.24f1, but it's simpler to just check for 2021.2 or newer.
@@ -397,6 +402,14 @@ namespace Proto.Promises
 #endif
             internal partial class AsyncPromiseRef : AsyncPromiseBase
             {
+#if !PROMISE_PROGRESS
+                [MethodImpl(InlineOption)]
+                internal void SetPreviousAndMaybeSubscribeProgress(PromiseRef other, ushort depth, float minProgress, float maxProgress, ref ExecutionScheduler executionScheduler)
+                {
+                    _valueOrPrevious = other;
+                }
+#endif
+
                 [MethodImpl(InlineOption)]
                 public static AsyncPromiseRef GetOrCreate()
                 {
@@ -409,9 +422,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void SetResult<T>(
 #if CSHARP_7_3_OR_NEWER
-                in
+                    in
 #endif
-                T result)
+                    T result)
                 {
                     ResolveDirect(result);
                 }
@@ -538,6 +551,8 @@ namespace Proto.Promises
                 {
                     // TODO: executionScheduler.ScheduleSynchronous and set a flag if this was completed by a promise or an unknown awaiter so that the SetResult or SetException won't have to execute on a new scheduler.
                     ThrowIfInPool(this);
+                    _valueOrPrevious = null;
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                     MoveNext();
                 }
             } // class AsyncPromiseRef
@@ -583,6 +598,8 @@ namespace Proto.Promises
                     {
                         // TODO: executionScheduler.ScheduleSynchronous and set a flag if this was completed by a promise or an unknown awaiter so that the SetResult or SetException won't have to execute on a new scheduler.
                         ThrowIfInPool(this);
+                        _valueOrPrevious = null;
+                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         ContinueMethod();
                     }
                 }

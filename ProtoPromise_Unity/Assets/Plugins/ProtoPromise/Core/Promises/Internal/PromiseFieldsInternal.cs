@@ -197,7 +197,7 @@ namespace Proto.Promises
                 internal short _deferredId;
                 // _depth shares bit space with _deferredId, because it is always 0 on deferred promises, and _deferredId is not used in non-deferred promises.
                 [FieldOffset(6)]
-                internal ushort _depth;
+                volatile internal ushort _depth;
 
                 [MethodImpl(InlineOption)]
                 internal SmallFields(short initialId)
@@ -262,24 +262,27 @@ namespace Proto.Promises
 #endif
             }
 
+#if PROMISE_PROGRESS
+            // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+            // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+            protected partial struct ProgressSubscribeFields
+            {
+                volatile private int _previousDepthAndFlags;
+                internal Fixed32 _currentProgress; // Fixed32 is only used for progress suspension. It's simpler to just re-use the functionality there than to rewrite it for PromiseWaitPromise.
+            }
+#endif
+
             partial class AsyncPromiseBase : PromiseSingleAwaitWithProgress
             {
 #if PROMISE_PROGRESS
-                protected Fixed32 _currentProgress;
+                protected ProgressSubscribeFields _progressFields;
 #endif
             }
 
             partial class PromiseWaitPromise : PromiseSingleAwaitWithProgress
             {
 #if PROMISE_PROGRESS
-                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
-                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                private partial struct PromiseWaitSmallFields
-                {
-                    volatile private int _previousDepthAndFlags;
-                    internal Fixed32 _currentProgress; // Fixed32 is only used for progress suspension. It's simpler to just re-use the functionality there than to rewrite it for PromiseWaitPromise.
-                }
-                private PromiseWaitSmallFields _progressFields;
+                private ProgressSubscribeFields _progressFields;
 
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
 #endif
@@ -477,7 +480,7 @@ namespace Proto.Promises
 #endif
             }
 
-            partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>, IProgressListener
+            partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
@@ -506,7 +509,7 @@ namespace Proto.Promises
             #endregion
 
 #if PROMISE_PROGRESS
-            partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress, IProgressListener, IProgressInvokable
+            partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress
                 where TProgress : IProgress<float>
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
@@ -530,8 +533,31 @@ namespace Proto.Promises
 #endif
 
 #if CSHARP_7_3_OR_NEWER
-            partial class AsyncPromiseRef : PromiseRef.AsyncPromiseBase
+#if PROMISE_PROGRESS
+            partial class AsyncProgressPassThrough
             {
+                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+                private struct SmallFields
+                {
+                    internal int _retainCounter; // int for Interlocked, even though we really only need a ushort.
+                    internal Fixed32 _currentProgress;
+                }
+
+                private AsyncPromiseRef _target;
+                private SmallFields _smallFields;
+                AsyncProgressPassThrough ILinked<AsyncProgressPassThrough>.Next { get; set; }
+                IProgressListener ILinked<IProgressListener>.Next { get; set; }
+            }
+#endif
+
+            partial class AsyncPromiseRef : AsyncPromiseBase
+            {
+#if PROMISE_PROGRESS
+                private float _minProgress;
+                private float _maxProgress;
+#endif
+
 #if !OPTIMIZED_ASYNC_MODE
                 partial class PromiseMethodContinuer
                 {

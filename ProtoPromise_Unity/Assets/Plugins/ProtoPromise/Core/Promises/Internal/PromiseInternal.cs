@@ -678,7 +678,7 @@ namespace Proto.Promises
                 protected void Reset()
                 {
 #if PROMISE_PROGRESS
-                    _currentProgress = default(Fixed32);
+                    _progressFields._currentProgress = default(Fixed32);
 #endif
                     _smallFields.Reset();
                     SetCreatedStacktrace(this, 3);

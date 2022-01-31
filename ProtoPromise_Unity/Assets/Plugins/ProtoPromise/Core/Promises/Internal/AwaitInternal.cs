@@ -118,7 +118,17 @@ namespace Proto.Promises
             internal void AwaitOnCompletedInternal(AsyncPromiseRef asyncPromiseRef, short promiseId)
             {
                 MarkAwaited(promiseId, PromiseFlags.None);
-                HookupNewWaiter(asyncPromiseRef);
+                HookupNewPromise(asyncPromiseRef);
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void AwaitOnCompletedWithProgressInternal(AsyncPromiseRef asyncPromiseRef, short promiseId, ushort depth, float minProgress, float maxProgress)
+            {
+                MarkAwaited(promiseId, PromiseFlags.None);
+                ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+                asyncPromiseRef.SetPreviousAndMaybeSubscribeProgress(this, depth, minProgress, maxProgress, ref executionScheduler);
+                AddWaiter(asyncPromiseRef, ref executionScheduler);
+                executionScheduler.Execute();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -189,7 +199,9 @@ namespace Proto.Promises
 #if UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER // C# 9 added in 2021.2. We can also use this in non-Unity library since CIL has supported function pointers forever.
         internal unsafe abstract class AwaitOverrider<T> where T : INotifyCompletion
         {
+#pragma warning disable IDE0044 // Add readonly modifier
             private static delegate*<ref T, PromiseRef.AsyncPromiseRef, void> _awaitOverrider;
+#pragma warning restore IDE0044 // Add readonly modifier
 
             [MethodImpl(InlineOption)]
             internal static bool IsOverridden()
@@ -469,6 +481,222 @@ namespace Proto.Promises
 #endif
         } // struct PromiseAwaiter<T>
 
+        /// <summary>
+        /// Used to support the await keyword.
+        /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        public
+#if CSHARP_7_3_OR_NEWER
+            readonly
+#endif
+            partial struct PromiseProgressAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        {
+            private readonly PromiseProgressAwaiter<Internal.VoidResult> _awaiter;
+
+            /// <summary>
+            /// Internal use.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            internal PromiseProgressAwaiterVoid(Promise promise, float minProgress, float maxProgress)
+            {
+                _awaiter = new PromiseProgressAwaiter<Internal.VoidResult>(promise._target, minProgress, maxProgress);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            public PromiseProgressAwaiterVoid GetAwaiter()
+            {
+                return this;
+            }
+
+            public bool IsCompleted
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get
+                {
+                    return _awaiter.IsCompleted;
+                }
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            public void GetResult()
+            {
+                var promise = _awaiter._promise;
+                ValidateGetResult(promise, 1);
+                var _ref = promise._ref;
+                if (_ref == null)
+                {
+                    return;
+                }
+                _ref.IncrementIdAndSetFlags(promise.Id);
+                var state = _ref.State;
+                if (state == Promise.State.Resolved)
+                {
+                    _ref.MaybeDispose();
+                    return;
+                }
+                _ref.GetExceptionDispatchInfo(state).Throw();
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            public void OnCompleted(Action continuation)
+            {
+                _awaiter.OnCompleted(continuation);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            public void UnsafeOnCompleted(Action continuation)
+            {
+                _awaiter.UnsafeOnCompleted(continuation);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            {
+                _awaiter._promise._ref.AwaitOnCompletedWithProgressInternal(asyncPromiseRef, _awaiter._promise.Id, _awaiter._promise.Depth, _awaiter._minProgress, _awaiter._maxProgress);
+            }
+
+            static partial void ValidateGetResult(Promise<Internal.VoidResult> promise, int skipFrames);
+            static partial void ValidateOperation(Promise<Internal.VoidResult> promise, int skipFrames);
+#if PROMISE_DEBUG
+            static partial void ValidateGetResult(Promise<Internal.VoidResult> promise, int skipFrames)
+            {
+                if (promise._ref == null)
+                {
+                    ValidateOperation(promise, skipFrames + 1);
+                }
+            }
+
+            static partial void ValidateOperation(Promise<Internal.VoidResult> promise, int skipFrames)
+            {
+                if (!promise.IsValid)
+                {
+                    throw new InvalidOperationException("Attempted to use PromiseAwaiter incorrectly. You must call IsCompleted, then maybe OnCompleted, then GetResult when it is complete.", Internal.GetFormattedStacktrace(skipFrames + 1));
+                }
+            }
+#endif
+        } // struct PromiseAwaiterVoid
+
+        /// <summary>
+        /// Used to support the await keyword.
+        /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
+        public
+#if CSHARP_7_3_OR_NEWER
+            readonly
+#endif
+            partial struct PromiseProgressAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        {
+            internal readonly Promise<T> _promise;
+            internal readonly float _minProgress;
+            internal readonly float _maxProgress;
+
+            /// <summary>
+            /// Internal use.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            internal PromiseProgressAwaiter(Promise<T> promise, float minProgress, float maxProgress)
+            {
+                _promise = promise;
+                _minProgress = minProgress;
+                _maxProgress = maxProgress;
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            public PromiseProgressAwaiter<T> GetAwaiter()
+            {
+                return this;
+            }
+
+            public bool IsCompleted
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get
+                {
+                    var promise = _promise;
+                    ValidateOperation(promise, 1);
+                    return promise._ref == null || promise._ref.State != Promise.State.Pending;
+                }
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            public T GetResult()
+            {
+                var promise = _promise;
+                ValidateGetResult(promise, 1);
+                var _ref = promise._ref;
+                if (_ref == null)
+                {
+                    return promise.Result;
+                }
+                _ref.IncrementIdAndSetFlags(promise.Id);
+                var state = _ref.State;
+                if (state == Promise.State.Resolved)
+                {
+                    T result = ((Internal.ValueContainer) _ref._valueOrPrevious).GetValue<T>();
+                    _ref.MaybeDispose();
+                    return result;
+                }
+                _ref.GetExceptionDispatchInfo(state).Throw();
+                throw new Exception(); // This will never be reached, but the compiler needs help understanding that.
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            public void OnCompleted(Action continuation)
+            {
+                ValidateArgument(continuation, "continuation", 1);
+                var promise = _promise;
+                ValidateOperation(promise, 1);
+                if (promise._ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                promise._ref.OnCompleted(continuation, promise.Id);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            public void UnsafeOnCompleted(Action continuation)
+            {
+                OnCompleted(continuation);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            {
+                _promise._ref.AwaitOnCompletedWithProgressInternal(asyncPromiseRef, _promise.Id, _promise.Depth, _minProgress, _maxProgress);
+            }
+
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+            static partial void ValidateGetResult(Promise<T> promise, int skipFrames);
+            static partial void ValidateOperation(Promise<T> promise, int skipFrames);
+#if PROMISE_DEBUG
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+            {
+                Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            }
+
+            static partial void ValidateGetResult(Promise<T> promise, int skipFrames)
+            {
+                if (promise._ref == null)
+                {
+                    ValidateOperation(promise, skipFrames + 1);
+                }
+            }
+
+            static partial void ValidateOperation(Promise<T> promise, int skipFrames)
+            {
+                if (!promise.IsValid)
+                {
+                    throw new InvalidOperationException("Attempted to use PromiseAwaiter incorrectly. You must call IsCompleted, then maybe OnCompleted, then GetResult when it is complete.", Internal.GetFormattedStacktrace(skipFrames + 1));
+                }
+            }
+#endif
+        } // struct PromiseAwaiter<T>
+
         partial struct PromiseAwaiterVoid
         {
             static PromiseAwaiterVoid()
@@ -488,8 +716,6 @@ namespace Proto.Promises
 
     partial struct Promise
     {
-        // TODO: ConfigureAwait for reporting progress to an async Promise.
-
         /// <summary>
         /// Used to support the await keyword.
         /// </summary>
@@ -498,6 +724,18 @@ namespace Proto.Promises
         {
             ValidateOperation(1);
             return new PromiseAwaiterVoid(this);
+        }
+
+        /// <summary>
+        /// Used to support reporting progress to the async Promise function. The progress reported will be scaled from minProgress to maxProgress. Both values must be between 0 and 1 inclusive.
+        /// <para/> Use as `await promise.AwaitWithprogress(min, max);`
+        /// </summary>
+        public PromiseProgressAwaiterVoid AwaitWithProgress(float minProgress, float maxProgress)
+        {
+            ValidateOperation(1);
+            Internal.ValidateProgressValue(minProgress, nameof(minProgress), 1);
+            Internal.ValidateProgressValue(maxProgress, nameof(maxProgress), 1);
+            return new PromiseProgressAwaiterVoid(this, minProgress, maxProgress);
         }
     }
 
@@ -511,6 +749,18 @@ namespace Proto.Promises
         {
             ValidateOperation(1);
             return new PromiseAwaiter<T>(this);
+        }
+
+        /// <summary>
+        /// Used to support reporting progress to the async Promise function. The progress reported will be scaled from minProgress to maxProgress. Both values must be between 0 and 1 inclusive.
+        /// <para/> Use as `await promise.AwaitWithprogress(min, max);`
+        /// </summary>
+        public PromiseProgressAwaiter<T> AwaitWithProgress(float minProgress, float maxProgress)
+        {
+            ValidateOperation(1);
+            Internal.ValidateProgressValue(minProgress, nameof(minProgress), 1);
+            Internal.ValidateProgressValue(maxProgress, nameof(maxProgress), 1);
+            return new PromiseProgressAwaiter<T>(this, minProgress, maxProgress);
         }
     }
 }

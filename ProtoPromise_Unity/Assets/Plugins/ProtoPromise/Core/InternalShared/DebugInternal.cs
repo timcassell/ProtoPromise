@@ -39,6 +39,15 @@ namespace Proto.Promises
         internal const MethodImplOptions InlineOption = (MethodImplOptions) 256; // AggressiveInlining
 #endif
 
+        internal static void ValidateProgressValue(float value, string argName, int skipFrames)
+        {
+            bool isBetween01 = value >= 0f && value <= 1f;
+            if (!isBetween01)
+            {
+                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.", GetFormattedStacktrace(skipFrames + 1));
+            }
+        }
+
         // Calls to these get compiled away in RELEASE mode
         partial class PromiseRef
         {
@@ -236,16 +245,6 @@ namespace Proto.Promises
             }
         }
 
-        internal static void ValidateProgressValue(float value, int skipFrames)
-        {
-            const string argName = "progress";
-            bool isBetween01 = value >= 0f && value <= 1f;
-            if (!isBetween01)
-            {
-                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.", GetFormattedStacktrace(skipFrames + 1));
-            }
-        }
-
         internal static void ValidateOperation(Promise promise, int skipFrames)
         {
             if (!promise.IsValid)
@@ -346,7 +345,7 @@ namespace Proto.Promises
             {
                 static partial void ValidateProgress(float progress, int skipFrames)
                 {
-                    ValidateProgressValue(progress, skipFrames + 1);
+                    ValidateProgressValue(progress, "progress", skipFrames + 1);
                 }
             }
         }
