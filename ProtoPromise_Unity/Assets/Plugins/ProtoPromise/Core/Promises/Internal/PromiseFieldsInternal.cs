@@ -538,10 +538,17 @@ namespace Proto.Promises
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                private struct SmallFields
+                [StructLayout(LayoutKind.Explicit)]
+                private partial struct SmallFields
                 {
-                    internal int _retainCounter; // int for Interlocked, even though we really only need a ushort.
+                    [FieldOffset(0)]
                     internal Fixed32 _currentProgress;
+                    [FieldOffset(4)]
+                    internal ushort _expectedProgress;
+                    [FieldOffset(6)]
+                    private ushort _retainCounter;
+                    [FieldOffset(4)]
+                    volatile private int _intValue; // int for Interlocked.
                 }
 
                 private AsyncPromiseRef _target;

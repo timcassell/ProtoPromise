@@ -1645,12 +1645,59 @@ namespace Proto.Promises
 #endif
             internal sealed partial class AsyncProgressPassThrough : IProgressListener, ILinked<AsyncProgressPassThrough>
             {
-                internal static AsyncProgressPassThrough GetOrCreate(AsyncPromiseRef target)
+                partial struct SmallFields
+                {
+                    internal void InterlockedRetain()
+                    {
+                        unchecked
+                        {
+                            Thread.MemoryBarrier();
+                            SmallFields initialValue = default(SmallFields), newValue = default(SmallFields);
+                            do
+                            {
+                                initialValue._intValue = _intValue;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                                if (initialValue._retainCounter == ushort.MaxValue)
+                                {
+                                    throw new OverflowException();
+                                }
+#endif
+                                newValue._intValue = initialValue._intValue;
+                                ++newValue._retainCounter;
+                            } while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                        }
+                    }
+
+                    internal bool InterlockedTryReleaseComplete()
+                    {
+                        unchecked
+                        {
+                            Thread.MemoryBarrier();
+                            SmallFields initialValue = default(SmallFields), newValue = default(SmallFields);
+                            do
+                            {
+                                initialValue._intValue = _intValue;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                                if (initialValue._retainCounter == 0)
+                                {
+                                    throw new OverflowException();
+                                }
+#endif
+                                newValue._intValue = initialValue._intValue;
+                                --newValue._retainCounter;
+                            } while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, initialValue._intValue) != initialValue._intValue);
+                            return newValue._retainCounter == 0;
+                        }
+                    }
+                }
+
+                internal static AsyncProgressPassThrough GetOrCreate(AsyncPromiseRef target, ushort expectedProgress)
                 {
                     var passThrough = ObjectPool<AsyncProgressPassThrough>.TryTake<AsyncProgressPassThrough>()
                         ?? new AsyncProgressPassThrough();
                     passThrough._target = target;
                     passThrough._smallFields._currentProgress = default(Fixed32);
+                    passThrough._smallFields._expectedProgress = expectedProgress;
                     return passThrough;
                 }
 
@@ -1668,8 +1715,8 @@ namespace Proto.Promises
                     }
                     else
                     {
+                        _smallFields._currentProgress.MaybeSuspend();
                         MaybeDispose();
-                        target.TrySetPassthroughCompleted(progress);
                     }
                     nextRef = null;
                 }
@@ -1690,11 +1737,12 @@ namespace Proto.Promises
                 void IProgressListener.ResolveOrSetProgress(PromiseRef sender, Fixed32 progress, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    var target = _target;
-                    bool didSet = _smallFields._currentProgress.InterlockedTrySet(progress);
-                    MaybeDispose();
+                    bool isComplete = progress.WholePart == _smallFields._expectedProgress;
                     // Don't set progress if this is complete.
-                    if (!target.TrySetPassthroughCompleted(progress) & didSet)
+                    bool didSet = !isComplete && _smallFields._currentProgress.InterlockedTrySet(progress);
+                    var target = _target;
+                    MaybeDispose();
+                    if (didSet)
                     {
                         target.SetProgress(progress, ref executionScheduler);
                     }
@@ -1704,22 +1752,18 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _smallFields._currentProgress.InterlockedSuspendIfOtherWholeIsGreater(progress);
-                    var target = _target;
                     MaybeDispose();
-                    target.TrySetPassthroughCompleted(progress);
                 }
 
                 void IProgressListener.Retain()
                 {
                     ThrowIfInPool(this);
-                    // We don't need to worry about an overflow here, because the promise chain length already guarantees that the depth will never exceed the size of a ushort, which fits easily inside an int.
-                    // But it doesn't hurt to check in DEBUG mode, just in case.
-                    InterlockedAddWithOverflowCheck(ref _smallFields._retainCounter, 1, -1);
+                    _smallFields.InterlockedRetain();
                 }
 
                 private void MaybeDispose()
                 {
-                    if (InterlockedAddWithOverflowCheck(ref _smallFields._retainCounter, -1, 0) == 0)
+                    if (_smallFields.InterlockedTryReleaseComplete())
                     {
                         _target = null;
                         ObjectPool<AsyncProgressPassThrough>.MaybeRepool(this);
@@ -1762,15 +1806,10 @@ namespace Proto.Promises
                     ReportProgress(LerpProgress(progress), ref executionScheduler);
                 }
 
-                internal bool TrySetPassthroughCompleted(Fixed32 progress)
+                partial void SetPassthroughCompleted()
                 {
                     ThrowIfInPool(this);
-                    if (progress.WholePart == _progressFields.GetPreviousDepthPlusOne())
-                    {
-                        _progressFields.InterlockedUnsetFlags(ProgressSubscribeFlags.SubscribedFromAddListener | ProgressSubscribeFlags.SubscribedFromSetPrevious);
-                        return true;
-                    }
-                    return false;
+                    _progressFields.InterlockedUnsetFlags(ProgressSubscribeFlags.SubscribedFromAddListener | ProgressSubscribeFlags.SubscribedFromSetPrevious);
                 }
 
                 // SetPreviousAndMaybeSubscribeProgress may be called multiple times, but never concurrently with itself,
@@ -1789,7 +1828,7 @@ namespace Proto.Promises
                             _progressFields.InterlockedSetPreviousDepthAndFlags(depth, ProgressSubscribeFlags.SubscribedFromSetPrevious);
                             _minProgress = minProgress;
                             _maxProgress = maxProgress;
-                            other.SubscribeListener(AsyncProgressPassThrough.GetOrCreate(this), Fixed32.FromWhole(depth), ref executionScheduler);
+                            other.SubscribeListener(AsyncProgressPassThrough.GetOrCreate(this, _progressFields.GetPreviousDepthPlusOne()), Fixed32.FromWhole(depth), ref executionScheduler);
                         }
                         else
                         {
@@ -1820,7 +1859,7 @@ namespace Proto.Promises
                         if (hasAwaitedPrevious)
                         {
                             _progressFields.InterlockedSetFlags(ProgressSubscribeFlags.SubscribedFromAddListener);
-                            progressListener = AsyncProgressPassThrough.GetOrCreate(this);
+                            progressListener = AsyncProgressPassThrough.GetOrCreate(this, _progressFields.GetPreviousDepthPlusOne());
                         }
                         else
                         {

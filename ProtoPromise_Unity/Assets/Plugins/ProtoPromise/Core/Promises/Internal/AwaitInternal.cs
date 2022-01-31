@@ -712,6 +712,22 @@ namespace Proto.Promises
                 Internal.AwaitOverrider<PromiseAwaiter<T>>.Create<PromiseAwaiter<T>>();
             }
         }
+
+        partial struct PromiseProgressAwaiterVoid
+        {
+            static PromiseProgressAwaiterVoid()
+            {
+                Internal.AwaitOverrider<PromiseProgressAwaiterVoid>.Create<PromiseProgressAwaiterVoid>();
+            }
+        }
+
+        partial struct PromiseProgressAwaiter<T>
+        {
+            static PromiseProgressAwaiter()
+            {
+                Internal.AwaitOverrider<PromiseProgressAwaiter<T>>.Create<PromiseProgressAwaiter<T>>();
+            }
+        }
     } // namespace Async.CompilerServices
 
     partial struct Promise

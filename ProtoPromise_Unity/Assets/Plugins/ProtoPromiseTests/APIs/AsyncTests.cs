@@ -492,7 +492,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void AsyncPromiseCanMultipleAwait1()
+        public void AsyncPromiseCanMultipleAwait_void()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -529,7 +529,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void AsyncPromiseCanMultipleAwait2()
+        public void AsyncPromiseCanMultipleAwait_T()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred<string>();
@@ -570,6 +570,39 @@ namespace ProtoPromiseTests.APIs
             Assert.IsTrue(continued2);
             Assert.IsTrue(resolved);
         }
+
+#if PROMISE_PROGRESS
+        [Test]
+        public void AsyncPromiseWillHaveProgressScaledProperly_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            async Promise Func()
+            {
+                await deferred1.Promise.AwaitWithProgress(0f, 0.3f);
+                await deferred2.Promise.AwaitWithProgress(0.5f, 1f);
+            }
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            bool complete = false;
+
+            Func()
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Then(() => complete = true)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f * 0.3f);
+            progressHelper.ResolveAndAssertResult(deferred1, 0.5f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 0.75f);
+            progressHelper.ResolveAndAssertResult(deferred2, 1f);
+
+            Assert.IsTrue(complete);
+        }
+
+        // TODO: more tests
+#endif // PROMISE_PROGRESS
     }
 }
 
