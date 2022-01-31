@@ -82,7 +82,7 @@ namespace Proto.Promises
                                 p.Release();
                                 --addCount;
                             }
-                            if (addCount != 0 && Interlocked.Add(ref promise._firstSmallFields._waitCount, addCount) == 0)
+                            if (addCount != 0 && InterlockedAddWithOverflowCheck(ref promise._firstSmallFields._waitCount, addCount, 0) == 0)
                             {
                                 promise.MaybeDispose();
                             }
@@ -100,7 +100,7 @@ namespace Proto.Promises
                     HandleWaiter(valueContainer, ref executionScheduler);
                     HandleProgressListener(state, ref executionScheduler);
 
-                    if (Interlocked.Decrement(ref _firstSmallFields._waitCount) == 0)
+                    if (InterlockedAddWithOverflowCheck(ref _firstSmallFields._waitCount, -1, 0) == 0)
                     {
                         MaybeDispose();
                     }
@@ -113,7 +113,7 @@ namespace Proto.Promises
 
                     if (owner.State != Promise.State.Resolved) // Rejected/Canceled
                     {
-                        int remaining = Interlocked.Decrement(ref _firstSmallFields._waitCount);
+                        int remaining = InterlockedAddWithOverflowCheck(ref _firstSmallFields._waitCount, -1, 0);
                         if (remaining == 1)
                         {
                             if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
@@ -132,10 +132,9 @@ namespace Proto.Promises
                         if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                         {
                             valueContainer.Retain();
-                            Interlocked.Decrement(ref _firstSmallFields._waitCount);
                             executionScheduler.ScheduleSynchronous(this);
                         }
-                        else if (Interlocked.Decrement(ref _firstSmallFields._waitCount) == 0)
+                        if (InterlockedAddWithOverflowCheck(ref _firstSmallFields._waitCount, -1, 0) == 0)
                         {
                             _smallFields.InterlockedTryReleaseComplete();
                         }

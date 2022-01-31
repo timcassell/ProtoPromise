@@ -432,7 +432,7 @@ namespace Proto.Promises
         }
 
         [MethodImpl(InlineOption)]
-        private static long InterlockedAddWithOverflowCheck(ref int location, int value, int comparand)
+        private static int InterlockedAddWithOverflowCheck(ref int location, int value, int comparand)
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             Thread.MemoryBarrier();

@@ -48,7 +48,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private bool Release()
                 {
-                    return Interlocked.Decrement(ref _retainAndCanceled) == 0; // If all bits are 0, canceled was set and all calls are complete.
+                    return InterlockedAddWithOverflowCheck(ref _retainAndCanceled, -1, 0) == 0; // If all bits are 0, canceled was set and all calls are complete.
                 }
 
                 internal void SetCanceled(PromiseSingleAwait owner)

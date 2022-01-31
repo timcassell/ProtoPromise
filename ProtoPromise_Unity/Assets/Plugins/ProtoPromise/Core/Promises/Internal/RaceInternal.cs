@@ -82,7 +82,7 @@ namespace Proto.Promises
                                 p.Release();
                                 --addCount;
                             }
-                            if (addCount != 0 && Interlocked.Add(ref promise._raceSmallFields._waitCount, addCount) == 0)
+                            if (addCount != 0 && InterlockedAddWithOverflowCheck(ref promise._raceSmallFields._waitCount, addCount, 0) == 0)
                             {
                                 promise.MaybeDispose();
                             }
@@ -100,7 +100,7 @@ namespace Proto.Promises
                     HandleWaiter(valueContainer, ref executionScheduler);
                     HandleProgressListener(state, ref executionScheduler);
 
-                    if (Interlocked.Decrement(ref _raceSmallFields._waitCount) == 0)
+                    if (InterlockedAddWithOverflowCheck(ref _raceSmallFields._waitCount, -1, 0) == 0)
                     {
                         MaybeDispose();
                     }
@@ -108,21 +108,21 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                 {
-                    ThrowIfInPool(this);
+                    // Retain while handling, then release when complete for thread safety.
+                    InterlockedRetainDisregardId();
 
                     if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                     {
                         owner.SuppressRejection = true;
                         valueContainer.Retain();
-
-                        Interlocked.Decrement(ref _raceSmallFields._waitCount);
                         executionScheduler.ScheduleSynchronous(this);
-                        return;
                     }
-                    if (Interlocked.Decrement(ref _raceSmallFields._waitCount) == 0)
+                    if (InterlockedAddWithOverflowCheck(ref _raceSmallFields._waitCount, -1, 0) == 0)
                     {
-                        MaybeDispose();
+                        _smallFields.InterlockedTryReleaseComplete();
                     }
+
+                    MaybeDispose();
                 }
             }
 

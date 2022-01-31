@@ -108,7 +108,7 @@ namespace Proto.Promises
                                 p.Release();
                                 --addCount;
                             }
-                            if (addCount != 0 && Interlocked.Add(ref _waitCount, addCount) == 0)
+                            if (addCount != 0 && InterlockedAddWithOverflowCheck(ref _waitCount, addCount, 0) == 0)
                             {
                                 MaybeDispose();
                             }
@@ -124,7 +124,7 @@ namespace Proto.Promises
                     HandleWaiter(valueContainer, ref executionScheduler);
                     HandleProgressListener(state, ref executionScheduler);
 
-                    if (Interlocked.Decrement(ref _waitCount) == 0)
+                    if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
                     {
                         MaybeDispose();
                     }
@@ -137,24 +137,20 @@ namespace Proto.Promises
 
                     if (owner.State != Promise.State.Resolved) // Rejected/Canceled
                     {
-                        if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
-                        {
-                            if (Interlocked.Decrement(ref _waitCount) == 0)
-                            {
-                                _smallFields.InterlockedTryReleaseComplete();
-                            }
-                        }
-                        else
+                        if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                         {
                             valueContainer.Retain();
-                            Interlocked.Decrement(ref _waitCount);
                             executionScheduler.ScheduleSynchronous(this);
+                        }
+                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
+                        {
+                            _smallFields.InterlockedTryReleaseComplete();
                         }
                     }
                     else // Resolved
                     {
                         IncrementProgress(passThrough, ref executionScheduler);
-                        int remaining = Interlocked.Decrement(ref _waitCount);
+                        int remaining = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                         if (remaining == 1)
                         {
                             if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
@@ -168,6 +164,7 @@ namespace Proto.Promises
                             _smallFields.InterlockedTryReleaseComplete();
                         }
                     }
+
                     MaybeDispose();
                 }
 
@@ -222,25 +219,21 @@ namespace Proto.Promises
 
                         if (owner.State != Promise.State.Resolved) // Rejected/Canceled
                         {
-                            if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) != null)
-                            {
-                                if (Interlocked.Decrement(ref _waitCount) == 0)
-                                {
-                                    _smallFields.InterlockedTryReleaseComplete();
-                                }
-                            }
-                            else
+                            if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                             {
                                 valueContainer.Retain();
-                                Interlocked.Decrement(ref _waitCount);
                                 executionScheduler.ScheduleSynchronous(this);
+                            }
+                            if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
+                            {
+                                _smallFields.InterlockedTryReleaseComplete();
                             }
                         }
                         else // Resolved
                         {
                             _onPromiseResolved.Invoke(valueContainer, _valueContainer, passThrough.Index);
                             IncrementProgress(passThrough, ref executionScheduler);
-                            int remaining = Interlocked.Decrement(ref _waitCount);
+                            int remaining = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                             if (remaining == 1)
                             {
                                 if (Interlocked.CompareExchange(ref _valueOrPrevious, _valueContainer, null) == null)
@@ -255,6 +248,7 @@ namespace Proto.Promises
                                 _smallFields.InterlockedTryReleaseComplete();
                             }
                         }
+
                         MaybeDispose();
                     }
                 }
