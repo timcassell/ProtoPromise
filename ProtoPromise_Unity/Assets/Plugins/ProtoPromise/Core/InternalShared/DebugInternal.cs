@@ -52,6 +52,7 @@ namespace Proto.Promises
         partial class PromiseRef
         {
             partial void ValidateReturn(Promise other);
+            partial void ValidateAwait(PromiseRef other, short promiseId);
 
             partial class DeferredPromiseBase
             {
@@ -260,38 +261,52 @@ namespace Proto.Promises
         {
             partial void ValidateReturn(Promise other)
             {
-                if (!other.IsValid)
+                ValidateAwait(other._target._ref, other._target.Id, false);
+            }
+
+            partial void ValidateAwait(PromiseRef other, short promiseId)
+            {
+                ValidateAwait(other, promiseId, true);
+            }
+
+            private void ValidateAwait(PromiseRef other, short promiseId, bool awaited)
+            {
+                if (new Promise(other, promiseId, 0).IsValid == false)
                 {
-                    // Returning an invalid from the callback is not allowed.
+                    // Awaiting or returning an invalid from the callback is not allowed.
+                    if (awaited)
+                        throw new InvalidOperationException("An invalid promise was awaited.", string.Empty);
                     throw new InvalidReturnException("An invalid promise was returned.", string.Empty);
                 }
 
-                PromiseRef _ref = other._target._ref;
-
                 // A promise cannot wait on itself.
-                if (_ref == this)
+                if (other == this)
                 {
+                    if (awaited)
+                        throw new InvalidOperationException("A Promise cannot wait on itself.", string.Empty);
                     throw new InvalidReturnException("A Promise cannot wait on itself.", string.Empty);
                 }
-                if (_ref == null)
+                if (other == null)
                 {
                     return;
                 }
                 // This allows us to check All/Race/First Promises iteratively.
                 Stack<PromisePassThrough> passThroughs = PassthroughsForIterativeAlgorithm;
-                PromiseRef prev = _ref._valueOrPrevious as PromiseRef;
+                PromiseRef prev = other._valueOrPrevious as PromiseRef;
             Repeat:
                 for (; prev != null; prev = prev._valueOrPrevious as PromiseRef)
                 {
                     if (prev == this)
                     {
-                        _ref.MarkAwaited(other._target.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                        _ref.MaybeDispose();
+                        other.MarkAwaited(other.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
+                        other.MaybeDispose();
                         while (passThroughs.Count > 0)
                         {
                             passThroughs.Pop().Release();
                         }
-                        throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(_ref));
+                        if (awaited)
+                            throw new InvalidOperationException("Circular Promise chain detected.", GetFormattedStacktrace(other));
+                        throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(other));
                     }
                     prev.BorrowPassthroughs(passThroughs);
                 }
