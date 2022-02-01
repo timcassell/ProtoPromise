@@ -930,7 +930,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            return _this;
+                            return new Promise<TResult>(_this._ref, _this.Id, nextDepth, _this.Result);
                         }
                     }
                     else
@@ -947,7 +947,7 @@ namespace Proto.Promises
                             _this._ref.HookupNewPromise(promise);
                         }
                     }
-                    return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
                 }
 
                 [MethodImpl(InlineOption)]

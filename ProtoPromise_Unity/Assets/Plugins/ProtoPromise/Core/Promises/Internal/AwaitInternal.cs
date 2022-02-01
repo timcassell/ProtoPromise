@@ -117,6 +117,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void AwaitOnCompletedInternal(AsyncPromiseRef asyncPromiseRef, short promiseId)
             {
+                asyncPromiseRef.ValidateReturn(new Promise(this, Id, Depth));
                 MarkAwaited(promiseId, PromiseFlags.None);
                 HookupNewPromise(asyncPromiseRef);
             }
@@ -124,6 +125,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void AwaitOnCompletedWithProgressInternal(AsyncPromiseRef asyncPromiseRef, short promiseId, ushort depth, float minProgress, float maxProgress)
             {
+                asyncPromiseRef.ValidateReturn(new Promise(this, Id, Depth));
                 MarkAwaited(promiseId, PromiseFlags.None);
                 ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
                 asyncPromiseRef.SetPreviousAndMaybeSubscribeProgress(this, depth, minProgress, maxProgress, ref executionScheduler);

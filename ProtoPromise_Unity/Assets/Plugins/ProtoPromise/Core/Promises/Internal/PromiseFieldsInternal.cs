@@ -172,13 +172,6 @@ namespace Proto.Promises
 
         partial class PromiseRef : HandleablePromiseBase
         {
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-#endif
-
-            volatile internal object _valueOrPrevious;
-            private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
-
             [StructLayout(LayoutKind.Explicit)]
             private partial struct SmallFields
             {
@@ -207,6 +200,13 @@ namespace Proto.Promises
                     _deferredId = initialId;
                 }
             } // SmallFields
+
+#if PROMISE_DEBUG
+            CausalityTrace ITraceable.Trace { get; set; }
+#endif
+
+            volatile internal object _valueOrPrevious;
+            private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
 
             partial class PromiseSingleAwait : PromiseRef
             {
@@ -535,11 +535,14 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
 #if PROMISE_PROGRESS
             partial class AsyncProgressPassThrough
+#if PROMISE_DEBUG
+                : PromiseRef
+#endif
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
                 [StructLayout(LayoutKind.Explicit)]
-                private partial struct SmallFields
+                private partial struct ProgressSmallFields
                 {
                     [FieldOffset(0)]
                     internal Fixed32 _currentProgress;
@@ -552,7 +555,7 @@ namespace Proto.Promises
                 }
 
                 private AsyncPromiseRef _target;
-                private SmallFields _smallFields;
+                private ProgressSmallFields _progressSmallFields;
                 AsyncProgressPassThrough ILinked<AsyncProgressPassThrough>.Next { get; set; }
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
             }
