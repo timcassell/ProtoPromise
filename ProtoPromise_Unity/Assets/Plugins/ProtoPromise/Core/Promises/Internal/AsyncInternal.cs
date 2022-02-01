@@ -416,8 +416,6 @@ namespace Proto.Promises
                 }
 #endif
 
-                partial void SetPassthroughCompleted();
-
                 [MethodImpl(InlineOption)]
                 public static AsyncPromiseRef GetOrCreate()
                 {
@@ -606,8 +604,7 @@ namespace Proto.Promises
                     {
                         // TODO: executionScheduler.ScheduleSynchronous and set a flag if this was completed by a promise or an unknown awaiter so that the SetResult or SetException won't have to execute on a new scheduler.
                         ThrowIfInPool(this);
-                        _valueOrPrevious = null;
-                        SetPassthroughCompleted();
+                        SetAwaitedComplete();
                         WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         ContinueMethod();
                     }
