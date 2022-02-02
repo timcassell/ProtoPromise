@@ -279,6 +279,19 @@ namespace Proto.Promises
             }
         }
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
+
+#if PROMISE_DEBUG
+        internal static void ValidateAwaiterOperation(Promise promise, bool checkForIncremented, int skipFrames)
+        {
+            bool isValid = promise.IsValid
+                // Also check for id + 1 since this might be called after OnCompleted is hooked up or the promise is forgotten.
+                || (checkForIncremented && promise._target._ref != null && promise._target.Id + 1 == promise._target._ref.Id);
+            if (!isValid)
+            {
+                throw new InvalidOperationException("Attempted to use PromiseAwaiter incorrectly. You must call IsCompleted, then maybe OnCompleted, then GetResult when it is complete.", GetFormattedStacktrace(skipFrames + 1));
+            }
+        }
+#endif
     }
 
     namespace Async.CompilerServices
@@ -353,23 +366,11 @@ namespace Proto.Promises
                 _awaiter._promise._ref.AwaitOnCompletedInternal(asyncPromiseRef, _awaiter._promise.Id);
             }
 
-            static partial void ValidateGetResult(Promise<Internal.VoidResult> promise, int skipFrames);
-            static partial void ValidateOperation(Promise<Internal.VoidResult> promise, int skipFrames);
+            static partial void ValidateGetResult(Promise promise, int skipFrames);
 #if PROMISE_DEBUG
-            static partial void ValidateGetResult(Promise<Internal.VoidResult> promise, int skipFrames)
+            static partial void ValidateGetResult(Promise promise, int skipFrames)
             {
-                if (promise._ref == null)
-                {
-                    ValidateOperation(promise, skipFrames + 1);
-                }
-            }
-
-            static partial void ValidateOperation(Promise<Internal.VoidResult> promise, int skipFrames)
-            {
-                if (!promise.IsValid)
-                {
-                    throw new InvalidOperationException("Attempted to use PromiseAwaiter incorrectly. You must call IsCompleted, then maybe OnCompleted, then GetResult when it is complete.", Internal.GetFormattedStacktrace(skipFrames + 1));
-                }
+                Internal.ValidateAwaiterOperation(promise, true, skipFrames + 1);
             }
 #endif
         } // struct PromiseAwaiterVoid
@@ -457,28 +458,22 @@ namespace Proto.Promises
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
-            static partial void ValidateGetResult(Promise<T> promise, int skipFrames);
-            static partial void ValidateOperation(Promise<T> promise, int skipFrames);
+            static partial void ValidateGetResult(Promise promise, int skipFrames);
+            static partial void ValidateOperation(Promise promise, int skipFrames);
 #if PROMISE_DEBUG
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
             {
                 Internal.ValidateArgument(arg, argName, skipFrames + 1);
             }
 
-            static partial void ValidateGetResult(Promise<T> promise, int skipFrames)
+            static partial void ValidateGetResult(Promise promise, int skipFrames)
             {
-                if (promise._ref == null)
-                {
-                    ValidateOperation(promise, skipFrames + 1);
-                }
+                Internal.ValidateAwaiterOperation(promise, true, skipFrames + 1);
             }
 
-            static partial void ValidateOperation(Promise<T> promise, int skipFrames)
+            static partial void ValidateOperation(Promise promise, int skipFrames)
             {
-                if (!promise.IsValid)
-                {
-                    throw new InvalidOperationException("Attempted to use PromiseAwaiter incorrectly. You must call IsCompleted, then maybe OnCompleted, then GetResult when it is complete.", Internal.GetFormattedStacktrace(skipFrames + 1));
-                }
+                Internal.ValidateAwaiterOperation(promise, false, skipFrames + 1);
             }
 #endif
         } // struct PromiseAwaiter<T>
@@ -559,23 +554,11 @@ namespace Proto.Promises
                 _awaiter._promise._ref.AwaitOnCompletedWithProgressInternal(asyncPromiseRef, _awaiter._promise.Id, _awaiter._promise.Depth, _awaiter._minProgress, _awaiter._maxProgress);
             }
 
-            static partial void ValidateGetResult(Promise<Internal.VoidResult> promise, int skipFrames);
-            static partial void ValidateOperation(Promise<Internal.VoidResult> promise, int skipFrames);
+            static partial void ValidateGetResult(Promise promise, int skipFrames);
 #if PROMISE_DEBUG
-            static partial void ValidateGetResult(Promise<Internal.VoidResult> promise, int skipFrames)
+            static partial void ValidateGetResult(Promise promise, int skipFrames)
             {
-                if (promise._ref == null)
-                {
-                    ValidateOperation(promise, skipFrames + 1);
-                }
-            }
-
-            static partial void ValidateOperation(Promise<Internal.VoidResult> promise, int skipFrames)
-            {
-                if (!promise.IsValid)
-                {
-                    throw new InvalidOperationException("Attempted to use PromiseAwaiter incorrectly. You must call IsCompleted, then maybe OnCompleted, then GetResult when it is complete.", Internal.GetFormattedStacktrace(skipFrames + 1));
-                }
+                Internal.ValidateAwaiterOperation(promise, true, skipFrames + 1);
             }
 #endif
         } // struct PromiseAwaiterVoid
@@ -673,28 +656,22 @@ namespace Proto.Promises
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
-            static partial void ValidateGetResult(Promise<T> promise, int skipFrames);
-            static partial void ValidateOperation(Promise<T> promise, int skipFrames);
+            static partial void ValidateGetResult(Promise promise, int skipFrames);
+            static partial void ValidateOperation(Promise promise, int skipFrames);
 #if PROMISE_DEBUG
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
             {
                 Internal.ValidateArgument(arg, argName, skipFrames + 1);
             }
 
-            static partial void ValidateGetResult(Promise<T> promise, int skipFrames)
+            static partial void ValidateGetResult(Promise promise, int skipFrames)
             {
-                if (promise._ref == null)
-                {
-                    ValidateOperation(promise, skipFrames + 1);
-                }
+                Internal.ValidateAwaiterOperation(promise, true, skipFrames + 1);
             }
 
-            static partial void ValidateOperation(Promise<T> promise, int skipFrames)
+            static partial void ValidateOperation(Promise promise, int skipFrames)
             {
-                if (!promise.IsValid)
-                {
-                    throw new InvalidOperationException("Attempted to use PromiseAwaiter incorrectly. You must call IsCompleted, then maybe OnCompleted, then GetResult when it is complete.", Internal.GetFormattedStacktrace(skipFrames + 1));
-                }
+                Internal.ValidateAwaiterOperation(promise, false, skipFrames + 1);
             }
 #endif
         } // struct PromiseAwaiter<T>

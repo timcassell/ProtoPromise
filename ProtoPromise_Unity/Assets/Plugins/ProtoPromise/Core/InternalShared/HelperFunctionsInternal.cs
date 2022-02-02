@@ -315,7 +315,7 @@ namespace Proto.Promises
                 }
 
                 // If reason is null, behave the same way .Net behaves if you throw null.
-                object o = reason == null ? new NullReferenceException() : (object) reason;
+                object o = (object) reason ?? new NullReferenceException();
                 Exception e = o as Exception;
                 if (e != null)
                 {

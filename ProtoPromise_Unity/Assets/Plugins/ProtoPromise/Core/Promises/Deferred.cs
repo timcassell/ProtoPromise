@@ -189,7 +189,7 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException"/>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+            [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             public void ReportProgress(float progress)
@@ -206,7 +206,7 @@ namespace Proto.Promises
             /// </summary>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+            [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             public bool TryReportProgress(float progress)
@@ -429,7 +429,7 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException"/>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+            [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             public void ReportProgress(float progress)
@@ -443,7 +443,7 @@ namespace Proto.Promises
             /// </summary>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+            [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             public bool TryReportProgress(float progress)
@@ -694,7 +694,7 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException"/>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+            [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             public void ReportProgress(float progress)
@@ -711,7 +711,7 @@ namespace Proto.Promises
             /// </summary>
             /// <exception cref="ArgumentOutOfRangeException"/>
 #if !PROMISE_PROGRESS
-            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+            [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
             [MethodImpl(Internal.InlineOption)]
             public bool TryReportProgress(float progress)

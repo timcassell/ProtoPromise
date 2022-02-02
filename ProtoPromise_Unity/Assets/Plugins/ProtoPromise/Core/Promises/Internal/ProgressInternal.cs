@@ -23,7 +23,15 @@ namespace Proto.Promises
     {
         internal const ushort NegativeOneDepth = ushort.MaxValue; // Same as (ushort) -1, but compiler complains that it needs unchecked context.
 
-#if PROMISE_PROGRESS
+#if !PROMISE_PROGRESS
+
+#if UNITY_UNITY_5_5_OR_NEWER
+        internal const string ProgressDisabledMessage = "Progress is disabled. Progress will not be reported. Remove PROTO_PROMISE_PROGRESS_DISABLE from your scripting compilation symbols to enable progress.";
+#else
+        internal const string ProgressDisabledMessage = "Progress is disabled. Progress will not be reported. Use a version of the library compiled with progress enabled for progress reports.";
+#endif
+
+#else // !PROMISE_PROGRESS
         partial class SynchronizationHandler : ILinked<IProgressInvokable>
         {
             IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
@@ -154,7 +162,7 @@ namespace Proto.Promises
                 }
             }
         }
-#endif // PROMISE_PROGRESS
+#endif // !PROMISE_PROGRESS
 
         partial class PromiseRef
         {
@@ -187,7 +195,7 @@ namespace Proto.Promises
             private void SubscribeListener(IProgressListener progressListener, Fixed32 depthAndProgress, ref ExecutionScheduler executionScheduler)
             {
                 PromiseRef current = this;
-                current.InterlockedRetainDisregardId(); // Retain is redundant for the loop logic to work easier.
+                current.InterlockedRetainDisregardId();
                 while (true)
                 {
                     IProgressListener currentListener = progressListener;
@@ -1351,15 +1359,9 @@ namespace Proto.Promises
                     return (ProgressSubscribeFlags) (current & FlagsMask);
                 }
 
-                internal void WaitWhileFlags(ProgressSubscribeFlags flags)
+                internal ProgressSubscribeFlags GetFlags()
                 {
-                    Thread.MemoryBarrier(); // Make sure any writes happen before we read progress flags.
-                    // Wait until flags are unset.
-                    SpinWait spinner = new SpinWait();
-                    while ((_previousDepthAndFlags & (int) flags) != 0)
-                    {
-                        spinner.SpinOnce();
-                    }
+                    return (ProgressSubscribeFlags) (_previousDepthAndFlags & FlagsMask);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1734,6 +1736,11 @@ namespace Proto.Promises
                             return newValue._retainCounter == 0;
                         }
                     }
+
+                    internal ushort GetCurrentRetains()
+                    {
+                        return _retainCounter;
+                    }
                 }
 
                 internal static AsyncProgressPassThrough GetOrCreate(AsyncPromiseRef target, ushort expectedProgress, object previous)
@@ -1748,6 +1755,19 @@ namespace Proto.Promises
                     passThrough._smallFields.InterlockedSetFlags(PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
 #endif
                     return passThrough;
+                }
+
+                ~AsyncProgressPassThrough()
+                {
+                    if (_progressSmallFields.GetCurrentRetains() != 0)
+                    {
+                        // For debugging. This should never happen.
+                        string message = "An AsyncProgressPassThrough was garbage collected without it being released."
+                            + " _retainCounter: " + _progressSmallFields.GetCurrentRetains() + ", _target: " + _target
+                            + ", _currentProgress: " + _progressSmallFields._currentProgress.ToDouble()
+                            + ", _expectedProgress: " + _progressSmallFields._expectedProgress;
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), _target);
+                    }
                 }
 
                 void IProgressListener.SetInitialProgress(PromiseRef sender, Promise.State state, ref Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler)
@@ -1823,12 +1843,17 @@ namespace Proto.Promises
                 {
                     if (_progressSmallFields.InterlockedTryReleaseComplete())
                     {
-#if PROMISE_DEBUG
-                        _valueOrPrevious = null;
-#endif
-                        _target = null;
-                        ObjectPool<AsyncProgressPassThrough>.MaybeRepool(this);
+                        Dispose();
                     }
+                }
+
+                new internal void Dispose()
+                {
+#if PROMISE_DEBUG
+                    _valueOrPrevious = null;
+#endif
+                    _target = null;
+                    ObjectPool<AsyncProgressPassThrough>.MaybeRepool(this);
                 }
 
 #if PROMISE_DEBUG
@@ -1884,7 +1909,7 @@ namespace Proto.Promises
                     {
                         passThrough.MarkComplete(_progressFields.GetPreviousDepth());
                     }
-                    _progressFields.InterlockedUnsetFlags(ProgressSubscribeFlags.SubscribedFromAddListener | ProgressSubscribeFlags.SubscribedFromSetPrevious);
+                    _progressFields.InterlockedUnsetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
                 }
 
                 // SetPreviousAndMaybeSubscribeProgress may be called multiple times, but never concurrently with itself,
@@ -1892,8 +1917,10 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void SetPreviousAndMaybeSubscribeProgress(PromiseRef other, ushort depth, float minProgress, float maxProgress, ref ExecutionScheduler executionScheduler)
                 {
-                    lock (this) // Unfortunately, we have to lock in order to prevent subscribing to the same promise twice.
+                    ThrowIfInPool(this);
+                    lock (this) // Unfortunately, I couldn't figure out a lock-free solution to thread synchronization.
                     {
+                        _progressFields.InterlockedSetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
                         _valueOrPrevious = other;
                         // Lazy subscribe: only subscribe to the awaited promise if a progress listener is added to this (this keeps execution and memory more efficient when progress isn't used).
                         if (_progressListener == null)
@@ -1906,13 +1933,10 @@ namespace Proto.Promises
                         }
                     }
                     // Exit the lock before subscribing the new listener.
-                    // Wait until the previous pass-through has completed so we won't have progress reports coming from multiple sources on different threads.
-                    _progressFields.WaitWhileFlags(ProgressSubscribeFlags.SubscribedFromAddListener | ProgressSubscribeFlags.SubscribedFromSetPrevious);
-                    _progressFields.InterlockedSetPreviousDepthAndFlags(depth, ProgressSubscribeFlags.SubscribedFromSetPrevious);
                     _minProgress = minProgress;
                     _maxProgress = maxProgress;
                     var passthrough = AsyncProgressPassThrough.GetOrCreate(this, _progressFields.GetPreviousDepthPlusOne(), other);
-                    // For DEBUG to find circular promise awaits.
+                    // So the passthrough can be marked completed when the awaited promise completes without adding a new field.
                     _valueOrPrevious = passthrough;
                     other.SubscribeListener(passthrough, Fixed32.FromWhole(depth), ref executionScheduler);
                 }
@@ -1921,34 +1945,46 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     progressListener.Retain();
-                    PromiseRef previous;
+                    object previous;
+                    ProgressSubscribeFlags oldFlags;
                     // Mark subscribing to prevent repooling while we get previous, then unmark after we have retained previous.
                     _smallFields.InterlockedSetFlags(PromiseFlags.Subscribing);
-                    lock (this) // Unfortunately, we have to lock in order to prevent subscribing to the same promise twice.
+                    lock (this) // Unfortunately, I couldn't figure out a lock-free solution to thread synchronization.
                     {
                         SetProgressListener(progressListener);
                         // Lazy subscribe: only subscribe to the awaited promise if a progress listener is added to this (this keeps execution and memory more efficient when progress isn't used).
-                        previous = _valueOrPrevious as PromiseRef;
+                        previous = _valueOrPrevious;
+                        oldFlags = _progressFields.GetFlags();
                     }
                     // Exit the lock once we have read previous before subscribing the new listener.
-                    bool hasAwaitedPrevious = previous != null; // If previous is null, this is either invoking the async state machine, or has awaited a non-promise awaitable, or has already completed.
+                    // If previousRef is null, this is either invoking the async state machine, or has awaited a non-promise awaitable, or has already completed.
+                    PromiseRef previousRef = previous as PromiseRef;
+                    // Don't subscribe to the previous promise if it was not awaited with the AwaitWithProgress API.
+                    bool hasAwaitedPrevious = (oldFlags & ProgressSubscribeFlags.AboutToSetPrevious) != 0 && previousRef != null;
                     if (hasAwaitedPrevious)
                     {
-                        previous.InterlockedRetainDisregardId();
+                        previousRef.InterlockedRetainDisregardId();
                     }
                     _smallFields.InterlockedUnsetFlags(PromiseFlags.Subscribing);
                     if (hasAwaitedPrevious)
                     {
-                        _progressFields.InterlockedSetFlags(ProgressSubscribeFlags.SubscribedFromAddListener);
-                        progressListener = AsyncProgressPassThrough.GetOrCreate(this, _progressFields.GetPreviousDepthPlusOne(), previous);
-                        // For DEBUG to find circular promise awaits.
-                        _valueOrPrevious = progressListener;
+                        var passthrough = AsyncProgressPassThrough.GetOrCreate(this, _progressFields.GetPreviousDepthPlusOne(), previous);
+                        // So the passthrough can be marked completed when the awaited promise completes without adding a new field.
+                        if (Interlocked.CompareExchange(ref _valueOrPrevious, passthrough, previous) != previous)
+                        {
+                            // previous was changed, which means the awaited promise completed on another thread.
+                            passthrough.Dispose();
+                            previousRef.MaybeDispose();
+                            return null;
+                        }
+                        progressListener = passthrough;
                     }
                     else
                     {
                         lastKnownProgress = Fixed32.FromWhole(Depth);
+                        previousRef = null;
                     }
-                    return previous;
+                    return previousRef;
                 }
             } // AsyncPromiseRef
 #endif // CSHARP_7_3_OR_NEWER
