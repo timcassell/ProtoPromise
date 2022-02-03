@@ -280,6 +280,7 @@ namespace Proto.Promises
 
             internal void Enter()
             {
+                Thread.MemoryBarrier();
                 // Spin until we successfully get lock.
                 SpinWait spinner = new SpinWait();
                 while (Interlocked.Exchange(ref _locker, 1) == 1)

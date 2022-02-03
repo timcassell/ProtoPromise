@@ -293,6 +293,7 @@ namespace Proto.Promises
                     lock (this)
 #endif
                     {
+                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         HandleablePromiseBase waiter = Interlocked.Exchange(ref _waiter, null);
                         if (waiter != null)
                         {
