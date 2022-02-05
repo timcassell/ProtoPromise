@@ -747,8 +747,8 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Used to support reporting progress to the async Promise function. The progress reported will be scaled from minProgress to maxProgress. Both values must be between 0 and 1 inclusive.
-        /// <para/> Use as `await promise.AwaitWithprogress(min, max);`
+        /// Used to support reporting progress to the async Promise function. The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
+        /// <para/> Use as `await promise.AwaitWithProgress(min, max);`
         /// </summary>
         public PromiseProgressAwaiter<T> AwaitWithProgress(float minProgress, float maxProgress)
         {

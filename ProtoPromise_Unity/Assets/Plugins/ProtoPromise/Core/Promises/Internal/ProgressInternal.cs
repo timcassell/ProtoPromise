@@ -297,6 +297,13 @@ namespace Proto.Promises
                     return new Fixed32((wholeValue + 1) << DecimalBits);
                 }
 
+                [MethodImpl(InlineOption)]
+                internal static Fixed32 FromDecimalForAsync(double decimalValue)
+                {
+                    // Don't bother rounding, we don't want to accidentally round to 1.0.
+                    return new Fixed32((ushort) (decimalValue * DecimalMax) | PriorityFlag);
+                }
+
                 internal ushort WholePart
                 {
                     [MethodImpl(InlineOption)]
@@ -1830,10 +1837,10 @@ namespace Proto.Promises
                     _progressSmallFields.InterlockedRetain();
                 }
 
-                internal void MarkComplete(ushort depth)
+                internal void MarkComplete(Fixed32 expectedProgress)
                 {
                     // Setting the progress to the expected progress will prevent any other progress updates from promises lower in the promise chain after a cancelation has broken the chain.
-                    _progressSmallFields._currentProgress.InterlockedTrySetFromResolve(Fixed32.FromWholePlusOne(depth));
+                    _progressSmallFields._currentProgress.InterlockedTrySetFromResolve(expectedProgress);
                 }
 
 #if PROMISE_DEBUG
@@ -1847,7 +1854,10 @@ namespace Proto.Promises
                     }
                 }
 
-                new internal void Dispose()
+#if PROMISE_DEBUG
+                new
+#endif
+                    internal void Dispose()
                 {
 #if PROMISE_DEBUG
                     _valueOrPrevious = null;
@@ -1900,16 +1910,24 @@ namespace Proto.Promises
                     ReportProgress(LerpProgress(progress), ref executionScheduler);
                 }
 
-                private void SetAwaitedComplete()
+                private void SetAwaitedComplete(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     var oldPrevious = _valueOrPrevious;
                     _valueOrPrevious = null;
-                    if (oldPrevious is AsyncProgressPassThrough passThrough)
+                    var oldFlags = _progressFields.InterlockedUnsetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
+                    bool wasListeningToProgress = (oldFlags & ProgressSubscribeFlags.AboutToSetPrevious) != 0;
+                    if (wasListeningToProgress)
                     {
-                        passThrough.MarkComplete(_progressFields.GetPreviousDepth());
+                        Fixed32 expectedProgress = Fixed32.FromWhole(_progressFields.GetPreviousDepthPlusOne());
+                        ((AsyncProgressPassThrough) oldPrevious).MarkComplete(expectedProgress);
+                        // Don't report progress if it's 1. That will be reported when the async promise is resolved.
+                        // Also don't report if the awaited promise was rejected or canceled.
+                        if (valueContainer.GetState() == Promise.State.Resolved & _maxProgress < 1f)
+                        {
+                            ReportProgress(Fixed32.FromDecimalForAsync(_maxProgress), ref executionScheduler);
+                        }
                     }
-                    _progressFields.InterlockedUnsetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
                 }
 
                 // SetPreviousAndMaybeSubscribeProgress may be called multiple times, but never concurrently with itself,

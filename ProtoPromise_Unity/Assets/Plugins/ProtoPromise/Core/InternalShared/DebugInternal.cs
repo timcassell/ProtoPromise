@@ -282,6 +282,8 @@ namespace Proto.Promises
                 // A promise cannot wait on itself.
                 if (other == this)
                 {
+                    other.MarkAwaited(other.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
+                    other.MaybeDispose();
                     if (awaited)
                         throw new InvalidOperationException("A Promise cannot wait on itself.", string.Empty);
                     throw new InvalidReturnException("A Promise cannot wait on itself.", string.Empty);

@@ -851,34 +851,65 @@ namespace ProtoPromiseTests.APIs
             cancelationSource1.Dispose();
             cancelationSource2.Dispose();
         }
-#endif // PROMISE_PROGRESS
 
         [Test]
-        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_void0()
+        public void AsyncPromiseWillHaveProgressSetToMax_WhenAnotherAwaitableIsAwaitedWithoutProgress_void()
         {
-            var deferred = Promise.NewDeferred();
-            var selfPromise = default(Promise);
-
-            bool thrown = false;
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
 
             async Promise Func()
             {
-                await deferred.Promise;
-                await selfPromise;
+                await deferred1.Promise.AwaitWithProgress(0f, 0.5f);
+                await deferred2.Promise;
             }
 
-            selfPromise = Func();
-            selfPromise
-                .Catch((Proto.Promises.InvalidOperationException e) => thrown = true)
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            bool complete = false;
+
+            Func()
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Then(() => complete = true)
                 .Forget();
 
-            deferred.Resolve();
-
-            Assert.IsTrue(thrown);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f));
+            progressHelper.ResolveAndAssertResult(deferred1, 0.5f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 0.5f, false);
+            progressHelper.ResolveAndAssertResult(deferred2, 1f, false);
+            Assert.IsTrue(complete);
         }
 
         [Test]
-        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_void1()
+        public void AsyncPromiseWillHaveProgressSetToMax_WhenAnotherAwaitableIsAwaitedWithoutProgress_T()
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+
+            async Promise<int> Func()
+            {
+                await deferred1.Promise.AwaitWithProgress(0f, 0.5f);
+                return await deferred2.Promise;
+            }
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            bool complete = false;
+
+            Func()
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Then(() => complete = true)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f));
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 0.5f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 0.5f, false);
+            progressHelper.ResolveAndAssertResult(deferred2, 2, 1f, false);
+            Assert.IsTrue(complete);
+        }
+#endif // PROMISE_PROGRESS
+
+#if PROMISE_DEBUG
+        [Test]
+        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_void0()
         {
             var deferred = Promise.NewDeferred();
             var selfPromise = default(Promise);
@@ -907,7 +938,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_void2()
+        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_void1()
         {
             var deferred = Promise.NewDeferred();
             var selfPromise = default(Promise);
@@ -920,13 +951,11 @@ namespace ProtoPromiseTests.APIs
                 await selfPromise
                     .ThenDuplicate()
                     .ThenDuplicate()
-                    .Then(() => Promise.Resolved());
+                    .Then(() => Promise.Resolved())
+                    .Catch((Proto.Promises.InvalidOperationException e) => thrown = true);
             }
 
             selfPromise = Func();
-            selfPromise
-                .Catch((Proto.Promises.InvalidOperationException e) => thrown = true)
-                .Forget();
 
             deferred.Resolve();
 
@@ -934,7 +963,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_void3()
+        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_void2()
         {
             var deferred = Promise.NewDeferred();
             var selfPromise = default(Promise);
@@ -958,7 +987,6 @@ namespace ProtoPromiseTests.APIs
             }
 
             selfPromise = Func();
-            selfPromise.Forget();
 
             deferred.Resolve();
 
@@ -966,7 +994,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_void4()
+        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_void3()
         {
             var deferred = Promise.NewDeferred();
             var selfPromise = default(Promise);
@@ -992,7 +1020,6 @@ namespace ProtoPromiseTests.APIs
             }
 
             selfPromise = Func();
-            selfPromise.Forget();
 
             deferred.Resolve();
 
@@ -1000,7 +1027,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_void5()
+        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_void4()
         {
             var deferred = Promise.NewDeferred();
             var selfPromise = default(Promise);
@@ -1026,7 +1053,6 @@ namespace ProtoPromiseTests.APIs
             }
 
             selfPromise = Func();
-            selfPromise.Forget();
 
             deferred.Resolve();
 
@@ -1035,30 +1061,6 @@ namespace ProtoPromiseTests.APIs
 
         [Test]
         public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_T0()
-        {
-            var deferred = Promise.NewDeferred<int>();
-            var selfPromise = default(Promise<int>);
-
-            bool thrown = false;
-
-            async Promise<int> Func()
-            {
-                await deferred.Promise;
-                return await selfPromise;
-            }
-
-            selfPromise = Func();
-            selfPromise
-                .Catch((Proto.Promises.InvalidOperationException e) => thrown = true)
-                .Forget();
-
-            deferred.Resolve(1);
-
-            Assert.IsTrue(thrown);
-        }
-
-        [Test]
-        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_T1()
         {
             var deferred = Promise.NewDeferred<int>();
             var selfPromise = default(Promise<int>);
@@ -1080,7 +1082,6 @@ namespace ProtoPromiseTests.APIs
             }
 
             selfPromise = Func();
-            selfPromise.Forget();
 
             deferred.Resolve(1);
 
@@ -1088,7 +1089,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_T2()
+        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_T1()
         {
             var deferred = Promise.NewDeferred<int>();
             var selfPromise = default(Promise<int>);
@@ -1101,13 +1102,15 @@ namespace ProtoPromiseTests.APIs
                 return await selfPromise
                     .ThenDuplicate()
                     .ThenDuplicate()
-                    .Then(() => Promise.Resolved(2));
+                    .Then(() => Promise.Resolved(2))
+                    .Catch((Proto.Promises.InvalidOperationException e) =>
+                    {
+                        thrown = true;
+                        return 3;
+                    });
             }
 
             selfPromise = Func();
-            selfPromise
-                .Catch((Proto.Promises.InvalidOperationException e) => thrown = true)
-                .Forget();
 
             deferred.Resolve(1);
 
@@ -1115,7 +1118,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_T3()
+        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_T2()
         {
             var deferred = Promise.NewDeferred<int>();
             var selfPromise = default(Promise<int>);
@@ -1140,7 +1143,6 @@ namespace ProtoPromiseTests.APIs
             }
 
             selfPromise = Func();
-            selfPromise.Forget();
 
             deferred.Resolve(1);
 
@@ -1148,7 +1150,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_T4()
+        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_T3()
         {
             var deferred = Promise.NewDeferred<int>();
             var selfPromise = default(Promise<int>);
@@ -1175,7 +1177,6 @@ namespace ProtoPromiseTests.APIs
             }
 
             selfPromise = Func();
-            selfPromise.Forget();
 
             deferred.Resolve(1);
 
@@ -1183,7 +1184,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_T5()
+        public void IfTheAwaitedPromiseResultsInACircularPromiseChain_ThrowInvalidOperationException_T4()
         {
             var deferred = Promise.NewDeferred<int>();
             var selfPromise = default(Promise<int>);
@@ -1210,12 +1211,12 @@ namespace ProtoPromiseTests.APIs
             }
 
             selfPromise = Func();
-            selfPromise.Forget();
 
             deferred.Resolve(1);
 
             Assert.IsTrue(thrown);
         }
+#endif // PROMISE_DEBUG
     }
 }
 

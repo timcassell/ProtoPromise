@@ -590,6 +590,7 @@ namespace Proto.Promises
                     {
                         ThrowIfInPool(this);
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
+                        Thread.MemoryBarrier();
                         _waiter = waiter;
                         ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.AddWaiter);
                         if (State != Promise.State.Pending)
