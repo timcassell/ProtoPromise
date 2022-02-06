@@ -26,6 +26,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Threading;
 using Proto.Promises.Async.CompilerServices;
 
 namespace System.Runtime.CompilerServices
@@ -402,6 +403,38 @@ namespace Proto.Promises
 #endif
             internal partial class AsyncPromiseRef : AsyncPromiseBase
             {
+                private const long CompleteFlag = 1L << 63;
+                private const long ValueMask = ~CompleteFlag;
+
+                [MethodImpl(InlineOption)]
+                private void InterlockedIncrementHandleCount()
+                {
+                    Interlocked.Increment(ref _completionState);
+                }
+
+                [MethodImpl(InlineOption)]
+                private bool InterlockedSetCompleteAndGetIsHandling()
+                {
+                    long initialValue, newValue;
+                    do
+                    {
+                        initialValue = Interlocked.Read(ref _completionState);
+                        newValue = initialValue | CompleteFlag;
+                    } while (Interlocked.CompareExchange(ref _completionState, newValue, initialValue) != initialValue);
+                    return initialValue > 0L;
+                }
+
+                [MethodImpl(InlineOption)]
+                private bool InterlockedDecrementHandleCountAndGetIsComplete()
+                {
+                    long newState = Interlocked.Decrement(ref _completionState);
+                    // Make sure CompleteFlag is set _and_ handle count is zero so that this can be safely disposed.
+                    // (And in case of recursive calls, the last function to decrement to 0 will be the highest in the program stack, which is good).
+                    bool isComplete = (newState & CompleteFlag) != 0;
+                    bool isHandleCountZero = (newState & ValueMask) == 0;
+                    return isComplete & isHandleCountZero;
+                }
+
 #if !PROMISE_PROGRESS
                 [MethodImpl(InlineOption)]
                 internal void SetPreviousAndMaybeSubscribeProgress(PromiseRef other, ushort depth, float minProgress, float maxProgress, ref ExecutionScheduler executionScheduler)
@@ -410,9 +443,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void SetAwaitedComplete(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                private void SetAwaitedComplete(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    _valueOrPrevious = null;
+                    owner.InterlockedRetainDisregardId();
+                    _valueOrPrevious = owner;
                 }
 #endif
 
@@ -425,6 +459,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                new private void Reset()
+                {
+                    _completionState = 0L;
+                    base.Reset();
+                }
+
                 [MethodImpl(InlineOption)]
                 internal void SetResult<T>(
 #if CSHARP_7_3_OR_NEWER
@@ -432,19 +472,50 @@ namespace Proto.Promises
 #endif
                     T result)
                 {
-                    ResolveDirect(result);
+                    ThrowIfInPool(this);
+                    ValueContainer valueContainer = CreateResolveContainer(result);
+                    MaybeHandleCompletion(Promise.State.Resolved, valueContainer);
                 }
 
                 internal void SetException(Exception exception)
                 {
+                    ValueContainer valueContainer;
+                    Promise.State state;
                     if (exception is OperationCanceledException)
                     {
-                        CancelDirect();
+                        valueContainer = CancelContainerVoid.GetOrCreate();
+                        state = Promise.State.Canceled;
                     }
                     else
                     {
-                        RejectDirect(exception, int.MinValue);
+                        valueContainer = CreateRejectContainer(exception, int.MinValue, this);
+                        state = Promise.State.Rejected;
                     }
+                    MaybeHandleCompletion(state, valueContainer);
+                }
+
+                private void MaybeHandleCompletion(Promise.State state, ValueContainer valueContainer)
+                {
+                    _valueOrPrevious = valueContainer;
+                    State = state;
+                    // If this is completed from another promise, do nothing so that the other promise will schedule the continuation.
+                    if (InterlockedSetCompleteAndGetIsHandling())
+                    {
+                        return;
+                    }
+                    ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+                    HandleWaiter(valueContainer, ref executionScheduler);
+                    HandleProgressListener(state, ref executionScheduler);
+                    MaybeDispose();
+                    executionScheduler.Execute();
+                }
+
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                {
+                    ThrowIfInPool(this);
+                    SetAwaitedComplete(owner, valueContainer, ref executionScheduler);
+                    executionScheduler.ScheduleSynchronous(this);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
             }
 
@@ -525,7 +596,7 @@ namespace Proto.Promises
                                 ClearCurrentInvoker();
                             }
 #else
-                        _stateMachine.MoveNext();
+                            _stateMachine.MoveNext();
 #endif
                         }
                     }
@@ -553,13 +624,22 @@ namespace Proto.Promises
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref ExecutionScheduler executionScheduler)
                 {
-                    // TODO: executionScheduler.ScheduleSynchronous and set a flag if this was completed by a promise or an unknown awaiter so that the SetResult or SetException won't have to execute on a new scheduler.
-                    ThrowIfInPool(this);
-                    SetAwaitedComplete(valueContainer, ref executionScheduler);
-                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
+                    // The next await could complete on another thread, so we use interlocked.
+                    InterlockedIncrementHandleCount();
+                    PromiseRef previous = (PromiseRef) _valueOrPrevious;
+                    _valueOrPrevious = null;
+
                     MoveNext();
+
+                    previous.MaybeDispose();
+                    if (InterlockedDecrementHandleCountAndGetIsComplete())
+                    {
+                        HandleWaiter((ValueContainer) _valueOrPrevious, ref executionScheduler);
+                        HandleProgressListener(State, ref executionScheduler);
+                        MaybeDispose();
+                    }
                 }
             } // class AsyncPromiseRef
 
@@ -600,13 +680,22 @@ namespace Proto.Promises
                         _stateMachine.MoveNext();
                     }
 
-                    internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                    internal override void Handle(ref ExecutionScheduler executionScheduler)
                     {
-                        // TODO: executionScheduler.ScheduleSynchronous and set a flag if this was completed by a promise or an unknown awaiter so that the SetResult or SetException won't have to execute on a new scheduler.
-                        ThrowIfInPool(this);
-                        SetAwaitedComplete(valueContainer, ref executionScheduler);
-                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
+                        // The next await could complete on another thread, so we use interlocked.
+                        InterlockedIncrementHandleCount();
+                        PromiseRef previous = (PromiseRef) _valueOrPrevious;
+                        _valueOrPrevious = null;
+
                         ContinueMethod();
+
+                        previous.MaybeDispose();
+                        if (InterlockedDecrementHandleCountAndGetIsComplete())
+                        {
+                            HandleWaiter((ValueContainer) _valueOrPrevious, ref executionScheduler);
+                            HandleProgressListener(State, ref executionScheduler);
+                            MaybeDispose();
+                        }
                     }
                 }
 

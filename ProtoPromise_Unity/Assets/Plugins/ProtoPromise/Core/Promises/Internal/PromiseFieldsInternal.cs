@@ -247,7 +247,7 @@ namespace Proto.Promises
 #endif
                 }
 
-#if PROTO_PROMISE_DEVELOPER_MODE // Must use a queue instead of a stack in developer mode so that the ExecutionSchedule.ScheduleSynchronous can invoke immediately and still be in proper order.
+#if PROTO_PROMISE_NO_STACK_UNWIND // Must use a queue instead of a stack so that the ExecutionScheduler.ScheduleSynchronous can invoke immediately and still be in proper order.
                 private ValueLinkedQueue<HandleablePromiseBase> _nextBranches = new ValueLinkedQueue<HandleablePromiseBase>();
 #else
                 private ValueLinkedStack<HandleablePromiseBase> _nextBranches = new ValueLinkedStack<HandleablePromiseBase>();
@@ -263,30 +263,49 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
+            [Flags]
+            internal enum ProgressSubscribeFlags : ushort
+            {
+                None = 0,
+
+                AboutToSetPrevious = 1 << 0,
+                HasListener = 1 << 1,
+                HasPrevious = 1 << 2,
+                SubscribedFromSetPrevious = 1 << 3,
+                SubscribedFromAddListener = 1 << 4,
+            }
+
+            [StructLayout(LayoutKind.Explicit)]
+            protected partial struct DepthAndFlags
+            {
+                [FieldOffset(0)]
+                internal ushort _previousDepth;
+                [FieldOffset(2)]
+                internal ProgressSubscribeFlags _flags;
+                [FieldOffset(0)]
+                volatile private int _intValue; // int for Interlocked.
+            }
+
             // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
             // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
             protected partial struct ProgressSubscribeFields
             {
-                volatile private int _previousDepthAndFlags;
+                internal DepthAndFlags _previousDepthAndFlags;
                 internal Fixed32 _currentProgress; // Fixed32 is only used for progress suspension. It's simpler to just re-use the functionality there than to rewrite it for PromiseWaitPromise.
             }
-#endif
 
             partial class AsyncPromiseBase : PromiseSingleAwaitWithProgress
             {
-#if PROMISE_PROGRESS
-                protected ProgressSubscribeFields _progressFields;
-#endif
+                protected ProgressSubscribeFields _progressAndSubscribeFields;
             }
 
             partial class PromiseWaitPromise : PromiseSingleAwaitWithProgress
             {
-#if PROMISE_PROGRESS
                 private ProgressSubscribeFields _progressFields;
 
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
-#endif
             }
+#endif
 
             #region Non-cancelable Promises
             partial class PromiseResolve<TResolver> : PromiseSingleAwait
@@ -563,6 +582,7 @@ namespace Proto.Promises
 
             partial class AsyncPromiseRef : AsyncPromiseBase
             {
+                private long _completionState;
 #if PROMISE_PROGRESS
                 private float _minProgress;
                 private float _maxProgress;

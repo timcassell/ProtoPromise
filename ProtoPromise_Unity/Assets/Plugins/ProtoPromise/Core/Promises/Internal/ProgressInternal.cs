@@ -115,7 +115,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void ScheduleProgressSynchronous(IProgressInvokable progress)
             {
-#if PROTO_PROMISE_DEVELOPER_MODE // Helps to see full causality trace with internal stacktraces in exceptions (may cause StackOverflowException if the chain is very long).
+#if PROTO_PROMISE_NO_STACK_UNWIND // Helps to see full causality trace with internal stacktraces in exceptions (may cause StackOverflowException if the chain is very long).
                 progress.Invoke(ref this);
 #else
                 _progressQueue.Enqueue(progress);
@@ -1267,13 +1267,13 @@ namespace Proto.Promises
             {
                 protected override sealed void SetInitialProgress(IProgressListener progressListener, ref Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler)
                 {
-                    progress = _progressFields._currentProgress;
-                    SetInitialProgress(progressListener, ref progress, _progressFields._currentProgress.GetIncrementedWholeTruncated(), out nextRef, ref executionScheduler);
+                    progress = _progressAndSubscribeFields._currentProgress;
+                    SetInitialProgress(progressListener, ref progress, _progressAndSubscribeFields._currentProgress.GetIncrementedWholeTruncated(), out nextRef, ref executionScheduler);
                 }
 
                 internal override sealed void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler)
                 {
-                    HandleProgressListener(state, _progressFields._currentProgress.GetIncrementedWholeTruncatedForResolve(), ref executionScheduler);
+                    HandleProgressListener(state, _progressAndSubscribeFields._currentProgress.GetIncrementedWholeTruncatedForResolve(), ref executionScheduler);
                 }
             }
 
@@ -1283,7 +1283,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     progressListener.Retain();
-                    lastKnownProgress = _progressFields._currentProgress;
+                    lastKnownProgress = _progressAndSubscribeFields._currentProgress;
                     SetProgressListener(progressListener);
                     return null;
                 }
@@ -1301,7 +1301,7 @@ namespace Proto.Promises
                     // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
                     if (progress >= 0 & progress < 1f)
                     {
-                        var newProgress = _progressFields._currentProgress.SetNewDecimalPartFromDeferred(progress);
+                        var newProgress = _progressAndSubscribeFields._currentProgress.SetNewDecimalPartFromDeferred(progress);
                         ExecutionScheduler executionScheduler = new ExecutionScheduler(false);
                         ReportProgress(newProgress, ref executionScheduler);
                         executionScheduler.ExecuteProgress();
@@ -1311,64 +1311,73 @@ namespace Proto.Promises
                 }
             }
 
-            [Flags]
-            internal enum ProgressSubscribeFlags
+            partial struct DepthAndFlags
             {
-                None = 0,
-
-                AboutToSetPrevious = 1 << 31,
-                HasListener = 1 << 30,
-                HasPrevious = 1 << 29,
-                SubscribedFromSetPrevious = 1 << 28,
-                SubscribedFromAddListener = 1 << 27,
-
-                All = AboutToSetPrevious | HasListener | HasPrevious | SubscribedFromSetPrevious | SubscribedFromAddListener
-            }
-
-            partial struct ProgressSubscribeFields
-            {
-                private const int FlagsMask = (int) (ProgressSubscribeFlags.All);
-
-                internal ProgressSubscribeFlags InterlockedSetPreviousDepthAndFlags(int previousDepth, ProgressSubscribeFlags flags)
+                internal ProgressSubscribeFlags InterlockedSetPreviousDepthAndFlags(ushort previousDepth, ProgressSubscribeFlags flags)
                 {
                     Thread.MemoryBarrier();
-                    int current, newValue;
+                    DepthAndFlags current = default(DepthAndFlags), newValue;
                     do
                     {
-                        current = _previousDepthAndFlags;
-                        newValue = (current & FlagsMask) | previousDepth | (int) flags;
-                    } while (Interlocked.CompareExchange(ref _previousDepthAndFlags, newValue, current) != current);
-                    return (ProgressSubscribeFlags) (current & FlagsMask);
+                        current._intValue = _intValue;
+                        newValue = current;
+                        newValue._previousDepth = previousDepth;
+                        newValue._flags |= flags;
+                    } while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, current._intValue) != current._intValue);
+                    return current._flags;
                 }
 
                 internal ProgressSubscribeFlags InterlockedSetFlags(ProgressSubscribeFlags flags)
                 {
                     Thread.MemoryBarrier();
-                    int current, newValue;
+                    DepthAndFlags current = default(DepthAndFlags), newValue;
                     do
                     {
-                        current = _previousDepthAndFlags;
-                        newValue = current | (int) flags;
-                    } while (Interlocked.CompareExchange(ref _previousDepthAndFlags, newValue, current) != current);
-                    return (ProgressSubscribeFlags) (current & FlagsMask);
+                        current._intValue = _intValue;
+                        newValue = current;
+                        newValue._flags |= flags;
+                    } while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, current._intValue) != current._intValue);
+                    return current._flags;
                 }
 
                 internal ProgressSubscribeFlags InterlockedUnsetFlags(ProgressSubscribeFlags flags)
                 {
                     Thread.MemoryBarrier();
-                    int current, newValue;
                     ProgressSubscribeFlags unsetFlags = ~flags;
+                    DepthAndFlags current = default(DepthAndFlags), newValue;
                     do
                     {
-                        current = _previousDepthAndFlags;
-                        newValue = current & (int) unsetFlags;
-                    } while (Interlocked.CompareExchange(ref _previousDepthAndFlags, newValue, current) != current);
-                    return (ProgressSubscribeFlags) (current & FlagsMask);
+                        current._intValue = _intValue;
+                        newValue = current;
+                        newValue._flags &= unsetFlags;
+                    } while (Interlocked.CompareExchange(ref _intValue, newValue._intValue, current._intValue) != current._intValue);
+                    return current._flags;
                 }
 
+                [MethodImpl(InlineOption)]
+                internal void SetPreviousDepth(ushort previousDepth)
+                {
+                    _previousDepth = previousDepth;
+                }
+
+                [MethodImpl(InlineOption)]
                 internal ProgressSubscribeFlags GetFlags()
                 {
-                    return (ProgressSubscribeFlags) (_previousDepthAndFlags & FlagsMask);
+                    return _flags;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void SetFlags(ProgressSubscribeFlags flags)
+                {
+                    _flags |= flags;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal ProgressSubscribeFlags UnsetFlags(ProgressSubscribeFlags flags)
+                {
+                    var oldFlags = _flags;
+                    _flags &= ~flags;
+                    return oldFlags;
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1383,16 +1392,17 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal ushort GetPreviousDepth()
                 {
-                    unchecked
-                    {
-                        return (ushort) _previousDepthAndFlags;
-                    }
+                    return _previousDepth;
                 }
+            } // DepthAndFlags
+
+            protected partial struct ProgressSubscribeFields
+            {
 
                 [MethodImpl(InlineOption)]
                 internal void Reset()
                 {
-                    _previousDepthAndFlags = 0;
+                    _previousDepthAndFlags = default(DepthAndFlags);
                     _currentProgress = default(Fixed32);
                 }
             }
@@ -1428,15 +1438,15 @@ namespace Proto.Promises
                 private void SetPreviousAndSubscribeProgress(PromiseRef other, ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     // Write SecondPrevious flag before writing previous to fix race condition with hookup MaybeAddProgressListenerAndGetPreviousRetained.
-                    _progressFields.InterlockedSetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
+                    _progressFields._previousDepthAndFlags.InterlockedSetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
                     _valueOrPrevious = other;
 
                     // Lazy subscribe: only subscribe to second previous if a progress listener is added to this (this keeps execution more efficient when progress isn't used).
-                    ProgressSubscribeFlags oldFlags = _progressFields.InterlockedSetPreviousDepthAndFlags(depth, ProgressSubscribeFlags.HasPrevious);
+                    ProgressSubscribeFlags oldFlags = _progressFields._previousDepthAndFlags.InterlockedSetPreviousDepthAndFlags(depth, ProgressSubscribeFlags.HasPrevious);
                     bool hasListener = (oldFlags & ProgressSubscribeFlags.HasListener) != 0;
                     if (hasListener)
                     {
-                        oldFlags = _progressFields.InterlockedSetFlags(ProgressSubscribeFlags.SubscribedFromSetPrevious);
+                        oldFlags = _progressFields._previousDepthAndFlags.InterlockedSetFlags(ProgressSubscribeFlags.SubscribedFromSetPrevious);
                         bool notSubscribed = (oldFlags & ProgressSubscribeFlags.SubscribedFromAddListener) == 0;
                         if (notSubscribed)
                         {
@@ -1455,13 +1465,13 @@ namespace Proto.Promises
                     _smallFields.InterlockedSetFlags(PromiseFlags.Subscribing);
                     // Read previous before setting flag to fix race condition with SetPreviousAndSubscribeProgress.
                     object firstRead = _valueOrPrevious;
-                    ProgressSubscribeFlags oldFlags = _progressFields.InterlockedSetFlags(ProgressSubscribeFlags.HasListener);
+                    ProgressSubscribeFlags oldFlags = _progressFields._previousDepthAndFlags.InterlockedSetFlags(ProgressSubscribeFlags.HasListener);
                     PromiseRef previous;
                     bool hasSecondPrevious = (oldFlags & ProgressSubscribeFlags.HasPrevious) != 0;
                     if (hasSecondPrevious)
                     {
-                        lastKnownProgress = Fixed32.FromWhole(_progressFields.GetPreviousDepth());
-                        oldFlags = _progressFields.InterlockedSetFlags(ProgressSubscribeFlags.SubscribedFromAddListener);
+                        lastKnownProgress = Fixed32.FromWhole(_progressFields._previousDepthAndFlags.GetPreviousDepth());
+                        oldFlags = _progressFields._previousDepthAndFlags.InterlockedSetFlags(ProgressSubscribeFlags.SubscribedFromAddListener);
                         bool alreadySubscribed = (oldFlags & ProgressSubscribeFlags.SubscribedFromSetPrevious) != 0;
                         if (alreadySubscribed)
                         {
@@ -1536,7 +1546,7 @@ namespace Proto.Promises
                 private Fixed32 NormalizeProgress(Fixed32 progress)
                 {
                     // Calculate the normalized progress for this and previous depth.
-                    return progress.DivideAndAdd(_progressFields.GetPreviousDepthPlusOne(), Depth);
+                    return progress.DivideAndAdd(_progressFields._previousDepthAndFlags.GetPreviousDepthPlusOne(), Depth);
                 }
 
                 void IProgressListener.SetProgress(PromiseRef sender, ref Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler)
@@ -1870,8 +1880,8 @@ namespace Proto.Promises
                 protected override void MarkAwaited(short promiseId, PromiseFlags flags) { throw new System.InvalidOperationException(); }
                 internal override PromiseRef GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
                 internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
-                internal override void IncrementIdAndSetFlags(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
+                internal override void IncrementIdAndSetFlags(short promiseId) { throw new System.InvalidOperationException(); }
 #endif
             }
 
@@ -1886,17 +1896,17 @@ namespace Proto.Promises
                 private Fixed32 LerpProgress(Fixed32 progress)
                 {
                     ThrowIfInPool(this);
-                    double normalizedProgress = progress.ToDouble() / _progressFields.GetPreviousDepthPlusOne();
+                    double normalizedProgress = progress.ToDouble() / _progressAndSubscribeFields._previousDepthAndFlags.GetPreviousDepthPlusOne();
                     double newValue = Lerp(_minProgress, _maxProgress, normalizedProgress);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (newValue < 0 || newValue >= 1)
                     {
                         throw new ArithmeticException("Async progress calculated outside allowed bounds of [0, 1), value: " + newValue
-                            + ", progress: " + progress.ToDouble() + ", depthPlusOne: " + _progressFields.GetPreviousDepthPlusOne()
+                            + ", progress: " + progress.ToDouble() + ", depthPlusOne: " + _progressAndSubscribeFields._previousDepthAndFlags.GetPreviousDepthPlusOne()
                             + ", _minProgress: " + _minProgress + ", _maxProgress: " + _maxProgress);
                     }
 #endif
-                    return _progressFields._currentProgress.SetNewDecimalPartFromDeferred(newValue);
+                    return _progressAndSubscribeFields._currentProgress.SetNewDecimalPartFromDeferred(newValue);
                 }
 
                 internal void SetProgress(ref Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef)
@@ -1910,16 +1920,17 @@ namespace Proto.Promises
                     ReportProgress(LerpProgress(progress), ref executionScheduler);
                 }
 
-                private void SetAwaitedComplete(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                private void SetAwaitedComplete(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
+                    var oldFlags = _progressAndSubscribeFields._previousDepthAndFlags.InterlockedUnsetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
                     var oldPrevious = _valueOrPrevious;
-                    _valueOrPrevious = null;
-                    var oldFlags = _progressFields.InterlockedUnsetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
+                    owner.InterlockedRetainDisregardId();
+                    _valueOrPrevious = owner;
                     bool wasListeningToProgress = (oldFlags & ProgressSubscribeFlags.AboutToSetPrevious) != 0;
                     if (wasListeningToProgress)
                     {
-                        Fixed32 expectedProgress = Fixed32.FromWhole(_progressFields.GetPreviousDepthPlusOne());
+                        Fixed32 expectedProgress = Fixed32.FromWhole(_progressAndSubscribeFields._previousDepthAndFlags.GetPreviousDepthPlusOne());
                         ((AsyncProgressPassThrough) oldPrevious).MarkComplete(expectedProgress);
                         // Don't report progress if it's 1. That will be reported when the async promise is resolved.
                         // Also don't report if the awaited promise was rejected or canceled.
@@ -1938,13 +1949,13 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     lock (this) // Unfortunately, I couldn't figure out a lock-free solution to thread synchronization.
                     {
-                        _progressFields.InterlockedSetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
+                        _progressAndSubscribeFields._previousDepthAndFlags.InterlockedSetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
                         _valueOrPrevious = other;
                         // Lazy subscribe: only subscribe to the awaited promise if a progress listener is added to this (this keeps execution and memory more efficient when progress isn't used).
                         if (_progressListener == null)
                         {
                             // These must be set inside the lock so they will be visible if/when the listener is subscribed in MaybeAddProgressListenerAndGetPreviousRetained.
-                            _progressFields.InterlockedSetPreviousDepthAndFlags(depth, ProgressSubscribeFlags.None);
+                            _progressAndSubscribeFields._previousDepthAndFlags.SetPreviousDepth(depth);
                             _minProgress = minProgress;
                             _maxProgress = maxProgress;
                             return;
@@ -1953,7 +1964,7 @@ namespace Proto.Promises
                     // Exit the lock before subscribing the new listener.
                     _minProgress = minProgress;
                     _maxProgress = maxProgress;
-                    var passthrough = AsyncProgressPassThrough.GetOrCreate(this, _progressFields.GetPreviousDepthPlusOne(), other);
+                    var passthrough = AsyncProgressPassThrough.GetOrCreate(this, _progressAndSubscribeFields._previousDepthAndFlags.GetPreviousDepthPlusOne(), other);
                     // So the passthrough can be marked completed when the awaited promise completes without adding a new field.
                     _valueOrPrevious = passthrough;
                     other.SubscribeListener(passthrough, Fixed32.FromWhole(depth), ref executionScheduler);
@@ -1972,13 +1983,13 @@ namespace Proto.Promises
                         SetProgressListener(progressListener);
                         // Lazy subscribe: only subscribe to the awaited promise if a progress listener is added to this (this keeps execution and memory more efficient when progress isn't used).
                         previous = _valueOrPrevious;
-                        oldFlags = _progressFields.GetFlags();
+                        oldFlags = _progressAndSubscribeFields._previousDepthAndFlags.GetFlags();
                     }
                     // Exit the lock once we have read previous before subscribing the new listener.
                     // If previousRef is null, this is either invoking the async state machine, or has awaited a non-promise awaitable, or has already completed.
                     PromiseRef previousRef = previous as PromiseRef;
                     // Don't subscribe to the previous promise if it was not awaited with the AwaitWithProgress API.
-                    bool hasAwaitedPrevious = (oldFlags & ProgressSubscribeFlags.AboutToSetPrevious) != 0 && previousRef != null;
+                    bool hasAwaitedPrevious = (oldFlags & ProgressSubscribeFlags.AboutToSetPrevious) != 0 & previousRef != null;
                     if (hasAwaitedPrevious)
                     {
                         previousRef.InterlockedRetainDisregardId();
@@ -1986,7 +1997,7 @@ namespace Proto.Promises
                     _smallFields.InterlockedUnsetFlags(PromiseFlags.Subscribing);
                     if (hasAwaitedPrevious)
                     {
-                        var passthrough = AsyncProgressPassThrough.GetOrCreate(this, _progressFields.GetPreviousDepthPlusOne(), previous);
+                        var passthrough = AsyncProgressPassThrough.GetOrCreate(this, _progressAndSubscribeFields._previousDepthAndFlags.GetPreviousDepthPlusOne(), previous);
                         // So the passthrough can be marked completed when the awaited promise completes without adding a new field.
                         if (Interlocked.CompareExchange(ref _valueOrPrevious, passthrough, previous) != previous)
                         {

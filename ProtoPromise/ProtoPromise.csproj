@@ -9,8 +9,11 @@
     <!--Only for function pointers in await override implementation. All other async/await code should be C# 7.3 compatible, and all other code should be C# 4 compatible for old Unity versions.-->
     <LangVersion>9</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!--Set true to help debug internal promise code-->
+    <!--Set true to help debug internal promise code.-->
     <DeveloperMode>false</DeveloperMode>
+    <!--Set false to not unwind the stack before invoking the next continuation.
+        This can help to debug internal promise code with longer stack traces, but may result in a StackOverflowException if there are many continuations.-->
+    <AllowStackToUnwind>true</AllowStackToUnwind>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +24,10 @@
 
   <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
     <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(AllowStackToUnwind)'=='false'">
+    <DefineConstants>$(DefineConstants);PROTO_PROMISE_NO_STACK_UNWIND</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoProgress|AnyCPU'">

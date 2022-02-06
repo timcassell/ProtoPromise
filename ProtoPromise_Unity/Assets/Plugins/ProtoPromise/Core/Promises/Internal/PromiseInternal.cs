@@ -108,7 +108,7 @@ namespace Proto.Promises
                 MaybeReportUnhandledRejections();
             }
 
-            private void IncrementIdAndSetFlags(short promiseId, PromiseFlags flags)
+            internal void IncrementIdAndSetFlags(short promiseId, PromiseFlags flags)
             {
                 if (!_smallFields.InterlockedTryIncrementPromiseIdAndSetFlags(promiseId, flags))
                 {
@@ -263,6 +263,19 @@ namespace Proto.Promises
                     IncrementIdAndSetFlags(promiseId, flags | PromiseFlags.HadCallback);
                 }
 
+                [MethodImpl(InlineOption)]
+                private void SetWaiter(HandleablePromiseBase waiter)
+                {
+#if PROMISE_DEBUG
+                    if (Interlocked.CompareExchange(ref _waiter, waiter, null) != null)
+                    {
+                        throw new System.InvalidOperationException("Cannot add more than 1 waiter to a single await promise.");
+                    }
+#else
+                    _waiter = waiter;
+#endif
+                }
+
                 internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
                 {
 #if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
@@ -272,7 +285,7 @@ namespace Proto.Promises
                         ThrowIfInPool(this);
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
                         Thread.MemoryBarrier();
-                        _waiter = waiter;
+                        SetWaiter(waiter);
                         Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
                         if (State != Promise.State.Pending)
                         {
@@ -293,6 +306,7 @@ namespace Proto.Promises
                     lock (this)
 #endif
                     {
+                        ThrowIfInPool(this);
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         HandleablePromiseBase waiter = Interlocked.Exchange(ref _waiter, null);
                         if (waiter != null)
@@ -423,7 +437,7 @@ namespace Proto.Promises
                         _progressAndLocker._branchLocker.Enter();
                         if (State == Promise.State.Pending)
                         {
-#if PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_NO_STACK_UNWIND
                             _nextBranches.Enqueue(waiter);
 #else
                             _nextBranches.Push(waiter);
@@ -454,7 +468,7 @@ namespace Proto.Promises
                 private void HandleBranches(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     _progressAndLocker._branchLocker.Enter();
-#if PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_NO_STACK_UNWIND
                     var branches = _nextBranches.MoveElementsToStack();
 #else
                     var branches = _nextBranches;
@@ -680,7 +694,7 @@ namespace Proto.Promises
                 protected void Reset()
                 {
 #if PROMISE_PROGRESS
-                    _progressFields._currentProgress = default(Fixed32);
+                    _progressAndSubscribeFields._currentProgress = default(Fixed32);
 #endif
                     _smallFields.Reset();
                     SetCreatedStacktrace(this, 3);

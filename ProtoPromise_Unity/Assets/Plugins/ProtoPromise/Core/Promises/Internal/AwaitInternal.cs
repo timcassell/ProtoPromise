@@ -375,11 +375,11 @@ namespace Proto.Promises
 #endif
         } // struct PromiseAwaiterVoid
 
-    /// <summary>
-    /// Used to support the await keyword.
-    /// </summary>
+        /// <summary>
+        /// Used to support the await keyword.
+        /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
+        [DebuggerNonUserCode]
 #endif
         public
 #if CSHARP_7_3_OR_NEWER
