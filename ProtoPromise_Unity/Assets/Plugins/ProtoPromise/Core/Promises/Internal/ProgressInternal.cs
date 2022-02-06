@@ -1881,7 +1881,6 @@ namespace Proto.Promises
                 internal override PromiseRef GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
                 internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
                 internal override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
-                internal override void IncrementIdAndSetFlags(short promiseId) { throw new System.InvalidOperationException(); }
 #endif
             }
 
@@ -1925,8 +1924,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     var oldFlags = _progressAndSubscribeFields._previousDepthAndFlags.InterlockedUnsetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
                     var oldPrevious = _valueOrPrevious;
-                    owner.InterlockedRetainDisregardId();
-                    _valueOrPrevious = owner;
+                    _valueOrPrevious = null;
                     bool wasListeningToProgress = (oldFlags & ProgressSubscribeFlags.AboutToSetPrevious) != 0;
                     if (wasListeningToProgress)
                     {

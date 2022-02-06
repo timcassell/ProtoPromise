@@ -20,57 +20,6 @@ namespace Proto.Promises
     {
         partial class PromiseRef
         {
-            partial struct SmallFields
-            {
-                [MethodImpl(InlineOption)]
-                internal bool InterlockedIncrementPromiseIdAndSetFlagsAndRetain(short promiseId, PromiseFlags flags)
-                {
-                    unchecked // We want the id to wrap around.
-                    {
-                        Thread.MemoryBarrier();
-                        short idPlusOne = (short) (promiseId + 1);
-                        SmallFields initialValue = default(SmallFields), newValue;
-                        do
-                        {
-                            initialValue._longValue = Interlocked.Read(ref _longValue);
-                            // Make sure id matches. Also check for id + 1 since this might be called after OnCompleted is hooked up.
-                            if (initialValue._promiseId != promiseId & initialValue._promiseId != idPlusOne)
-                            {
-                                throw new InvalidOperationException("Attempted to GetResult on an invalid PromiseAwaiter.", GetFormattedStacktrace(3));
-                            }
-                            newValue = initialValue;
-                            // If HadCallback is false, we should not retain. Convert the flag to 0 or 1 without branching.
-                            ushort retainAdd = (ushort) (1 - ((byte) (~initialValue._flags & PromiseFlags.HadCallback) >> 7));
-                            newValue._retains += retainAdd;
-                            ++newValue._promiseId;
-                            newValue._flags |= flags;
-                        } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
-                        return newValue._retains == 0;
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void InterlockedSetFlagsAndRetain(short promiseId, PromiseFlags flags)
-                {
-                    Thread.MemoryBarrier();
-                    short idPlusOne = (short) (promiseId + 1);
-                    SmallFields initialValue = default(SmallFields), newValue;
-                    do
-                    {
-                        initialValue._longValue = Interlocked.Read(ref _longValue);
-                        // Make sure id matches. Also check for id + 1 since this might be called after the preserved promise is forgotten.
-                        if (initialValue._promiseId != promiseId & initialValue._promiseId != idPlusOne)
-                        {
-                            throw new InvalidOperationException("Attempted to GetResult on an invalid PromiseAwaiter.", GetFormattedStacktrace(3));
-                        }
-                        newValue = initialValue;
-                        ++newValue._retains;
-                        newValue._flags |= flags;
-                    } while (Interlocked.CompareExchange(ref _longValue, newValue._longValue, initialValue._longValue) != initialValue._longValue);
-                }
-            }
-
-            internal abstract void IncrementIdAndSetFlags(short promiseId);
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal System.Runtime.ExceptionServices.ExceptionDispatchInfo GetExceptionDispatchInfo(Promise.State state)
@@ -89,28 +38,10 @@ namespace Proto.Promises
                 throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
             }
 
-            partial class PromiseSingleAwait
-            {
-                internal override void IncrementIdAndSetFlags(short promiseId)
-                {
-                    _smallFields.InterlockedIncrementPromiseIdAndSetFlagsAndRetain(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                    ThrowIfInPool(this);
-                }
-            }
-
-            partial class PromiseMultiAwait
-            {
-                internal override void IncrementIdAndSetFlags(short promiseId)
-                {
-                    _smallFields.InterlockedSetFlagsAndRetain(promiseId, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                    ThrowIfInPool(this);
-                }
-            }
-
             [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, short promiseId)
             {
-                MarkAwaited(promiseId, PromiseFlags.None);
+                InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
                 HookupNewWaiter(AwaiterRef.GetOrCreate(continuation));
             }
 
@@ -118,7 +49,7 @@ namespace Proto.Promises
             internal void AwaitOnCompletedInternal(AsyncPromiseRef asyncPromiseRef, short promiseId)
             {
                 asyncPromiseRef.ValidateAwait(this, promiseId);
-                MarkAwaited(promiseId, PromiseFlags.None);
+                InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
                 HookupNewPromise(asyncPromiseRef);
             }
 
@@ -126,7 +57,7 @@ namespace Proto.Promises
             internal void AwaitOnCompletedWithProgressInternal(AsyncPromiseRef asyncPromiseRef, short promiseId, ushort depth, float minProgress, float maxProgress)
             {
                 asyncPromiseRef.ValidateAwait(this, promiseId);
-                MarkAwaited(promiseId, PromiseFlags.None);
+                InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
                 ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
                 asyncPromiseRef.SetPreviousAndMaybeSubscribeProgress(this, depth, minProgress, maxProgress, ref executionScheduler);
                 AddWaiter(asyncPromiseRef, ref executionScheduler);
@@ -338,7 +269,7 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                _ref.IncrementIdAndSetFlags(promise.Id);
+                _ref.IncrementIdAndSetFlags(promise.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
@@ -395,7 +326,10 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             internal PromiseAwaiter(Promise<T> promise)
             {
-                _promise = promise;
+                // Duplicate force gets a single use promise if it's a multi use promise.
+                // It also prevents the promise from being used again improperly if it's a single use promise.
+                // And it internally validates the promise.
+                _promise = promise.Duplicate();
             }
 
             public bool IsCompleted
@@ -419,7 +353,7 @@ namespace Proto.Promises
                 {
                     return promise.Result;
                 }
-                _ref.IncrementIdAndSetFlags(promise.Id);
+                _ref.IncrementIdAndSetFlags(promise.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
@@ -526,7 +460,7 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                _ref.IncrementIdAndSetFlags(promise.Id);
+                _ref.IncrementIdAndSetFlags(promise.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
@@ -585,7 +519,10 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             internal PromiseProgressAwaiter(Promise<T> promise, float minProgress, float maxProgress)
             {
-                _promise = promise;
+                // Duplicate force gets a single use promise if it's a multi use promise.
+                // It also prevents the promise from being used again improperly if it's a single use promise.
+                // And it internally validates the promise.
+                _promise = promise.Duplicate();
                 _minProgress = minProgress;
                 _maxProgress = maxProgress;
             }
@@ -617,7 +554,7 @@ namespace Proto.Promises
                 {
                     return promise.Result;
                 }
-                _ref.IncrementIdAndSetFlags(promise.Id);
+                _ref.IncrementIdAndSetFlags(promise.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {

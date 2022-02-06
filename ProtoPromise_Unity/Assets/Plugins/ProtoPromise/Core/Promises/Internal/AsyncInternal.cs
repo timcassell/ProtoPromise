@@ -435,6 +435,12 @@ namespace Proto.Promises
                     return isComplete & isHandleCountZero;
                 }
 
+                new private void Reset()
+                {
+                    _completionState = 0L;
+                    base.Reset();
+                }
+
 #if !PROMISE_PROGRESS
                 [MethodImpl(InlineOption)]
                 internal void SetPreviousAndMaybeSubscribeProgress(PromiseRef other, ushort depth, float minProgress, float maxProgress, ref ExecutionScheduler executionScheduler)
@@ -445,8 +451,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private void SetAwaitedComplete(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
-                    owner.InterlockedRetainDisregardId();
-                    _valueOrPrevious = owner;
+                    _valueOrPrevious = null;
                 }
 #endif
 
@@ -457,12 +462,6 @@ namespace Proto.Promises
                         ?? new AsyncPromiseRef();
                     promise.Reset();
                     return promise;
-                }
-
-                new private void Reset()
-                {
-                    _completionState = 0L;
-                    base.Reset();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -628,12 +627,9 @@ namespace Proto.Promises
                 {
                     // The next await could complete on another thread, so we use interlocked.
                     InterlockedIncrementHandleCount();
-                    PromiseRef previous = (PromiseRef) _valueOrPrevious;
-                    _valueOrPrevious = null;
 
                     MoveNext();
 
-                    previous.MaybeDispose();
                     if (InterlockedDecrementHandleCountAndGetIsComplete())
                     {
                         HandleWaiter((ValueContainer) _valueOrPrevious, ref executionScheduler);
@@ -684,12 +680,9 @@ namespace Proto.Promises
                     {
                         // The next await could complete on another thread, so we use interlocked.
                         InterlockedIncrementHandleCount();
-                        PromiseRef previous = (PromiseRef) _valueOrPrevious;
-                        _valueOrPrevious = null;
 
                         ContinueMethod();
 
-                        previous.MaybeDispose();
                         if (InterlockedDecrementHandleCountAndGetIsComplete())
                         {
                             HandleWaiter((ValueContainer) _valueOrPrevious, ref executionScheduler);
