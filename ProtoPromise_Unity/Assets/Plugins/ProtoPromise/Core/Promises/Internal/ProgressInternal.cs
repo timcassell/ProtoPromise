@@ -1922,14 +1922,13 @@ namespace Proto.Promises
                 private void SetAwaitedComplete(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    var oldFlags = _progressAndSubscribeFields._previousDepthAndFlags.InterlockedUnsetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
                     var oldPrevious = _valueOrPrevious;
                     _valueOrPrevious = null;
-                    bool wasListeningToProgress = (oldFlags & ProgressSubscribeFlags.AboutToSetPrevious) != 0;
-                    if (wasListeningToProgress)
+                    _progressAndSubscribeFields._previousDepthAndFlags.InterlockedUnsetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
+                    if (oldPrevious is AsyncProgressPassThrough passthrough)
                     {
                         Fixed32 expectedProgress = Fixed32.FromWhole(_progressAndSubscribeFields._previousDepthAndFlags.GetPreviousDepthPlusOne());
-                        ((AsyncProgressPassThrough) oldPrevious).MarkComplete(expectedProgress);
+                        passthrough.MarkComplete(expectedProgress);
                         // Don't report progress if it's 1. That will be reported when the async promise is resolved.
                         // Also don't report if the awaited promise was rejected or canceled.
                         if (valueContainer.GetState() == Promise.State.Resolved & _maxProgress < 1f)
