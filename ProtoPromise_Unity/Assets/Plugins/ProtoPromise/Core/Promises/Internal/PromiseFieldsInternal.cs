@@ -172,13 +172,6 @@ namespace Proto.Promises
 
         partial class PromiseRef : HandleablePromiseBase
         {
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-#endif
-
-            volatile internal object _valueOrPrevious;
-            private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
-
             [StructLayout(LayoutKind.Explicit)]
             private partial struct SmallFields
             {
@@ -197,7 +190,7 @@ namespace Proto.Promises
                 internal short _deferredId;
                 // _depth shares bit space with _deferredId, because it is always 0 on deferred promises, and _deferredId is not used in non-deferred promises.
                 [FieldOffset(6)]
-                internal ushort _depth;
+                volatile internal ushort _depth;
 
                 [MethodImpl(InlineOption)]
                 internal SmallFields(short initialId)
@@ -207,6 +200,13 @@ namespace Proto.Promises
                     _deferredId = initialId;
                 }
             } // SmallFields
+
+#if PROMISE_DEBUG
+            CausalityTrace ITraceable.Trace { get; set; }
+#endif
+
+            volatile internal object _valueOrPrevious;
+            private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
 
             partial class PromiseSingleAwait : PromiseRef
             {
@@ -247,7 +247,7 @@ namespace Proto.Promises
 #endif
                 }
 
-#if PROTO_PROMISE_DEVELOPER_MODE // Must use a queue instead of a stack in developer mode so that the ExecutionSchedule.ScheduleSynchronous can invoke immediately and still be in proper order.
+#if PROTO_PROMISE_NO_STACK_UNWIND // Must use a queue instead of a stack so that the ExecutionScheduler.ScheduleSynchronous can invoke immediately and still be in proper order.
                 private ValueLinkedQueue<HandleablePromiseBase> _nextBranches = new ValueLinkedQueue<HandleablePromiseBase>();
 #else
                 private ValueLinkedStack<HandleablePromiseBase> _nextBranches = new ValueLinkedStack<HandleablePromiseBase>();
@@ -262,28 +262,50 @@ namespace Proto.Promises
 #endif
             }
 
+#if PROMISE_PROGRESS
+            [Flags]
+            internal enum ProgressSubscribeFlags : ushort
+            {
+                None = 0,
+
+                AboutToSetPrevious = 1 << 0,
+                HasListener = 1 << 1,
+                HasPrevious = 1 << 2,
+                SubscribedFromSetPrevious = 1 << 3,
+                SubscribedFromAddListener = 1 << 4,
+            }
+
+            [StructLayout(LayoutKind.Explicit)]
+            protected partial struct DepthAndFlags
+            {
+                [FieldOffset(0)]
+                internal ushort _previousDepth;
+                [FieldOffset(2)]
+                internal ProgressSubscribeFlags _flags;
+                [FieldOffset(0)]
+                volatile private int _intValue; // int for Interlocked.
+            }
+
+            // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+            // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+            protected partial struct ProgressSubscribeFields
+            {
+                internal DepthAndFlags _previousDepthAndFlags;
+                internal Fixed32 _currentProgress; // Fixed32 is only used for progress suspension. It's simpler to just re-use the functionality there than to rewrite it for PromiseWaitPromise.
+            }
+
             partial class AsyncPromiseBase : PromiseSingleAwaitWithProgress
             {
-#if PROMISE_PROGRESS
-                protected Fixed32 _currentProgress;
-#endif
+                protected ProgressSubscribeFields _progressAndSubscribeFields;
             }
 
             partial class PromiseWaitPromise : PromiseSingleAwaitWithProgress
             {
-#if PROMISE_PROGRESS
-                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
-                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                private partial struct PromiseWaitSmallFields
-                {
-                    volatile private int _previousDepthAndFlags;
-                    internal Fixed32 _currentProgress; // Fixed32 is only used for progress suspension. It's simpler to just re-use the functionality there than to rewrite it for PromiseWaitPromise.
-                }
-                private PromiseWaitSmallFields _progressFields;
+                private ProgressSubscribeFields _progressFields;
 
                 IProgressListener ILinked<IProgressListener>.Next { get; set; }
-#endif
             }
+#endif
 
             #region Non-cancelable Promises
             partial class PromiseResolve<TResolver> : PromiseSingleAwait
@@ -477,7 +499,7 @@ namespace Proto.Promises
 #endif
             }
 
-            partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>, IProgressListener
+            partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
@@ -506,7 +528,7 @@ namespace Proto.Promises
             #endregion
 
 #if PROMISE_PROGRESS
-            partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress, IProgressListener, IProgressInvokable
+            partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress
                 where TProgress : IProgress<float>
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
@@ -528,38 +550,72 @@ namespace Proto.Promises
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
             }
 #endif
-        } // PromiseRef
 
 #if CSHARP_7_3_OR_NEWER
-        partial class AsyncPromiseRef : PromiseRef.AsyncPromiseBase
-        {
-#if !OPTIMIZED_ASYNC_MODE
-            partial class PromiseMethodContinuer
-            {
+#if PROMISE_PROGRESS
+            partial class AsyncProgressPassThrough
 #if PROMISE_DEBUG
-                protected ITraceable _owner;
+                : PromiseRef
 #endif
+            {
+                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+                [StructLayout(LayoutKind.Explicit)]
+                private partial struct ProgressSmallFields
+                {
+                    [FieldOffset(0)]
+                    internal Fixed32 _currentProgress;
+                    [FieldOffset(4)]
+                    internal ushort _expectedProgress;
+                    [FieldOffset(6)]
+                    private ushort _retainCounter;
+                    [FieldOffset(4)]
+                    volatile private int _intValue; // int for Interlocked.
+                }
+
+                private AsyncPromiseRef _target;
+                private ProgressSmallFields _progressSmallFields;
+                AsyncProgressPassThrough ILinked<AsyncProgressPassThrough>.Next { get; set; }
+                IProgressListener ILinked<IProgressListener>.Next { get; set; }
+            }
+#endif
+
+            partial class AsyncPromiseRef : AsyncPromiseBase
+            {
+                private long _completionState;
+#if PROMISE_PROGRESS
+                private float _minProgress;
+                private float _maxProgress;
+#endif
+
+#if !OPTIMIZED_ASYNC_MODE
+                partial class PromiseMethodContinuer
+                {
+#if PROMISE_DEBUG
+                    protected ITraceable _owner;
+#endif
+                    // Cache the delegate to prevent new allocations.
+                    private Action _moveNext;
+
+                    // Generic class to reference the state machine without boxing it.
+                    partial class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
+                    {
+                        Continuer<TStateMachine> ILinked<Continuer<TStateMachine>>.Next { get; set; }
+                        private TStateMachine _stateMachine;
+                    }
+                }
+#else // !OPTIMIZED_ASYNC_MODE
                 // Cache the delegate to prevent new allocations.
                 private Action _moveNext;
 
-                // Generic class to reference the state machine without boxing it.
-                partial class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
+                partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
                 {
-                    Continuer<TStateMachine> ILinked<Continuer<TStateMachine>>.Next { get; set; }
+                    // Using a promiseref object as its own continuer saves 16 bytes of object overhead (x64). 24 bytes if we include the `ILinked<T>.Next` field for object pooling purposes.
                     private TStateMachine _stateMachine;
                 }
-            }
-#else // !OPTIMIZED_ASYNC_MODE
-            // Cache the delegate to prevent new allocations.
-            private Action _moveNext;
-
-            partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
-            {
-                // Using a promiseref object as its own continuer saves 16 bytes of object overhead (x64). 24 bytes if we include the `ILinked<T>.Next` field for object pooling purposes.
-                private TStateMachine _stateMachine;
-            }
 #endif // !OPTIMIZED_ASYNC_MODE
-        } // AsyncPromiseRef
+            } // AsyncPromiseRef
 #endif // CSHARP_7_3_OR_NEWER
+        } // PromiseRef
     } // Internal
 }

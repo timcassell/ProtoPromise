@@ -742,6 +742,202 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void ProgressIsNotInvokedFromCanceledPromiseChain_void0()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+
+            deferred.Promise
+                .ThenDuplicate(cancelationSource.Token)
+                .ContinueWith(_ => deferred2.Promise)
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Finally(cancelationSource.Dispose)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.6f, 1f / 2f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.7f, 1.5f / 2f, false);
+            
+            progressHelper.ResolveAndAssertResult(deferred, 1.5f / 2f, false);
+            progressHelper.ResolveAndAssertResult(deferred2, 2f / 2f);
+        }
+
+        [Test]
+        public void ProgressIsNotInvokedFromCanceledPromiseChain_void1()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+
+            deferred.Promise
+                .ThenDuplicate(cancelationSource.Token)
+                .CatchCancelation(() => deferred2.Promise)
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Finally(cancelationSource.Dispose)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.6f, 1f / 2f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.7f, 1.5f / 2f, false);
+
+            progressHelper.ResolveAndAssertResult(deferred, 1.5f / 2f, false);
+            progressHelper.ResolveAndAssertResult(deferred2, 2f / 2f);
+        }
+
+        [Test]
+        public void ProgressIsNotInvokedFromCanceledPromiseChain_void2()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred();
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+
+            deferred.Promise
+                .ThenDuplicate(cancelationSource.Token)
+                .ContinueWith(_ => { })
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Finally(cancelationSource.Dispose)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 1f, false);
+            progressHelper.ResolveAndAssertResult(deferred, 1f, false);
+        }
+
+        [Test]
+        public void ProgressIsNotInvokedFromCanceledPromiseChain_void3()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred();
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+
+            deferred.Promise
+                .ThenDuplicate(cancelationSource.Token)
+                .CatchCancelation(() => { })
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Finally(cancelationSource.Dispose)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 1f, false);
+            progressHelper.ResolveAndAssertResult(deferred, 1f, false);
+        }
+
+        [Test]
+        public void ProgressIsNotInvokedFromCanceledPromiseChain_T0()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+
+            deferred.Promise
+                .ThenDuplicate(cancelationSource.Token)
+                .ContinueWith(_ => deferred2.Promise)
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Finally(cancelationSource.Dispose)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.6f, 1f / 2f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.7f, 1.5f / 2f, false);
+
+            progressHelper.ResolveAndAssertResult(deferred, 1, 1.5f / 2f, false);
+            progressHelper.ResolveAndAssertResult(deferred2, 2, 2f / 2f);
+        }
+
+        [Test]
+        public void ProgressIsNotInvokedFromCanceledPromiseChain_T1()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+
+            deferred.Promise
+                .ThenDuplicate(cancelationSource.Token)
+                .CatchCancelation(() => deferred2.Promise)
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Finally(cancelationSource.Dispose)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f / 2f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f / 2f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.6f, 1f / 2f, false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.7f, 1.5f / 2f, false);
+
+            progressHelper.ResolveAndAssertResult(deferred, 1, 1.5f / 2f, false);
+            progressHelper.ResolveAndAssertResult(deferred2, 2, 2f / 2f);
+        }
+
+        [Test]
+        public void ProgressIsNotInvokedFromCanceledPromiseChain_T2()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>();
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+
+            deferred.Promise
+                .ThenDuplicate(cancelationSource.Token)
+                .ContinueWith(_ => 2)
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Finally(cancelationSource.Dispose)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 1f, false);
+            progressHelper.ResolveAndAssertResult(deferred, 1, 1f, false);
+        }
+
+        [Test]
+        public void ProgressIsNotInvokedFromCanceledPromiseChain_T3()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>();
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+
+            deferred.Promise
+                .ThenDuplicate(cancelationSource.Token)
+                .CatchCancelation(() => 2)
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Finally(cancelationSource.Dispose)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 1f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 1f, false);
+            progressHelper.ResolveAndAssertResult(deferred, 1, 1f, false);
+        }
+
+        [Test]
         public void OnProgressWillNotBeInvokedWith1UntilPromiseIsResolved(
             [Values] ProgressType progressType,
             [Values] SynchronizationType synchronizationType)

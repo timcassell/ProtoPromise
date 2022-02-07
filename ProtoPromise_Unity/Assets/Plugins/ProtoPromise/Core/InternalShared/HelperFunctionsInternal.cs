@@ -179,7 +179,7 @@ namespace Proto.Promises
             internal void ScheduleSynchronous(HandleablePromiseBase handleable)
             {
                 AssertNotExecutingProgress();
-#if PROTO_PROMISE_DEVELOPER_MODE // Helps to see full causality trace with internal stacktraces in exceptions (may cause StackOverflowException if the chain is very long).
+#if PROTO_PROMISE_NO_STACK_UNWIND // Helps to see full causality trace with internal stacktraces in exceptions (may cause StackOverflowException if the chain is very long).
                 handleable.Handle(ref this);
 #else
                 _handleStack.Push(handleable);
@@ -315,7 +315,7 @@ namespace Proto.Promises
                 }
 
                 // If reason is null, behave the same way .Net behaves if you throw null.
-                object o = reason == null ? new NullReferenceException() : (object) reason;
+                object o = (object) reason ?? new NullReferenceException();
                 Exception e = o as Exception;
                 if (e != null)
                 {
@@ -416,15 +416,16 @@ namespace Proto.Promises
         private static long InterlockedAddWithOverflowCheck(ref long location, long value, long comparand)
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            long newValue;
+            long initialValue, newValue;
             do
             {
-                newValue = Interlocked.Read(ref location);
-                if (newValue == comparand)
+                initialValue = Interlocked.Read(ref location);
+                if (initialValue == comparand)
                 {
                     throw new OverflowException(); // This should never happen, but checking just in case.
                 }
-            } while (Interlocked.CompareExchange(ref location, newValue + value, newValue) != newValue);
+                newValue = initialValue + value;
+            } while (Interlocked.CompareExchange(ref location, newValue, initialValue) != initialValue);
             return newValue;
 #else
             return Interlocked.Add(ref location, value);
@@ -432,7 +433,7 @@ namespace Proto.Promises
         }
 
         [MethodImpl(InlineOption)]
-        private static long InterlockedAddWithOverflowCheck(ref int location, int value, int comparand)
+        private static int InterlockedAddWithOverflowCheck(ref int location, int value, int comparand)
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             Thread.MemoryBarrier();

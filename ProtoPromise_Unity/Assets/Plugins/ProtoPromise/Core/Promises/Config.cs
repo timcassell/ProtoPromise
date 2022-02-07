@@ -64,7 +64,7 @@ namespace Proto.Promises
             /// The maximum precision of progress reports.
             /// </summary>
 #if !PROMISE_PROGRESS
-            [Obsolete("Progress is disabled. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+            [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
             public static readonly float ProgressPrecision = (float) (1d / Math.Pow(2d, Internal.PromiseRef.Fixed32.DecimalBits));
 

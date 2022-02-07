@@ -39,10 +39,20 @@ namespace Proto.Promises
         internal const MethodImplOptions InlineOption = (MethodImplOptions) 256; // AggressiveInlining
 #endif
 
+        internal static void ValidateProgressValue(float value, string argName, int skipFrames)
+        {
+            bool isBetween01 = value >= 0f && value <= 1f;
+            if (!isBetween01)
+            {
+                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.", GetFormattedStacktrace(skipFrames + 1));
+            }
+        }
+
         // Calls to these get compiled away in RELEASE mode
         partial class PromiseRef
         {
             partial void ValidateReturn(Promise other);
+            partial void ValidateAwait(PromiseRef other, short promiseId);
 
             partial class DeferredPromiseBase
             {
@@ -236,16 +246,6 @@ namespace Proto.Promises
             }
         }
 
-        internal static void ValidateProgressValue(float value, int skipFrames)
-        {
-            const string argName = "progress";
-            bool isBetween01 = value >= 0f && value <= 1f;
-            if (!isBetween01)
-            {
-                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.", GetFormattedStacktrace(skipFrames + 1));
-            }
-        }
-
         internal static void ValidateOperation(Promise promise, int skipFrames)
         {
             if (!promise.IsValid)
@@ -261,38 +261,54 @@ namespace Proto.Promises
         {
             partial void ValidateReturn(Promise other)
             {
-                if (!other.IsValid)
+                ValidateAwait(other._target._ref, other._target.Id, false);
+            }
+
+            partial void ValidateAwait(PromiseRef other, short promiseId)
+            {
+                ValidateAwait(other, promiseId, true);
+            }
+
+            private void ValidateAwait(PromiseRef other, short promiseId, bool awaited)
+            {
+                if (new Promise(other, promiseId, 0).IsValid == false)
                 {
-                    // Returning an invalid from the callback is not allowed.
+                    // Awaiting or returning an invalid from the callback is not allowed.
+                    if (awaited)
+                        throw new InvalidOperationException("An invalid promise was awaited.", string.Empty);
                     throw new InvalidReturnException("An invalid promise was returned.", string.Empty);
                 }
 
-                PromiseRef _ref = other._target._ref;
-
                 // A promise cannot wait on itself.
-                if (_ref == this)
+                if (other == this)
                 {
+                    other.MarkAwaited(other.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
+                    other.MaybeDispose();
+                    if (awaited)
+                        throw new InvalidOperationException("A Promise cannot wait on itself.", string.Empty);
                     throw new InvalidReturnException("A Promise cannot wait on itself.", string.Empty);
                 }
-                if (_ref == null)
+                if (other == null)
                 {
                     return;
                 }
                 // This allows us to check All/Race/First Promises iteratively.
                 Stack<PromisePassThrough> passThroughs = PassthroughsForIterativeAlgorithm;
-                PromiseRef prev = _ref._valueOrPrevious as PromiseRef;
+                PromiseRef prev = other._valueOrPrevious as PromiseRef;
             Repeat:
                 for (; prev != null; prev = prev._valueOrPrevious as PromiseRef)
                 {
                     if (prev == this)
                     {
-                        _ref.MarkAwaited(other._target.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                        _ref.MaybeDispose();
+                        other.MarkAwaited(other.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
+                        other.MaybeDispose();
                         while (passThroughs.Count > 0)
                         {
                             passThroughs.Pop().Release();
                         }
-                        throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(_ref));
+                        if (awaited)
+                            throw new InvalidOperationException("Circular Promise chain detected.", GetFormattedStacktrace(other));
+                        throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(other));
                     }
                     prev.BorrowPassthroughs(passThroughs);
                 }
@@ -346,7 +362,7 @@ namespace Proto.Promises
             {
                 static partial void ValidateProgress(float progress, int skipFrames)
                 {
-                    ValidateProgressValue(progress, skipFrames + 1);
+                    ValidateProgressValue(progress, "progress", skipFrames + 1);
                 }
             }
         }

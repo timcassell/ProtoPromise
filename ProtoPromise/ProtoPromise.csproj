@@ -2,14 +2,18 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
-    <RootNamespace>ProtoPromise</RootNamespace>
-    <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER</DefineConstants>
+    <DefineConstants>CSHARP_7_3_OR_NEWER</DefineConstants>
     <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
     <Version>2.0.0</Version>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <LangVersion>7.3</LangVersion>
-    <!--Set true to help debug internal promise code-->
+    <!--Only for function pointers in await override implementation. All other async/await code should be C# 7.3 compatible, and all other code should be C# 4 compatible for old Unity versions.-->
+    <LangVersion>9</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!--Set true to help debug internal promise code (allows the debugger to step into the code).-->
     <DeveloperMode>false</DeveloperMode>
+    <!--Set false to not unwind the stack before invoking the next continuation.
+        This can help to debug internal promise code with longer stack traces, but may result in a StackOverflowException if there are many continuations.-->
+    <AllowStackToUnwind>true</AllowStackToUnwind>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,29 +23,22 @@
   </ItemGroup>
 
   <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
-    <DefineConstants>$(DefineConstants);PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
+    <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
   </PropertyGroup>
 
-  <!--Version ending in `.1` is full fat with progress, ending in `.0` is without progress-->
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <VersionSuffix>.1</VersionSuffix>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <VersionSuffix>.1</VersionSuffix>
+  <PropertyGroup Condition="'$(AllowStackToUnwind)'=='false'">
+    <DefineConstants>$(DefineConstants);PROTO_PROMISE_NO_STACK_UNWIND</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoProgress|AnyCPU'">
     <DefineConstants>$(DefineConstants);RELEASE;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
-    <VersionSuffix>.0</VersionSuffix>
     <DebugSymbols>false</DebugSymbols>
     <DebugType>portable</DebugType>
     <Optimize>true</Optimize>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_NoProgress|AnyCPU'">
-    <DefineConstants>$(DefineConstants);DEBUG;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
-    <VersionSuffix>.0</VersionSuffix>
+    <DefineConstants>$(DefineConstants);TRACE;DEBUG;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

@@ -131,6 +131,11 @@ namespace ProtoPromiseTests
             _foregroundContext.Execute();
         }
 
+        public static float Lerp(float a, float b, float t)
+        {
+            return a + (b - a) * t;
+        }
+
         public static Action<Promise.Deferred, CancelationSource> GetCompleterVoid(CompleteType completeType, string rejectValue)
         {
             switch (completeType)

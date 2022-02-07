@@ -114,7 +114,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, progress will stop being reported.
         /// </summary>
 #if !PROMISE_PROGRESS
-        [Obsolete("Progress is disabled, progress will not be reported. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+        [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
         [MethodImpl(Internal.InlineOption)]
         public Promise Progress<TProgress>(TProgress progressListener, SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken))
@@ -134,7 +134,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
-        [Obsolete("Progress is disabled, onProgress will not be invoked. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+        [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
         [MethodImpl(Internal.InlineOption)]
         public Promise Progress(Action<float> onProgress, SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken))
@@ -154,7 +154,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, progress will stop being reported.
         /// </summary>
 #if !PROMISE_PROGRESS
-        [Obsolete("Progress is disabled, progress will not be reported. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+        [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
         [MethodImpl(Internal.InlineOption)]
         public Promise Progress<TProgress>(TProgress progressListener, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken))
@@ -175,7 +175,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
-        [Obsolete("Progress is disabled, onProgress will not be invoked. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+        [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
         [MethodImpl(Internal.InlineOption)]
         public Promise Progress(Action<float> onProgress, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken))
@@ -780,7 +780,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
-        [Obsolete("Progress is disabled, onProgress will not be invoked. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+        [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
         [MethodImpl(Internal.InlineOption)]
         public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress, SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken))
@@ -800,7 +800,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
         /// </summary>
 #if !PROMISE_PROGRESS
-        [Obsolete("Progress is disabled, onProgress will not be invoked. Remove PROTO_PROMISE_PROGRESS_DISABLE from your compiler symbols to enable progress reports.", false)]
+        [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
         [MethodImpl(Internal.InlineOption)]
         public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken))
