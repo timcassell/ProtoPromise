@@ -26,13 +26,17 @@ Enhancements:
 - Added `Promise.Run` static functions.
 - Added `Promise.SwitchToForeground()`, `Promise.SwitchToBackground()`, and `Promise.SwitchToContext(SynchronizationContext)` static functions.
 - Added synchronization options for `Promise.Progress` and `Promise.New`.
+- Added `Promise.AwaitWithProgress(float minProgress, float maxProgress)` API to propagate the progress to an `async Promise(<T>)` function.
+- Added circular promise chain detection when awaiting a `Promise(<T>)` in an `async Promise(<T>)` function in DEBUG mode.
 
 Optimizations:
 
 - Promises are now structs, making already resolved promises live only on the stack, increasing performance
-- Optimized progress to consume O(1) memory instead of O(n).
+- Optimized progress to consume less memory.
 - Decreased cost of garbage collecting promises when object pooling is disabled.
 - Optimized `async Promise(<T>)` functions in Unity 2021.2 or newer when IL2CPP is used.
+- Optimized `async Promise(<T>)` awaiting another `Promise(<T>)` to hook up directly instead of creating a passthrough object.
+- Eliminated potential `StackOverflowException`s from `async`/`await` continuations when both the `async` function and the `await`ed object are `Promise(<T>)`.
 
 Breaking Changes:
 
