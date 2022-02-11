@@ -58,10 +58,9 @@ namespace Proto.Promises
             {
                 asyncPromiseRef.ValidateAwait(this, promiseId);
                 InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
-                ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+                var executionScheduler = new ExecutionScheduler(true);
                 asyncPromiseRef.SetPreviousAndMaybeSubscribeProgress(this, depth, minProgress, maxProgress, ref executionScheduler);
-                AddWaiter(asyncPromiseRef, ref executionScheduler);
-                executionScheduler.Execute();
+                HookupNewWaiter(asyncPromiseRef, ref executionScheduler);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -94,7 +93,7 @@ namespace Proto.Promises
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                private void Invoke()
                 {
                     ThrowIfInPool(this);
                     var callback = _continuation;
@@ -116,6 +115,16 @@ namespace Proto.Promises
                     ClearCurrentInvoker();
                     Dispose();
 #endif
+                }
+
+                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                {
+                    Invoke();
+                }
+
+                internal override void Handle(ref ValueContainer valueContainer, ref Promise.State state, ref PromiseSingleAwait handler, ref ExecutionScheduler executionScheduler)
+                {
+                    Invoke();
                 }
 
                 internal override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }

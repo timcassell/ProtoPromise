@@ -18,6 +18,7 @@ namespace Proto.Promises
 
             internal abstract void Handle(ref ExecutionScheduler executionScheduler);
             internal abstract void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler);
+            internal abstract void Handle(ref ValueContainer valueContainer, ref Promise.State state, ref PromiseRef.PromiseSingleAwait handler, ref ExecutionScheduler executionScheduler);
         }
 
         internal abstract class ValueContainer

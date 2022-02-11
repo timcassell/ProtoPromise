@@ -18,6 +18,7 @@
 #define OPTIMIZED_ASYNC_MODE
 #endif
 
+#pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0060 // Remove unused parameter
 #pragma warning disable CS0436 // Type conflicts with imported type
 
@@ -213,9 +214,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        public struct PromiseMethodBuilderInternal<T>
+        internal struct PromiseMethodBuilderInternal<T>
         {
-            private PromiseRef.AsyncPromiseRef _ref;
+            private readonly PromiseRef.AsyncPromiseRef _ref;
 
             [MethodImpl(InlineOption)]
             private PromiseMethodBuilderInternal(PromiseRef.AsyncPromiseRef promise)
@@ -403,6 +404,21 @@ namespace Proto.Promises
 #endif
             internal partial class AsyncPromiseRef : AsyncPromiseBase
             {
+#if PROTO_PROMISE_NO_STACK_UNWIND
+                partial void InterlockedIncrementHandleCount();
+
+                [MethodImpl(InlineOption)]
+                private bool InterlockedSetCompleteAndGetIsHandling()
+                {
+                    return false;
+                }
+
+                [MethodImpl(InlineOption)]
+                private bool InterlockedDecrementHandleCountAndGetIsComplete()
+                {
+                    return false;
+                }
+#else
                 private const long CompleteFlag = 1L << 63;
                 private const long ValueMask = ~CompleteFlag;
 
@@ -434,6 +450,7 @@ namespace Proto.Promises
                     bool isHandleCountZero = (newState & ValueMask) == 0;
                     return isComplete & isHandleCountZero;
                 }
+#endif
 
                 new private void Reset()
                 {
@@ -449,7 +466,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void SetAwaitedComplete(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                private void SetAwaitedComplete(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     _valueOrPrevious = null;
                 }
@@ -473,7 +490,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     ValueContainer valueContainer = CreateResolveContainer(result);
-                    MaybeHandleCompletion(Promise.State.Resolved, valueContainer);
+                    MaybeHandleCompletion(valueContainer, Promise.State.Resolved);
                 }
 
                 internal void SetException(Exception exception)
@@ -490,29 +507,26 @@ namespace Proto.Promises
                         valueContainer = CreateRejectContainer(exception, int.MinValue, this);
                         state = Promise.State.Rejected;
                     }
-                    MaybeHandleCompletion(state, valueContainer);
+                    MaybeHandleCompletion(valueContainer, state);
                 }
 
-                private void MaybeHandleCompletion(Promise.State state, ValueContainer valueContainer)
+                private void MaybeHandleCompletion(ValueContainer valueContainer, Promise.State state)
                 {
-                    _valueOrPrevious = valueContainer;
-                    State = state;
+                    SetResult(valueContainer, state);
                     // If this is completed from another promise, do nothing so that the other promise will schedule the continuation.
                     if (InterlockedSetCompleteAndGetIsHandling())
                     {
                         return;
                     }
-                    ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
-                    HandleWaiter(valueContainer, ref executionScheduler);
-                    HandleProgressListener(state, ref executionScheduler);
-                    MaybeDispose();
+                    var executionScheduler = new ExecutionScheduler(true);
+                    Handle(valueContainer, state, ref executionScheduler);
                     executionScheduler.Execute();
                 }
 
                 internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    SetAwaitedComplete(owner, valueContainer, ref executionScheduler);
+                    SetAwaitedComplete(valueContainer, ref executionScheduler);
                     executionScheduler.ScheduleSynchronous(this);
                     WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
@@ -632,9 +646,32 @@ namespace Proto.Promises
 
                     if (InterlockedDecrementHandleCountAndGetIsComplete())
                     {
-                        HandleWaiter((ValueContainer) _valueOrPrevious, ref executionScheduler);
-                        HandleProgressListener(State, ref executionScheduler);
-                        MaybeDispose();
+                        ValueContainer valueContainer = (ValueContainer) _valueOrPrevious;
+                        Handle(valueContainer, valueContainer.GetState(), ref executionScheduler);
+                    }
+                }
+
+                internal override void Handle(ref ValueContainer valueContainer, ref Promise.State state, ref PromiseSingleAwait handler, ref ExecutionScheduler executionScheduler)
+                {
+                    ThrowIfInPool(this);
+                    SetAwaitedComplete(valueContainer, ref executionScheduler);
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
+                    handler.MaybeDispose();
+
+                    // The next await could complete on another thread, so we use interlocked.
+                    InterlockedIncrementHandleCount();
+
+                    MoveNext();
+
+                    if (InterlockedDecrementHandleCountAndGetIsComplete())
+                    {
+                        valueContainer = (ValueContainer) _valueOrPrevious;
+                        state = State;
+                        handler = this;
+                    }
+                    else
+                    {
+                        handler = null;
                     }
                 }
             } // class AsyncPromiseRef
@@ -685,9 +722,32 @@ namespace Proto.Promises
 
                         if (InterlockedDecrementHandleCountAndGetIsComplete())
                         {
-                            HandleWaiter((ValueContainer) _valueOrPrevious, ref executionScheduler);
-                            HandleProgressListener(State, ref executionScheduler);
-                            MaybeDispose();
+                            ValueContainer valueContainer = (ValueContainer) _valueOrPrevious;
+                            Handle(valueContainer, valueContainer.GetState(), ref executionScheduler);
+                        }
+                    }
+
+                    internal override void Handle(ref ValueContainer valueContainer, ref Promise.State state, ref PromiseSingleAwait handler, ref ExecutionScheduler executionScheduler)
+                    {
+                        ThrowIfInPool(this);
+                        SetAwaitedComplete(valueContainer, ref executionScheduler);
+                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
+                        handler.MaybeDispose();
+
+                        // The next await could complete on another thread, so we use interlocked.
+                        InterlockedIncrementHandleCount();
+
+                        ContinueMethod();
+
+                        if (InterlockedDecrementHandleCountAndGetIsComplete())
+                        {
+                            valueContainer = (ValueContainer) _valueOrPrevious;
+                            state = State;
+                            handler = this;
+                        }
+                        else
+                        {
+                            handler = null;
                         }
                     }
                 }

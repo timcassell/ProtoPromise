@@ -21,6 +21,39 @@ namespace Proto.Promises
     {
         partial class PromiseRef
         {
+            partial class MultiHandleablePromiseBase
+            {
+                protected void Handle(ref int _waitCount, ref ExecutionScheduler executionScheduler)
+                {
+                    ValueContainer valueContainer = (ValueContainer) _valueOrPrevious;
+                    Promise.State state = valueContainer.GetState();
+                    State = state;
+                    Thread.MemoryBarrier();
+                    HandleablePromiseBase waiter = Interlocked.Exchange(ref _waiter, null);
+                    HandleProgressListener(state, ref executionScheduler);
+
+                    bool allPassthroughsComplete = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0;
+
+                    if (waiter != null)
+                    {
+                        PromiseSingleAwait handler = this;
+                        if (!allPassthroughsComplete)
+                        {
+                            InterlockedRetainDisregardId(); // Retain since Handle will release indiscriminately.
+                        }
+                        waiter.Handle(ref valueContainer, ref state, ref handler, ref executionScheduler);
+                        if (handler != null)
+                        {
+                            handler.Handle(valueContainer, state, ref executionScheduler);
+                        }
+                    }
+                    else if (allPassthroughsComplete)
+                    {
+                        MaybeDispose();
+                    }
+                }
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
@@ -118,16 +151,7 @@ namespace Proto.Promises
 
                 internal override void Handle(ref ExecutionScheduler executionScheduler)
                 {
-                    ValueContainer valueContainer = (ValueContainer) _valueOrPrevious;
-                    Promise.State state = valueContainer.GetState();
-                    State = state;
-                    HandleWaiter(valueContainer, ref executionScheduler);
-                    HandleProgressListener(state, ref executionScheduler);
-
-                    if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
-                    {
-                        MaybeDispose();
-                    }
+                    Handle(ref _waitCount, ref executionScheduler);
                 }
 
                 internal override void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)

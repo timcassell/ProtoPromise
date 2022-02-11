@@ -151,7 +151,7 @@ namespace Proto.Promises
                 // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
                 try
                 {
-                    ExecutionScheduler executionScheduler = new ExecutionScheduler(false);
+                    var executionScheduler = new ExecutionScheduler(false);
                     ((IProgressInvokable) state).Invoke(ref executionScheduler);
                     executionScheduler.ExecuteProgress();
                 }
@@ -867,10 +867,34 @@ namespace Proto.Promises
                         CallbackHelper.InvokeAndCatchProgress(_progress, 1f, this);
                     }
                     State = state; // Set state after callback is executed to make sure it completes before the next waiter begins execution (in another thread).
-                    HandleWaiter(valueContainer, ref executionScheduler);
-                    HandleProgressListener(state, ref executionScheduler);
+                    Handle(valueContainer, state, ref executionScheduler);
+                }
 
-                    MaybeDispose();
+                internal override void Handle(ref ValueContainer valueContainer, ref Promise.State state, ref PromiseSingleAwait handler, ref ExecutionScheduler executionScheduler)
+                {
+                    ThrowIfInPool(this);
+
+                    IsComplete = true;
+                    valueContainer.Retain();
+                    _valueOrPrevious = valueContainer;
+                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
+                    handler.MaybeDispose();
+
+                    if (_smallProgressFields._isSynchronous)
+                    {
+                        bool notCanceled = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !IsCanceled;
+                        if (state == Promise.State.Resolved & notCanceled)
+                        {
+                            CallbackHelper.InvokeAndCatchProgress(_progress, 1f, this);
+                        }
+                        State = state; // Set state after callback is executed to make sure it completes before the next waiter begins execution (in another thread).
+                        handler = this;
+                    }
+                    else
+                    {
+                        executionScheduler.ScheduleOnContext(_synchronizationContext, this);
+                        handler = null;
+                    }
                 }
 
                 void ICancelable.Cancel()
@@ -898,7 +922,7 @@ namespace Proto.Promises
                     HandleProgressListener(state, Fixed32.FromWhole(Depth).GetIncrementedWholeTruncatedForResolve(), ref executionScheduler);
                 }
 
-                internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
+                internal override void AddWaiter(HandleablePromiseBase waiter, ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, ref ExecutionScheduler executionScheduler)
                 {
 #if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
@@ -907,40 +931,42 @@ namespace Proto.Promises
                         ThrowIfInPool(this);
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
                         Thread.MemoryBarrier();
-                        _waiter = waiter;
+                        SetWaiter(waiter);
                         Thread.MemoryBarrier(); // Make sure State and _isPreviousComplete are read after _waiter is written.
-                        if (State != Promise.State.Pending)
+                        if (_smallProgressFields._isSynchronous)
                         {
-                            // Exchange and check for null to handle race condition with HandleWaiter on another thread.
+                            state = State;
+                            valueContainer = _valueOrPrevious as ValueContainer;
+                            nextRef = this;
+                            return;
+                        }
+                        var _state = State;
+                        if (_state != Promise.State.Pending)
+                        {
+                            // Exchange and check for null to handle race condition with Handle on another thread.
                             waiter = Interlocked.Exchange(ref _waiter, null);
                             if (waiter != null)
                             {
-                                if (_smallProgressFields._isSynchronous)
-                                {
-                                    waiter.MakeReady(this, (ValueContainer) _valueOrPrevious, ref executionScheduler);
-                                }
-                                else
-                                {
-                                    // If this was configured to execute progress on a SynchronizationContext or the ThreadPool, force the waiter to execute on the same context for consistency.
+                                // If this was configured to execute progress on a SynchronizationContext or the ThreadPool, force the waiter to execute on the same context for consistency.
 
-                                    // Taking advantage of an implementation detail that MakeReady will only add itself or nothing to the stack, so we can just send it to the context instead.
-                                    // This is better than adding a new method to the interface.
-                                    ExecutionScheduler overrideScheduler = executionScheduler.GetEmptyCopy();
-                                    waiter.MakeReady(this, (ValueContainer) _valueOrPrevious, ref overrideScheduler);
-                                    if (overrideScheduler._handleStack.IsNotEmpty)
-                                    {
-                                        executionScheduler.ScheduleOnContext(_synchronizationContext, overrideScheduler._handleStack.Pop());
-                                    }
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                                    if (overrideScheduler._handleStack.IsNotEmpty)
-                                    {
-                                        throw new Exception("This should never happen.");
-                                    }
-#endif
+                                // Taking advantage of an implementation detail that MakeReady will only add itself or nothing to the stack, so we can just send it to the context instead.
+                                // This is better than adding a new method to the interface.
+                                ExecutionScheduler overrideScheduler = executionScheduler.GetEmptyCopy();
+                                waiter.MakeReady(this, (ValueContainer) _valueOrPrevious, ref overrideScheduler);
+                                if (overrideScheduler._handleStack.IsNotEmpty)
+                                {
+                                    executionScheduler.ScheduleOnContext(_synchronizationContext, overrideScheduler._handleStack.Pop());
                                 }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                                if (overrideScheduler._handleStack.IsNotEmpty)
+                                {
+                                    throw new Exception("This should never happen.");
+                                }
+#endif
                             }
                         }
-                        MaybeDispose();
+                        state = Promise.State.Pending;
+                        nextRef = null;
                     }
                 }
 
@@ -1302,7 +1328,7 @@ namespace Proto.Promises
                     if (progress >= 0 & progress < 1f)
                     {
                         var newProgress = _progressAndSubscribeFields._currentProgress.SetNewDecimalPartFromDeferred(progress);
-                        ExecutionScheduler executionScheduler = new ExecutionScheduler(false);
+                        var executionScheduler = new ExecutionScheduler(false);
                         ReportProgress(newProgress, ref executionScheduler);
                         executionScheduler.ExecuteProgress();
                     }
@@ -1428,10 +1454,9 @@ namespace Proto.Promises
                     var _ref = other._ref;
                     _ref.MarkAwaited(other.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
 
-                    ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+                    var executionScheduler = new ExecutionScheduler(true);
                     SetPreviousAndSubscribeProgress(_ref, other.Depth, ref executionScheduler);
-                    _ref.AddWaiter(this, ref executionScheduler);
-                    executionScheduler.Execute();
+                    _ref.HookupNewWaiter(this, ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1879,8 +1904,9 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 protected override void MarkAwaited(short promiseId, PromiseFlags flags) { throw new System.InvalidOperationException(); }
                 internal override PromiseRef GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
-                internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
+                internal override void AddWaiter(HandleablePromiseBase waiter, ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
                 internal override void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
+                internal override void Handle(ref ValueContainer valueContainer, ref Promise.State state, ref PromiseSingleAwait handler, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
 #endif
             }
 
@@ -1919,7 +1945,7 @@ namespace Proto.Promises
                     ReportProgress(LerpProgress(progress), ref executionScheduler);
                 }
 
-                private void SetAwaitedComplete(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                private void SetAwaitedComplete(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     var oldPrevious = _valueOrPrevious;

@@ -306,30 +306,38 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
-                    owner.ResolveInternal(valueContainer, ref executionScheduler);
+                    owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.ResolveInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
 
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
-                    owner.ResolveInternal(valueContainer, ref executionScheduler);
+                    owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                 }
 
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.ResolveInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
             }
@@ -382,61 +390,73 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
                     valueContainer.Release();
-                    owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
+                    valueContainer = CreateResolveContainer(result);
+                    state = Promise.State.Resolved;
+                    owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
                     {
                         TResult result = Invoke(arg);
                         valueContainer.Release();
-                        owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
+                        valueContainer = CreateResolveContainer(result);
+                        state = Promise.State.Resolved;
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
-                    owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
-                    valueContainer.Release();
+                    ValueContainer oldContainer = valueContainer;
+                    owner.WaitFor(CreateResolved(result, 0), ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                    oldContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
                     {
                         TResult result = Invoke(arg);
-                        owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
-                        valueContainer.Release();
+                        ValueContainer oldContainer = valueContainer;
+                        owner.WaitFor(CreateResolved(result, 0), ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                        oldContainer.Release();
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
 
-                void IDelegateReject.InvokeRejecter(ValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateReject.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
                     {
                         TResult result = Invoke(arg);
                         valueContainer.Release();
-                        owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
+                        valueContainer = CreateResolveContainer(result);
+                        state = Promise.State.Resolved;
                     }
-                    else
-                    {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                    }
+                    owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                 }
 
-                void IDelegateReject.InvokeRejecter(ValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateReject.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
@@ -445,31 +465,42 @@ namespace Proto.Promises
                         {
                             TResult result = Invoke(arg);
                             valueContainer.Release();
-                            owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
+                            valueContainer = CreateResolveContainer(result);
+                            state = Promise.State.Resolved;
+                            owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                        }
+                        else
+                        {
+                            nextRef = null;
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
                     {
                         TResult result = Invoke(arg);
-                        owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
-                        valueContainer.Release();
+                        ValueContainer oldContainer = valueContainer;
+                        owner.WaitFor(CreateResolved(result, 0), ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                        oldContainer.Release();
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
@@ -477,13 +508,22 @@ namespace Proto.Promises
                         if (cancelationHelper.TryUnregister(owner))
                         {
                             TResult result = Invoke(arg);
-                            owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
-                            valueContainer.Release();
+                            ValueContainer oldContainer = valueContainer;
+                            owner.WaitFor(CreateResolved(result, 0), ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                            oldContainer.Release();
+                        }
+                        else
+                        {
+                            nextRef = null;
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
             }
@@ -534,41 +574,48 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     Promise<TResult> result = Invoke(valueContainer.GetValue<TArg>());
-                    owner.WaitFor(result, ref executionScheduler);
-                    valueContainer.Release();
+                    ValueContainer oldContainer = valueContainer;
+                    owner.WaitFor(result, ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                    oldContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
                     {
                         Promise<TResult> result = Invoke(arg);
-                        owner.WaitFor(result, ref executionScheduler);
-                        valueContainer.Release();
+                        ValueContainer oldContainer = valueContainer;
+                        owner.WaitFor(result, ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                        oldContainer.Release();
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
                     {
                         Promise<TResult> result = Invoke(arg);
-                        owner.WaitFor(result, ref executionScheduler);
-                        valueContainer.Release();
+                        ValueContainer oldContainer = valueContainer;
+                        owner.WaitFor(result, ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                        oldContainer.Release();
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
@@ -576,13 +623,22 @@ namespace Proto.Promises
                         if (cancelationHelper.TryUnregister(owner))
                         {
                             Promise<TResult> result = Invoke(arg);
-                            owner.WaitFor(result, ref executionScheduler);
-                            valueContainer.Release();
+                            ValueContainer oldContainer = valueContainer;
+                            owner.WaitFor(result, ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                            oldContainer.Release();
+                        }
+                        else
+                        {
+                            nextRef = null;
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
             }
@@ -633,12 +689,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
                     bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
-                    ValueContainer resolveContainer;
                     if (isVoidResult)
                     {
                         if (isVoidArg)
@@ -650,7 +705,7 @@ namespace Proto.Promises
                             ((Promise<TArg>.ContinueAction) _callback).Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                         }
                         valueContainer.Release();
-                        resolveContainer = ResolveContainerVoid.GetOrCreate();
+                        valueContainer = ResolveContainerVoid.GetOrCreate();
                     }
                     else
                     {
@@ -664,17 +719,22 @@ namespace Proto.Promises
                             result = ((Promise<TArg>.ContinueFunc<TResult>) _callback).Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                         }
                         valueContainer.Release();
-                        resolveContainer = CreateResolveContainer(result);
+                        valueContainer = CreateResolveContainer(result);
                     }
-                    owner.ResolveInternal(resolveContainer, ref executionScheduler);
+                    state = Promise.State.Resolved;
+                    owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionScheduler);
+                        Invoke(ref valueContainer, ref state, out nextRef, owner, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
             }
@@ -725,7 +785,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
@@ -755,16 +815,21 @@ namespace Proto.Promises
                             result = ((Promise<TArg>.ContinueFunc<Promise<TResult>>) _callback).Invoke(new Promise<TArg>.ResultContainer(valueContainer));
                         }
                     }
-                    owner.WaitFor(result, ref executionScheduler);
-                    valueContainer.Release();
+                    ValueContainer oldContainer = valueContainer;
+                    owner.WaitFor(result, ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                    oldContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionScheduler);
+                        Invoke(ref valueContainer, ref state, out nextRef, owner, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
             }
@@ -895,61 +960,73 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
                     valueContainer.Release();
-                    owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
+                    valueContainer = CreateResolveContainer(result);
+                    state = Promise.State.Resolved;
+                    owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
                     {
                         TResult result = Invoke(arg);
                         valueContainer.Release();
-                        owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
+                        valueContainer = CreateResolveContainer(result);
+                        state = Promise.State.Resolved;
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TResult result = Invoke(valueContainer.GetValue<TArg>());
-                    owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
-                    valueContainer.Release();
+                    ValueContainer oldContainer = valueContainer;
+                    owner.WaitFor(CreateResolved(result, 0), ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                    oldContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
                     {
                         TResult result = Invoke(arg);
-                        owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
-                        valueContainer.Release();
+                        ValueContainer oldContainer = valueContainer;
+                        owner.WaitFor(CreateResolved(result, 0), ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                        oldContainer.Release();
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
 
-                void IDelegateReject.InvokeRejecter(ValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateReject.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
                     {
                         TResult result = Invoke(arg);
                         valueContainer.Release();
-                        owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
+                        valueContainer = CreateResolveContainer(result);
+                        state = Promise.State.Resolved;
                     }
-                    else
-                    {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
-                    }
+                    owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                 }
 
-                void IDelegateReject.InvokeRejecter(ValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateReject.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
@@ -958,31 +1035,42 @@ namespace Proto.Promises
                         {
                             TResult result = Invoke(arg);
                             valueContainer.Release();
-                            owner.ResolveInternal(CreateResolveContainer(result), ref executionScheduler);
+                            valueContainer = CreateResolveContainer(result);
+                            state = Promise.State.Resolved;
+                            owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                        }
+                        else
+                        {
+                            nextRef = null;
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
                     {
                         TResult result = Invoke(arg);
-                        owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
-                        valueContainer.Release();
+                        ValueContainer oldContainer = valueContainer;
+                        owner.WaitFor(CreateResolved(result, 0), ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                        oldContainer.Release();
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
@@ -990,13 +1078,22 @@ namespace Proto.Promises
                         if (cancelationHelper.TryUnregister(owner))
                         {
                             TResult result = Invoke(arg);
-                            owner.WaitFor(CreateResolved(result, 0), ref executionScheduler);
-                            valueContainer.Release();
+                            ValueContainer oldContainer = valueContainer;
+                            owner.WaitFor(CreateResolved(result, 0), ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                            oldContainer.Release();
+                        }
+                        else
+                        {
+                            nextRef = null;
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
             }
@@ -1059,41 +1156,48 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     Promise<TResult> result = Invoke(valueContainer.GetValue<TArg>());
-                    owner.WaitFor(result, ref executionScheduler);
-                    valueContainer.Release();
+                    ValueContainer oldContainer = valueContainer;
+                    owner.WaitFor(result, ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                    oldContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = valueContainer.GetValue<TArg>();
                     if (cancelationHelper.TryUnregister(owner))
                     {
                         Promise<TResult> result = Invoke(arg);
-                        owner.WaitFor(result, ref executionScheduler);
-                        valueContainer.Release();
+                        ValueContainer oldContainer = valueContainer;
+                        owner.WaitFor(result, ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                        oldContainer.Release();
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
                     {
                         Promise<TResult> result = Invoke(arg);
-                        owner.WaitFor(result, ref executionScheduler);
-                        valueContainer.Release();
+                        ValueContainer oldContainer = valueContainer;
+                        owner.WaitFor(result, ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                        oldContainer.Release();
                     }
                     else
                     {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (valueContainer.TryGetValue(out arg))
@@ -1101,13 +1205,22 @@ namespace Proto.Promises
                         if (cancelationHelper.TryUnregister(owner))
                         {
                             Promise<TResult> result = Invoke(arg);
-                            owner.WaitFor(result, ref executionScheduler);
-                            valueContainer.Release();
+                            ValueContainer oldContainer = valueContainer;
+                            owner.WaitFor(result, ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                            oldContainer.Release();
+                        }
+                        else
+                        {
+                            nextRef = null;
                         }
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
-                        owner.RejectOrCancelInternal(valueContainer, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
             }
@@ -1164,12 +1277,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ValueContainer valueContainer, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
                     bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
-                    ValueContainer resolveContainer;
                     if (isVoidResult)
                     {
                         if (isVoidArg)
@@ -1181,7 +1293,7 @@ namespace Proto.Promises
                             ((Promise<TArg>.ContinueAction<TCapture>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                         }
                         valueContainer.Release();
-                        resolveContainer = ResolveContainerVoid.GetOrCreate();
+                        valueContainer = ResolveContainerVoid.GetOrCreate();
                     }
                     else
                     {
@@ -1195,17 +1307,22 @@ namespace Proto.Promises
                             result = ((Promise<TArg>.ContinueFunc<TCapture, TResult>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                         }
                         valueContainer.Release();
-                        resolveContainer = CreateResolveContainer(result);
+                        valueContainer = CreateResolveContainer(result);
                     }
-                    owner.ResolveInternal(resolveContainer, ref executionScheduler);
+                    state = Promise.State.Resolved;
+                    owner.SetResultAndMaybeHandle(valueContainer, state, out nextRef, ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ValueContainer valueContainer, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionScheduler);
+                        Invoke(ref valueContainer, ref state, out nextRef, owner, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
             }
@@ -1262,7 +1379,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ValueContainer valueContainer, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
@@ -1292,16 +1409,21 @@ namespace Proto.Promises
                             result = ((Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(valueContainer));
                         }
                     }
-                    owner.WaitFor(result, ref executionScheduler);
-                    valueContainer.Release();
+                    ValueContainer oldContainer = valueContainer;
+                    owner.WaitFor(result, ref valueContainer, ref state, out nextRef, ref executionScheduler);
+                    oldContainer.Release();
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ValueContainer valueContainer, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref ValueContainer valueContainer, ref Promise.State state, out PromiseSingleAwait nextRef, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
                 {
                     if (cancelationHelper.TryUnregister(owner))
                     {
-                        Invoke(valueContainer, owner, ref executionScheduler);
+                        Invoke(ref valueContainer, ref state, out nextRef, owner, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextRef = null;
                     }
                 }
             }

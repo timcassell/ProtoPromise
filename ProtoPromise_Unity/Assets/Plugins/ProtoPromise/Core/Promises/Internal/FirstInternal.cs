@@ -94,16 +94,7 @@ namespace Proto.Promises
 
                 internal override void Handle(ref ExecutionScheduler executionScheduler)
                 {
-                    ValueContainer valueContainer = (ValueContainer) _valueOrPrevious;
-                    Promise.State state = valueContainer.GetState();
-                    State = state;
-                    HandleWaiter(valueContainer, ref executionScheduler);
-                    HandleProgressListener(state, ref executionScheduler);
-
-                    if (InterlockedAddWithOverflowCheck(ref _firstSmallFields._waitCount, -1, 0) == 0)
-                    {
-                        MaybeDispose();
-                    }
+                    Handle(ref _firstSmallFields._waitCount, ref executionScheduler);
                 }
 
                 internal override void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)

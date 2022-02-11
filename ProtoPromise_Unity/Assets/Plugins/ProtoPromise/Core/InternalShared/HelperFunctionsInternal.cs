@@ -221,7 +221,7 @@ namespace Proto.Promises
                 // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
                 try
                 {
-                    ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+                    var executionScheduler = new ExecutionScheduler(true);
                     ((HandleablePromiseBase) state).Handle(ref executionScheduler);
                     executionScheduler.Execute();
                 }
