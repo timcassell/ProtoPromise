@@ -139,18 +139,6 @@ namespace Proto.Promises
 #endif
             }
 
-            [MethodImpl(InlineOption)]
-            internal ExecutionScheduler GetEmptyCopy()
-            {
-                bool isExecutingProgress =
-#if PROMISE_PROGRESS && (PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
-                    _isExecutingProgress;
-#else
-                    false;
-#endif
-                return new ExecutionScheduler(_synchronizationHandler, isExecutingProgress);
-            }
-
             internal void Execute()
             {
                 // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.

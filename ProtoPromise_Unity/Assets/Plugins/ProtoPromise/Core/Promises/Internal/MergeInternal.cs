@@ -25,32 +25,24 @@ namespace Proto.Promises
             {
                 protected void Handle(ref int _waitCount, ref ExecutionScheduler executionScheduler)
                 {
-                    ValueContainer valueContainer = (ValueContainer) _valueOrPrevious;
-                    Promise.State state = valueContainer.GetState();
+                    var valueContainer = (ValueContainer) _valueOrPrevious;
+                    var state = valueContainer.GetState();
                     State = state;
-                    Thread.MemoryBarrier();
-                    HandleablePromiseBase waiter = Interlocked.Exchange(ref _waiter, null);
-                    HandleProgressListener(state, ref executionScheduler);
-
-                    bool allPassthroughsComplete = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0;
-
-                    if (waiter != null)
+                    HandleablePromiseBase nextHandler;
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                    lock (this)
+#endif
                     {
-                        PromiseSingleAwait handler = this;
-                        if (!allPassthroughsComplete)
-                        {
-                            InterlockedRetainDisregardId(); // Retain since Handle will release indiscriminately.
-                        }
-                        waiter.Handle(ref valueContainer, ref state, ref handler, ref executionScheduler);
-                        if (handler != null)
-                        {
-                            handler.Handle(valueContainer, state, ref executionScheduler);
-                        }
+                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                        nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
-                    else if (allPassthroughsComplete)
+                    HandleProgressListener(state, ref executionScheduler);
+                    InterlockedRetainDisregardId(); // Retain since Handle will release indiscriminately.
+                    if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
                     {
                         MaybeDispose();
                     }
+                    MaybeHandleNext(nextHandler, valueContainer, state, ref executionScheduler);
                 }
             }
 

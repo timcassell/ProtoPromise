@@ -218,7 +218,7 @@ namespace Proto.Promises
                 private enum ScheduleMethod : int
                 {
                     None,
-                    MakeReady,
+                    Handle,
                     AddWaiter,
                     OnForgetOrHookupFailed
                 }
@@ -582,7 +582,6 @@ namespace Proto.Promises
 
             partial class AsyncPromiseRef : AsyncPromiseBase
             {
-                private long _completionState;
 #if PROMISE_PROGRESS
                 private float _minProgress;
                 private float _maxProgress;
