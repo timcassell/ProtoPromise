@@ -60,9 +60,8 @@ namespace Proto.Promises
     {
         // This is used so that _result will be packed efficiently and not padded with extra bytes (only relevant for small, non-primitive struct T types).
         // Otherwise, if all fields are on the same level as _ref, because it is a class type, it will pad T up to IntPtr.Size if T is not primitive, causing the Promise<T> struct to be larger than necessary.
-        // This is especially needed for Promise, which has an internal Promise<Internal.VoidResult> field (and sadly, the runtime does not allow 0-sized structs, minimum size is 1 byte).
+        // This is especially needed for `Promise`, which has an internal `Promise<Internal.VoidResult>` field (and sadly, the runtime does not allow 0-sized structs, minimum size is 1 byte).
         // See https://stackoverflow.com/questions/24742325/why-does-struct-alignment-depend-on-whether-a-field-type-is-primitive-or-user-de
-        [StructLayout(LayoutKind.Auto)]
         private
 #if CSHARP_7_3_OR_NEWER
             readonly
@@ -616,5 +615,27 @@ namespace Proto.Promises
             } // AsyncPromiseRef
 #endif // CSHARP_7_3_OR_NEWER
         } // PromiseRef
+
+#if CSHARP_7_3_OR_NEWER
+        partial struct PromiseMethodBuilderInternal<T>
+        {
+#if PROMISE_DEBUG
+            private readonly PromiseRef.AsyncPromiseRef _ref;
+#else
+            // This is used so that _result will be packed efficiently and not padded with extra bytes (only relevant for small, non-primitive struct T types).
+            // Otherwise, if all fields are on the same level as _ref, because it is a class type, it will pad T up to IntPtr.Size if T is not primitive, causing the Promise<T> struct to be larger than necessary.
+            // This is especially needed for `Promise`, which uses `Internal.VoidResult` as T (and sadly, the runtime does not allow 0-sized structs, minimum size is 1 byte).
+            // See https://stackoverflow.com/questions/24742325/why-does-struct-alignment-depend-on-whether-a-field-type-is-primitive-or-user-de
+            private struct SmallFields
+            {
+                internal short _id;
+                internal T _result;
+            }
+
+            private PromiseRef.AsyncPromiseRef _ref;
+            private SmallFields _smallFields;
+#endif // PROMISE_DEBUG
+#endif // CSHARP_7_3_OR_NEWER
+        }
     } // Internal
 }

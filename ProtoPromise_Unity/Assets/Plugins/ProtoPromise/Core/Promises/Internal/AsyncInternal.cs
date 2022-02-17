@@ -214,10 +214,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal struct PromiseMethodBuilderInternal<T>
+        internal partial struct PromiseMethodBuilderInternal<T>
         {
-            private readonly PromiseRef.AsyncPromiseRef _ref;
-
             [MethodImpl(InlineOption)]
             private PromiseMethodBuilderInternal(PromiseRef.AsyncPromiseRef promise)
             {
@@ -298,17 +296,12 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        [StructLayout(LayoutKind.Auto)]
-        internal struct PromiseMethodBuilderInternal<T>
+        internal partial struct PromiseMethodBuilderInternal<T>
         {
-            private PromiseRef.AsyncPromiseRef _ref;
-            private short _id;
-            private T _result;
-
             public Promise<T> Task
             {
                 [MethodImpl(InlineOption)]
-                get { return new Promise<T>(_ref, _id, 0, _result); }
+                get { return new Promise<T>(_ref, _smallFields._id, 0, _smallFields._result); }
             }
 
             [MethodImpl(InlineOption)]
@@ -322,7 +315,7 @@ namespace Proto.Promises
                 if (_ref is null)
                 {
                     _ref = PromiseRef.AsyncPromiseRef.GetOrCreate();
-                    _id = _ref.Id;
+                    _smallFields._id = _ref.Id;
                 }
                 _ref.SetException(exception);
             }
@@ -331,8 +324,8 @@ namespace Proto.Promises
             {
                 if (_ref is null)
                 {
-                    _result = result;
-                    _id = ValidIdFromApi;
+                    _smallFields._result = result;
+                    _smallFields._id = ValidIdFromApi;
                 }
                 else
                 {
@@ -391,7 +384,7 @@ namespace Proto.Promises
                 if (_ref is null)
                 {
                     PromiseRef.AsyncPromiseRef.SetStateMachine(ref stateMachine, ref _ref);
-                    _id = _ref.Id;
+                    _smallFields._id = _ref.Id;
                 }
             }
         }
