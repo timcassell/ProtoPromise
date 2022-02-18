@@ -609,7 +609,7 @@ namespace Proto.Promises
                             Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                             nextHandler = Interlocked.Exchange(ref _waiter, null);
                         }
-                        HandleProgressListener(state, ref executionScheduler);
+                        HandleProgressListener(state, 0, ref executionScheduler);
                         WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         handler.MaybeDispose();
                         handler = this;

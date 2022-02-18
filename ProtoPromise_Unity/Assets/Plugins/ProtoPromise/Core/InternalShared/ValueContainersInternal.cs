@@ -238,7 +238,7 @@ namespace Proto.Promises
             }
 #endif
 
-                    private RejectionContainerException() { }
+            private RejectionContainerException() { }
 
             internal static RejectionContainerException GetOrCreate(Exception value)
             {

@@ -80,6 +80,8 @@ namespace Proto.Promises
                     owner.WaitWhileProgressFlags(PromiseFlags.Subscribing);
                     if (madeReady)
                     {
+                        handler.MaybeDispose();
+                        handler = owner;
                         owner.HandleWithCatch(ref handler, ref valueContainer, ref state, out nextHandler, ref executionScheduler);
                     }
                     else
@@ -163,7 +165,7 @@ namespace Proto.Promises
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
-                    HandleProgressListener(Promise.State.Canceled, ref executionScheduler);
+                    HandleProgressListener(Promise.State.Canceled, Depth, ref executionScheduler);
                     MaybeHandleNext(nextHandler, valueContainer, Promise.State.Canceled, ref executionScheduler);
                     executionScheduler.Execute();
                 }

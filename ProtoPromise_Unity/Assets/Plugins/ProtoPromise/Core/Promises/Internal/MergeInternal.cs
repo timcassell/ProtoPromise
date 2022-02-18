@@ -36,7 +36,7 @@ namespace Proto.Promises
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
-                    HandleProgressListener(state, ref executionScheduler);
+                    HandleProgressListener(state, Depth, ref executionScheduler);
                     InterlockedRetainDisregardId(); // Retain since Handle will release indiscriminately.
                     if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
                     {
@@ -273,11 +273,6 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class MergePromise : IProgressInvokable
             {
-                internal override void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler)
-                {
-                    HandleProgressListener(state, Fixed32.FromWholePlusOne(Depth), ref executionScheduler);
-                }
-
                 protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
                 {
                     // Unnecessary to set last known since we know SetInitialProgress will be called on this.

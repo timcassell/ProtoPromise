@@ -21,6 +21,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 
 using System;
@@ -246,11 +247,7 @@ namespace Proto.Promises
 #endif
                 }
 
-#if PROTO_PROMISE_NO_STACK_UNWIND // Must use a queue instead of a stack so that the ExecutionScheduler.ScheduleSynchronous can invoke immediately and still be in proper order.
                 private ValueLinkedQueue<HandleablePromiseBase> _nextBranches = new ValueLinkedQueue<HandleablePromiseBase>();
-#else
-                private ValueLinkedStack<HandleablePromiseBase> _nextBranches = new ValueLinkedStack<HandleablePromiseBase>();
-#endif
                 private ProgressAndLocker _progressAndLocker;
 
 #if PROMISE_PROGRESS
@@ -538,6 +535,7 @@ namespace Proto.Promises
                     volatile internal bool _complete;
                     volatile internal bool _canceled;
                     internal bool _isSynchronous;
+                    internal Promise.State _previousState;
                 }
 
                 private ProgressSmallFields _smallProgressFields;
@@ -635,7 +633,7 @@ namespace Proto.Promises
             private PromiseRef.AsyncPromiseRef _ref;
             private SmallFields _smallFields;
 #endif // PROMISE_DEBUG
-#endif // CSHARP_7_3_OR_NEWER
         }
+#endif // CSHARP_7_3_OR_NEWER
     } // Internal
 }

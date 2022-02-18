@@ -384,21 +384,21 @@ namespace Proto.Promises
                             valueContainer = CreateRejectContainer(e, int.MinValue, this);
                             state = Promise.State.Rejected;
                         }
-                        SetResultAndMaybeHandle(valueContainer, state, out nextHandler, ref executionScheduler);
+                        SetResultAndMaybeHandleFromCatch(valueContainer, state, out nextHandler, ref executionScheduler);
                     }
                     catch (OperationCanceledException)
                     {
                         valueContainer.ReleaseAndMaybeAddToUnhandledStack(!suppressRejection);
                         valueContainer = CancelContainerVoid.GetOrCreate();
                         state = Promise.State.Canceled;
-                        SetResultAndMaybeHandle(valueContainer, state, out nextHandler, ref executionScheduler);
+                        SetResultAndMaybeHandleFromCatch(valueContainer, state, out nextHandler, ref executionScheduler);
                     }
                     catch (Exception e)
                     {
                         valueContainer.ReleaseAndMaybeAddToUnhandledStack(!suppressRejection);
                         valueContainer = CreateRejectContainer(e, int.MinValue, this);
                         state = Promise.State.Rejected;
-                        SetResultAndMaybeHandle(valueContainer, state, out nextHandler, ref executionScheduler);
+                        SetResultAndMaybeHandleFromCatch(valueContainer, state, out nextHandler, ref executionScheduler);
                     }
                     ClearCurrentInvoker();
                 }
@@ -419,7 +419,49 @@ namespace Proto.Promises
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
-                    HandleProgressListener(state, ref executionScheduler);
+#if PROTO_PROMISE_NO_STACK_UNWIND
+                    nextHandler = null;
+                    MaybeHandleNext(nextHandler, valueContainer, state, ref executionScheduler);
+#endif
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void SetResultAndMaybeHandleFromCatch(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                {
+                    SetResult(valueContainer, state);
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                    lock (this)
+#endif
+                    {
+                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                        nextHandler = Interlocked.Exchange(ref _waiter, null);
+                    }
+                    HandleProgressListener(state, Depth, ref executionScheduler);
+#if PROTO_PROMISE_NO_STACK_UNWIND
+                    nextHandler = null;
+                    MaybeHandleNext(nextHandler, valueContainer, state, ref executionScheduler);
+#endif
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal abstract partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
+            {
+
+                [MethodImpl(InlineOption)]
+                new internal void SetResultAndMaybeHandle(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                {
+                    SetResult(valueContainer, state);
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                    lock (this)
+#endif
+                    {
+                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                        nextHandler = Interlocked.Exchange(ref _waiter, null);
+                    }
+                    HandleProgressListener(state, Depth, ref executionScheduler);
 #if PROTO_PROMISE_NO_STACK_UNWIND
                     nextHandler = null;
                     MaybeHandleNext(nextHandler, valueContainer, state, ref executionScheduler);
@@ -482,11 +524,7 @@ namespace Proto.Promises
                         state = State;
                         if (state == Promise.State.Pending)
                         {
-#if PROTO_PROMISE_NO_STACK_UNWIND
                             _nextBranches.Enqueue(waiter);
-#else
-                            _nextBranches.Push(waiter);
-#endif
                             _progressAndLocker._branchLocker.Exit();
 
                             MaybeDispose();
@@ -515,11 +553,7 @@ namespace Proto.Promises
                         state = State;
                         if (state == Promise.State.Pending)
                         {
-#if PROTO_PROMISE_NO_STACK_UNWIND
                             _nextBranches.Enqueue(waiter);
-#else
-                            _nextBranches.Push(waiter);
-#endif
                             _progressAndLocker._branchLocker.Exit();
                             nextHandler = null;
                             return;
@@ -555,12 +589,7 @@ namespace Proto.Promises
                 private void HandleBranches(ValueContainer valueContainer, Promise.State state, ref ExecutionScheduler executionScheduler)
                 {
                     _progressAndLocker._branchLocker.Enter();
-#if PROTO_PROMISE_NO_STACK_UNWIND
                     var branches = _nextBranches.MoveElementsToStack();
-#else
-                    var branches = _nextBranches;
-                    _nextBranches = new ValueLinkedStack<HandleablePromiseBase>();
-#endif
                     _progressAndLocker._branchLocker.Exit();
                     while (branches.IsNotEmpty)
                     {
@@ -574,13 +603,6 @@ namespace Proto.Promises
                         handler.MaybeHandleNext(nextHandler, _valueContainer, _state, ref executionScheduler);
                     }
                 }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal abstract partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
-            {
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -763,24 +785,6 @@ namespace Proto.Promises
                     _valueOrPrevious = other;
                 }
 #endif
-
-                [MethodImpl(InlineOption)]
-                new private void SetResultAndMaybeHandle(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    SetResult(valueContainer, state);
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
-                    {
-                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                        nextHandler = Interlocked.Exchange(ref _waiter, null);
-                    }
-                    HandleProgressListener(state, ref executionScheduler);
-#if PROTO_PROMISE_NO_STACK_UNWIND
-                    nextHandler = null;
-                    MaybeHandleNext(nextHandler, valueContainer, state, ref executionScheduler);
-#endif
-                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -809,7 +813,7 @@ namespace Proto.Promises
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
-                    HandleProgressListener(state, ref executionScheduler);
+                    HandleProgressListener(state, 0, ref executionScheduler);
                     MaybeHandleNext(nextHandler, valueContainer, state, ref executionScheduler);
                     executionScheduler.Execute();
                 }

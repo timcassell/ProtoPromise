@@ -126,11 +126,6 @@ namespace Proto.Promises
                     base.Reset(depth);
                 }
 
-                internal override void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler)
-                {
-                    HandleProgressListener(state, Fixed32.FromWholePlusOne(Depth), ref executionScheduler);
-                }
-
                 protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
                 {
                     // Unnecessary to set last known since we know SetInitialProgress will be called on this.

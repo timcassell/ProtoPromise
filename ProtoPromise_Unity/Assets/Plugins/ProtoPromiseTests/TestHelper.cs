@@ -1,4 +1,9 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
@@ -107,6 +112,10 @@ namespace ProtoPromiseTests
             GC.WaitForPendingFinalizers();
             GC.Collect();
             ExecuteForegroundCallbacks();
+
+#if PROMISE_DEBUG
+            Internal.AssertAllObjectsReleased();
+#endif
 
             Exception[] exceptions;
             lock (_uncaughtExceptions)
