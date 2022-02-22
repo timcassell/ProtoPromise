@@ -25,6 +25,7 @@ namespace Proto.Promises
             {
                 protected void Handle(ref int _waitCount, ref ExecutionScheduler executionScheduler)
                 {
+                    ThrowIfInPool(this);
                     var valueContainer = (ValueContainer) _valueOrPrevious;
                     var state = valueContainer.GetState();
                     State = state;

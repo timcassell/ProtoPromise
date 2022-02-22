@@ -76,6 +76,13 @@ namespace Proto.Promises
             internal static T TryTake<T>() where T : class, TLinked
             {
                 TLinked obj = Type<T>.TryTake();
+#if PROMISE_DEBUG
+                if (_trackObjectsForRelease & obj == null)
+                {
+                    // Create here via reflection so that the object can be tracked.
+                    obj = (TLinked) Activator.CreateInstance(typeof(T), true);
+                }
+#endif
                 MarkNotInPool(obj);
                 return (T) obj;
             }
@@ -117,9 +124,9 @@ namespace Proto.Promises
                 lock (_pooledObjects)
                 {
                     _pooledObjects.Remove(obj);
-                    if (obj != null && !_inUseObjects.Add(obj))
+                    if (_trackObjectsForRelease && !_inUseObjects.Add(obj))
                     {
-                        throw new Exception("Same object was taken from the the pool twice: " + obj);
+                        throw new Exception("Same object was taken from the pool twice: " + obj);
                     }
                 }
             }
@@ -128,6 +135,7 @@ namespace Proto.Promises
 
         static partial void ThrowIfInPool(object obj);
 #if PROMISE_DEBUG
+        private static bool _trackObjectsForRelease = false;
         private static readonly HashSet<object> _pooledObjects = new HashSet<object>();
         private static readonly HashSet<object> _inUseObjects = new HashSet<object>();
 
@@ -153,6 +161,12 @@ namespace Proto.Promises
             }
         }
 
+        // This is used in unit testing, because finalizers are not guaranteed to run, even when calling `GC.WaitForPendingFinalizers()`.
+        internal static void TrackObjectsForRelease()
+        {
+            _trackObjectsForRelease = true;
+        }
+
         internal static void AssertAllObjectsReleased()
         {
             lock (_pooledObjects)
@@ -175,4 +189,3 @@ namespace Proto.Promises
 #endif
     }
 }
-

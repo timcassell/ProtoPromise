@@ -846,7 +846,7 @@ namespace Proto.Promises
                     {
                         progress = Fixed32.FromWholePlusOne(Depth);
                         WaitWhileProgressFlags(PromiseFlags.ReportingPriority | PromiseFlags.ReportingInitial);
-                        progressListener.SetInitialProgress(this, Promise.State.Canceled, ref progress, out nextRef, ref executionScheduler);
+                        progressListener.SetInitialProgress(this, state, ref progress, out nextRef, ref executionScheduler);
                         return;
                     }
                     nextRef = null;
@@ -962,6 +962,8 @@ namespace Proto.Promises
                             }
 
                             // If this was configured to execute progress on a SynchronizationContext or the ThreadPool, force the waiter to execute on the same context for consistency.
+                            // Retain since this will be released higher in the call stack.
+                            InterlockedRetainDisregardId();
                             if (_synchronizationContext == null)
                             {
                                 // If there is no context, send it to the ThreadPool.
