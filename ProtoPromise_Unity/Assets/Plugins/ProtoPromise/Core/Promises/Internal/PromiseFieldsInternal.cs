@@ -617,7 +617,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
         partial struct PromiseMethodBuilderInternal<T>
         {
-#if PROMISE_DEBUG
+#if !OPTIMIZED_ASYNC_MODE
             private readonly PromiseRef.AsyncPromiseRef _ref;
 #else
             // This is used so that _result will be packed efficiently and not padded with extra bytes (only relevant for small, non-primitive struct T types).
@@ -632,7 +632,7 @@ namespace Proto.Promises
 
             private PromiseRef.AsyncPromiseRef _ref;
             private SmallFields _smallFields;
-#endif // PROMISE_DEBUG
+#endif // !OPTIMIZED_ASYNC_MODE
         }
 #endif // CSHARP_7_3_OR_NEWER
     } // Internal

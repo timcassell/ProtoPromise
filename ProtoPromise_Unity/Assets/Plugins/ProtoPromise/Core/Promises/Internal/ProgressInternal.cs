@@ -189,7 +189,7 @@ namespace Proto.Promises
             }
 
 #if !PROMISE_PROGRESS
-            partial void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler);
+            partial void HandleProgressListener(Promise.State state, ushort depth, ref ExecutionScheduler executionScheduler);
 #else
 
             private void SubscribeListener(IProgressListener progressListener, Fixed32 depthAndProgress, ref ExecutionScheduler executionScheduler)
