@@ -320,7 +320,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -338,7 +337,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -407,12 +405,12 @@ namespace Proto.Promises
                     {
                         TResult result = Invoke(arg);
                         owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                        handler = owner;
                     }
                     else
                     {
                         nextHandler = null;
                     }
-                    handler = owner;
                 }
 
                 [MethodImpl(InlineOption)]
@@ -433,7 +431,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -462,12 +459,12 @@ namespace Proto.Promises
                         {
                             TResult result = Invoke(arg);
                             owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                            handler = owner;
                         }
                         else
                         {
                             nextHandler = null;
                         }
-                        handler = owner;
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
@@ -475,7 +472,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -506,7 +502,6 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            handler = owner;
                             nextHandler = null;
                         }
                     }
@@ -516,7 +511,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -585,7 +579,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -616,7 +609,6 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            handler = owner;
                             nextHandler = null;
                         }
                     }
@@ -626,7 +618,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -722,7 +713,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -816,7 +806,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -963,12 +952,12 @@ namespace Proto.Promises
                     {
                         TResult result = Invoke(arg);
                         owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                        handler = owner;
                     }
                     else
                     {
                         nextHandler = null;
                     }
-                    handler = owner;
                 }
 
                 [MethodImpl(InlineOption)]
@@ -989,7 +978,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -1018,12 +1006,12 @@ namespace Proto.Promises
                         {
                             TResult result = Invoke(arg);
                             owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                            handler = owner;
                         }
                         else
                         {
                             nextHandler = null;
                         }
-                        handler = owner;
                     }
                     else if (cancelationHelper.TryUnregister(owner))
                     {
@@ -1031,7 +1019,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -1062,7 +1049,6 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            handler = owner;
                             nextHandler = null;
                         }
                     }
@@ -1072,7 +1058,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -1153,7 +1138,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -1184,7 +1168,6 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            handler = owner;
                             nextHandler = null;
                         }
                     }
@@ -1194,7 +1177,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -1296,7 +1278,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }
@@ -1396,7 +1377,6 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = owner;
                         nextHandler = null;
                     }
                 }

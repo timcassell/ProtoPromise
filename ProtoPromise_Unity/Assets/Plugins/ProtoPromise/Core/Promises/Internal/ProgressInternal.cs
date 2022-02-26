@@ -683,7 +683,24 @@ namespace Proto.Promises
                     promise._smallProgressFields._currentProgress = default(Fixed32);
                     promise._smallProgressFields._isSynchronous = isSynchronous;
                     promise._synchronizationContext = synchronizationContext;
-                    cancelationToken.TryRegister(promise, out promise._cancelationRegistration);
+                    cancelationToken.TryRegister(promise, out promise._cancelationRegistration); // Very important, must register after promise is fully setup.
+                    return promise;
+                }
+
+                internal static PromiseProgress<TProgress> GetOrCreateFromNull(TProgress progress, CancelationToken cancelationToken, ushort depth, SynchronizationContext synchronizationContext, ValueContainer valueContainer)
+                {
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseProgress<TProgress>>()
+                        ?? new PromiseProgress<TProgress>();
+                    promise.Reset(depth);
+                    promise._progress = progress;
+                    promise.IsComplete = true;
+                    promise.IsCanceled = false;
+                    promise._smallProgressFields._currentProgress = default(Fixed32);
+                    promise._smallProgressFields._isSynchronous = false;
+                    promise._smallProgressFields._previousState = Promise.State.Resolved;
+                    promise._synchronizationContext = synchronizationContext;
+                    promise._valueOrPrevious = valueContainer;
+                    cancelationToken.TryRegister(promise, out promise._cancelationRegistration); // Very important, must register after promise is fully setup.
                     return promise;
                 }
 
