@@ -685,6 +685,7 @@ namespace Proto.Promises
                 {
                     var promise = GetOrCreate(synchronizationContext, depth);
                     promise._valueOrPrevious = CreateResolveContainer(result);
+                    promise._previousState = Promise.State.Resolved;
                     promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.Handle;
                     return promise;
                 }
