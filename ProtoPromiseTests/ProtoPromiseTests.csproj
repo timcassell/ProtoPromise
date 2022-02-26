@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>net5.0;net472</TargetFrameworks>
     <IsPackable>false</IsPackable>
-    <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER;CSHARP_7_OR_LATER</DefineConstants>
+    <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER</DefineConstants>
     <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
@@ -34,6 +34,7 @@
   
   <ItemGroup>
     <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromiseTests\**/*.cs" />
+    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromiseTests\Threading\ForOldRuntime\**/*" />
   </ItemGroup>
 
 </Project>

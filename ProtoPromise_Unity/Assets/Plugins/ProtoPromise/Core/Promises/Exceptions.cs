@@ -124,7 +124,13 @@ namespace Proto.Promises
 #endif
     public class UnreleasedObjectException : Exception
     {
-        public UnreleasedObjectException(string message) : base(message) { }
+        public UnreleasedObjectException(string message, string stackTrace = null, Exception innerException = null) : base(message, innerException)
+        {
+            _stackTrace = stackTrace;
+        }
+
+        private readonly string _stackTrace;
+        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

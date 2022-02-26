@@ -117,7 +117,7 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal override void Handle(ref PromiseRef handler, ref ValueContainer valueContainer, ref Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     nextHandler = null;
                     Invoke();

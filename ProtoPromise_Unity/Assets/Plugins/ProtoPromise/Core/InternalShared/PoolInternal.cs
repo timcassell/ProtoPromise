@@ -176,13 +176,15 @@ namespace Proto.Promises
                     System.Text.StringBuilder sb = new System.Text.StringBuilder();
                     sb.AppendLine("Objects not released:");
                     sb.AppendLine();
+                    ITraceable traceable = null;
                     foreach (var obj in _inUseObjects)
                     {
+                        traceable = traceable ?? obj as ITraceable;
                         sb.AppendLine(obj.ToString());
                         GC.SuppressFinalize(obj); // SuppressFinalize to not spoil the results of subsequent unit tests.
                     }
                     _inUseObjects.Clear();
-                    throw new Exception(sb.ToString());
+                    throw new UnreleasedObjectException(sb.ToString(), GetFormattedStacktrace(traceable));
                 }
             }
         }

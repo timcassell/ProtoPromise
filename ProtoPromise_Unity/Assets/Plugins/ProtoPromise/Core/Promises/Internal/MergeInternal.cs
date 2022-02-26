@@ -43,7 +43,7 @@ namespace Proto.Promises
                     {
                         MaybeDispose();
                     }
-                    MaybeHandleNext(nextHandler, valueContainer, state, ref executionScheduler);
+                    MaybeHandleNext(nextHandler, ref executionScheduler);
                 }
             }
 

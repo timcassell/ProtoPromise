@@ -225,6 +225,7 @@ namespace Proto.Promises
 
                 private SynchronizationContext _synchronizationContext;
                 volatile private int _mostRecentPotentialScheduleMethod; // ScheduleMethod casted to int for Interlocked. This is to make sure this is only scheduled once, even if multiple threads are racing.
+                private Promise.State _previousState;
             }
 
             partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait

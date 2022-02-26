@@ -14,6 +14,7 @@ namespace Proto.Promises
             internal abstract object Value { get; }
 
             internal abstract void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd);
+            internal abstract void AddToUnhandledStack();
         }
 
         internal partial interface ITraceable { }

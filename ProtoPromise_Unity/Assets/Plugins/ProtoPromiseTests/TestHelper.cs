@@ -119,9 +119,6 @@ namespace ProtoPromiseTests
             GC.Collect();
 
             Internal.MaybeReportUnhandledRejections();
-#if PROMISE_DEBUG
-            Internal.AssertAllObjectsReleased();
-#endif
 
             Exception[] exceptions;
             lock (_uncaughtExceptions)
@@ -137,6 +134,10 @@ namespace ProtoPromiseTests
                 throw new AggregateException(exceptions);
 #endif
             }
+
+#if PROMISE_DEBUG
+            Internal.AssertAllObjectsReleased();
+#endif
 
             TestContext.Progress.WriteLine("Success time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
         }

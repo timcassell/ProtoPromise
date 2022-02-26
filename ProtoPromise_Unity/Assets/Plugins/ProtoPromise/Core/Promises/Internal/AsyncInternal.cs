@@ -425,7 +425,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void SetAwaitedComplete(ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                private void SetAwaitedComplete(PromiseRef handler, ref ExecutionScheduler executionScheduler)
                 {
                     _valueOrPrevious = null;
                 }
@@ -588,10 +588,10 @@ namespace Proto.Promises
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                internal override void Handle(ref PromiseRef handler, ref ValueContainer valueContainer, ref Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    SetAwaitedComplete(valueContainer, ref executionScheduler);
+                    SetAwaitedComplete(handler, ref executionScheduler);
 
                     AsyncPromiseRef previousRunner = ExchangeCurrentRunner(this);
 
@@ -600,8 +600,6 @@ namespace Proto.Promises
                     bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                     if (isComplete)
                     {
-                        valueContainer = (ValueContainer) _valueOrPrevious;
-                        state = State;
 #if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                         lock (this)
 #endif
@@ -609,7 +607,7 @@ namespace Proto.Promises
                             Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                             nextHandler = Interlocked.Exchange(ref _waiter, null);
                         }
-                        HandleProgressListener(state, 0, ref executionScheduler);
+                        HandleProgressListener(handler.State, 0, ref executionScheduler);
                         WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         handler.MaybeDispose();
                         handler = this;
@@ -659,10 +657,10 @@ namespace Proto.Promises
                         _stateMachine.MoveNext();
                     }
 
-                    internal override void Handle(ref PromiseRef handler, ref ValueContainer valueContainer, ref Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                    internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                     {
                         ThrowIfInPool(this);
-                        SetAwaitedComplete(valueContainer, ref executionScheduler);
+                        SetAwaitedComplete(handler, ref executionScheduler);
 
                         AsyncPromiseRef previousRunner = ExchangeCurrentRunner(this);
 
@@ -671,8 +669,6 @@ namespace Proto.Promises
                         bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                         if (isComplete)
                         {
-                            valueContainer = (ValueContainer) _valueOrPrevious;
-                            state = State;
 #if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                             lock (this)
 #endif
@@ -680,7 +676,7 @@ namespace Proto.Promises
                                 Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                                 nextHandler = Interlocked.Exchange(ref _waiter, null);
                             }
-                            HandleProgressListener(state, 0, ref executionScheduler);
+                            HandleProgressListener(handler.State, 0, ref executionScheduler);
                             WaitWhileProgressFlags(PromiseFlags.Subscribing);
                             handler.MaybeDispose();
                             handler = this;

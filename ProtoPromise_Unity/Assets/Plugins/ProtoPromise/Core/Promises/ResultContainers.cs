@@ -111,9 +111,9 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.ValueContainer valueContainer)
+            internal ResultContainer(Internal.PromiseRef target)
             {
-                _target = new Promise<Internal.VoidResult>.ResultContainer(valueContainer);
+                _target = new Promise<Internal.VoidResult>.ResultContainer(target);
             }
 
             /// <summary>
@@ -188,10 +188,7 @@ namespace Proto.Promises
 #endif
             partial struct ResultContainer
         {
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
-            internal readonly Internal.ValueContainer _valueContainer;
+            private readonly Internal.PromiseRef _target;
             private readonly T _result;
 #if PROMISE_DEBUG
             private readonly long _id;
@@ -218,7 +215,7 @@ namespace Proto.Promises
 #endif
                 T result)
             {
-                _valueContainer = null;
+                _target = null;
                 _result = result;
 #if PROMISE_DEBUG
                 _id = Internal.InvokeId;
@@ -229,9 +226,9 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.ValueContainer valueContainer)
+            internal ResultContainer(Internal.PromiseRef target)
             {
-                _valueContainer = valueContainer;
+                _target = target;
                 _result = default(T);
 #if PROMISE_DEBUG
                 _id = Internal.InvokeId;
@@ -239,9 +236,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            private ResultContainer(Internal.ValueContainer valueContainer, long id, T result = default(T))
+            private ResultContainer(Internal.PromiseRef target, long id, T result = default(T))
             {
-                _valueContainer = valueContainer;
+                _target = target;
                 _result = result;
 #if PROMISE_DEBUG
                 _id = id;
@@ -253,8 +250,7 @@ namespace Proto.Promises
             /// </summary>
             public void RethrowIfRejected()
             {
-                ValidateCall();
-                if (_valueContainer != null && _valueContainer.GetState() == Promise.State.Rejected)
+                if (State == Promise.State.Rejected)
                 {
                     throw Internal.ForcedRethrowException.GetOrCreate();
                 }
@@ -265,8 +261,7 @@ namespace Proto.Promises
             /// </summary>
             public void RethrowIfCanceled()
             {
-                ValidateCall();
-                if (_valueContainer != null && _valueContainer.GetState() == Promise.State.Canceled)
+                if (State == Promise.State.Canceled)
                 {
                     throw Internal.ForcedRethrowException.GetOrCreate();
                 }
@@ -280,9 +275,8 @@ namespace Proto.Promises
                 get
                 {
                     ValidateCall();
-                    return _valueContainer != null
-                        ? _valueContainer.GetState()
-                        : Promise.State.Resolved;
+                    var target = _target;
+                    return target != null ? target.State : Promise.State.Resolved;
                 }
             }
 
@@ -295,9 +289,8 @@ namespace Proto.Promises
                 {
                     ValidateCall();
                     ValidateResolved();
-                    return _valueContainer != null
-                        ? _valueContainer.GetValue<T>()
-                        : _result;
+                    var target = _target;
+                    return target != null ? target.GetResult<T>() : _result;
                 }
             }
 
@@ -311,21 +304,20 @@ namespace Proto.Promises
                 {
                     ValidateCall();
                     ValidateRejected();
-                    return new ReasonContainer(_valueContainer, Id);
+                    return new ReasonContainer((Internal.ValueContainer) _target._valueOrPrevious, Id);
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
             public static implicit operator Promise.ResultContainer(ResultContainer rhs)
             {
-                var newContainer = new Promise<Internal.VoidResult>.ResultContainer(rhs._valueContainer, rhs.Id);
+                var newContainer = new Promise<Internal.VoidResult>.ResultContainer(rhs._target, rhs.Id);
                 return new Promise.ResultContainer(newContainer);
             }
 
             partial void ValidateCall();
             partial void ValidateResolved();
             partial void ValidateRejected();
-            partial void ValidateCanceled();
 #if PROMISE_DEBUG
             partial void ValidateCall()
             {
@@ -348,14 +340,6 @@ namespace Proto.Promises
                 if (State != Promise.State.Rejected)
                 {
                     throw new InvalidOperationException("Promise must be rejected in order to access RejectContainer.", Internal.GetFormattedStacktrace(2));
-                }
-            }
-
-            partial void ValidateCanceled()
-            {
-                if (State != Promise.State.Canceled)
-                {
-                    throw new InvalidOperationException("Promise must be canceled in order to access CancelContainer.", Internal.GetFormattedStacktrace(2));
                 }
             }
 #endif
