@@ -952,19 +952,17 @@ namespace Proto.Promises
                 internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
                 {
                     HandleablePromiseBase nextHandler;
-                    PromiseRef handler = this;
-                    AddWaiter(waiter, ref handler, out nextHandler, ref executionScheduler);
+                    AddWaiter(waiter, out nextHandler, ref executionScheduler);
                     MaybeHandleNext(nextHandler, ref executionScheduler);
                 }
 
-                internal override void AddWaiter(HandleablePromiseBase waiter, ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
 #if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
                         ThrowIfInPool(this);
-                        handler = this;
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
                         Thread.MemoryBarrier();
                         SetWaiter(waiter);
@@ -1264,7 +1262,7 @@ namespace Proto.Promises
 
                 private void SetProgressFromResolve(Fixed32 progress, ref ExecutionScheduler executionScheduler)
                 {
-                    if ((_progressAndLocker._currentProgress.InterlockedTrySetFromResolve(progress))
+                    if (_progressAndLocker._currentProgress.InterlockedTrySetFromResolve(progress)
                         && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();
@@ -1923,7 +1921,7 @@ namespace Proto.Promises
                 protected override void MarkAwaited(short promiseId, PromiseFlags flags) { throw new System.InvalidOperationException(); }
                 internal override PromiseRef GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
                 internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
-                internal override void AddWaiter(HandleablePromiseBase waiter, ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
+                internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
                 internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
 #endif
             }

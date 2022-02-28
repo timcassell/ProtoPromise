@@ -33,15 +33,9 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private bool IsCanceled()
-                {
-                    return _retainAndCanceled >> 16 == 0;
-                }
-
-                [MethodImpl(InlineOption)]
                 private void RetainAndSetCanceled()
                 {
-                    // Subtract 17th bit to set canceled and add 1 to retain. This performs both operations atomically and simultaneously.
+                    // Subtract 17th bit to set canceled and add 1 to retain. This performs both operations atomically.
                     Interlocked.Add(ref _retainAndCanceled, (-(1 << 16)) + 1);
                 }
 
@@ -60,38 +54,6 @@ namespace Proto.Promises
                     owner.HandleFromCancelation();
                 }
 
-                internal void MaybeHandle(PromiseSingleAwait owner, ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    bool isCanceled = _cancelationRegistration.Token.IsCancelationRequested | IsCanceled();
-                    MaybeReleaseComplete(owner);
-                    if (isCanceled)
-                    {
-                        nextHandler = null;
-                    }
-                    else
-                    {
-                        owner.HandleWithCatch(ref handler, out nextHandler, ref executionScheduler);
-                    }
-                }
-
-                internal void MaybeHandle(PromiseSingleAwait owner, bool isSecondReady, ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    if (isSecondReady)
-                    {
-                        // The returned promise is handling owner.
-                        var valueContainer = (ValueContainer) handler._valueOrPrevious;
-                        valueContainer.Retain();
-                        owner.SetResultAndMaybeHandle(valueContainer, handler.State, out nextHandler, ref executionScheduler);
-                        owner.WaitWhileProgressFlags(PromiseFlags.Subscribing);
-                        handler.MaybeDispose();
-                        handler = owner;
-                    }
-                    else
-                    {
-                        MaybeHandle(owner, ref handler, out nextHandler, ref executionScheduler);
-                    }
-                }
-
                 internal bool TryUnregister(PromiseSingleAwait owner)
                 {
                     ThrowIfInPool(owner);
@@ -101,13 +63,12 @@ namespace Proto.Promises
                     {
                         return true;
                     }
-                    bool isCanceled = isCanceling | IsCanceled();
                     if (Release())
                     {
                         owner.MaybeDispose();
                         return false;
                     }
-                    return !isCanceled;
+                    return !isCanceling;
                 }
 
                 internal void MaybeReleaseComplete(PromiseSingleAwait owner)
@@ -172,13 +133,7 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    _cancelationHelper.MaybeHandle(this, ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref ExecutionScheduler executionScheduler)
+                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback, ref ExecutionScheduler executionScheduler)
                 {
                     var resolveCallback = _resolver;
                     if (handler.State == Promise.State.Resolved)
@@ -191,8 +146,8 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = this;
                         nextHandler = null;
+                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -234,13 +189,7 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    _cancelationHelper.MaybeHandle(this, _resolver.IsNull, ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref ExecutionScheduler executionScheduler)
+                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback, ref ExecutionScheduler executionScheduler)
                 {
                     if (_resolver.IsNull)
                     {
@@ -253,6 +202,7 @@ namespace Proto.Promises
                     _resolver = default(TResolver);
                     if (handler.State == Promise.State.Resolved)
                     {
+                        handlerDisposedAfterCallback = _resolveWillDisposeAfterSecondAwait;
                         resolveCallback.InvokeResolver(ref handler, out nextHandler, this, ref _cancelationHelper, ref executionScheduler);
                     }
                     else if (_cancelationHelper.TryUnregister(this))
@@ -261,8 +211,8 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = this;
                         nextHandler = null;
+                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -307,13 +257,7 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    _cancelationHelper.MaybeHandle(this, ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref ExecutionScheduler executionScheduler)
+                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback, ref ExecutionScheduler executionScheduler)
                 {
                     var resolveCallback = _resolver;
                     var rejectCallback = _rejecter;
@@ -325,6 +269,7 @@ namespace Proto.Promises
                     else if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
+                        handlerDisposedAfterCallback = true;
                         rejectCallback.InvokeRejecter(ref handler, out nextHandler, this, ref _cancelationHelper, ref executionScheduler);
                     }
                     else if (_cancelationHelper.TryUnregister(this))
@@ -333,8 +278,8 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = this;
                         nextHandler = null;
+                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -379,13 +324,7 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    _cancelationHelper.MaybeHandle(this, _resolver.IsNull, ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref ExecutionScheduler executionScheduler)
+                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback, ref ExecutionScheduler executionScheduler)
                 {
                     if (_resolver.IsNull)
                     {
@@ -400,11 +339,13 @@ namespace Proto.Promises
                     var state = handler.State;
                     if (state == Promise.State.Resolved)
                     {
+                        handlerDisposedAfterCallback = _resolveWillDisposeAfterSecondAwait;
                         resolveCallback.InvokeResolver(ref handler, out nextHandler, this, ref _cancelationHelper, ref executionScheduler);
                     }
                     else if (state == Promise.State.Rejected)
                     {
                         invokingRejected = true;
+                        handlerDisposedAfterCallback = true;
                         rejectCallback.InvokeRejecter(ref handler, out nextHandler, this, ref _cancelationHelper, ref executionScheduler);
                     }
                     else if (_cancelationHelper.TryUnregister(this))
@@ -413,8 +354,8 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = this;
                         nextHandler = null;
+                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -456,14 +397,9 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback, ref ExecutionScheduler executionScheduler)
                 {
-                    ThrowIfInPool(this);
-                    _cancelationHelper.MaybeHandle(this, ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref ExecutionScheduler executionScheduler)
-                {
+                    handlerDisposedAfterCallback = true;
                     _continuer.Invoke(ref handler, out nextHandler, this, ref _cancelationHelper, ref executionScheduler);
                 }
 
@@ -505,13 +441,7 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    _cancelationHelper.MaybeHandle(this, _continuer.IsNull, ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref ExecutionScheduler executionScheduler)
+                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback, ref ExecutionScheduler executionScheduler)
                 {
                     if (_continuer.IsNull)
                     {
@@ -522,6 +452,7 @@ namespace Proto.Promises
 
                     var callback = _continuer;
                     _continuer = default(TContinuer);
+                    handlerDisposedAfterCallback = true;
                     callback.Invoke(ref handler, out nextHandler, this, ref _cancelationHelper, ref executionScheduler);
                 }
 
@@ -563,13 +494,7 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    _cancelationHelper.MaybeHandle(this, ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref ExecutionScheduler executionScheduler)
+                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback, ref ExecutionScheduler executionScheduler)
                 {
                     var callback = _canceler;
                     if (handler.State == Promise.State.Canceled)
@@ -582,8 +507,8 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = this;
                         nextHandler = null;
+                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -625,13 +550,7 @@ namespace Proto.Promises
                     _cancelationHelper.MaybeReleaseComplete(this);
                 }
 
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    _cancelationHelper.MaybeHandle(this, _canceler.IsNull, ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref ExecutionScheduler executionScheduler)
+                protected override void Execute(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback, ref ExecutionScheduler executionScheduler)
                 {
                     if (_canceler.IsNull)
                     {
@@ -644,6 +563,7 @@ namespace Proto.Promises
                     _canceler = default(TCanceler);
                     if (handler.State == Promise.State.Canceled)
                     {
+                        handlerDisposedAfterCallback = _resolveWillDisposeAfterSecondAwait;
                         callback.InvokeResolver(ref handler, out nextHandler, this, ref _cancelationHelper, ref executionScheduler);
                     }
                     else if (_cancelationHelper.TryUnregister(this))
@@ -652,8 +572,8 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        handler = this;
                         nextHandler = null;
+                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
