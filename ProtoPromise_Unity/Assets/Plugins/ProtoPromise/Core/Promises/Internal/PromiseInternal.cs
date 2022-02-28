@@ -748,9 +748,10 @@ namespace Proto.Promises
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
                     nextHandler = null;
+                    _previousState = handler.State;
+                    Thread.MemoryBarrier(); // Make sure previous writes are done before swapping schedule method.
                     ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.Handle);
                     // Leave pending until this is awaited or forgotten.
-                    _previousState = handler.State;
                     if (previousScheduleType == ScheduleMethod.AddWaiter)
                     {
                         executionScheduler.ScheduleOnContext(_synchronizationContext, this);
@@ -765,7 +766,7 @@ namespace Proto.Promises
                 internal override void Handle(ref ExecutionScheduler executionScheduler)
                 {
                     State = _previousState;
-                    // We don't need to synchronize access here because this is only called when the waiter has already been added the previous promise completed, so there are no race conditions.
+                    // We don't need to synchronize access here because this is only called when the previous promise completed and the waiter has already been added (or failed to add), so there are no race conditions.
                     HandleablePromiseBase nextHandler = _waiter;
                     _waiter = null;
                     MaybeHandleNext(nextHandler, ref executionScheduler);
