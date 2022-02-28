@@ -10,7 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("ProtoPromiseTests", AllInternalsVisible = true)]
+[assembly: InternalsVisibleTo("ProtoPromiseTests")]
 
 namespace Proto.Promises
 {
