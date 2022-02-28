@@ -909,31 +909,31 @@ namespace Proto.Promises
                         CallbackHelper.InvokeAndCatchProgress(_progress, 1f, this);
                     }
 
-                    Thread.MemoryBarrier(); // Make sure previous writes are done before swapping schedule method.
-                    ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _smallProgressFields._mostRecentPotentialScheduleMethod, (int) ScheduleMethod.Handle);
-
-                    // Only set state and handle next waiter after callback is executed and a waiter was added (or failed to add or forgotten)
-                    // to make sure the next waiter will be executed on the correct context for consistency.
-                    if (!_smallProgressFields._isSynchronous & previousScheduleType == ScheduleMethod.None)
-                    {
-                        nextHandler = null;
-                        return;
-                    }
-
 #if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
+                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping schedule method.
+                        ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _smallProgressFields._mostRecentPotentialScheduleMethod, (int) ScheduleMethod.Handle);
+
+                        // Only set state and handle next waiter after callback is executed and a waiter was added (or failed to add or forgotten)
+                        // to make sure the next waiter will be executed on the correct context for consistency.
+                        if (!_smallProgressFields._isSynchronous & previousScheduleType == ScheduleMethod.None)
+                        {
+                            nextHandler = null;
+                            return;
+                        }
+
                         State = state;
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
-                    }
 
-                    HandleProgressListener(state, Depth, ref executionScheduler);
+                        HandleProgressListener(state, Depth, ref executionScheduler);
 #if PROTO_PROMISE_NO_STACK_UNWIND
-                    MaybeHandleNext(nextHandler, ref executionScheduler);
-                    nextHandler = null;
+                        MaybeHandleNext(nextHandler, ref executionScheduler);
+                        nextHandler = null;
 #endif
+                    }
                 }
 
                 void ICancelable.Cancel()
@@ -958,12 +958,17 @@ namespace Proto.Promises
 
                 protected override void OnForgetOrHookupFailed()
                 {
-                    ThrowIfInPool(this);
-                    if ((ScheduleMethod) Interlocked.Exchange(ref _smallProgressFields._mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForgetOrHookupFailed) == ScheduleMethod.Handle)
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                    lock (this)
+#endif
                     {
-                        State = _smallProgressFields._previousState;
+                        ThrowIfInPool(this);
+                        if ((ScheduleMethod) Interlocked.Exchange(ref _smallProgressFields._mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForgetOrHookupFailed) == ScheduleMethod.Handle)
+                        {
+                            State = _smallProgressFields._previousState;
+                        }
+                        base.OnForgetOrHookupFailed();
                     }
-                    base.OnForgetOrHookupFailed();
                 }
 
                 internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)

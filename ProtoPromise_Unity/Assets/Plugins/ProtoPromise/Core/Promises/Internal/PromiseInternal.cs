@@ -743,24 +743,29 @@ namespace Proto.Promises
 
                 internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-                    ThrowIfInPool(this);
-                    var valueContainer = (ValueContainer) handler._valueOrPrevious;
-                    valueContainer.Retain();
-                    _valueOrPrevious = valueContainer;
-                    nextHandler = null;
-                    _previousState = handler.State;
-                    Thread.MemoryBarrier(); // Make sure previous writes are done before swapping schedule method.
-                    ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.Handle);
-                    // Leave pending until this is awaited or forgotten.
-                    if (previousScheduleType == ScheduleMethod.AddWaiter)
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                    lock (this)
+#endif
                     {
-                        executionScheduler.ScheduleOnContext(_synchronizationContext, this);
+                        ThrowIfInPool(this);
+                        var valueContainer = (ValueContainer) handler._valueOrPrevious;
+                        valueContainer.Retain();
+                        _valueOrPrevious = valueContainer;
+                        nextHandler = null;
+                        _previousState = handler.State;
+                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping schedule method.
+                        ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.Handle);
+                        // Leave pending until this is awaited or forgotten.
+                        if (previousScheduleType == ScheduleMethod.AddWaiter)
+                        {
+                            executionScheduler.ScheduleOnContext(_synchronizationContext, this);
+                        }
+                        else if (previousScheduleType == ScheduleMethod.OnForgetOrHookupFailed)
+                        {
+                            executionScheduler.ScheduleSynchronous(this);
+                        }
+                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                     }
-                    else if (previousScheduleType == ScheduleMethod.OnForgetOrHookupFailed)
-                    {
-                        executionScheduler.ScheduleSynchronous(this);
-                    }
-                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 internal override void Handle(ref ExecutionScheduler executionScheduler)
@@ -803,13 +808,18 @@ namespace Proto.Promises
 
                 protected override void OnForgetOrHookupFailed()
                 {
-                    ThrowIfInPool(this);
-                    if ((ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForgetOrHookupFailed) == ScheduleMethod.Handle)
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                    lock (this)
+#endif
                     {
-                        State = _previousState;
-                        _smallFields.InterlockedTryReleaseComplete();
+                        ThrowIfInPool(this);
+                        if ((ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForgetOrHookupFailed) == ScheduleMethod.Handle)
+                        {
+                            State = _previousState;
+                            _smallFields.InterlockedTryReleaseComplete();
+                        }
+                        base.OnForgetOrHookupFailed();
                     }
-                    base.OnForgetOrHookupFailed();
                 }
             }
 
