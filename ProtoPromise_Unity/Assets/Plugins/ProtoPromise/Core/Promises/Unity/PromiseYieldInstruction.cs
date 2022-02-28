@@ -202,8 +202,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        yi._value = resultContainer._valueContainer;
-                        resultContainer._valueContainer.Retain();
+                        ValueContainer valueContainer = (ValueContainer) resultContainer._target._valueOrPrevious;
+                        valueContainer.Retain();
+                        yi._value = valueContainer;
                     }
                     yi._state = resultContainer.State;
                     
