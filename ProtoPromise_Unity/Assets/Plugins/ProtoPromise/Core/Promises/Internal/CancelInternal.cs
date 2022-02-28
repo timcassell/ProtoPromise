@@ -87,10 +87,14 @@ namespace Proto.Promises
                 {
                     var executionScheduler = new ExecutionScheduler(true);
                     HandleablePromiseBase nextHandler;
-                    SetResult(CancelContainerVoid.GetOrCreate(), Promise.State.Canceled);
-                    Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                    nextHandler = Interlocked.Exchange(ref _waiter, null);
-                    
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                    lock (this)
+#endif
+                    {
+                        SetResult(CancelContainerVoid.GetOrCreate(), Promise.State.Canceled);
+                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                        nextHandler = Interlocked.Exchange(ref _waiter, null);
+                    }
                     HandleProgressListener(Promise.State.Canceled, Depth, ref executionScheduler);
                     MaybeHandleNext(nextHandler, ref executionScheduler);
                     executionScheduler.Execute();

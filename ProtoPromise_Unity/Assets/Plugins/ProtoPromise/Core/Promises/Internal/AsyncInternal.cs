@@ -600,9 +600,13 @@ namespace Proto.Promises
                     bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                     if (isComplete)
                     {
-                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                        nextHandler = Interlocked.Exchange(ref _waiter, null);
-                        
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                        lock (this)
+#endif
+                        {
+                            Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                            nextHandler = Interlocked.Exchange(ref _waiter, null);
+                        }
                         HandleProgressListener(handler.State, 0, ref executionScheduler);
                         WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         handler.MaybeDispose();
@@ -665,9 +669,13 @@ namespace Proto.Promises
                         bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                         if (isComplete)
                         {
-                            Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                            nextHandler = Interlocked.Exchange(ref _waiter, null);
-                            
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                            lock (this)
+#endif
+                            {
+                                Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                                nextHandler = Interlocked.Exchange(ref _waiter, null);
+                            }
                             HandleProgressListener(handler.State, 0, ref executionScheduler);
                             WaitWhileProgressFlags(PromiseFlags.Subscribing);
                             handler.MaybeDispose();
