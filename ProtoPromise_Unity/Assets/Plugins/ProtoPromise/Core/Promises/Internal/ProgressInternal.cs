@@ -915,13 +915,9 @@ namespace Proto.Promises
 
                     State = state; // Set state after callback is executed to make sure it completes before the next waiter begins execution (in another thread).
 
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
-                    {
-                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                        nextHandler = Interlocked.Exchange(ref _waiter, null);
-                    }
+                    Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                    nextHandler = Interlocked.Exchange(ref _waiter, null);
+                    
                     HandleProgressListener(state, Depth, ref executionScheduler);
 #if PROTO_PROMISE_NO_STACK_UNWIND
                     MaybeHandleNext(nextHandler, ref executionScheduler);
@@ -958,38 +954,33 @@ namespace Proto.Promises
 
                 internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
+                    ThrowIfInPool(this);
+                    // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
+                    Thread.MemoryBarrier();
+                    SetWaiter(waiter);
+                    Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
+                    if (State != Promise.State.Pending)
                     {
-                        ThrowIfInPool(this);
-                        // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
-                        Thread.MemoryBarrier();
-                        SetWaiter(waiter);
-                        Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
-                        if (State != Promise.State.Pending)
+                        if (_smallProgressFields._isSynchronous)
                         {
-                            if (_smallProgressFields._isSynchronous)
-                            {
-                                nextHandler = Interlocked.Exchange(ref _waiter, null);
-                                return;
-                            }
-
-                            // If this was configured to execute progress on a SynchronizationContext or the ThreadPool, force the waiter to execute on the same context for consistency.
-                            // Retain since this will be released higher in the call stack.
-                            InterlockedRetainDisregardId();
-                            if (_synchronizationContext == null)
-                            {
-                                // If there is no context, send it to the ThreadPool.
-                                ThreadPool.QueueUserWorkItem(_threadPoolCallback, this);
-                            }
-                            else
-                            {
-                                _synchronizationContext.Post(_synchronizationContextCallback, this);
-                            }
+                            nextHandler = Interlocked.Exchange(ref _waiter, null);
+                            return;
                         }
-                        nextHandler = null;
+
+                        // If this was configured to execute progress on a SynchronizationContext or the ThreadPool, force the waiter to execute on the same context for consistency.
+                        // Retain since this will be released higher in the call stack.
+                        InterlockedRetainDisregardId();
+                        if (_synchronizationContext == null)
+                        {
+                            // If there is no context, send it to the ThreadPool.
+                            ThreadPool.QueueUserWorkItem(_threadPoolCallback, this);
+                        }
+                        else
+                        {
+                            _synchronizationContext.Post(_synchronizationContextCallback, this);
+                        }
                     }
+                    nextHandler = null;
                 }
 
                 private static void ExecuteFromContext(object state)

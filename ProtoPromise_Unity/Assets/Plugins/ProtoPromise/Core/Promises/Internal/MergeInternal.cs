@@ -29,14 +29,9 @@ namespace Proto.Promises
                     var valueContainer = (ValueContainer) _valueOrPrevious;
                     var state = valueContainer.GetState();
                     State = state;
-                    HandleablePromiseBase nextHandler;
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
-                    {
-                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                        nextHandler = Interlocked.Exchange(ref _waiter, null);
-                    }
+                    Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                    var nextHandler = Interlocked.Exchange(ref _waiter, null);
+                    
                     HandleProgressListener(state, Depth, ref executionScheduler);
                     InterlockedRetainDisregardId(); // Retain since Handle will release indiscriminately.
                     if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)

@@ -315,47 +315,38 @@ namespace Proto.Promises
 
                 internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
                 {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
+                    ThrowIfInPool(this);
+                    // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
+                    Thread.MemoryBarrier();
+                    SetWaiter(waiter);
+                    Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
+                    if (State != Promise.State.Pending)
                     {
-                        ThrowIfInPool(this);
-                        // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
-                        Thread.MemoryBarrier();
-                        SetWaiter(waiter);
-                        Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
-                        if (State != Promise.State.Pending)
-                        {
-                            // Interlocked.Exchange to handle race condition with Handle on another thread.
-                            MaybeHandleNext(Interlocked.Exchange(ref _waiter, null), ref executionScheduler);
-                        }
-                        else
-                        {
-                            MaybeDispose();
-                        }
+                        // Interlocked.Exchange to handle race condition with Handle on another thread.
+                        var nextHandler = Interlocked.Exchange(ref _waiter, null);
+                        MaybeHandleNext(nextHandler, ref executionScheduler);
+                    }
+                    else
+                    {
+                        MaybeDispose();
                     }
                 }
 
                 internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
+                    ThrowIfInPool(this);
+                    // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
+                    Thread.MemoryBarrier();
+                    SetWaiter(waiter);
+                    Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
+                    if (State != Promise.State.Pending)
                     {
-                        ThrowIfInPool(this);
-                        // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
-                        Thread.MemoryBarrier();
-                        SetWaiter(waiter);
-                        Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
-                        if (State != Promise.State.Pending)
-                        {
-                            // Interlocked.Exchange to handle race condition with Handle on another thread.
-                            nextHandler = Interlocked.Exchange(ref _waiter, null);
-                        }
-                        else
-                        {
-                            nextHandler = null;
-                        }
+                        // Interlocked.Exchange to handle race condition with Handle on another thread.
+                        nextHandler = Interlocked.Exchange(ref _waiter, null);
+                    }
+                    else
+                    {
+                        nextHandler = null;
                     }
                 }
 
@@ -462,13 +453,8 @@ namespace Proto.Promises
                 internal void SetResultAndMaybeHandle(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     SetResult(valueContainer, state);
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
-                    {
-                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                        nextHandler = Interlocked.Exchange(ref _waiter, null);
-                    }
+                    Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                    nextHandler = Interlocked.Exchange(ref _waiter, null);
 #if PROTO_PROMISE_NO_STACK_UNWIND
                     MaybeHandleNext(nextHandler, ref executionScheduler);
                     nextHandler = null;
@@ -489,13 +475,9 @@ namespace Proto.Promises
                 internal void SetResultAndMaybeHandleFromCatch(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     SetResult(valueContainer, state);
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
-                    {
-                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                        nextHandler = Interlocked.Exchange(ref _waiter, null);
-                    }
+                    Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                    nextHandler = Interlocked.Exchange(ref _waiter, null);
+                    
                     HandleProgressListener(state, Depth, ref executionScheduler);
 #if PROTO_PROMISE_NO_STACK_UNWIND
                     MaybeHandleNext(nextHandler, ref executionScheduler);
@@ -515,13 +497,9 @@ namespace Proto.Promises
                 new internal void SetResultAndMaybeHandle(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     SetResult(valueContainer, state);
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
-                    {
-                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                        nextHandler = Interlocked.Exchange(ref _waiter, null);
-                    }
+                    Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                    nextHandler = Interlocked.Exchange(ref _waiter, null);
+                    
                     HandleProgressListener(state, Depth, ref executionScheduler);
 #if PROTO_PROMISE_NO_STACK_UNWIND
                     MaybeHandleNext(nextHandler, ref executionScheduler);
@@ -774,18 +752,13 @@ namespace Proto.Promises
 
                 private void AddWaiterImpl(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
                 {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
+                    ThrowIfInPool(this);
+                    Thread.MemoryBarrier();
+                    SetWaiter(waiter);
+                    ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.AddWaiter);
+                    if (previousScheduleType == ScheduleMethod.Handle)
                     {
-                        ThrowIfInPool(this);
-                        Thread.MemoryBarrier();
-                        SetWaiter(waiter);
-                        ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.AddWaiter);
-                        if (previousScheduleType == ScheduleMethod.Handle)
-                        {
-                            executionScheduler.ScheduleOnContext(_synchronizationContext, this);
-                        }
+                        executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                     }
                 }
 
@@ -869,13 +842,9 @@ namespace Proto.Promises
                 {
                     SetResult(valueContainer, state);
                     HandleablePromiseBase nextHandler;
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
-                    {
-                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                        nextHandler = Interlocked.Exchange(ref _waiter, null);
-                    }
+                    Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                    nextHandler = Interlocked.Exchange(ref _waiter, null);
+                    
                     var executionScheduler = new ExecutionScheduler(true);
                     HandleProgressListener(state, 0, ref executionScheduler);
                     MaybeHandleNext(nextHandler, ref executionScheduler);
