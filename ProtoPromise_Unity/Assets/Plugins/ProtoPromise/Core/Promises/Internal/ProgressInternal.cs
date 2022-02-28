@@ -654,12 +654,10 @@ namespace Proto.Promises
                     return _smallProgressFields._currentProgress.IsSuspended;
                 }
 
-                internal bool IsComplete
+                internal bool IsInvoking1
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _smallProgressFields._complete; }
-                    [MethodImpl(InlineOption)]
-                    set { _smallProgressFields._complete = value; }
+                    get { return _smallProgressFields._previousState != Promise.State.Pending; }
                 }
 
                 private bool IsCanceled
@@ -678,10 +676,11 @@ namespace Proto.Promises
                         ?? new PromiseProgress<TProgress>();
                     promise.Reset(depth);
                     promise._progress = progress;
-                    promise.IsComplete = false;
                     promise.IsCanceled = false;
                     promise._smallProgressFields._currentProgress = default(Fixed32);
                     promise._smallProgressFields._isSynchronous = isSynchronous;
+                    promise._smallProgressFields._previousState = Promise.State.Pending;
+                    promise._smallProgressFields._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.None;
                     promise._synchronizationContext = synchronizationContext;
                     cancelationToken.TryRegister(promise, out promise._cancelationRegistration); // Very important, must register after promise is fully setup.
                     return promise;
@@ -693,11 +692,11 @@ namespace Proto.Promises
                         ?? new PromiseProgress<TProgress>();
                     promise.Reset(depth);
                     promise._progress = progress;
-                    promise.IsComplete = true;
                     promise.IsCanceled = false;
                     promise._smallProgressFields._currentProgress = default(Fixed32);
                     promise._smallProgressFields._isSynchronous = false;
                     promise._smallProgressFields._previousState = Promise.State.Resolved;
+                    promise._smallProgressFields._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.None;
                     promise._synchronizationContext = synchronizationContext;
                     promise._valueOrPrevious = valueContainer;
                     cancelationToken.TryRegister(promise, out promise._cancelationRegistration); // Very important, must register after promise is fully setup.
@@ -722,7 +721,7 @@ namespace Proto.Promises
                     // Use double for better precision.
                     double expected = Depth + 1u;
                     float value = (float) (progress.ToDouble() / expected);
-                    if (!progress.IsSuspended & !IsComplete & !IsCanceled & !_cancelationRegistration.Token.IsCancelationRequested)
+                    if (!progress.IsSuspended & !IsInvoking1 & !IsCanceled & !_cancelationRegistration.Token.IsCancelationRequested)
                     {
                         CallbackHelper.InvokeAndCatchProgress(_progress, value, this);
                     }
@@ -733,7 +732,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     bool needsInvoke = _smallProgressFields._currentProgress.InterlockedTrySet(progress);
-                    if (needsInvoke & !IsComplete & !IsCanceled)
+                    if (needsInvoke & !IsInvoking1 & !IsCanceled)
                     {
                         PromiseFlags oldFlags = _smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue);
                         bool inProgressQueue = (oldFlags & PromiseFlags.InProgressQueue) != 0;
@@ -761,7 +760,7 @@ namespace Proto.Promises
                 private void SetProgressFromResolve(Fixed32 progress, ref ExecutionScheduler executionScheduler)
                 {
                     bool needsInvoke = _smallProgressFields._currentProgress.InterlockedTrySetFromResolve(progress);
-                    if (needsInvoke & !IsComplete & !IsCanceled)
+                    if (needsInvoke & !IsInvoking1 & !IsCanceled)
                     {
                         PromiseFlags oldFlags = _smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue);
                         bool inProgressQueue = (oldFlags & PromiseFlags.InProgressQueue) != 0;
@@ -881,15 +880,14 @@ namespace Proto.Promises
                 internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    IsComplete = true;
+                    var state = handler.State;
+                    _smallProgressFields._previousState = state;
                     var valueContainer = (ValueContainer) handler._valueOrPrevious;
                     valueContainer.Retain();
                     _valueOrPrevious = valueContainer;
 
-                    var state = handler.State;
                     if (!_smallProgressFields._isSynchronous)
                     {
-                        _smallProgressFields._previousState = state;
                         nextHandler = null;
                         executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                         WaitWhileProgressFlags(PromiseFlags.Subscribing);
@@ -910,18 +908,27 @@ namespace Proto.Promises
                     {
                         CallbackHelper.InvokeAndCatchProgress(_progress, 1f, this);
                     }
-                    
-                    // TODO: if not synchronous, leave pending until awaited or forgotten so that the next waiter can be executed on the correct context for consistency. See PromiseConfigured.
 
-                    State = state; // Set state after callback is executed to make sure it completes before the next waiter begins execution (in another thread).
+                    Thread.MemoryBarrier(); // Make sure previous writes are done before swapping schedule method.
+                    ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _smallProgressFields._mostRecentPotentialScheduleMethod, (int) ScheduleMethod.Handle);
+
+                    // Only set state and handle next waiter after callback is executed and a waiter was added (or failed to add or forgotten)
+                    // to make sure the next waiter will be executed on the correct context for consistency.
+                    if (!_smallProgressFields._isSynchronous & previousScheduleType == ScheduleMethod.None)
+                    {
+                        nextHandler = null;
+                        return;
+                    }
 
 #if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
+                        State = state;
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
+
                     HandleProgressListener(state, Depth, ref executionScheduler);
 #if PROTO_PROMISE_NO_STACK_UNWIND
                     MaybeHandleNext(nextHandler, ref executionScheduler);
@@ -949,6 +956,16 @@ namespace Proto.Promises
                     return null;
                 }
 
+                protected override void OnForgetOrHookupFailed()
+                {
+                    ThrowIfInPool(this);
+                    if ((ScheduleMethod) Interlocked.Exchange(ref _smallProgressFields._mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForgetOrHookupFailed) == ScheduleMethod.Handle)
+                    {
+                        State = _smallProgressFields._previousState;
+                    }
+                    base.OnForgetOrHookupFailed();
+                }
+
                 internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
                 {
                     HandleablePromiseBase nextHandler;
@@ -966,8 +983,9 @@ namespace Proto.Promises
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
                         Thread.MemoryBarrier();
                         SetWaiter(waiter);
-                        Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
-                        if (State != Promise.State.Pending)
+                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping schedule method.
+                        ScheduleMethod previousScheduleType = (ScheduleMethod) Interlocked.Exchange(ref _smallProgressFields._mostRecentPotentialScheduleMethod, (int) ScheduleMethod.AddWaiter);
+                        if (previousScheduleType == ScheduleMethod.Handle)
                         {
                             if (_smallProgressFields._isSynchronous)
                             {
@@ -1000,9 +1018,13 @@ namespace Proto.Promises
                         // This handles the waiter that was added after this was already complete.
                         var _this = (PromiseProgress<TProgress>) state;
                         ThrowIfInPool(_this);
-                        HandleablePromiseBase nextHandler = Interlocked.Exchange(ref _this._waiter, null);
-                        // Don't need to handle the progress listener here as that was already done in Invoke1.
+                        var _state = _this._smallProgressFields._previousState;
+                        _this.State = _state;
+                        // We don't need to synchronize access here because this is only called when the previous promise completed and the waiter has already been added (or failed to add), so there are no race conditions.
+                        HandleablePromiseBase nextHandler = _this._waiter;
+                        _this._waiter = null;
                         var executionScheduler = new ExecutionScheduler(true);
+                        _this.HandleProgressListener(_state, _this.Depth, ref executionScheduler);
                         _this.MaybeHandleNext(nextHandler, ref executionScheduler);
                         executionScheduler.Execute();
                     }

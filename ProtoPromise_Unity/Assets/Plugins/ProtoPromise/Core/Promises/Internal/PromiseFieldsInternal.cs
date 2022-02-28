@@ -210,12 +210,7 @@ namespace Proto.Promises
 
             partial class PromiseSingleAwait : PromiseRef
             {
-                volatile protected HandleablePromiseBase _waiter;
-            }
-
-            partial class PromiseConfigured : PromiseSingleAwait
-            {
-                private enum ScheduleMethod : int
+                protected enum ScheduleMethod : int
                 {
                     None,
                     Handle,
@@ -223,6 +218,11 @@ namespace Proto.Promises
                     OnForgetOrHookupFailed
                 }
 
+                volatile protected HandleablePromiseBase _waiter;
+            }
+
+            partial class PromiseConfigured : PromiseSingleAwait
+            {
                 private SynchronizationContext _synchronizationContext;
                 volatile private int _mostRecentPotentialScheduleMethod; // ScheduleMethod casted to int for Interlocked. This is to make sure this is only scheduled once, even if multiple threads are racing.
                 volatile private Promise.State _previousState;
@@ -533,10 +533,10 @@ namespace Proto.Promises
                 private struct ProgressSmallFields
                 {
                     internal Fixed32 _currentProgress;
-                    volatile internal bool _complete;
                     volatile internal bool _canceled;
                     internal bool _isSynchronous;
-                    internal Promise.State _previousState;
+                    volatile internal Promise.State _previousState;
+                    volatile internal int _mostRecentPotentialScheduleMethod; // ScheduleMethod casted to int for Interlocked. This is to make sure the waiter is only scheduled once, even if multiple threads are racing.
                 }
 
                 private ProgressSmallFields _smallProgressFields;
