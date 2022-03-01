@@ -115,11 +115,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void ScheduleProgressSynchronous(IProgressInvokable progress)
             {
-#if PROTO_PROMISE_NO_STACK_UNWIND // Helps to see full causality trace with internal stacktraces in exceptions (may cause StackOverflowException if the chain is very long).
-                progress.Invoke(ref this);
-#else
                 _progressQueue.Enqueue(progress);
-#endif
             }
 
             internal void ScheduleProgressOnContext(SynchronizationContext synchronizationContext, IProgressInvokable progress)
@@ -929,10 +925,6 @@ namespace Proto.Promises
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
 
                         HandleProgressListener(state, Depth, ref executionScheduler);
-#if PROTO_PROMISE_NO_STACK_UNWIND
-                        MaybeHandleNext(nextHandler, ref executionScheduler);
-                        nextHandler = null;
-#endif
                     }
                 }
 

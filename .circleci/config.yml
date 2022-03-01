@@ -15,7 +15,7 @@ jobs:
         type: string
       poolType:
         type: string
-      allowStackToUnwind:
+      developerMode:
         type: boolean
     steps:
       - checkout
@@ -24,7 +24,7 @@ jobs:
           #-nodereuse:false to try to fix hang (see https://github.com/dotnet/sdk/issues/9452)
           command: |
             $ResultsFile = "$pwd/dotnet-test-results-<<parameters.runtime>>-<<parameters.config>>.xml"
-            dotnet test -c <<parameters.config>> -f <<parameters.runtime>> -nodereuse:false --logger:"junit;LogFilePath=$ResultsFile" -p:ExtraDefineConstants=PROTO_PROMISE_<<parameters.poolType>> -p:AllowStackToUnwind=<<parameters.allowStackToUnwind>>
+            dotnet test -c <<parameters.config>> -f <<parameters.runtime>> -nodereuse:false --logger:"junit;LogFilePath=$ResultsFile" -p:ExtraDefineConstants=PROTO_PROMISE_<<parameters.poolType>> -p:DeveloperMode=<<parameters.developerMode>>
           no_output_timeout: 5h
 
       - store_test_results:
@@ -43,13 +43,13 @@ workflows:
               config: [Release, Debug, Release_NoProgress, Debug_NoProgress]
               runtime: [net5.0, net472]
               poolType: [POOL_ENABLE, POOL_DISABLE]
-              allowStackToUnwind: [true]
-      # Just run each configuration with stack unwinding disabled to make sure it works. We don't need to test all runtimes or pool types for this.
+              developerMode: [false]
+      # Just run each configuration with developer mode enabled to make sure it works. We don't need to test all runtimes or pool types for this.
       - run-tests:
-          name: No-Stack-Unwind <<matrix.config>>
+          name: Developer Mode <<matrix.config>>
           matrix:
             parameters:
               config: [Release, Debug, Release_NoProgress, Debug_NoProgress]
               runtime: [net5.0]
               poolType: [POOL_ENABLE]
-              allowStackToUnwind: [false]
+              developerMode: [true]

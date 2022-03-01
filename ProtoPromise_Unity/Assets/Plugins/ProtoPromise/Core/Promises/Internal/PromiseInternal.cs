@@ -266,22 +266,11 @@ namespace Proto.Promises
             internal void MaybeHandleNext(HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
             {
                 PromiseRef handler = this;
-#if PROTO_PROMISE_NO_STACK_UNWIND
-                if (nextHandler != null)
-                {
-                    nextHandler.Handle(ref handler, out nextHandler, ref executionScheduler);
-                }
-                else
-                {
-                    handler.MaybeDispose();
-                }
-#else
                 while (nextHandler != null)
                 {
                     nextHandler.Handle(ref handler, out nextHandler, ref executionScheduler);
                 }
                 handler.MaybeDispose();
-#endif
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -469,10 +458,6 @@ namespace Proto.Promises
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
-#if PROTO_PROMISE_NO_STACK_UNWIND
-                    MaybeHandleNext(nextHandler, ref executionScheduler);
-                    nextHandler = null;
-#endif
                 }
 
                 internal void HandleSelf(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
@@ -497,10 +482,6 @@ namespace Proto.Promises
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
                     HandleProgressListener(state, Depth, ref executionScheduler);
-#if PROTO_PROMISE_NO_STACK_UNWIND
-                    MaybeHandleNext(nextHandler, ref executionScheduler);
-                    nextHandler = null;
-#endif
                 }
             }
 
@@ -523,10 +504,6 @@ namespace Proto.Promises
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
                     HandleProgressListener(state, Depth, ref executionScheduler);
-#if PROTO_PROMISE_NO_STACK_UNWIND
-                    MaybeHandleNext(nextHandler, ref executionScheduler);
-                    nextHandler = null;
-#endif
                 }
 
                 new internal void HandleSelf(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)

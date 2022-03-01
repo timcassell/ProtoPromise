@@ -167,11 +167,7 @@ namespace Proto.Promises
             internal void ScheduleSynchronous(HandleablePromiseBase handleable)
             {
                 AssertNotExecutingProgress();
-#if PROTO_PROMISE_NO_STACK_UNWIND // Helps to see full causality trace with internal stacktraces in exceptions (may cause StackOverflowException if the chain is very long).
-                handleable.Handle(ref this);
-#else
                 _handleStack.Push(handleable);
-#endif
             }
 
             internal void ScheduleOnContext(SynchronizationContext synchronizationContext, HandleablePromiseBase handleable)

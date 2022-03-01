@@ -397,14 +397,6 @@ namespace Proto.Promises
 #endif
             internal partial class AsyncPromiseRef : AsyncPromiseBase
             {
-#if PROTO_PROMISE_NO_STACK_UNWIND
-
-                [MethodImpl(InlineOption)]
-                private AsyncPromiseRef ExchangeCurrentRunner(AsyncPromiseRef currentRunner)
-                {
-                    return null;
-                }
-#else
                 [ThreadStatic]
                 private static AsyncPromiseRef _currentRunner;
 
@@ -415,7 +407,6 @@ namespace Proto.Promises
                     _currentRunner = currentRunner;
                     return previous;
                 }
-#endif
 
 #if !PROMISE_PROGRESS
                 [MethodImpl(InlineOption)]
