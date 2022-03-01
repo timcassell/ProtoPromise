@@ -1374,13 +1374,11 @@ namespace Proto.Promises
 
                 internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-                    // TODO: pass refs to target.
                     ThrowIfInPool(this);
                     _owner = null;
                     WaitWhileProgressIsBusy();
-                    _target.Handle(handler, (ValueContainer) handler._valueOrPrevious, this, ref executionScheduler);
+                    _target.Handle(ref handler, (ValueContainer) handler._valueOrPrevious, this, out nextHandler, ref executionScheduler);
                     Release();
-                    nextHandler = null;
                 }
 
                 [MethodImpl(InlineOption)]

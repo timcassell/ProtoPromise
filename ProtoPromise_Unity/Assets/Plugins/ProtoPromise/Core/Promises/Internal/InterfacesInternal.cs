@@ -24,11 +24,8 @@ namespace Proto.Promises
         {
             internal abstract partial class MultiHandleablePromiseBase : PromiseSingleAwaitWithProgress
             {
-                internal abstract void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    throw new System.InvalidOperationException();
-                }
+                internal abstract void Handle(ref PromiseRef handler, ValueContainer valueContainer, PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);
+                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
             }
 
             internal interface IDelegateResolveOrCancel

@@ -583,6 +583,12 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                private UnsignedFixed64(long value)
+                {
+                    _value = value;
+                }
+
+                [MethodImpl(InlineOption)]
                 internal long GetPriorityFlag()
                 {
                     return _value | PriorityFlag;
@@ -606,7 +612,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void InterlockedIncrement(uint increment, Fixed32 otherFlags)
+                internal UnsignedFixed64 InterlockedIncrement(uint increment, Fixed32 otherFlags)
                 {
                     Thread.MemoryBarrier();
                     long priorityFlag = ((long) otherFlags.GetPriorityFlag()) << 32;
@@ -617,6 +623,7 @@ namespace Proto.Promises
                         current = Interlocked.Read(ref _value);
                         newValue = (current + increment) | priorityFlag;
                     } while (Interlocked.CompareExchange(ref _value, newValue, current) != current);
+                    return new UnsignedFixed64(newValue);
                 }
             }
 
@@ -631,7 +638,7 @@ namespace Proto.Promises
 
             partial class MultiHandleablePromiseBase
             {
-                internal abstract void IncrementProgress(uint increment, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler);
+                internal abstract void IncrementProgress(uint increment, ref Fixed32 progress, ushort depth, out PromiseSingleAwaitWithProgress nextRef);
             }
 
 
@@ -1269,8 +1276,8 @@ namespace Proto.Promises
                 void IProgressListener.SetProgress(PromiseRef sender, ref Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    SetProgress(progress, ref executionScheduler);
                     nextRef = null;
+                    SetProgress(progress, ref executionScheduler);
                 }
 
                 void IProgressListener.MaybeCancelProgress(Fixed32 progress)
@@ -1623,8 +1630,8 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (_progressFields._currentProgress.InterlockedTrySet(progress))
                     {
-                        progress = NormalizeProgress(progress);
                         nextRef = this;
+                        progress = NormalizeProgress(progress);
                     }
                     else
                     {
@@ -1661,6 +1668,7 @@ namespace Proto.Promises
                 void IProgressListener.SetInitialProgress(PromiseRef sender, Promise.State state, ref Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
+                    nextRef = null;
                     if (state == Promise.State.Pending)
                     {
                         _smallFields._settingInitialProgress = true;
@@ -1669,8 +1677,7 @@ namespace Proto.Promises
                         var owner = _owner;
                         if (didSet & owner != null)
                         {
-                            // TODO: change Merge/Race promises to use `out nextRef` instead of the scheduler.
-                            _target.IncrementProgress(progress.GetRawValue(), progress, Fixed32.FromWhole(_smallFields._depth), ref executionScheduler);
+                            _target.IncrementProgress(progress.GetRawValue(), ref progress, _smallFields._depth, out nextRef);
                         }
                         _smallFields._settingInitialProgress = false;
                     }
@@ -1678,12 +1685,12 @@ namespace Proto.Promises
                     {
                         Release();
                     }
-                    nextRef = null;
                 }
 
                 void IProgressListener.SetProgress(PromiseRef sender, ref Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
+                    nextRef = null;
                     _smallFields._reportingProgress = true;
                     // InterlockedTrySetAndGetDifference has a MemoryBarrier in it, so we know _owner is read after _reportingProgress is written.
                     uint dif;
@@ -1691,10 +1698,9 @@ namespace Proto.Promises
                     var owner = _owner;
                     if (didSet & owner != null)
                     {
-                        _target.IncrementProgress(dif, progress, Fixed32.FromWhole(_smallFields._depth), ref executionScheduler);
+                        _target.IncrementProgress(dif, ref progress, _smallFields._depth, out nextRef);
                     }
                     _smallFields._reportingProgress = false;
-                    nextRef = null;
                 }
 
                 partial void WaitWhileProgressIsBusy()

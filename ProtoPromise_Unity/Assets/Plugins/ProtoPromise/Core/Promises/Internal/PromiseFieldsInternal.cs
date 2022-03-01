@@ -451,8 +451,6 @@ namespace Proto.Promises
                 private int _waitCount;
 
 #if PROMISE_PROGRESS
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-
                 // These are used to avoid rounding errors when normalizing the progress.
                 // Use 64 bits to allow combining many promises with very deep chains.
                 private double _progressScaler;
@@ -473,9 +471,6 @@ namespace Proto.Promises
                 }
 
                 private RaceSmallFields _raceSmallFields;
-#if PROMISE_PROGRESS
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-#endif
             }
 
             partial class FirstPromise : MultiHandleablePromiseBase
@@ -491,9 +486,6 @@ namespace Proto.Promises
                 }
 
                 private FirstSmallFields _firstSmallFields;
-#if PROMISE_PROGRESS
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-#endif
             }
 
             partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>

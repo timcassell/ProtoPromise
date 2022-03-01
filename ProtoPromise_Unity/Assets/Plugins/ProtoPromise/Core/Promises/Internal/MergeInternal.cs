@@ -23,13 +23,12 @@ namespace Proto.Promises
         {
             partial class MultiHandleablePromiseBase
             {
-                protected void Handle(ref int _waitCount, ref ExecutionScheduler executionScheduler)
+                protected void Handle(ref int _waitCount, ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     var valueContainer = (ValueContainer) _valueOrPrevious;
-                    var state = valueContainer.GetState();
+                    var state = handler.State;
                     State = state;
-                    HandleablePromiseBase nextHandler;
 #if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
@@ -38,12 +37,12 @@ namespace Proto.Promises
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
                     HandleProgressListener(state, Depth, ref executionScheduler);
-                    InterlockedRetainDisregardId(); // Retain since Handle will release indiscriminately.
+                    // handler will be disposed higher in the call stack. We only set it if this is released completely.
                     if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
                     {
-                        MaybeDispose();
+                        handler.MaybeDispose();
+                        handler = this;
                     }
-                    MaybeHandleNext(nextHandler, ref executionScheduler);
                 }
             }
 
@@ -142,22 +141,18 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Handle(ref ExecutionScheduler executionScheduler)
-                {
-                    Handle(ref _waitCount, ref executionScheduler);
-                }
-
-                internal override void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref PromiseRef handler, ValueContainer valueContainer, PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     // Retain while handling, then release when complete for thread safety.
                     InterlockedRetainDisregardId();
+                    nextHandler = null;
 
-                    if (owner.State != Promise.State.Resolved) // Rejected/Canceled
+                    if (handler.State != Promise.State.Resolved) // Rejected/Canceled
                     {
                         if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                         {
                             valueContainer.Retain();
-                            executionScheduler.ScheduleSynchronous(this);
+                            Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
                         }
                         if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
                         {
@@ -173,7 +168,7 @@ namespace Proto.Promises
                             if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                             {
                                 valueContainer.Retain();
-                                executionScheduler.ScheduleSynchronous(this);
+                                Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
                             }
                         }
                         else if (remaining == 0)
@@ -229,17 +224,18 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    internal override void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
+                    internal override void Handle(ref PromiseRef handler, ValueContainer valueContainer, PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                     {
                         // Retain while handling, then release when complete for thread safety.
                         InterlockedRetainDisregardId();
+                        nextHandler = null;
 
-                        if (owner.State != Promise.State.Resolved) // Rejected/Canceled
+                        if (handler.State != Promise.State.Resolved) // Rejected/Canceled
                         {
                             if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                             {
                                 valueContainer.Retain();
-                                executionScheduler.ScheduleSynchronous(this);
+                                Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
                             }
                             if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
                             {
@@ -257,7 +253,7 @@ namespace Proto.Promises
                                 {
                                     // Only nullify if all promises resolved, otherwise we let Dispose release it.
                                     _valueContainer = null;
-                                    executionScheduler.ScheduleSynchronous(this);
+                                    Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
                                 }
                             }
                             else if (remaining == 0)
@@ -272,7 +268,7 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class MergePromise : IProgressInvokable
+            partial class MergePromise
             {
                 protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
                 {
@@ -285,7 +281,7 @@ namespace Proto.Promises
 
                 protected override sealed void SetInitialProgress(IProgressListener progressListener, ref Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler)
                 {
-                    progress = CurrentProgress();
+                    progress = NormalizeProgress(_unscaledProgress);
                     SetInitialProgress(progressListener, ref progress, Fixed32.FromWholePlusOne(Depth), out nextRef, ref executionScheduler);
                 }
 
@@ -299,37 +295,28 @@ namespace Proto.Promises
                 {
                     Fixed32 progressFlags;
                     uint dif = passThrough.GetProgressDifferenceToCompletion(out progressFlags);
-                    IncrementProgress(dif, progressFlags, ref executionScheduler);
-                }
-
-                private Fixed32 CurrentProgress()
-                {
-                    ThrowIfInPool(this);
-                    return Fixed32.GetScaled(_unscaledProgress, _progressScaler);
-                }
-
-                internal override void IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    IncrementProgress(amount, senderAmount, ref executionScheduler);
-                }
-
-                private void IncrementProgress(uint amount, Fixed32 otherFlags, ref ExecutionScheduler executionScheduler)
-                {
-                    _unscaledProgress.InterlockedIncrement(amount, otherFlags);
-                    if ((_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
-                    {
-                        InterlockedRetainDisregardId();
-                        executionScheduler.ScheduleProgressSynchronous(this);
-                    }
-                }
-
-                void IProgressInvokable.Invoke(ref ExecutionScheduler executionScheduler)
-                {
-                    var progress = CurrentProgress();
-                    _smallFields.InterlockedUnsetFlags(PromiseFlags.InProgressQueue);
+                    var progress = IncrementProgress(dif, progressFlags);
                     ReportProgress(progress, ref executionScheduler);
-                    MaybeDispose();
+                }
+
+                private Fixed32 NormalizeProgress(UnsignedFixed64 unscaledProgress)
+                {
+                    ThrowIfInPool(this);
+                    return Fixed32.GetScaled(unscaledProgress, _progressScaler);
+                }
+
+                internal override void IncrementProgress(uint amount, ref Fixed32 progress, ushort depth, out PromiseSingleAwaitWithProgress nextRef)
+                {
+                    ThrowIfInPool(this);
+                    // This essentially acts as a pass-through to normalize the progress.
+                    nextRef = this;
+                    progress = IncrementProgress(amount, progress);
+                }
+
+                private Fixed32 IncrementProgress(uint amount, Fixed32 otherFlags)
+                {
+                    var unscaledProgress = _unscaledProgress.InterlockedIncrement(amount, otherFlags);
+                    return NormalizeProgress(unscaledProgress);
                 }
             }
 #endif
