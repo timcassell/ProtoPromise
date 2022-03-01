@@ -60,11 +60,19 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             ~ValueContainer()
             {
-                if (_retainCounter != 0)
+                try
                 {
-                    // For debugging. This should never happen.
-                    string message = "A " + GetType() + " was garbage collected without it being released. _retainCounter: " + _retainCounter + ", value: " + value;
-                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    if (_retainCounter != 0)
+                    {
+                        // For debugging. This should never happen.
+                        string message = "A " + GetType() + " was garbage collected without it being released. _retainCounter: " + _retainCounter + ", value: " + value;
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    }
+                }
+                catch (Exception e)
+                {
+                    // This should never happen.
+                    AddRejectionToUnhandledStack(e, this);
                 }
             }
 #endif

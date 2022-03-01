@@ -87,16 +87,24 @@ namespace Proto.Promises
 
             ~PromiseRef()
             {
-                if (!WasAwaitedOrForgotten)
+                try
                 {
-                    // Promise was not awaited or forgotten.
-                    string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
-                    AddRejectionToUnhandledStack(new UnobservedPromiseException(message), this);
+                    if (!WasAwaitedOrForgotten)
+                    {
+                        // Promise was not awaited or forgotten.
+                        string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
+                        AddRejectionToUnhandledStack(new UnobservedPromiseException(message), this);
+                    }
+                    if (State != Promise.State.Pending & _valueOrPrevious != null)
+                    {
+                        // Rejection maybe wasn't caught.
+                        ((ValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack(!SuppressRejection);
+                    }
                 }
-                if (State != Promise.State.Pending & _valueOrPrevious != null)
+                catch (Exception e)
                 {
-                    // Rejection maybe wasn't caught.
-                    ((ValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack(!SuppressRejection);
+                    // This should never happen.
+                    AddRejectionToUnhandledStack(e, this);
                 }
             }
 
@@ -526,11 +534,19 @@ namespace Proto.Promises
 
                 ~PromiseMultiAwait()
                 {
-                    if (!WasAwaitedOrForgotten)
+                    try
                     {
-                        _smallFields.InterlockedSetFlags(PromiseFlags.WasAwaitedOrForgotten); // Stop base finalizer from adding an extra exception.
-                        string message = "A preserved Promise's resources were garbage collected without it being forgotten. You must call Forget() on each preserved promise when you are finished with it.";
-                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                        if (!WasAwaitedOrForgotten)
+                        {
+                            _smallFields.InterlockedSetFlags(PromiseFlags.WasAwaitedOrForgotten); // Stop base finalizer from adding an extra exception.
+                            string message = "A preserved Promise's resources were garbage collected without it being forgotten. You must call Forget() on each preserved promise when you are finished with it.";
+                            AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never happen.
+                        AddRejectionToUnhandledStack(e, this);
                     }
                 }
 
@@ -1330,16 +1346,24 @@ namespace Proto.Promises
 
                 ~PromisePassThrough()
                 {
-                    if (_smallFields._retainCounter != 0)
+                    try
                     {
-                        // For debugging. This should never happen.
-                        string message = "A PromisePassThrough was garbage collected without it being released."
-                            + " _retainCounter: " + _smallFields._retainCounter + ", _index: " + _smallFields._index + ", _target: " + _target + ", _owner: " + _owner
+                        if (_smallFields._retainCounter != 0)
+                        {
+                            // For debugging. This should never happen.
+                            string message = "A PromisePassThrough was garbage collected without it being released."
+                                + " _retainCounter: " + _smallFields._retainCounter + ", _index: " + _smallFields._index + ", _target: " + _target + ", _owner: " + _owner
 #if PROMISE_PROGRESS
-                            + ", _reportingProgress: " + _smallFields._reportingProgress + ", _settingInitialProgress: " + _smallFields._settingInitialProgress + ", _currentProgress: " + _smallFields._currentProgress.ToDouble()
+                                + ", _reportingProgress: " + _smallFields._reportingProgress + ", _settingInitialProgress: " + _smallFields._settingInitialProgress + ", _currentProgress: " + _smallFields._currentProgress.ToDouble()
 #endif
-                            ;
-                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), _target);
+                                ;
+                            AddRejectionToUnhandledStack(new UnreleasedObjectException(message), _target);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never happen.
+                        AddRejectionToUnhandledStack(e, _target);
                     }
                 }
 
