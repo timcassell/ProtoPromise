@@ -993,6 +993,8 @@ namespace Proto.Promises
                         {
                             if (_smallProgressFields._isSynchronous)
                             {
+                                State = _smallProgressFields._previousState;
+                                Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                                 nextHandler = Interlocked.Exchange(ref _waiter, null);
                                 return;
                             }

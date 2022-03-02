@@ -581,12 +581,10 @@ namespace Proto.Promises
                 internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    var state = State;
-                    if (state == Promise.State.Pending)
+                    if (State == Promise.State.Pending)
                     {
                         _progressAndLocker._branchLocker.Enter();
-                        state = State;
-                        if (state == Promise.State.Pending)
+                        if (State == Promise.State.Pending)
                         {
                             _nextBranches.Enqueue(waiter);
                             _progressAndLocker._branchLocker.Exit();
@@ -598,11 +596,9 @@ namespace Proto.Promises
                     }
                     HandleablePromiseBase nextHandler;
                     PromiseRef handler = this;
-                    InterlockedRetainDisregardId(); // Retain since Handle will release indiscriminately.
+                    // Handle or MaybeHandleNext will call MaybeDispose on this, so we don't need an extra call here.
                     waiter.Handle(ref handler, out nextHandler, ref executionScheduler);
                     handler.MaybeHandleNext(nextHandler, ref executionScheduler);
-                    
-                    MaybeDispose();
                 }
 
                 internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)

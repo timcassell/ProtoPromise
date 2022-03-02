@@ -26,7 +26,6 @@ namespace Proto.Promises
                 protected void Handle(ref int _waitCount, ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    var valueContainer = (ValueContainer) _valueOrPrevious;
                     var state = handler.State;
                     State = state;
 #if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.

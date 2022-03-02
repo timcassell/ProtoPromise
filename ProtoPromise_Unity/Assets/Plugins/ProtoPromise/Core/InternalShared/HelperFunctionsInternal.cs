@@ -321,6 +321,9 @@ namespace Proto.Promises
 
         internal static void AddUnhandledException(UnhandledException exception)
         {
+#if PROTO_PROMISE_DEVELOPER_MODE
+            exception = new UnhandledExceptionInternal(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new StackTrace(1, true).ToString(), exception);
+#endif
             _unhandledExceptionsLocker.Enter();
             _unhandledExceptions.Push(exception);
             _unhandledExceptionsLocker.Exit();
