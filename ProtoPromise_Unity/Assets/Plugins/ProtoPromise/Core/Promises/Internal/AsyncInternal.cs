@@ -18,6 +18,7 @@
 #define OPTIMIZED_ASYNC_MODE
 #endif
 
+#pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0060 // Remove unused parameter
 #pragma warning disable CS0436 // Type conflicts with imported type
 
@@ -213,10 +214,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        public struct PromiseMethodBuilderInternal<T>
+        internal partial struct PromiseMethodBuilderInternal<T>
         {
-            private PromiseRef.AsyncPromiseRef _ref;
-
             [MethodImpl(InlineOption)]
             private PromiseMethodBuilderInternal(PromiseRef.AsyncPromiseRef promise)
             {
@@ -297,17 +296,12 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        [StructLayout(LayoutKind.Auto)]
-        internal struct PromiseMethodBuilderInternal<T>
+        internal partial struct PromiseMethodBuilderInternal<T>
         {
-            private PromiseRef.AsyncPromiseRef _ref;
-            private short _id;
-            private T _result;
-
             public Promise<T> Task
             {
                 [MethodImpl(InlineOption)]
-                get { return new Promise<T>(_ref, _id, 0, _result); }
+                get { return new Promise<T>(_ref, _smallFields._id, 0, _smallFields._result); }
             }
 
             [MethodImpl(InlineOption)]
@@ -321,7 +315,7 @@ namespace Proto.Promises
                 if (_ref is null)
                 {
                     _ref = PromiseRef.AsyncPromiseRef.GetOrCreate();
-                    _id = _ref.Id;
+                    _smallFields._id = _ref.Id;
                 }
                 _ref.SetException(exception);
             }
@@ -330,8 +324,8 @@ namespace Proto.Promises
             {
                 if (_ref is null)
                 {
-                    _result = result;
-                    _id = ValidIdFromApi;
+                    _smallFields._result = result;
+                    _smallFields._id = ValidIdFromApi;
                 }
                 else
                 {
@@ -390,7 +384,7 @@ namespace Proto.Promises
                 if (_ref is null)
                 {
                     PromiseRef.AsyncPromiseRef.SetStateMachine(ref stateMachine, ref _ref);
-                    _id = _ref.Id;
+                    _smallFields._id = _ref.Id;
                 }
             }
         }
@@ -403,42 +397,15 @@ namespace Proto.Promises
 #endif
             internal partial class AsyncPromiseRef : AsyncPromiseBase
             {
-                private const long CompleteFlag = 1L << 63;
-                private const long ValueMask = ~CompleteFlag;
+                [ThreadStatic]
+                private static AsyncPromiseRef _currentRunner;
 
                 [MethodImpl(InlineOption)]
-                private void InterlockedIncrementHandleCount()
+                private AsyncPromiseRef ExchangeCurrentRunner(AsyncPromiseRef currentRunner)
                 {
-                    Interlocked.Increment(ref _completionState);
-                }
-
-                [MethodImpl(InlineOption)]
-                private bool InterlockedSetCompleteAndGetIsHandling()
-                {
-                    long initialValue, newValue;
-                    do
-                    {
-                        initialValue = Interlocked.Read(ref _completionState);
-                        newValue = initialValue | CompleteFlag;
-                    } while (Interlocked.CompareExchange(ref _completionState, newValue, initialValue) != initialValue);
-                    return initialValue > 0L;
-                }
-
-                [MethodImpl(InlineOption)]
-                private bool InterlockedDecrementHandleCountAndGetIsComplete()
-                {
-                    long newState = Interlocked.Decrement(ref _completionState);
-                    // Make sure CompleteFlag is set _and_ handle count is zero so that this can be safely disposed.
-                    // (And in case of recursive calls, the last function to decrement to 0 will be the highest in the program stack, which is good).
-                    bool isComplete = (newState & CompleteFlag) != 0;
-                    bool isHandleCountZero = (newState & ValueMask) == 0;
-                    return isComplete & isHandleCountZero;
-                }
-
-                new private void Reset()
-                {
-                    _completionState = 0L;
-                    base.Reset();
+                    var previous = _currentRunner;
+                    _currentRunner = currentRunner;
+                    return previous;
                 }
 
 #if !PROMISE_PROGRESS
@@ -449,7 +416,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private void SetAwaitedComplete(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
+                private void SetAwaitedComplete(PromiseRef handler, ref ExecutionScheduler executionScheduler)
                 {
                     _valueOrPrevious = null;
                 }
@@ -473,7 +440,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     ValueContainer valueContainer = CreateResolveContainer(result);
-                    MaybeHandleCompletion(Promise.State.Resolved, valueContainer);
+                    MaybeHandleCompletion(valueContainer, Promise.State.Resolved);
                 }
 
                 internal void SetException(Exception exception)
@@ -490,31 +457,20 @@ namespace Proto.Promises
                         valueContainer = CreateRejectContainer(exception, int.MinValue, this);
                         state = Promise.State.Rejected;
                     }
-                    MaybeHandleCompletion(state, valueContainer);
+                    MaybeHandleCompletion(valueContainer, state);
                 }
 
-                private void MaybeHandleCompletion(Promise.State state, ValueContainer valueContainer)
+                private void MaybeHandleCompletion(ValueContainer valueContainer, Promise.State state)
                 {
-                    _valueOrPrevious = valueContainer;
-                    State = state;
-                    // If this is completed from another promise, do nothing so that the other promise will schedule the continuation.
-                    if (InterlockedSetCompleteAndGetIsHandling())
+                    // If this is completed from another promise, just set the result so that the stack can unwind and the other promise will schedule the continuation.
+                    if (ExchangeCurrentRunner(null) == this)
                     {
-                        return;
+                        SetResult(valueContainer, state);
                     }
-                    ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
-                    HandleWaiter(valueContainer, ref executionScheduler);
-                    HandleProgressListener(state, ref executionScheduler);
-                    MaybeDispose();
-                    executionScheduler.Execute();
-                }
-
-                internal override void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    SetAwaitedComplete(owner, valueContainer, ref executionScheduler);
-                    executionScheduler.ScheduleSynchronous(this);
-                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
+                    else
+                    {
+                        HandleInternal(valueContainer, state);
+                    }
                 }
             }
 
@@ -623,18 +579,34 @@ namespace Proto.Promises
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                internal override void Handle(ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-                    // The next await could complete on another thread, so we use interlocked.
-                    InterlockedIncrementHandleCount();
+                    ThrowIfInPool(this);
+                    SetAwaitedComplete(handler, ref executionScheduler);
+
+                    AsyncPromiseRef previousRunner = ExchangeCurrentRunner(this);
 
                     MoveNext();
 
-                    if (InterlockedDecrementHandleCountAndGetIsComplete())
+                    bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
+                    if (isComplete)
                     {
-                        HandleWaiter((ValueContainer) _valueOrPrevious, ref executionScheduler);
-                        HandleProgressListener(State, ref executionScheduler);
-                        MaybeDispose();
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                        lock (this)
+#endif
+                        {
+                            Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                            nextHandler = Interlocked.Exchange(ref _waiter, null);
+                        }
+                        HandleProgressListener(handler.State, 0, ref executionScheduler);
+                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
+                        handler.MaybeDispose();
+                        handler = this;
+                    }
+                    else
+                    {
+                        nextHandler = null;
+                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                     }
                 }
             } // class AsyncPromiseRef
@@ -676,18 +648,34 @@ namespace Proto.Promises
                         _stateMachine.MoveNext();
                     }
 
-                    internal override void Handle(ref ExecutionScheduler executionScheduler)
+                    internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                     {
-                        // The next await could complete on another thread, so we use interlocked.
-                        InterlockedIncrementHandleCount();
+                        ThrowIfInPool(this);
+                        SetAwaitedComplete(handler, ref executionScheduler);
+
+                        AsyncPromiseRef previousRunner = ExchangeCurrentRunner(this);
 
                         ContinueMethod();
 
-                        if (InterlockedDecrementHandleCountAndGetIsComplete())
+                        bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
+                        if (isComplete)
                         {
-                            HandleWaiter((ValueContainer) _valueOrPrevious, ref executionScheduler);
-                            HandleProgressListener(State, ref executionScheduler);
-                            MaybeDispose();
+#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+                            lock (this)
+#endif
+                            {
+                                Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                                nextHandler = Interlocked.Exchange(ref _waiter, null);
+                            }
+                            HandleProgressListener(handler.State, 0, ref executionScheduler);
+                            WaitWhileProgressFlags(PromiseFlags.Subscribing);
+                            handler.MaybeDispose();
+                            handler = this;
+                        }
+                        else
+                        {
+                            nextHandler = null;
+                            WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         }
                     }
                 }

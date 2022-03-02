@@ -21,6 +21,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 
 using System;
@@ -60,9 +61,8 @@ namespace Proto.Promises
     {
         // This is used so that _result will be packed efficiently and not padded with extra bytes (only relevant for small, non-primitive struct T types).
         // Otherwise, if all fields are on the same level as _ref, because it is a class type, it will pad T up to IntPtr.Size if T is not primitive, causing the Promise<T> struct to be larger than necessary.
-        // This is especially needed for Promise, which has an internal Promise<Internal.VoidResult> field (and sadly, the runtime does not allow 0-sized structs, minimum size is 1 byte).
+        // This is especially needed for `Promise`, which has an internal `Promise<Internal.VoidResult>` field (and sadly, the runtime does not allow 0-sized structs, minimum size is 1 byte).
         // See https://stackoverflow.com/questions/24742325/why-does-struct-alignment-depend-on-whether-a-field-type-is-primitive-or-user-de
-        [StructLayout(LayoutKind.Auto)]
         private
 #if CSHARP_7_3_OR_NEWER
             readonly
@@ -210,21 +210,22 @@ namespace Proto.Promises
 
             partial class PromiseSingleAwait : PromiseRef
             {
+                protected enum ScheduleMethod : int
+                {
+                    None,
+                    Handle,
+                    AddWaiter,
+                    OnForgetOrHookupFailed
+                }
+
                 volatile protected HandleablePromiseBase _waiter;
             }
 
             partial class PromiseConfigured : PromiseSingleAwait
             {
-                private enum ScheduleMethod : int
-                {
-                    None,
-                    MakeReady,
-                    AddWaiter,
-                    OnForgetOrHookupFailed
-                }
-
                 private SynchronizationContext _synchronizationContext;
                 volatile private int _mostRecentPotentialScheduleMethod; // ScheduleMethod casted to int for Interlocked. This is to make sure this is only scheduled once, even if multiple threads are racing.
+                volatile private Promise.State _previousState;
             }
 
             partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
@@ -247,11 +248,7 @@ namespace Proto.Promises
 #endif
                 }
 
-#if PROTO_PROMISE_NO_STACK_UNWIND // Must use a queue instead of a stack so that the ExecutionScheduler.ScheduleSynchronous can invoke immediately and still be in proper order.
                 private ValueLinkedQueue<HandleablePromiseBase> _nextBranches = new ValueLinkedQueue<HandleablePromiseBase>();
-#else
-                private ValueLinkedStack<HandleablePromiseBase> _nextBranches = new ValueLinkedStack<HandleablePromiseBase>();
-#endif
                 private ProgressAndLocker _progressAndLocker;
 
 #if PROMISE_PROGRESS
@@ -454,8 +451,6 @@ namespace Proto.Promises
                 private int _waitCount;
 
 #if PROMISE_PROGRESS
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-
                 // These are used to avoid rounding errors when normalizing the progress.
                 // Use 64 bits to allow combining many promises with very deep chains.
                 private double _progressScaler;
@@ -476,9 +471,6 @@ namespace Proto.Promises
                 }
 
                 private RaceSmallFields _raceSmallFields;
-#if PROMISE_PROGRESS
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-#endif
             }
 
             partial class FirstPromise : MultiHandleablePromiseBase
@@ -494,9 +486,6 @@ namespace Proto.Promises
                 }
 
                 private FirstSmallFields _firstSmallFields;
-#if PROMISE_PROGRESS
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-#endif
             }
 
             partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>
@@ -536,9 +525,10 @@ namespace Proto.Promises
                 private struct ProgressSmallFields
                 {
                     internal Fixed32 _currentProgress;
-                    volatile internal bool _complete;
                     volatile internal bool _canceled;
                     internal bool _isSynchronous;
+                    volatile internal Promise.State _previousState;
+                    volatile internal int _mostRecentPotentialScheduleMethod; // ScheduleMethod casted to int for Interlocked. This is to make sure the waiter is only scheduled once, even if multiple threads are racing.
                 }
 
                 private ProgressSmallFields _smallProgressFields;
@@ -582,7 +572,6 @@ namespace Proto.Promises
 
             partial class AsyncPromiseRef : AsyncPromiseBase
             {
-                private long _completionState;
 #if PROMISE_PROGRESS
                 private float _minProgress;
                 private float _maxProgress;
@@ -617,5 +606,27 @@ namespace Proto.Promises
             } // AsyncPromiseRef
 #endif // CSHARP_7_3_OR_NEWER
         } // PromiseRef
+
+#if CSHARP_7_3_OR_NEWER
+        partial struct PromiseMethodBuilderInternal<T>
+        {
+#if !OPTIMIZED_ASYNC_MODE
+            private readonly PromiseRef.AsyncPromiseRef _ref;
+#else
+            // This is used so that _result will be packed efficiently and not padded with extra bytes (only relevant for small, non-primitive struct T types).
+            // Otherwise, if all fields are on the same level as _ref, because it is a class type, it will pad T up to IntPtr.Size if T is not primitive, causing the Promise<T> struct to be larger than necessary.
+            // This is especially needed for `Promise`, which uses `Internal.VoidResult` as T (and sadly, the runtime does not allow 0-sized structs, minimum size is 1 byte).
+            // See https://stackoverflow.com/questions/24742325/why-does-struct-alignment-depend-on-whether-a-field-type-is-primitive-or-user-de
+            private struct SmallFields
+            {
+                internal short _id;
+                internal T _result;
+            }
+
+            private PromiseRef.AsyncPromiseRef _ref;
+            private SmallFields _smallFields;
+#endif // !OPTIMIZED_ASYNC_MODE
+        }
+#endif // CSHARP_7_3_OR_NEWER
     } // Internal
 }

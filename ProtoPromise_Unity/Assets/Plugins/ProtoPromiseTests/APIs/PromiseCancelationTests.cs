@@ -608,35 +608,19 @@ namespace ProtoPromiseTests.APIs
                 var deferred = Promise.NewDeferred(cancelationSource.Token);
                 var promise = deferred.Promise.Preserve();
 
-                int order = 0;
                 int counter = 0;
 
-                Action<int> callback = expected =>
+                for (int i = 0; i < 10; ++i)
                 {
-                    Assert.AreEqual(expected, order);
-                    if (++counter == TestHelper.onCancelCallbacks * 2)
-                    {
-                        counter = 0;
-                        ++order;
-                    }
-                };
-
-                TestHelper.AddCancelCallbacks<float>(promise,
-                    onCancel: () => callback(0),
-                    onCancelCapture: cv => callback(0)
-                );
-                TestHelper.AddCancelCallbacks<float>(promise,
-                    onCancel: () => callback(1),
-                    onCancelCapture: cv => callback(1)
-                );
-                TestHelper.AddCancelCallbacks<float>(promise,
-                    onCancel: () => callback(2),
-                    onCancelCapture: cv => callback(2)
-                );
+                    int index = i;
+                    promise
+                        .CatchCancelation(() => Assert.AreEqual(index, counter++))
+                        .Forget();
+                }
 
                 cancelationSource.Cancel();
 
-                Assert.AreEqual(3, order);
+                Assert.AreEqual(10, counter);
 
                 cancelationSource.Dispose();
                 promise.Forget();
@@ -649,35 +633,19 @@ namespace ProtoPromiseTests.APIs
                 var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
                 var promise = deferred.Promise.Preserve();
 
-                int order = 0;
                 int counter = 0;
 
-                Action<int> callback = expected =>
+                for (int i = 0; i < 10; ++i)
                 {
-                    Assert.AreEqual(expected, order);
-                    if (++counter == TestHelper.onCancelCallbacks * 2)
-                    {
-                        counter = 0;
-                        ++order;
-                    }
-                };
-
-                TestHelper.AddCancelCallbacks<int, float>(promise,
-                    onCancel: () => callback(0),
-                    onCancelCapture: cv => callback(0)
-                );
-                TestHelper.AddCancelCallbacks<int, float>(promise,
-                    onCancel: () => callback(1),
-                    onCancelCapture: cv => callback(1)
-                );
-                TestHelper.AddCancelCallbacks<int, float>(promise,
-                    onCancel: () => callback(2),
-                    onCancelCapture: cv => callback(2)
-                );
+                    int index = i;
+                    promise
+                        .CatchCancelation(() => Assert.AreEqual(index, counter++))
+                        .Forget();
+                }
 
                 cancelationSource.Cancel();
 
-                Assert.AreEqual(3, order);
+                Assert.AreEqual(10, counter);
 
                 cancelationSource.Dispose();
                 promise.Forget();

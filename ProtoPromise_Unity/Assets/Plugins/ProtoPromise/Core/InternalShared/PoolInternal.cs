@@ -10,6 +10,8 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("ProtoPromiseTests")]
+
 namespace Proto.Promises
 {
     partial class Internal
@@ -74,44 +76,58 @@ namespace Proto.Promises
             internal static T TryTake<T>() where T : class, TLinked
             {
                 TLinked obj = Type<T>.TryTake();
-                RemoveFromTrackedObjects(obj);
+#if PROMISE_DEBUG
+                if (_trackObjectsForRelease & obj == null)
+                {
+                    // Create here via reflection so that the object can be tracked.
+                    obj = (TLinked) Activator.CreateInstance(typeof(T), true);
+                }
+#endif
+                MarkNotInPool(obj);
                 return (T) obj;
             }
 
             [MethodImpl(InlineOption)]
             internal static void MaybeRepool<T>(T obj) where T : class, TLinked
             {
+                MarkInPool(obj);
                 if (Promise.Config.ObjectPoolingEnabled)
                 {
-                    AddToTrackedObjects(obj);
                     Type<T>.Repool(obj);
                 }
                 else
                 {
+                    // Finalizers are only used to validate that objects were used and released properly.
+                    // If the object is being repooled, it means it was released properly. If pooling is disabled, we don't need the finalizer anymore.
+                    // SuppressFinalize reduces pressure on the system when the GC runs.
                     GC.SuppressFinalize(obj);
                 }
             }
 
-            static partial void AddToTrackedObjects(object obj);
-            static partial void RemoveFromTrackedObjects(object obj);
+            static partial void MarkInPool(object obj);
+            static partial void MarkNotInPool(object obj);
 #if PROMISE_DEBUG
-
-            static partial void AddToTrackedObjects(object obj)
+            static partial void MarkInPool(object obj)
             {
                 lock (_pooledObjects)
                 {
-                    if (!_pooledObjects.Add(obj))
+                    if (Promise.Config.ObjectPoolingEnabled && !_pooledObjects.Add(obj))
                     {
                         throw new Exception("Same object was added to the pool twice: " + obj);
                     }
+                    _inUseObjects.Remove(obj);
                 }
             }
 
-            static partial void RemoveFromTrackedObjects(object obj)
+            static partial void MarkNotInPool(object obj)
             {
                 lock (_pooledObjects)
                 {
                     _pooledObjects.Remove(obj);
+                    if (_trackObjectsForRelease && !_inUseObjects.Add(obj))
+                    {
+                        throw new Exception("Same object was taken from the pool twice: " + obj);
+                    }
                 }
             }
 #endif
@@ -119,7 +135,9 @@ namespace Proto.Promises
 
         static partial void ThrowIfInPool(object obj);
 #if PROMISE_DEBUG
+        private static bool _trackObjectsForRelease = false;
         private static readonly HashSet<object> _pooledObjects = new HashSet<object>();
+        private static readonly HashSet<object> _inUseObjects = new HashSet<object>();
 
         static Internal()
         {
@@ -142,7 +160,34 @@ namespace Proto.Promises
                 }
             }
         }
+
+        // This is used in unit testing, because finalizers are not guaranteed to run, even when calling `GC.WaitForPendingFinalizers()`.
+        internal static void TrackObjectsForRelease()
+        {
+            _trackObjectsForRelease = true;
+        }
+
+        internal static void AssertAllObjectsReleased()
+        {
+            lock (_pooledObjects)
+            {
+                if (_inUseObjects.Count > 0)
+                {
+                    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                    sb.AppendLine("Objects not released:");
+                    sb.AppendLine();
+                    ITraceable traceable = null;
+                    foreach (var obj in _inUseObjects)
+                    {
+                        traceable = traceable ?? obj as ITraceable;
+                        sb.AppendLine(obj.ToString());
+                        GC.SuppressFinalize(obj); // SuppressFinalize to not spoil the results of subsequent unit tests.
+                    }
+                    _inUseObjects.Clear();
+                    throw new UnreleasedObjectException(sb.ToString(), GetFormattedStacktrace(traceable));
+                }
+            }
+        }
 #endif
     }
 }
-

@@ -105,13 +105,8 @@ namespace ProtoPromiseTests.APIs
             });
         }
 
-        private static IEnumerable<TestCaseData> GetArgs_CancelFinally()
+        private static IEnumerable<TestCaseData> GetArgs_CancelFinally(CompleteType[] completeTypes)
         {
-            CompleteType[] completeTypes = new CompleteType[]
-            {
-                CompleteType.Cancel,
-                CompleteType.CancelFromToken
-            };
             SynchronizationType[] synchronizationTypes = new SynchronizationType[]
             {
                 SynchronizationType.Synchronous,
@@ -140,6 +135,26 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
+        private static IEnumerable<TestCaseData> GetArgs_Cancel()
+        {
+            return GetArgs_CancelFinally(new CompleteType[]
+            {
+                CompleteType.Cancel,
+                CompleteType.CancelFromToken
+            });
+        }
+
+
+        private static IEnumerable<TestCaseData> GetArgs_Finally()
+        {
+            return GetArgs_CancelFinally(new CompleteType[]
+            {
+                CompleteType.Resolve,
+                CompleteType.Reject,
+                CompleteType.Cancel,
+                CompleteType.CancelFromToken
+            });
+        }
         private readonly TimeSpan timeout = TimeSpan.FromSeconds(20);
 
         // promise
@@ -188,8 +203,8 @@ namespace ProtoPromiseTests.APIs
 
             Action onFirstCallback = () =>
             {
-                Interlocked.Increment(ref firstInvokeCounter);
                 TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                Interlocked.Increment(ref firstInvokeCounter);
             };
             Action onSecondCallback = () =>
             {
@@ -361,8 +376,8 @@ namespace ProtoPromiseTests.APIs
 
             Action onFirstCallback = () =>
             {
-                Interlocked.Increment(ref firstInvokeCounter);
                 TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                Interlocked.Increment(ref firstInvokeCounter);
             };
             Action onSecondCallback = () =>
             {
@@ -534,8 +549,8 @@ namespace ProtoPromiseTests.APIs
 
             Action onFirstCallback = () =>
             {
-                Interlocked.Increment(ref firstInvokeCounter);
                 TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                Interlocked.Increment(ref firstInvokeCounter);
             };
             Action onSecondCallback = () =>
             {
@@ -642,8 +657,8 @@ namespace ProtoPromiseTests.APIs
 
             Action onFirstCallback = () =>
             {
-                Interlocked.Increment(ref firstInvokeCounter);
                 TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                Interlocked.Increment(ref firstInvokeCounter);
             };
             Action onSecondCallback = () =>
             {
@@ -716,7 +731,7 @@ namespace ProtoPromiseTests.APIs
             secondCancelationSource.TryDispose();
         }
 
-        [Test, TestCaseSource("GetArgs_CancelFinally")]
+        [Test, TestCaseSource("GetArgs_Cancel")]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Cancel_void(
             CompleteType completeType,
             SynchronizationType waitType,
@@ -743,8 +758,8 @@ namespace ProtoPromiseTests.APIs
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
                     .CatchCancelation(() =>
                     {
-                        Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
+                        Interlocked.Increment(ref invokeCounter);
                     })
                     .Forget();
             }
@@ -754,8 +769,8 @@ namespace ProtoPromiseTests.APIs
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
                     .CatchCancelation(1, cv =>
                     {
-                        Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
+                        Interlocked.Increment(ref invokeCounter);
                     })
                     .Forget();
             }
@@ -781,7 +796,7 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.TryDispose();
         }
 
-        [Test, TestCaseSource("GetArgs_CancelFinally")]
+        [Test, TestCaseSource("GetArgs_Cancel")]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Cancel_T(
             CompleteType completeType,
             SynchronizationType waitType,
@@ -808,8 +823,8 @@ namespace ProtoPromiseTests.APIs
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
                     .CatchCancelation(() =>
                     {
-                        Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
+                        Interlocked.Increment(ref invokeCounter);
                     })
                     .Forget();
             }
@@ -819,8 +834,8 @@ namespace ProtoPromiseTests.APIs
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
                     .CatchCancelation(1, cv =>
                     {
-                        Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
+                        Interlocked.Increment(ref invokeCounter);
                     })
                     .Forget();
             }
@@ -846,7 +861,7 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.TryDispose();
         }
 
-        [Test, TestCaseSource("GetArgs_CancelFinally")]
+        [Test, TestCaseSource("GetArgs_Finally")]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Finally_void(
             CompleteType completeType,
             SynchronizationType waitType,
@@ -873,9 +888,10 @@ namespace ProtoPromiseTests.APIs
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
                     .Finally(() =>
                     {
-                        Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
+                        Interlocked.Increment(ref invokeCounter);
                     })
+                    .Catch(() => { })
                     .Forget();
             }
             foreach (var p in TestHelper.GetTestablePromises(promise))
@@ -884,9 +900,10 @@ namespace ProtoPromiseTests.APIs
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
                     .Finally(1, cv =>
                     {
-                        Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
+                        Interlocked.Increment(ref invokeCounter);
                     })
+                    .Catch(() => { })
                     .Forget();
             }
 
@@ -911,7 +928,7 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.TryDispose();
         }
 
-        [Test, TestCaseSource("GetArgs_CancelFinally")]
+        [Test, TestCaseSource("GetArgs_Finally")]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Finally_T(
             CompleteType completeType,
             SynchronizationType waitType,
@@ -938,9 +955,10 @@ namespace ProtoPromiseTests.APIs
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
                     .Finally(() =>
                     {
-                        Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
+                        Interlocked.Increment(ref invokeCounter);
                     })
+                    .Catch(() => { })
                     .Forget();
             }
             foreach (var p in TestHelper.GetTestablePromises(promise))
@@ -949,9 +967,10 @@ namespace ProtoPromiseTests.APIs
                 p.ConfigureAwait((ConfigureAwaitType) waitType)
                     .Finally(1, cv =>
                     {
-                        Interlocked.Increment(ref invokeCounter);
                         TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
+                        Interlocked.Increment(ref invokeCounter);
                     })
+                    .Catch(() => { })
                     .Forget();
             }
 
@@ -1029,8 +1048,8 @@ namespace ProtoPromiseTests.APIs
                 catch { }
                 finally
                 {
-                    Interlocked.Increment(ref firstInvokeCounter);
                     TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                    Interlocked.Increment(ref firstInvokeCounter);
                 }
 
                 try
@@ -1040,13 +1059,13 @@ namespace ProtoPromiseTests.APIs
                 catch { }
                 finally
                 {
-                    Interlocked.Increment(ref secondInvokeCounter);
                     // If there's a race condition, p2 could be completed on a separate thread before it's awaited, causing the assert to fail.
                     // This only matters for SynchronizationOption.Synchronous, for which the caller does not care on what context it executes.
                     if (!hasRaceCondition)
                     {
                         TestHelper.AssertCallbackContext(secondWaitType, secondReportType, foregroundThread);
                     }
+                    Interlocked.Increment(ref secondInvokeCounter);
                 }
             }
 
@@ -1140,8 +1159,8 @@ namespace ProtoPromiseTests.APIs
                 catch { }
                 finally
                 {
-                    Interlocked.Increment(ref firstInvokeCounter);
                     TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                    Interlocked.Increment(ref firstInvokeCounter);
                 }
 
                 try
@@ -1151,13 +1170,13 @@ namespace ProtoPromiseTests.APIs
                 catch { }
                 finally
                 {
-                    Interlocked.Increment(ref secondInvokeCounter);
                     // If there's a race condition, p2 could be completed on a separate thread before it's awaited, causing the assert to fail.
                     // This only matters for SynchronizationOption.Synchronous, for which the caller does not care on what context it executes.
                     if (!hasRaceCondition)
                     {
                         TestHelper.AssertCallbackContext(secondWaitType, secondReportType, foregroundThread);
                     }
+                    Interlocked.Increment(ref secondInvokeCounter);
                 }
             }
 

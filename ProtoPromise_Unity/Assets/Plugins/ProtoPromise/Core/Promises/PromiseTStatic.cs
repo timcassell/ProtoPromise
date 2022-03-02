@@ -558,8 +558,6 @@ namespace Proto.Promises
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
 
-        // TODO: optional `IList<T> valueContainer = null` parameter
-
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/> when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.

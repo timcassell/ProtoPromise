@@ -106,21 +106,6 @@ namespace Proto.Promises
             }
 #endif
 
-            // Used so that libraries can have a ProtoPromise dependency without forcing progress enabled/disabled on those libraries' users.
-            // e.g. a library depends on ProtoPromise v2.0.0 or higher, a user of that library could opt to use ProtoPromise v2.0.0.0 (no progress) or v2.0.0.1 (with progress)
-            public static bool IsProgressEnabled
-            {
-                [MethodImpl(MethodImplOptions.NoInlining)] // Don't allow inlining, otherwise it could break library code that functions depending on if progress is enabled or not.
-                get
-                {
-#if PROMISE_PROGRESS
-                    return true;
-#else
-                    return false;
-#endif
-                }
-            }
-
             /// <summary>
             /// Uncaught rejections get routed through this delegate.
             /// This must be set to a non-null delegate, otherwise uncaught rejections will continue to pile up without being reported.

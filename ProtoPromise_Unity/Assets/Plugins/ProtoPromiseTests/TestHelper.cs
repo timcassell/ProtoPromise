@@ -1,4 +1,9 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
@@ -64,6 +69,7 @@ namespace ProtoPromiseTests
         public const SynchronizationType backgroundType = (SynchronizationType) 2;
 
         public static readonly PromiseSynchronizationContext _foregroundContext = new PromiseSynchronizationContext();
+        public static readonly BackgroundSynchronizationContext _backgroundContext = new BackgroundSynchronizationContext();
         private static readonly List<Exception> _uncaughtExceptions = new List<Exception>();
 
         private static Stopwatch _stopwatch;
@@ -73,12 +79,15 @@ namespace ProtoPromiseTests
         {
             if (Promise.Config.ForegroundContext != _foregroundContext)
             {
+#if PROMISE_DEBUG
+                Internal.TrackObjectsForRelease();
+#endif
+
                 // Set the foreground context to execute foreground promise callbacks.
                 Promise.Config.ForegroundContext = _foregroundContext;
-#if !CSHARP_7_3_OR_NEWER
                 // Used instead of ThreadPool, because ThreadPool has issues in old runtime, causing tests to fail.
-                Promise.Config.BackgroundContext = new BackgroundSynchronizationContext();
-#endif
+                // This also allows us to wait for all background threads to complete for validation purposes.
+                Promise.Config.BackgroundContext = _backgroundContext;
                 // Set uncaught rejection handler.
                 Promise.Config.UncaughtRejectionHandler = e =>
                 {
@@ -102,11 +111,14 @@ namespace ProtoPromiseTests
 
         public static void Cleanup()
         {
+            _backgroundContext.WaitForAllThreadsToComplete();
+
             ExecuteForegroundCallbacks();
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
-            ExecuteForegroundCallbacks();
+
+            Internal.MaybeReportUnhandledRejections();
 
             Exception[] exceptions;
             lock (_uncaughtExceptions)
@@ -122,6 +134,10 @@ namespace ProtoPromiseTests
                 throw new AggregateException(exceptions);
 #endif
             }
+
+#if PROMISE_DEBUG
+            Internal.AssertAllObjectsReleased();
+#endif
 
             TestContext.Progress.WriteLine("Success time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
         }

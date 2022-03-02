@@ -99,11 +99,19 @@ namespace Proto.Promises
 
                 ~CancelableWrappe()
                 {
-                    if (!_disposed)
+                    try
                     {
-                        // For debugging. This should never happen.
-                        string message = "A " + GetType() + " was garbage collected without it being disposed.";
-                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                        if (!_disposed)
+                        {
+                            // For debugging. This should never happen.
+                            string message = "A " + GetType() + " was garbage collected without it being disposed.";
+                            AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never happen.
+                        AddRejectionToUnhandledStack(e, this);
                     }
                 }
 #endif
@@ -400,16 +408,24 @@ namespace Proto.Promises
 
             ~CancelationRef()
             {
-                if (_idsAndRetains._userRetains > 0)
+                try
                 {
-                    // CancelationToken wasn't released.
-                    string message = "A CancelationToken's resources were garbage collected without being released. You must release all IRetainable objects that you have retained.";
-                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    if (_idsAndRetains._userRetains > 0)
+                    {
+                        // CancelationToken wasn't released.
+                        string message = "A CancelationToken's resources were garbage collected without being released. You must release all IRetainable objects that you have retained.";
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    }
+                    if (_state != (int) State.Disposed)
+                    {
+                        // CancelationSource wasn't disposed.
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException("CancelationSource's resources were garbage collected without being disposed."), this);
+                    }
                 }
-                if (_state != (int) State.Disposed)
+                catch (Exception e)
                 {
-                    // CancelationSource wasn't disposed.
-                    AddRejectionToUnhandledStack(new UnreleasedObjectException("CancelationSource's resources were garbage collected without being disposed."), this);
+                    // This should never happen.
+                    AddRejectionToUnhandledStack(e, this);
                 }
             }
 

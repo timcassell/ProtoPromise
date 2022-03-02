@@ -1,25 +1,10 @@
 ﻿using System;
-using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
     internal static partial class Internal
     {
-        // Abstract classes are used instead of interfaces, because virtual calls on interfaces are twice as slow as virtual calls on classes.
-        internal abstract partial class HandleablePromiseBase : ILinked<HandleablePromiseBase>
-        {
-            HandleablePromiseBase ILinked<HandleablePromiseBase>.Next
-            {
-                [MethodImpl(InlineOption)]
-                get { return _next; }
-                [MethodImpl(InlineOption)]
-                set { _next = value; }
-            }
-
-            internal abstract void Handle(ref ExecutionScheduler executionScheduler);
-            internal abstract void MakeReady(PromiseRef owner, ValueContainer valueContainer, ref ExecutionScheduler executionScheduler);
-        }
-
+        // Abstract class is used instead of interface, because virtual calls on interfaces are twice as slow as virtual calls on classes.
         internal abstract class ValueContainer
         {
             internal abstract void Retain();
@@ -29,6 +14,7 @@ namespace Proto.Promises
             internal abstract object Value { get; }
 
             internal abstract void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd);
+            internal abstract void AddToUnhandledStack();
         }
 
         internal partial interface ITraceable { }

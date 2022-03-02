@@ -139,18 +139,6 @@ namespace Proto.Promises
 #endif
             }
 
-            [MethodImpl(InlineOption)]
-            internal ExecutionScheduler GetEmptyCopy()
-            {
-                bool isExecutingProgress =
-#if PROMISE_PROGRESS && (PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
-                    _isExecutingProgress;
-#else
-                    false;
-#endif
-                return new ExecutionScheduler(_synchronizationHandler, isExecutingProgress);
-            }
-
             internal void Execute()
             {
                 // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
@@ -179,11 +167,7 @@ namespace Proto.Promises
             internal void ScheduleSynchronous(HandleablePromiseBase handleable)
             {
                 AssertNotExecutingProgress();
-#if PROTO_PROMISE_NO_STACK_UNWIND // Helps to see full causality trace with internal stacktraces in exceptions (may cause StackOverflowException if the chain is very long).
-                handleable.Handle(ref this);
-#else
                 _handleStack.Push(handleable);
-#endif
             }
 
             internal void ScheduleOnContext(SynchronizationContext synchronizationContext, HandleablePromiseBase handleable)
@@ -221,7 +205,7 @@ namespace Proto.Promises
                 // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
                 try
                 {
-                    ExecutionScheduler executionScheduler = new ExecutionScheduler(true);
+                    var executionScheduler = new ExecutionScheduler(true);
                     ((HandleablePromiseBase) state).Handle(ref executionScheduler);
                     executionScheduler.Execute();
                 }
@@ -337,6 +321,9 @@ namespace Proto.Promises
 
         internal static void AddUnhandledException(UnhandledException exception)
         {
+#if PROTO_PROMISE_DEVELOPER_MODE
+            exception = new UnhandledExceptionInternal(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new StackTrace(1, true).ToString(), exception);
+#endif
             _unhandledExceptionsLocker.Enter();
             _unhandledExceptions.Push(exception);
             _unhandledExceptionsLocker.Exit();

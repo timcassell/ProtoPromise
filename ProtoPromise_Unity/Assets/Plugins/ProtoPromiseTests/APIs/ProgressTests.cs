@@ -1005,7 +1005,7 @@ namespace ProtoPromiseTests.APIs
                 {
                     Assert.GreaterOrEqual(p, 0f);
                     Assert.LessOrEqual(p, 1f);
-                })
+                }, SynchronizationOption.Synchronous)
                 .Forget();
 
             Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => deferred.ReportProgress(float.NaN));

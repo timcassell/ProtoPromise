@@ -60,11 +60,19 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             ~ValueContainer()
             {
-                if (_retainCounter != 0)
+                try
                 {
-                    // For debugging. This should never happen.
-                    string message = "A " + GetType() + " was garbage collected without it being released. _retainCounter: " + _retainCounter + ", value: " + value;
-                    AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    if (_retainCounter != 0)
+                    {
+                        // For debugging. This should never happen.
+                        string message = "A " + GetType() + " was garbage collected without it being released. _retainCounter: " + _retainCounter + ", value: " + value;
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    }
+                }
+                catch (Exception e)
+                {
+                    // This should never happen.
+                    AddRejectionToUnhandledStack(e, this);
                 }
             }
 #endif
@@ -142,9 +150,14 @@ namespace Proto.Promises
             {
                 if (shouldAdd)
                 {
-                    AddUnhandledException(ToException());
+                    AddToUnhandledStack();
                 }
                 Release();
+            }
+
+            internal override void AddToUnhandledStack()
+            {
+                AddUnhandledException(ToException());
             }
 
             private void Dispose()
@@ -238,7 +251,7 @@ namespace Proto.Promises
             }
 #endif
 
-                    private RejectionContainerException() { }
+            private RejectionContainerException() { }
 
             internal static RejectionContainerException GetOrCreate(Exception value)
             {
@@ -273,9 +286,14 @@ namespace Proto.Promises
             {
                 if (shouldAdd)
                 {
-                    AddUnhandledException(ToException());
+                    AddToUnhandledStack();
                 }
                 Release();
+            }
+
+            internal override void AddToUnhandledStack()
+            {
+                AddUnhandledException(ToException());
             }
 
             private void Dispose()
@@ -374,9 +392,14 @@ namespace Proto.Promises
             {
                 if (shouldAdd)
                 {
-                    AddUnhandledException(ToException());
+                    AddToUnhandledStack();
                 }
                 Release();
+            }
+
+            internal override void AddToUnhandledStack()
+            {
+                AddUnhandledException(ToException());
             }
 
             private void Dispose()
@@ -473,6 +496,8 @@ namespace Proto.Promises
             internal override void Release() { }
             internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
 #endif
+
+            internal override void AddToUnhandledStack() { }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -541,6 +566,8 @@ namespace Proto.Promises
             {
                 Release();
             }
+
+            internal override void AddToUnhandledStack() { }
 
             private void Dispose()
             {

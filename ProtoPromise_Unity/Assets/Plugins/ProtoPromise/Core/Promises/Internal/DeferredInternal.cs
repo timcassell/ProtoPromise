@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
+using System;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
@@ -30,10 +31,18 @@ namespace Proto.Promises
 
                 ~DeferredPromiseBase()
                 {
-                    if (State == Promise.State.Pending)
+                    try
                     {
-                        // Deferred wasn't handled.
-                        AddRejectionToUnhandledStack(UnhandledDeferredException.instance, this);
+                        if (State == Promise.State.Pending)
+                        {
+                            // Deferred wasn't handled.
+                            AddRejectionToUnhandledStack(UnhandledDeferredException.instance, this);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never happen.
+                        AddRejectionToUnhandledStack(e, this);
                     }
                 }
 

@@ -92,30 +92,20 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal override void Handle(ref ExecutionScheduler executionScheduler)
-                {
-                    ValueContainer valueContainer = (ValueContainer) _valueOrPrevious;
-                    Promise.State state = valueContainer.GetState();
-                    State = state;
-                    HandleWaiter(valueContainer, ref executionScheduler);
-                    HandleProgressListener(state, ref executionScheduler);
-
-                    if (InterlockedAddWithOverflowCheck(ref _raceSmallFields._waitCount, -1, 0) == 0)
-                    {
-                        MaybeDispose();
-                    }
-                }
-
-                internal override void Handle(PromiseRef owner, ValueContainer valueContainer, PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref PromiseRef handler, ValueContainer valueContainer, PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     // Retain while handling, then release when complete for thread safety.
                     InterlockedRetainDisregardId();
 
                     if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                     {
-                        owner.SuppressRejection = true;
+                        handler.SuppressRejection = true;
                         valueContainer.Retain();
-                        executionScheduler.ScheduleSynchronous(this);
+                        Handle(ref _raceSmallFields._waitCount, ref handler, out nextHandler, ref executionScheduler);
+                    }
+                    else
+                    {
+                        nextHandler = null;
                     }
                     if (InterlockedAddWithOverflowCheck(ref _raceSmallFields._waitCount, -1, 0) == 0)
                     {
@@ -127,17 +117,12 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class RacePromise : IProgressInvokable
+            partial class RacePromise
             {
                 new private void Reset(ushort depth)
                 {
                     _raceSmallFields._currentProgress = default(Fixed32);
                     base.Reset(depth);
-                }
-
-                internal override void HandleProgressListener(Promise.State state, ref ExecutionScheduler executionScheduler)
-                {
-                    HandleProgressListener(state, Fixed32.FromWholePlusOne(Depth), ref executionScheduler);
                 }
 
                 protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
@@ -155,29 +140,20 @@ namespace Proto.Promises
                     SetInitialProgress(progressListener, ref progress, Fixed32.FromWholePlusOne(Depth), out nextRef, ref executionScheduler);
                 }
 
-                internal override void IncrementProgress(uint amount, Fixed32 senderAmount, Fixed32 ownerAmount, ref ExecutionScheduler executionScheduler)
+                internal override void IncrementProgress(uint amount, ref Fixed32 progress, ushort depth, out PromiseSingleAwaitWithProgress nextRef)
                 {
                     ThrowIfInPool(this);
 
-                    var newAmount = senderAmount.MultiplyAndDivide(Depth + 1, ownerAmount.WholePart + 1);
-                    if (_raceSmallFields._currentProgress.InterlockedTrySetIfGreater(newAmount, senderAmount))
+                    var newAmount = progress.MultiplyAndDivide(Depth + 1, depth + 1);
+                    if (_raceSmallFields._currentProgress.InterlockedTrySetIfGreater(newAmount, progress))
                     {
-                        if ((_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
-                        {
-                            InterlockedRetainDisregardId();
-                            executionScheduler.ScheduleProgressSynchronous(this);
-                        }
+                        nextRef = this;
+                        progress = newAmount;
                     }
-                }
-
-                void IProgressInvokable.Invoke(ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
-                    var progress = _raceSmallFields._currentProgress;
-                    _smallFields.InterlockedUnsetFlags(PromiseFlags.InProgressQueue);
-                    ReportProgress(progress, ref executionScheduler);
-                    MaybeDispose();
+                    else
+                    {
+                        nextRef = null;
+                    }
                 }
             }
 #endif

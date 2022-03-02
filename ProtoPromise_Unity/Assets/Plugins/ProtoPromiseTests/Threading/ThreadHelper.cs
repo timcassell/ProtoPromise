@@ -10,11 +10,8 @@ namespace ProtoPromiseTests.Threading
     {
         private sealed class ThreadRunner
         {
-            // Pool threads globally because creating new threads is expensive.
-            // Better to control the threads here than use ThreadPool.
-            private static readonly Stack<ThreadRunner> _pool = new Stack<ThreadRunner>();
+            private static readonly SendOrPostCallback _threadCallback = ThreadAction;
 
-            private readonly object _locker = new object();
             private Action _autoAction;
             private Action<Action> _manualAction;
             bool didWait = false;
@@ -47,81 +44,47 @@ namespace ProtoPromiseTests.Threading
 
             private static void Run(Action autoAction, Action<Action> manualAction, int offset, ThreadMerger merger)
             {
-                bool reused = false;
-                ThreadRunner threadRunner = null;
-                lock (_pool)
+                ThreadRunner runner = new ThreadRunner()
                 {
-                    if (_pool.Count > 0)
+                    _autoAction = autoAction,
+                    _manualAction = manualAction,
+                    _offset = offset,
+                    _merger = merger
+                };
+                TestHelper._backgroundContext.Post(_threadCallback, runner);
+            }
+
+            private static void ThreadAction(object state)
+            {
+                ((ThreadRunner) state).Execute();
+            }
+
+            private void Execute()
+            {
+                ThreadMerger merger = _merger;
+                try
+                {
+                    if (_autoAction != null)
                     {
-                        reused = true;
-                        threadRunner = _pool.Pop();
-                    }
-                }
-                if (!reused)
-                {
-                    threadRunner = new ThreadRunner();
-                }
-                lock (threadRunner._locker)
-                {
-                    threadRunner._autoAction = autoAction;
-                    threadRunner._manualAction = manualAction;
-                    threadRunner._offset = offset;
-                    threadRunner._merger = merger;
-                    if (reused)
-                    {
-                        Monitor.Pulse(threadRunner._locker);
+                        WaitForBarrier();
+                        _autoAction.Invoke();
                     }
                     else
                     {
-                        // Thread will never be garbage collected until the application terminates.
-                        new Thread(threadRunner.ThreadAction) { IsBackground = true }.Start();
+                        didWait = false;
+                        _manualAction.Invoke(WaitAction);
+                        if (!didWait)
+                        {
+                            throw new InvalidOperationException("Wait action was not invoked.");
+                        }
                     }
                 }
-            }
-
-            private void ThreadAction()
-            {
-                while (true)
+                catch (Exception e)
                 {
-                    ThreadMerger merger = _merger;
-                    try
-                    {
-                        Action autoAction = _autoAction;
-                        Action<Action> manualAction = _manualAction;
-                        if (autoAction != null)
-                        {
-                            WaitForBarrier();
-                            autoAction.Invoke();
-                        }
-                        else
-                        {
-                            didWait = false;
-                            manualAction.Invoke(WaitAction);
-                            if (!didWait)
-                            {
-                                throw new InvalidOperationException("Wait action was not invoked.");
-                            }
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // Only reporting one exception instead of aggregate.
-                        merger._executionException = e;
-                    }
-                    // Allow GC to reclaim memory.
-                    _autoAction = null;
-                    _manualAction = null;
-                    _merger = null;
-                    Interlocked.Decrement(ref merger._currentParticipants);
-                    lock (_locker)
-                    {
-                        lock (_pool)
-                        {
-                            _pool.Push(this);
-                        }
-                        Monitor.Wait(_locker);
-                    }
+                    // Only reporting one exception instead of aggregate.
+                    merger._executionException = e;
                 }
+                Interlocked.Decrement(ref merger._currentParticipants);
             }
         }
 
