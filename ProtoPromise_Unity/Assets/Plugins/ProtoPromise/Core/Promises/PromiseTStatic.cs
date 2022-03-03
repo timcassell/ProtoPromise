@@ -418,11 +418,11 @@ namespace Proto.Promises
             {
                 // Make sure list has the same count as promises.
                 int listSize = valueContainer.Count;
-                while (listSize > 4)
+                while (listSize > 2)
                 {
                     valueContainer.RemoveAt(--listSize);
                 }
-                while (listSize < 4)
+                while (listSize < 2)
                 {
                     valueContainer.Add(default(T));
                     ++listSize;
@@ -473,11 +473,11 @@ namespace Proto.Promises
             {
                 // Make sure list has the same count as promises.
                 int listSize = valueContainer.Count;
-                while (listSize > 4)
+                while (listSize > 3)
                 {
                     valueContainer.RemoveAt(--listSize);
                 }
-                while (listSize < 4)
+                while (listSize < 3)
                 {
                     valueContainer.Add(default(T));
                     ++listSize;
