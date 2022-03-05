@@ -9,7 +9,8 @@ Enhancements:
 - `Promise<T>.ResultContainer` now has an implicit conversion to `Promise.ResultContainer`.
 - Added `Promise<T>.{All, Race, First, New, NewDeferred, Resolved, Rejected, Canceled}`.
 - Added `Promise.DeferredBase.AsDeferred(<T>)`.
-- Added optional `valueContainer` parameter to `Promise<T>.All` functions to be used instead of a new list.
+- Added optional `valueContainer` parameter to `Promise<T>.All` functions to be used instead of allocating a new list.
+- Added `Deferred.{TryResolve, TryReject, TryReportProgress}`.
 - Added `Deferred.{Cancel, TryCancel}`.
 - `Deferred`s now implement `IProgress<float>` and `ICancelable`.
 - Added `CancelationSource.TryDispose` and `CancelationSource.TryCancel` methods.
@@ -46,7 +47,7 @@ Breaking Changes:
 - `Promise(<T>).GetAwaiter()` now return `Proto.Promises.Async.CompilerServices.PromiseAwaiter(<T>)`.
 - Removed `PromiseYielder.ClearPooledObjects` as its pool is now controlled by `Promise.Config.ObjectPoolingEnabled` and `Promise.Manager.ClearObjectPool`.
 - Removed `Proto.Utils` namespace.
-- Promise callbacks and awaits now execute synchronously by default.
+- Continuations (`await` keyword or `promise.Then(callback)`) now execute synchronously by default. Use `Promise.WaitAsync()` to execute on a different context or asynchronously.
 - Changed `PromiseYielder`'s `public static Promise<TYieldInstruction> WaitFor<TYieldInstruction>(TYieldInstruction)` to `public static Promise WaitFor(object yieldInstruction, MonoBehaviour runner = null)`.
 - Removed `Promise(<T>).ResultType`.
 - Changed behavior of `Promise.CatchCancelation` to return a new promise and behave more like `Promise.Catch`, where `onCanceled` resolves the returned promise when it returns, or adopts the state of the returned promise.
@@ -58,14 +59,12 @@ Breaking Changes:
 
 Minor Changes:
 
-- Continuations (`await` keyword or `promise.Then(callback)`) now execute synchronously by default. Use `Promise.WaitAsync()` to execute on a different context or asynchronously.
 - Object pooling is enabled by default.
 - Changed `Promise.DeferredBase.ToDeferred(<T>)` to throw if the cast fails.
 - Adjusted `CancelationRegistration.{IsRegistered, TryUnregister}` to return false if the token has been canceled and the callback not yet invoked. (Can no longer unregister callbacks once the source has been canceled.)
 - Updated `Promise.New` to cancel the returned promise if the resolver throws an `OperationCanceledException`.
 - `CancelationSource.Token` no longer throws (may return a token whose `CanBeCanceled` is false).
 - Changed `Promise.Finally` to overwrite current rejection if an exception is thrown (follows same behavior as normal try/finally blocks).
-- `Promise.CatchCancelation` now returns a new promise that behaves similar to `Promise.Catch` (instead of returning the same promise).
 - Renamed `ElementNullException` to `InvalidElementException`.
 - Removed `PromiseDisposedException`.
 - Removed `CancelException`, replaced with already existing `CanceledException`.
