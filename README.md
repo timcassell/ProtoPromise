@@ -63,6 +63,7 @@ See [Release Notes](ReleaseNotes.md) for the full changelog.
     - [Type Matching Error Handling](#type-matching-error-handling)
     - [Caught Error Continuation](#caught-error-continuation)
     - [Unhandled Rejections](#unhandled-rejections)
+- [Forget](#forget)
 - [Promises that are already settled](#promises-that-are-already-settled)
 - [Progress reporting](#progress-reporting)
 - [Combining Multiple Async Operations](#combining-multiple-async-operations)
@@ -365,7 +366,8 @@ void Func()
         .Then(v => { throw new Exception(); return v; })    // <--- An error here aborts all subsequent callbacks...
         .Then(v => DoSomething())
         .Then(() => DoSomethingElse())
-        .Catch((Exception e) => HandleError(e));            // <--- Until the error handler is invoked here.
+        .Catch((Exception e) => HandleError(e))             // <--- Until the error handler is invoked here.
+        .Forget();
 }
 ```
 
@@ -386,6 +388,12 @@ void Func()
     }
 }
 ```
+
+## Forget
+
+All `Promise` and `Promise<T>` objects must either be awaited (using the `await` keyword or `.Then` or `.Catch`, etc or passing into Promise.`All`, `Race`, etc), returned, or forgotten. `promise.Forget()` means you are done with the promise and no more operations will be performed on it. It is the call that allows the backing object to be repooled and uncaught rejections to be reported. The C# compiler will warn when you do not await or use an awaitable object, and calling `Forget()` is the proper way to fix that warning.
+
+See previous examples that demonstrate returning promises, awaiting promises, and forgetting promises after a promise chain.
 
 ### Type Matching Error Handling
 
@@ -825,9 +833,11 @@ Retry:
 
 ### Multiple-Consumer
 
-Most promises can only be awaited once, and if they are not awaited, they must be returned or forgotten.
+Most promises can only be awaited once, and if they are not awaited, they must be returned or forgotten (see [Forget](#forget)).
 You can preserve a promise so that it can be awaited multiple times via the `promise.Preserve()` API. When you are finished with the promise, you must call `promise.Forget()`.
 Callbacks added to a preserved promise which will be invoked in the order that they are added.
+
+Note: a preserved promise should not be returned from a public API, because the consumer could immediately call `Forget()` and invalidate the promise. Instead, you should use `promise.Duplicate()` to get a promise that will adopt its state, but can only be awaited once.
 
 ### Capture Values
 
