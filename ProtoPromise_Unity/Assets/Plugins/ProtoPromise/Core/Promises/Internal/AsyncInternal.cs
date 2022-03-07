@@ -1,4 +1,8 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -20,7 +24,8 @@
 
 #pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0060 // Remove unused parameter
-#pragma warning disable CS0436 // Type conflicts with imported type
+#pragma warning disable 0436 // Type conflicts with imported type
+#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Diagnostics;
@@ -33,33 +38,46 @@ using Proto.Promises.Async.CompilerServices;
 namespace System.Runtime.CompilerServices
 {
     // I would #ifdef this entire file, but Unity complains about namespaces changed with define symbols.
-#if CSHARP_7_3_OR_NEWER // Custom async builders only available after C# 7.2.
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Interface | AttributeTargets.Delegate, Inherited = false, AllowMultiple = false)]
     internal sealed class AsyncMethodBuilderAttribute : Attribute
     {
-        public Type BuilderType { get; }
+        public Type BuilderType { get; private set; }
 
         public AsyncMethodBuilderAttribute(Type builderType)
         {
             BuilderType = builderType;
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
+
+#if NET_LEGACY
+    public interface INotifyCompletion
+    {
+        void OnCompleted(Action continuation);
+    }
+
+    public interface ICriticalNotifyCompletion : INotifyCompletion
+    {
+        void UnsafeOnCompleted(Action continuation);
+    }
+
+    public interface IAsyncStateMachine
+    {
+        void MoveNext();
+        void SetStateMachine(IAsyncStateMachine stateMachine);
+    }
+#endif // NET_LEGACY
 }
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER // Custom async builders only available after C# 7.2.
     [AsyncMethodBuilder(typeof(PromiseMethodBuilder))]
     partial struct Promise { }
 
     [AsyncMethodBuilder(typeof(PromiseMethodBuilder<>))]
     partial struct Promise<T> { }
-#endif // CSHARP_7_3_OR_NEWER
 
     namespace Async.CompilerServices
     {
-#if CSHARP_7_3_OR_NEWER // Custom async builders only available after C# 7.2.
         /// <summary>
         /// This type and its members are intended for use by the compiler.
         /// </summary>
@@ -201,13 +219,11 @@ namespace Proto.Promises
                 _builder.SetStateMachine(stateMachine);
             }
         }
-#endif // CSHARP_7_3_OR_NEWER
     } // namespace Async.CompilerServices
 } // namespace Proto.Promises
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER // Custom async builders only available after C# 7.2.
     partial class Internal
     {
 #if !OPTIMIZED_ASYNC_MODE
@@ -310,9 +326,9 @@ namespace Proto.Promises
                 return new PromiseMethodBuilderInternal<T>();
             }
 
-            public void SetException(Exception exception)
+            internal void SetException(Exception exception)
             {
-                if (_ref is null)
+                if (_ref == null)
                 {
                     _ref = PromiseRef.AsyncPromiseRef.GetOrCreate();
                     _smallFields._id = _ref.Id;
@@ -320,9 +336,13 @@ namespace Proto.Promises
                 _ref.SetException(exception);
             }
 
-            public void SetResult(in T result)
+            internal void SetResult(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T result)
             {
-                if (_ref is null)
+                if (_ref == null)
                 {
                     _smallFields._result = result;
                     _smallFields._id = ValidIdFromApi;
@@ -334,7 +354,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            internal void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : INotifyCompletion
                 where TStateMachine : IAsyncStateMachine
             {
@@ -352,7 +372,7 @@ namespace Proto.Promises
 
             [SecuritySafeCritical]
             [MethodImpl(InlineOption)]
-            public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            internal void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : ICriticalNotifyCompletion
                 where TStateMachine : IAsyncStateMachine
             {
@@ -368,20 +388,20 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            public void Start<TStateMachine>(ref TStateMachine stateMachine)
+            internal void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
                 stateMachine.MoveNext();
             }
 
             [MethodImpl(InlineOption)]
-            public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+            internal void SetStateMachine(IAsyncStateMachine stateMachine) { }
 
             [MethodImpl(InlineOption)]
             private void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
-                if (_ref is null)
+                if (_ref == null)
                 {
                     PromiseRef.AsyncPromiseRef.SetStateMachine(ref stateMachine, ref _ref);
                     _smallFields._id = _ref.Id;
@@ -488,12 +508,12 @@ namespace Proto.Promises
 #endif
                 private abstract partial class PromiseMethodContinuer : IDisposable
                 {
-                    internal Action MoveNext
+                    public Action MoveNext
                     {
                         [MethodImpl(InlineOption)]
                         get { return _moveNext; }
                         [MethodImpl(InlineOption)]
-                        private protected set { _moveNext = value; }
+                        protected set { _moveNext = value; }
                     }
 
                     private PromiseMethodContinuer() { }
@@ -534,7 +554,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                             _owner = null;
 #endif
-                            _stateMachine = default;
+                            _stateMachine = default(TStateMachine);
                             ObjectPool<Continuer<TStateMachine>>.MaybeRepool(this);
                         }
 
@@ -562,7 +582,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
                 {
-                    if (_continuer is null)
+                    if (_continuer == null)
                     {
                         _continuer = PromiseMethodContinuer.GetOrCreate(ref stateMachine, this);
                     }
@@ -591,7 +611,7 @@ namespace Proto.Promises
                     bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                     if (isComplete)
                     {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                         lock (this)
 #endif
                         {
@@ -638,7 +658,7 @@ namespace Proto.Promises
                     protected override void Dispose()
                     {
                         SuperDispose();
-                        _stateMachine = default;
+                        _stateMachine = default(TStateMachine);
                         ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                     }
 
@@ -660,7 +680,7 @@ namespace Proto.Promises
                         bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                         if (isComplete)
                         {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                             lock (this)
 #endif
                             {
@@ -711,5 +731,4 @@ namespace Proto.Promises
 #endif // OPTIMIZED_ASYNC_MODE
         } // class PromiseRef
     } // class Internal
-#endif // CSHARP_7_3_OR_NEWER
 } // namespace Proto.Promises

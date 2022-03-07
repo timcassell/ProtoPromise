@@ -1,6 +1,6 @@
 # Release Notes
 
-## v 2.0 - TBD
+## v 2.0 - March 7, 2022
 
 Enhancements:
 

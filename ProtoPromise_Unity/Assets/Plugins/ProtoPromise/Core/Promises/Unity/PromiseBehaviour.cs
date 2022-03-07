@@ -1,4 +1,5 @@
 ﻿using Proto.Promises.Threading;
+using System;
 using System.Collections;
 using System.Runtime.CompilerServices;
 using UnityEngine;
@@ -38,6 +39,9 @@ namespace Proto.Promises
             // Dummy class is to prevent error:
             // UnityException: get_isPlayingOrWillChangePlaymode is not allowed to be called from a MonoBehaviour constructor (or instance field initializer),
             // call it in Awake or Start instead.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
             private static class Dummy
             {
                 // NoInlining is to ensure that the static constructor runs.
@@ -147,7 +151,7 @@ namespace Proto.Promises
                         _syncContext.Execute();
                     }
                     // In case someone clears `Promise.Config.UncaughtRejectionHandler`, we catch the AggregateException here and log it so that the coroutine won't stop.
-                    catch (System.AggregateException e)
+                    catch (AggregateException e)
                     {
                         Debug.LogException(e);
                     }

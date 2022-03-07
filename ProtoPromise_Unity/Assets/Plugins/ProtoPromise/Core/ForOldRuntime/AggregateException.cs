@@ -1,11 +1,47 @@
-﻿#if !CSHARP_7_OR_LATER
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 
-namespace System
+namespace Proto.Promises
 {
+#if !NET_LEGACY || NET40_OR_GREATER
+    /// <summary>Represents one or more errors that occur during application execution.</summary>
+    /// <remarks>
+    /// <see cref="AggregateException"/> is used to consolidate multiple failures into a single, throwable
+    /// exception object.
+    /// </remarks>
+    public class AggregateException : System.AggregateException
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AggregateException"/> class with
+        /// references to the inner exceptions that are the cause of this exception.
+        /// </summary>
+        /// <param name="innerExceptions">The exceptions that are the cause of the current exception.</param>
+        /// <exception cref="T:System.ArgumentNullException">The <paramref name="innerExceptions"/> argument
+        /// is null.</exception>
+        /// <exception cref="T:System.ArgumentException">An element of <paramref name="innerExceptions"/> is
+        /// null.</exception>
+        public AggregateException(IEnumerable<Exception> innerExceptions) : base(null, innerExceptions) { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AggregateException"/> class with a specified error
+        /// message and references to the inner exceptions that are the cause of this exception.
+        /// </summary>
+        /// <param name="message">The error message that explains the reason for the exception.</param>
+        /// <param name="innerExceptions">The exceptions that are the cause of the current exception.</param>
+        /// <exception cref="T:System.ArgumentNullException">The <paramref name="innerExceptions"/> argument
+        /// is null.</exception>
+        /// <exception cref="T:System.ArgumentException">An element of <paramref name="innerExceptions"/> is
+        /// null.</exception>
+        public AggregateException(string message, IEnumerable<Exception> innerExceptions) : base(message, innerExceptions) { }
+    }
+#else
     /// <summary>Represents one or more errors that occur during application execution.</summary>
     /// <remarks>
     /// <see cref="AggregateException"/> is used to consolidate multiple failures into a single, throwable
@@ -62,7 +98,7 @@ namespace System
         {
             if (innerExceptions == null)
             {
-                throw new ArgumentNullException("innerExceptions");
+                throw new System.ArgumentNullException("innerExceptions");
             }
 
             // Copy exceptions to our internal array and validate them. We must copy them,
@@ -132,7 +168,7 @@ namespace System
         {
             if (predicate == null)
             {
-                throw new ArgumentNullException("predicate");
+                throw new System.ArgumentNullException("predicate");
             }
 
             List<Exception> unhandledExceptions = null;
@@ -252,5 +288,5 @@ namespace System
             }
         }
     }
-}
 #endif
+}

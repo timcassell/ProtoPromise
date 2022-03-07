@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Proto.Promises;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -103,7 +104,7 @@ namespace ProtoPromiseTests
         {
             if (d == null)
             {
-                throw new ArgumentNullException("d", "SendOrPostCallback may not be null.");
+                throw new System.ArgumentNullException("d", "SendOrPostCallback may not be null.");
             }
 
             ThreadRunner.Run(this, d, state);
@@ -111,7 +112,7 @@ namespace ProtoPromiseTests
 
         public override void Send(SendOrPostCallback d, object state)
         {
-            throw new InvalidOperationException("BackgroundSynchronizationContext.Send is not supported.");
+            throw new System.InvalidOperationException("BackgroundSynchronizationContext.Send is not supported.");
         }
     }
 }

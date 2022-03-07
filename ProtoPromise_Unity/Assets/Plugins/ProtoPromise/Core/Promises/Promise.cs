@@ -1,4 +1,8 @@
-﻿// define PROTO_PROMISE_DEBUG_ENABLE to enable debugging options in RELEASE mode. define PROTO_PROMISE_DEBUG_DISABLE to disable debugging options in DEBUG mode.
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+// define PROTO_PROMISE_DEBUG_ENABLE to enable debugging options in RELEASE mode. define PROTO_PROMISE_DEBUG_DISABLE to disable debugging options in DEBUG mode.
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
@@ -117,10 +121,41 @@ namespace Proto.Promises
         [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
         [MethodImpl(Internal.InlineOption)]
-        public Promise Progress<TProgress>(TProgress progressListener, SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken))
+#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.0. Make it internal instead of public so the unit tests can still use it.
+        internal
+#else
+        public
+#endif
+            Promise Progress<TProgress>(TProgress progressListener, SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken))
             where TProgress : IProgress<float>
         {
             return _target.Progress(progressListener, invokeOption, cancelationToken);
+        }
+
+        /// <summary>
+        /// Add a progress listener. Returns a new <see cref="Promise"/>.
+        /// <para/><paramref name="progressListener"/> will be reported with progress that is normalized between 0 and 1 on <paramref name="invokeContext"/>.
+        /// <para/>If <paramref name="invokeContext"/> is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.
+        /// 
+        /// <para/>If/when this is resolved, <paramref name="progressListener"/> will be invoked with 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, progress will stop being reported.
+        /// </summary>
+#if !PROMISE_PROGRESS
+        [Obsolete(Internal.ProgressDisabledMessage, false)]
+#endif
+        [MethodImpl(Internal.InlineOption)]
+#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.0. Make it internal instead of public so the unit tests can still use it.
+        internal
+#else
+        public
+#endif
+            Promise Progress<TProgress>(TProgress progressListener, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken))
+            where TProgress : IProgress<float>
+        {
+            return _target.Progress(progressListener, invokeContext, cancelationToken);
         }
 
         /// <summary>
@@ -140,27 +175,6 @@ namespace Proto.Promises
         public Promise Progress(Action<float> onProgress, SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken))
         {
             return _target.Progress(onProgress, invokeOption, cancelationToken);
-        }
-
-        /// <summary>
-        /// Add a progress listener. Returns a new <see cref="Promise"/>.
-        /// <para/><paramref name="progressListener"/> will be reported with progress that is normalized between 0 and 1 on <paramref name="invokeContext"/>.
-        /// <para/>If <paramref name="invokeContext"/> is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.
-        /// 
-        /// <para/>If/when this is resolved, <paramref name="progressListener"/> will be invoked with 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
-        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, progress will stop being reported.
-        /// </summary>
-#if !PROMISE_PROGRESS
-        [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-        [MethodImpl(Internal.InlineOption)]
-        public Promise Progress<TProgress>(TProgress progressListener, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken))
-            where TProgress : IProgress<float>
-        {
-            return _target.Progress(progressListener, invokeContext, cancelationToken);
         }
 
         /// <summary>

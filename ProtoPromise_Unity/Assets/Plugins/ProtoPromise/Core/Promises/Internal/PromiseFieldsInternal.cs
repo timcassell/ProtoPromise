@@ -541,7 +541,6 @@ namespace Proto.Promises
             }
 #endif
 
-#if CSHARP_7_3_OR_NEWER
 #if PROMISE_PROGRESS
             partial class AsyncProgressPassThrough
 #if PROMISE_DEBUG
@@ -604,10 +603,8 @@ namespace Proto.Promises
                 }
 #endif // !OPTIMIZED_ASYNC_MODE
             } // AsyncPromiseRef
-#endif // CSHARP_7_3_OR_NEWER
         } // PromiseRef
 
-#if CSHARP_7_3_OR_NEWER
         partial struct PromiseMethodBuilderInternal<T>
         {
 #if !OPTIMIZED_ASYNC_MODE
@@ -627,6 +624,5 @@ namespace Proto.Promises
             private SmallFields _smallFields;
 #endif // !OPTIMIZED_ASYNC_MODE
         }
-#endif // CSHARP_7_3_OR_NEWER
     } // Internal
 }

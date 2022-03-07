@@ -1,8 +1,12 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
-# endif
+#endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0019 // Use pattern matching
@@ -188,7 +192,7 @@ namespace Proto.Promises
                 return new UnhandledExceptionInternal(value, message + CausalityTraceMessage, outerStacktrace, innerException);
             }
 
-#if CSHARP_7_3_OR_NEWER
+#if !NET_LEGACY
             System.Runtime.ExceptionServices.ExceptionDispatchInfo IRejectValueContainer.GetExceptionDispatchInfo()
             {
                 ThrowIfInPool(this);
@@ -220,14 +224,14 @@ namespace Proto.Promises
 #endif
         internal sealed class RejectionContainerException : ValueContainer<Exception>, ILinked<RejectionContainerException>, IRejectValueContainer, IRejectionToContainer, ICantHandleException
         {
-#if PROMISE_DEBUG && CSHARP_7_3_OR_NEWER
+#if PROMISE_DEBUG && !NET_LEGACY
             // This is used to reconstruct the rejection causality trace when the original exception is rethrown from await in an async function, and this container is lost.
             private static readonly ConditionalWeakTable<Exception, RejectionException> _rejectExceptionsForTrace = new ConditionalWeakTable<Exception, RejectionException>();
 #endif
 
             RejectionContainerException ILinked<RejectionContainerException>.Next { get; set; }
 
-#if CSHARP_7_3_OR_NEWER
+#if !NET_LEGACY
             System.Runtime.ExceptionServices.ExceptionDispatchInfo _capturedInfo;
 #endif
 #if PROMISE_DEBUG
@@ -244,7 +248,7 @@ namespace Proto.Promises
                 if (rejectedStacktrace != null)
                 {
                     _rejectException = new RejectionException("This exception contains the stacktrace of the Deferred.Reject for the uncaught exception.", FormatStackTrace(new StackTrace[1] { rejectedStacktrace }), value);
-#if CSHARP_7_3_OR_NEWER
+#if !NET_LEGACY
                     _rejectExceptionsForTrace.Add(value, _rejectException);
 #endif
                 }
@@ -258,7 +262,7 @@ namespace Proto.Promises
                 var container = ObjectPool<RejectionContainerException>.TryTake<RejectionContainerException>()
                     ?? new RejectionContainerException();
                 container.value = value;
-#if CSHARP_7_3_OR_NEWER
+#if !NET_LEGACY
                 container._capturedInfo = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(value);
 #if PROMISE_DEBUG
                 _rejectExceptionsForTrace.TryGetValue(value, out container._rejectException);
@@ -301,7 +305,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 _rejectException = null;
                 _stackTraces = null;
-#if CSHARP_7_3_OR_NEWER
+#if !NET_LEGACY
                 _rejectExceptionsForTrace.Remove(value);
 #endif
 #endif
@@ -319,7 +323,7 @@ namespace Proto.Promises
 #endif
             }
 
-#if CSHARP_7_3_OR_NEWER
+#if !NET_LEGACY
             System.Runtime.ExceptionServices.ExceptionDispatchInfo IRejectValueContainer.GetExceptionDispatchInfo()
             {
                 ThrowIfInPool(this);
@@ -415,7 +419,7 @@ namespace Proto.Promises
                 return _exception;
             }
 
-#if CSHARP_7_3_OR_NEWER
+#if !NET_LEGACY
             System.Runtime.ExceptionServices.ExceptionDispatchInfo IRejectValueContainer.GetExceptionDispatchInfo()
             {
                 ThrowIfInPool(this);

@@ -912,7 +912,7 @@ namespace Proto.Promises
                         CallbackHelper.InvokeAndCatchProgress(_progress, 1f, this);
                     }
 
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
@@ -957,7 +957,7 @@ namespace Proto.Promises
 
                 protected override void OnForgetOrHookupFailed()
                 {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
@@ -979,7 +979,7 @@ namespace Proto.Promises
 
                 internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
@@ -1763,7 +1763,6 @@ namespace Proto.Promises
                 }
             } // PromisePassThrough
 
-#if CSHARP_7_3_OR_NEWER
             // We have to use a pass-through for cancelation purposes. If we used the AsyncPromiseRef directly as the listener,
             // the promise chain could be broken and it still subscribed on another promise lower in the chain,
             // then subscribing to the next `await`ed promise would cause problems with it being subscribed to multiple promise chains simultaneously.
@@ -1994,7 +1993,8 @@ namespace Proto.Promises
                     var oldPrevious = _valueOrPrevious;
                     _valueOrPrevious = null;
                     _progressAndSubscribeFields._previousDepthAndFlags.InterlockedUnsetFlags(ProgressSubscribeFlags.AboutToSetPrevious);
-                    if (oldPrevious is AsyncProgressPassThrough passthrough)
+                    var passthrough = oldPrevious as AsyncProgressPassThrough;
+                    if (passthrough != null)
                     {
                         Fixed32 expectedProgress = Fixed32.FromWhole(_progressAndSubscribeFields._previousDepthAndFlags.GetPreviousDepthPlusOne());
                         passthrough.MarkComplete(expectedProgress);
@@ -2082,7 +2082,6 @@ namespace Proto.Promises
                     return previousRef;
                 }
             } // AsyncPromiseRef
-#endif // CSHARP_7_3_OR_NEWER
 #endif // PROMISE_PROGRESS
         } // PromiseRef
     } // Internal

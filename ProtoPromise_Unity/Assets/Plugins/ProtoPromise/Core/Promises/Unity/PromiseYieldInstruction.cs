@@ -1,4 +1,8 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -87,7 +91,7 @@ namespace Proto.Promises
                 }
                 case Promise.State.Rejected:
                 {
-#if CSHARP_7_3_OR_NEWER
+#if !NET_LEGACY
                     ((Internal.IRejectValueContainer) _value).GetExceptionDispatchInfo().Throw();
                     throw new Exception(); // This point will never be reached, but the C# compiler thinks it might.
 #else
@@ -159,7 +163,7 @@ namespace Proto.Promises
                 }
                 case Promise.State.Rejected:
                 {
-#if CSHARP_7_3_OR_NEWER
+#if !NET_LEGACY
                     ((Internal.IRejectValueContainer) _value).GetExceptionDispatchInfo().Throw();
                     throw new Exception(); // This point will never be reached, but the C# compiler thinks it might.
 #else

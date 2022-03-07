@@ -1,4 +1,8 @@
-﻿#if !CSHARP_7_OR_LATER
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if NET_LEGACY
 
 // ==++==
 //
@@ -21,7 +25,7 @@ using System.Security.Permissions;
 using System.Threading;
 using System.Diagnostics.CodeAnalysis;
 
-namespace System.Threading
+namespace Proto.Promises // Using internally instead of public in System.Threading in case the consumer of this library also has a custom SpinWait implementation.
 {
     // SpinWait is just a little value type that encapsulates some common spinning
     // logic. It ensures we always yield on single-proc machines (instead of using busy
@@ -74,7 +78,7 @@ namespace System.Threading
     /// </para>
     /// </remarks>
     [HostProtection(Synchronization = true, ExternalThreading = true)]
-    public struct SpinWait
+    internal struct SpinWait
     {
 
         // These constants determine the frequency of yields versus spinning. The
@@ -194,7 +198,7 @@ namespace System.Threading
 #endif
             SpinUntil(condition, Timeout.Infinite);
 #if DEBUG
-            UnityEngine.Debug.Assert(result);
+            System.Diagnostics.Debug.Assert(result);
 #endif
         }
 
@@ -237,11 +241,11 @@ namespace System.Threading
         {
             if (millisecondsTimeout < Timeout.Infinite)
             {
-                throw new ArgumentOutOfRangeException("millisecondsTimeout", millisecondsTimeout, "SpinWait_SpinUntil_TimeoutWrong");
+                throw new System.ArgumentOutOfRangeException("millisecondsTimeout", millisecondsTimeout, "SpinWait_SpinUntil_TimeoutWrong");
             }
             if (condition == null)
             {
-                throw new ArgumentNullException("condition", "SpinWait_SpinUntil_ArgumentNull");
+                throw new System.ArgumentNullException("condition", "SpinWait_SpinUntil_ArgumentNull");
             }
             uint startTime = 0;
             if (millisecondsTimeout != 0 && millisecondsTimeout != Timeout.Infinite)
@@ -299,7 +303,7 @@ namespace System.Threading
                     s_lastProcessorCountRefreshTicks = now;
                 }
 
-                UnityEngine.Debug.Assert(procCount > 0 && procCount <= 64,
+                System.Diagnostics.Debug.Assert(procCount > 0 && procCount <= 64,
                     "Processor count not within the expected range (1 - 64).");
 
                 return procCount;
@@ -340,7 +344,7 @@ namespace System.Threading
         public static int UpdateTimeOut(uint startTime, int originalWaitMillisecondsTimeout)
         {
             // The function must be called in case the time out is not infinite
-            UnityEngine.Debug.Assert(originalWaitMillisecondsTimeout != Timeout.Infinite);
+            System.Diagnostics.Debug.Assert(originalWaitMillisecondsTimeout != Timeout.Infinite);
 
             uint elapsedMilliseconds = (GetTime() - startTime);
 

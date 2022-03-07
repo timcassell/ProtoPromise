@@ -1,10 +1,12 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
-
-#if CSHARP_7_3_OR_NEWER // await not available in old runtime.
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
@@ -20,7 +22,24 @@ namespace Proto.Promises
     {
         partial class PromiseRef
         {
-
+#if NET_LEGACY
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            internal void Throw(Promise.State state)
+            {
+                if (state == Promise.State.Canceled)
+                {
+                    MaybeDispose();
+                    throw CanceledExceptionInternal.GetOrCreate();
+                }
+                if (state == Promise.State.Rejected)
+                {
+                    var exception = ((IRejectValueContainer) _valueOrPrevious).GetException();
+                    MaybeDispose();
+                    throw exception;
+                }
+                throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+            }
+#else
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal System.Runtime.ExceptionServices.ExceptionDispatchInfo GetExceptionDispatchInfo(Promise.State state)
             {
@@ -37,6 +56,7 @@ namespace Proto.Promises
                 }
                 throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
             }
+#endif
 
             [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, short promiseId)
@@ -279,7 +299,11 @@ namespace Proto.Promises
                     _ref.MaybeDispose();
                     return;
                 }
+#if NET_LEGACY
+                _ref.Throw(state);
+#else
                 _ref.GetExceptionDispatchInfo(state).Throw();
+#endif
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -364,7 +388,11 @@ namespace Proto.Promises
                     _ref.MaybeDispose();
                     return result;
                 }
+#if NET_LEGACY
+                _ref.Throw(state);
+#else
                 _ref.GetExceptionDispatchInfo(state).Throw();
+#endif
                 throw new Exception(); // This will never be reached, but the compiler needs help understanding that.
             }
 
@@ -470,7 +498,11 @@ namespace Proto.Promises
                     _ref.MaybeDispose();
                     return;
                 }
+#if NET_LEGACY
+                _ref.Throw(state);
+#else
                 _ref.GetExceptionDispatchInfo(state).Throw();
+#endif
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -565,7 +597,11 @@ namespace Proto.Promises
                     _ref.MaybeDispose();
                     return result;
                 }
+#if NET_LEGACY
+                _ref.Throw(state);
+#else
                 _ref.GetExceptionDispatchInfo(state).Throw();
+#endif
                 throw new Exception(); // This will never be reached, but the compiler needs help understanding that.
             }
 
@@ -668,8 +704,8 @@ namespace Proto.Promises
         public PromiseProgressAwaiterVoid AwaitWithProgress(float minProgress, float maxProgress)
         {
             ValidateOperation(1);
-            Internal.ValidateProgressValue(minProgress, nameof(minProgress), 1);
-            Internal.ValidateProgressValue(maxProgress, nameof(maxProgress), 1);
+            Internal.ValidateProgressValue(minProgress, "minProgress", 1);
+            Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
             return new PromiseProgressAwaiterVoid(this, minProgress, maxProgress);
         }
     }
@@ -693,10 +729,9 @@ namespace Proto.Promises
         public PromiseProgressAwaiter<T> AwaitWithProgress(float minProgress, float maxProgress)
         {
             ValidateOperation(1);
-            Internal.ValidateProgressValue(minProgress, nameof(minProgress), 1);
-            Internal.ValidateProgressValue(maxProgress, nameof(maxProgress), 1);
+            Internal.ValidateProgressValue(minProgress, "minProgress", 1);
+            Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
             return new PromiseProgressAwaiter<T>(this, minProgress, maxProgress);
         }
     }
 }
-#endif // C#7

@@ -1000,7 +1000,7 @@ namespace ProtoPromiseTests.APIs
                 {
                     throw new Exception();
                 });
-                Assert.Throws<AggregateException>(cancelationSource.Cancel);
+                Assert.Throws<Proto.Promises.AggregateException>(cancelationSource.Cancel);
                 cancelationSource.Dispose();
             }
 
