@@ -15,6 +15,7 @@ Robust and efficient library for management of asynchronous operations.
 - Thread safe
 - .Then API and async/await
 - Easily switch to foreground or background context
+- Combine async operations
 - CLS compliant
 
 This library was built to work in all C#/.Net ecosystems, including Unity, Mono, .Net Framework, .Net Core and UI frameworks. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.
@@ -22,8 +23,6 @@ This library was built to work in all C#/.Net ecosystems, including Unity, Mono,
 ProtoPromise conforms to the [Promises/A+ Spec](https://promisesaplus.com/) as far as is possible with C# (using static typing instead of dynamic), and further extends it to support Cancelations and Progress.
 
 This library took inspiration from [ES6 Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) (javascript), [RSG Promises](https://github.com/Real-Serious-Games/C-Sharp-Promise) (C#), [uPromise](https://assetstore.unity.com/packages/tools/upromise-15604) (C#/Unity), [TPL](https://docs.microsoft.com/en-us/dotnet/standard/parallel-programming/task-parallel-library-tpl), and [UniTask](https://github.com/Cysharp/UniTask) (C#/Unity).
-
-Also check out the [C# Asynchronous Benchmarks](https://github.com/timcassell/CSharpAsynchronousBenchmarks) project!
 
 ## Latest Updates
 
@@ -675,7 +674,7 @@ Note: If you are checking the `IsCancelationRequested` property instead of regis
 When you register a callback to a token, it returns a `CancelationRegistration` which can be used to unregister the callback.
 
 ```cs
-CancelationRegistration registration = token.Register(reasonContainer => Console.Log("This won't get called."));
+CancelationRegistration registration = token.Register(() => Console.Log("This won't get called."));
 
 // ... later, before the source is canceled
 registration.Unregister();
@@ -687,7 +686,7 @@ If the registration is unregistered before the source is canceled, the callback 
 
 Promise implementations usually do not allow cancelations, but it has proven to be invaluable to asynchronous libraries, and ProtoPromise is no exception.
 
-Promises can be canceled 2 ways: passing a `CancelationToken` into `Promise.{Then, Catch, ContinueWith}` or `Promise.NewDeferred`, or by throwing a [Cancelation Exception](#special-exceptions). When a promise is canceled, all promises that have been chained from it will be canceled with the same reason.
+Promises can be canceled 2 ways: passing a `CancelationToken` into `Promise.{Then, Catch, ContinueWith}` or `Promise.NewDeferred`, or by throwing a [Cancelation Exception](#special-exceptions). When a promise is canceled, all promises that have been chained from it will be canceled, until a `CatchCancelation`.
 
 ```cs
 CancelationSource cancelationSource = CancelationSource.New();
@@ -922,7 +921,7 @@ To make things a little easier, there are shortcut functions to simply hop to th
 
 The `Foreground` option posts the continuation to `Promise.Config.ForegroundContext`. This property is set automatically in Unity, but in other UI frameworks it should be set at application startup (usually `Promise.Config.ForegroundContext = SynchronizationContext.Current` is enough).
 
-If your application uses more than multiple `SynchronizationContext`s, instead of using `SynchronizationOption.Foreground`, you should instead pass the proper `SynchronizationContext` directly to `WaitAsync`.
+If your application uses multiple `SynchronizationContext`s, instead of using `SynchronizationOption.Foreground`, you should pass the proper `SynchronizationContext` directly to `WaitAsync`.
 
 Other APIs that allow you to pass `SynchronizationOption` or `SynchronizationContext` to configure the context that the callback executes on are `Promise.Progress` (default `Foreground`), `Promise.New` (default `Synchronous`), and `Promise.Run` (default `Background`).
 
@@ -956,7 +955,7 @@ There are 144 overloads for the `Then` method (72 for `Promise` and another 72 f
 - If either `onResolved` or `onRejected` throws an `Exception`, the returned promise will be rejected with that exception, unless that exception is one of the [Special Exceptions](#special-exceptions).
 
 - You may optionally provide a `CancelationToken` as the last parameter.
-    - If the token is canceled while the promise is pending, the callback(s) will not be invoked, and the returned promise will be canceled with the token's reason.
+    - If the token is canceled while the promise is pending, the callback(s) will not be invoked, and the returned promise will be canceled.
 
 You may realize that `Catch(onRejected)` also works just like `onRejected` in `Then`. There is, however, one key difference: with `Then(onResolved, onRejected)`, only one of the callbacks will ever be invoked. With `Then(onResolved).Catch(onRejected)`, both callbacks can be invoked if `onResolved` throws an exception.
 
@@ -966,7 +965,7 @@ You may realize that `Catch(onRejected)` also works just like `onRejected` in `T
 
 ### ContinueWith
 
-`ContinueWith` adds an `onContinue` delegate that will be invoked when the promise is resolved, rejected, or canceled. A `Promise.ResultContainer` or `Promise<T>.ResultContainer` will be passed into the delegate that can be used to check the promise's state and result or reject/cancel reason. The promise returned from `ContinueWith` will be resolved/rejected/canceled with the same rules as `Then` in [Understanding Then](#understanding-then). `Promise.Rethrow` is an invalid operation during an `onContinue` invocation, instead you can use `resultContainer.RethrowIfRejected()` and `resultContainer.RethrowIfCanceled()`
+`ContinueWith` adds an `onContinue` delegate that will be invoked when the promise is resolved, rejected, or canceled. A `Promise.ResultContainer` or `Promise<T>.ResultContainer` will be passed into the delegate that can be used to check the promise's state and result or reject reason. The promise returned from `ContinueWith` will be resolved/rejected/canceled with the same rules as `Then` in [Understanding Then](#understanding-then). `Promise.Rethrow` is an invalid operation during an `onContinue` invocation, instead you can use `resultContainer.RethrowIfRejected()` and `resultContainer.RethrowIfCanceled()`
 
 ## Task Interoperability
 
