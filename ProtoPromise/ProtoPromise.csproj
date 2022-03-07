@@ -40,4 +40,8 @@
     <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\ForOldRuntime\**/*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\*.md" />
+  </ItemGroup>
+
 </Project>

@@ -108,7 +108,7 @@ namespace Proto.Promises
 
             /// <summary>
             /// Uncaught rejections get routed through this delegate.
-            /// This must be set to a non-null delegate, otherwise uncaught rejections will continue to pile up without being reported.
+            /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>.
             /// </summary>
             public static Action<UnhandledException> UncaughtRejectionHandler
             {
