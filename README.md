@@ -24,8 +24,35 @@ ProtoPromise conforms to the [Promises/A+ Spec](https://promisesaplus.com/) as f
 
 This library took inspiration from [ES6 Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) (javascript), [RSG Promises](https://github.com/Real-Serious-Games/C-Sharp-Promise) (C#), [uPromise](https://assetstore.unity.com/packages/tools/upromise-15604) (C#/Unity), [TPL](https://docs.microsoft.com/en-us/dotnet/standard/parallel-programming/task-parallel-library-tpl), and [UniTask](https://github.com/Cysharp/UniTask) (C#/Unity).
 
+## Latest Updates
+
+### v 2.0.0 - March 7, 2022
+
+- Full library thread-safety with minimal locks.
+- Added `Deferred.Cancel`.
+- Added `Deferred` and `CancelationSource` and `CancelationToken` and `CancelationRegistration` `Try...` methods.
+- Added `CancelationRegistration` methods to unregister/check registration and if the token is requesting cancelation atomically.
+- Added static `CancelationToken.Canceled()` to get a token already in the canceled state without allocating.
+- Added `Promise(<T>).WaitAsync(SynchronizationOption)` and `Promise(<T>).WaitAsync(SynchronizationContext)` to schedule the next callback/await on the desired context.
+- Added `Promise.Run` static functions.
+- Added `Promise.SwitchToForeground()`, `Promise.SwitchToBackground()`, and `Promise.SwitchToContext(SynchronizationContext)` static functions.
+- Added `Promise.AwaitWithProgress(float minProgress, float maxProgress)` API to propagate the progress to an `async Promise(<T>)` function.
+
+- Promises are now structs, making already resolved promises live only on the stack, increasing performance.
+- Eliminated potential `StackOverflowException`s from `async`/`await` continuations when both the `async` function and the `await`ed object are `Promise(<T>)`.
+
+- Changed behavior of `Promise.CatchCancelation` to return a new promise and behave more like `Promise.Catch`, where `onCanceled` resolves the returned promise when it returns, or adopts the state of the returned promise.
+- Removed cancelation reasons.
+- A rejected promise awaited in an async function now throws the original exception, if the promise was rejected with an exception.
+- Deprecations and other breaking changes (see full release notes).
+
+See [Release Notes](ReleaseNotes.md) for the full changelog.
+
 ## Contents
 
+- [Package Installation](#package-installation)
+    - [Unity](#unity)
+    - [DotNet and Mono](#dotnet-and-mono)
 - [Creating a Promise for an Async Operation](#creating-a-promise-for-an-async-operation)
     - [Creating a Promise, Alternate Method](#creating-a-promise-alternate-method)
 - [Waiting for an Async Operation to Complete](#waiting-for-an-async-operation-to-complete)
@@ -64,6 +91,30 @@ This library took inspiration from [ES6 Promises](https://developer.mozilla.org/
     - [ContinueWith](#continuewith)
 - [Task Interoperability](#task-interoperability)
 - [Unity Yield Instructions and Coroutines Interoperability](#unity-yield-instructions-and-coroutines-interoperability)
+
+## Package Installation
+
+### Unity
+
+- Install via package manager (recommended)
+
+In the Package Manager, open the dropdown and click on `Add Package from git url` and enter `https://github.com/TimCassell/ProtoPromise.git?path=ProtoPromise_Unity/Assets/Plugins/ProtoPromise`.
+Or add `"com.timcassell.protopromise": "https://github.com/TimCassell/ProtoPromise.git?path=ProtoPromise_Unity/Assets/Plugins/ProtoPromise"` to `Packages/manifest.json`.
+You may append `#vX.X.X` to use a specific version, for exampe `#v2.0.0`.
+
+- Install via Unity's Asset Store
+
+Add to your assets from the Asset Store at https://assetstore.unity.com/packages/tools/integration/protopromise-181997.
+
+- Download unitypackage from GitHub
+
+Go to the latest [release](https://github.com/timcassell/ProtoPromise/releases) and download the unitypackage. Import the unitypackage into your Unity project.
+
+### Nuget
+
+Install from https://www.nuget.org/packages/ProtoPromise/
+
+`Install-Package ProtoPromise`
 
 ## Creating a Promise for an Async Operation
 

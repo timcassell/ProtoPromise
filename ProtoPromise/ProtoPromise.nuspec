@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <package >
   <metadata minClientVersion="2.5">
-    <id>TimCassell.ProtoPromise</id>
+    <id>ProtoPromise</id>
     <version>2.0.0</version>
     <title>ProtoPromise</title>
     <authors>Tim Cassell</authors>

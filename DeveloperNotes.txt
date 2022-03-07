@@ -1,4 +1,6 @@
-﻿To create the UnityPackage for releases:
+﻿For each new release, update the version in both `ProtoPromise.csproj` and `ProtoPromise.nuspec`.
+
+To create the UnityPackage for releases:
 
 1. Edit `README.md` to remove the `## Getting Started` and `## Latest Updates` sections, then convert it to `README.pdf` (can use https://www.markdowntopdf.com/) and place it in the `ProtoPromise` directory (discard the changes to `README.md` before git commit).
 2. Repeat step 1 for `ReleaseNotes.md`.
