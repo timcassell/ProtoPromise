@@ -48,10 +48,10 @@
     <Content Include="..\*.md" />
     <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\**/*.cs" />
     <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\Promises\Unity\**/*" />
-    <None Remove="ProtoPromise.nuspec" />
-    <Content Remove="targets\**" />
-    <EmbeddedResource Remove="targets\**" />
-    <None Remove="targets\**" />
+    <Compile Remove="nuget\**" />
+    <Content Remove="nuget\**" />
+    <EmbeddedResource Remove="nuget\**" />
+    <None Remove="nuget\**" />
   </ItemGroup>
 
 </Project>
