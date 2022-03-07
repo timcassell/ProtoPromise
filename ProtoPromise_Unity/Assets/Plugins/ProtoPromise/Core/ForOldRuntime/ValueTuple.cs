@@ -1,7 +1,11 @@
-﻿#pragma warning disable RECS0025 // Non-readonly field referenced in 'GetHashCode()'
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#pragma warning disable RECS0025 // Non-readonly field referenced in 'GetHashCode()'
 #pragma warning disable RECS0017 // Possible compare of value type with 'null'
 
-#if !CSHARP_7_OR_LATER
+#if NET_LEGACY || NET45 // ValueTuples are available in .Net 4.7 and newer.
 // Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.
 
 namespace System.Collections

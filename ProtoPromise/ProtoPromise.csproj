@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>net35;net40;net45;net47;netstandard2.0</TargetFrameworks>
     <DefineConstants>CSHARP_7_3_OR_NEWER</DefineConstants>
     <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
     <Version>2.0.0</Version>
@@ -9,7 +9,7 @@
     <!--Only for function pointers in await override implementation. All other async/await code should be C# 7.3 compatible, and all other code should be C# 4 compatible for old Unity versions.-->
     <LangVersion>9</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!--Set true to help debug internal promise code (allows the debugger to step into the code).-->
+    <!--Set true to help debug internal promise code (allows the debugger to step into the code and includes internal stacktraces).-->
     <DeveloperMode>false</DeveloperMode>
   </PropertyGroup>
 
@@ -18,6 +18,11 @@
       <_Parameter1>true</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
+
+  <!--Unity uses NET_LEGACY for old runtime prior to .Net 4.6, so we will do the same here.-->
+  <PropertyGroup Condition="'$(TargetFramework)'=='net35' OR '$(TargetFramework)'=='net40'">
+    <DefineConstants>$(DefineConstants);NET_LEGACY</DefineConstants>
+  </PropertyGroup>
 
   <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
     <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
@@ -34,14 +39,19 @@
     <DefineConstants>$(DefineConstants);TRACE;DEBUG;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\**/*.cs" />
-    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\Promises\Unity\**/*" />
-    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\ForOldRuntime\**/*" />
-  </ItemGroup>
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+  </PropertyGroup>
 
   <ItemGroup>
     <Content Include="..\*.md" />
+    <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\**/*.cs" />
+    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\Promises\Unity\**/*" />
+    <None Remove="ProtoPromise.nuspec" />
+    <Content Remove="targets\**" />
+    <EmbeddedResource Remove="targets\**" />
+    <None Remove="targets\**" />
   </ItemGroup>
 
 </Project>

@@ -41,7 +41,7 @@ namespace Proto.Promises
 
         internal partial interface IRejectValueContainer
         {
-#if CSHARP_7_3_OR_NEWER
+#if !NET_LEGACY
             System.Runtime.ExceptionServices.ExceptionDispatchInfo GetExceptionDispatchInfo();
 #else
             Exception GetException();

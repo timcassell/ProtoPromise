@@ -1,4 +1,9 @@
-﻿#if !CSHARP_7_OR_LATER
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if NET_LEGACY
+
 #pragma warning disable 0420
 // ==++==
 //
@@ -22,6 +27,7 @@ using System.Diagnostics;
 using System.Security.Permissions;
 using System.Threading;
 using System.Runtime.InteropServices;
+using Proto.Promises;
 
 namespace System.Threading
 {

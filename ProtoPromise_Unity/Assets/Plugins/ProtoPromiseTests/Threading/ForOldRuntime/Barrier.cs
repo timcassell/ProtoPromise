@@ -1,4 +1,9 @@
-﻿#if !CSHARP_7_OR_LATER
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if NET_LEGACY
+
 // ==++==
 //
 //   Copyright (c) Microsoft Corporation.  All rights reserved.
@@ -24,6 +29,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Runtime.Serialization;
 using System.Security;
+using Proto.Promises;
+
 namespace System.Threading
 {
     /// <summary>

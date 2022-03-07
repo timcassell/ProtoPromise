@@ -1,4 +1,8 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -142,7 +146,7 @@ namespace Proto.Promises
 
         internal static string FormatStackTrace(IEnumerable<StackTrace> stackTraces)
         {
-#if !CSHARP_7_3_OR_NEWER
+#if NET_LEGACY && !NET40_OR_GREATER
             // Format stack trace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
             List<string> _stackTraces = new List<string>();
             string[] separator = new string[1] { Environment.NewLine + " " };
@@ -177,7 +181,7 @@ namespace Proto.Promises
             }
             sb.Append(" ");
             return sb.ToString();
-#else // !CSHARP_7_3_OR_NEWER
+#else // NET_LEGACY && !NET40_OR_GREATER
             // StackTrace.ToString() format issue was fixed in the new runtime.
             List<StackFrame> stackFrames = new List<StackFrame>();
             foreach (StackTrace stackTrace in stackTraces)
@@ -200,7 +204,7 @@ namespace Proto.Promises
                 .ToArray();
 
             return string.Join(Environment.NewLine, trace);
-#endif // !CSHARP_7_3_OR_NEWER
+#endif // NET_LEGACY && !NET40_OR_GREATER
         }
 
         partial interface ITraceable

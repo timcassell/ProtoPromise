@@ -1,4 +1,8 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -141,7 +145,12 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
         [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
-        public Promise<T> Progress<TProgress>(TProgress progressListener, SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken))
+#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.0. Make it internal instead of public so the unit tests can still use it.
+        internal
+#else
+        public
+#endif
+            Promise<T> Progress<TProgress>(TProgress progressListener, SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken))
             where TProgress : IProgress<float>
         {
             ValidateArgument(progressListener, "progressListener", 1);
@@ -152,6 +161,40 @@ namespace Proto.Promises
             ValidateOperation(1);
 
             return Internal.PromiseRef.CallbackHelper.AddProgress(this, progressListener, cancelationToken, (Internal.SynchronizationOption) invokeOption, null);
+#endif
+        }
+
+        /// <summary>
+        /// Add a progress listener. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
+        /// <para/><paramref name="progressListener"/> will be reported with progress that is normalized between 0 and 1 on <paramref name="invokeContext"/>.
+        /// <para/>If <paramref name="invokeContext"/> is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.
+        /// 
+        /// <para/>If/when this is resolved, <paramref name="progressListener"/> will be invoked with 1.0, then the new <see cref="Promise{T}"/> will be resolved when it returns.
+        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
+        /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
+        /// 
+        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, progress will stop being reported.
+        /// </summary>
+#if !PROMISE_PROGRESS
+        [Obsolete(Internal.ProgressDisabledMessage, false)]
+#endif
+
+#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.0. Make it internal instead of public so the unit tests can still use it.
+        internal
+#else
+        public
+#endif
+            Promise<T> Progress<TProgress>(TProgress progressListener, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken))
+            where TProgress : IProgress<float>
+        {
+            ValidateArgument(progressListener, "progressListener", 1);
+
+#if !PROMISE_PROGRESS
+            return Duplicate();
+#else
+            ValidateOperation(1);
+
+            return Internal.PromiseRef.CallbackHelper.AddProgress(this, progressListener, cancelationToken, Internal.SynchronizationOption.Explicit, invokeContext);
 #endif
         }
 
@@ -174,34 +217,6 @@ namespace Proto.Promises
             ValidateArgument(onProgress, "onProgress", 1);
 
             return Progress(new Internal.PromiseRef.DelegateProgress(onProgress), invokeOption, cancelationToken);
-        }
-
-        /// <summary>
-        /// Add a progress listener. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
-        /// <para/><paramref name="progressListener"/> will be reported with progress that is normalized between 0 and 1 on <paramref name="invokeContext"/>.
-        /// <para/>If <paramref name="invokeContext"/> is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.
-        /// 
-        /// <para/>If/when this is resolved, <paramref name="progressListener"/> will be invoked with 1.0, then the new <see cref="Promise{T}"/> will be resolved when it returns.
-        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
-        /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, progress will stop being reported.
-        /// </summary>
-#if !PROMISE_PROGRESS
-        [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-        public Promise<T> Progress<TProgress>(TProgress progressListener, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken))
-            where TProgress : IProgress<float>
-        {
-            ValidateArgument(progressListener, "progressListener", 1);
-
-#if !PROMISE_PROGRESS
-            return Duplicate();
-#else
-            ValidateOperation(1);
-
-            return Internal.PromiseRef.CallbackHelper.AddProgress(this, progressListener, cancelationToken, Internal.SynchronizationOption.Explicit, invokeContext);
-#endif
         }
 
         /// <summary>
@@ -274,7 +289,7 @@ namespace Proto.Promises
             return Internal.PromiseRef.CallbackHelper.AddCancelWait(this, Internal.PromiseRef.DelegateWrapper.Create(onCanceled), cancelationToken);
         }
 
-        #region Resolve Callbacks
+#region Resolve Callbacks
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -342,9 +357,9 @@ namespace Proto.Promises
 
             return Internal.PromiseRef.CallbackHelper.AddResolveWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), cancelationToken);
         }
-        #endregion
+#endregion
 
-        #region Reject Callbacks
+#region Reject Callbacks
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
@@ -417,9 +432,9 @@ namespace Proto.Promises
             return Internal.PromiseRef.CallbackHelper
                 .AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.CreatePassthrough(), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
-        #endregion
+#endregion
 
-        #region Resolve or Reject Callbacks
+#region Resolve or Reject Callbacks
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -747,9 +762,9 @@ namespace Proto.Promises
             return Internal.PromiseRef.CallbackHelper
                 .AddResolveRejectWait(this, Internal.PromiseRef.DelegateWrapper.Create(onResolved), Internal.PromiseRef.DelegateWrapper.Create(onRejected), cancelationToken);
         }
-        #endregion
+#endregion
 
-        #region Continue Callbacks
+#region Continue Callbacks
         /// <summary>
         /// Add a continuation callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -810,7 +825,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRef.CallbackHelper.AddContinueWait(this, Internal.PromiseRef.DelegateWrapper.Create(onContinue), cancelationToken);
         }
-        #endregion
+#endregion
 
         // Capture values below.
 
@@ -905,7 +920,7 @@ namespace Proto.Promises
             return Internal.PromiseRef.CallbackHelper.AddCancelWait(this, Internal.PromiseRef.DelegateWrapper.Create(cancelCaptureValue, onCanceled), cancelationToken);
         }
 
-        #region Resolve Callbacks
+#region Resolve Callbacks
         /// <summary>
         /// Capture a value and add a resolve callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -973,9 +988,9 @@ namespace Proto.Promises
 
             return Internal.PromiseRef.CallbackHelper.AddResolveWait(this, Internal.PromiseRef.DelegateWrapper.Create(resolveCaptureValue, onResolved), cancelationToken);
         }
-        #endregion
+#endregion
 
-        #region Reject Callbacks
+#region Reject Callbacks
         /// <summary>
         /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
@@ -1057,9 +1072,9 @@ namespace Proto.Promises
                 Internal.PromiseRef.DelegateWrapper.Create(rejectCaptureValue, onRejected),
                 cancelationToken);
         }
-        #endregion
+#endregion
 
-        #region Resolve or Reject Callbacks
+#region Resolve or Reject Callbacks
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -2141,9 +2156,9 @@ namespace Proto.Promises
                 Internal.PromiseRef.DelegateWrapper.Create(rejectCaptureValue, onRejected),
                 cancelationToken);
         }
-        #endregion
+#endregion
 
-        #region Continue Callbacks
+#region Continue Callbacks
         /// <summary>
         /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -2203,7 +2218,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRef.CallbackHelper.AddContinueWait(this, Internal.PromiseRef.DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
         }
-        #endregion
+#endregion
 
         [Obsolete("Retain is no longer valid, use Preserve instead.", true)]
         public void Retain()
@@ -2252,7 +2267,7 @@ namespace Proto.Promises
             return AsPromise().CatchCancelation(onCanceled, cancelationToken);
         }
 
-        #region Resolve Callbacks
+#region Resolve Callbacks
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -2312,9 +2327,9 @@ namespace Proto.Promises
         {
             return AsPromise().Then(onResolved, cancelationToken);
         }
-        #endregion
+#endregion
 
-        #region Reject Callbacks
+#region Reject Callbacks
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
@@ -2376,9 +2391,9 @@ namespace Proto.Promises
         {
             return AsPromise().Catch(onRejected, cancelationToken);
         }
-        #endregion
+#endregion
 
-        #region Resolve or Reject Callbacks
+#region Resolve or Reject Callbacks
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -2642,7 +2657,7 @@ namespace Proto.Promises
         {
             return AsPromise().Then(onResolved, onRejected, cancelationToken);
         }
-        #endregion
+#endregion
 
         // Capture values below.
 
@@ -2676,7 +2691,7 @@ namespace Proto.Promises
             return AsPromise().CatchCancelation(cancelCaptureValue, onCanceled, cancelationToken);
         }
 
-        #region Resolve Callbacks
+#region Resolve Callbacks
         /// <summary>
         /// Capture a value and add a resolve callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -2736,9 +2751,9 @@ namespace Proto.Promises
         {
             return AsPromise().Then(resolveCaptureValue, onResolved, cancelationToken);
         }
-        #endregion
+#endregion
 
-        #region Reject Callbacks
+#region Reject Callbacks
         /// <summary>
         /// Capture a value and add a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
@@ -2800,9 +2815,9 @@ namespace Proto.Promises
         {
             return AsPromise().Catch(rejectCaptureValue, onRejected, cancelationToken);
         }
-        #endregion
+#endregion
 
-        #region Resolve or Reject Callbacks
+#region Resolve or Reject Callbacks
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -3594,7 +3609,7 @@ namespace Proto.Promises
         {
             return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
         }
-        #endregion
+#endregion
 
         [MethodImpl(Internal.InlineOption)]
         public bool Equals(Promise<T> other)

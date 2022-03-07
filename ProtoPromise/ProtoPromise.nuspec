@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata minClientVersion="2.5">
+    <id>TimCassell.ProtoPromise</id>
+    <version>2.0.0</version>
+    <title>ProtoPromise</title>
+    <authors>Tim Cassell</authors>
+    <owners>Tim Cassell</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/timcassell/ProtoPromise</projectUrl>
+    <repository type="git" url="https://github.com/timcassell/ProtoPromise" />
+    <description>Robust and efficient library for management of asynchronous operations.</description>
+    <releaseNotes>First nuget version.</releaseNotes>
+    <copyright>Copyright 2022</copyright>
+    <tags>promise promises task tasks csharp unity dotnet mono coroutine coroutines concurrency concurrent parallel asynchronous async await thread threads threading then thenable callback callbacks</tags>
+
+    <dependencies>
+      <group targetFramework="netstandard2.0" />
+      <group targetFramework="net35" />
+      <group targetFramework="net40" />
+      <group targetFramework="net45" />
+      <group targetFramework="net47" />
+      <!--<group targetFramework="net5.0" />-->
+    </dependencies>
+
+    <readme>README.md</readme>
+  </metadata>
+  
+  <files>
+    <file src="targets\**" target="build" />
+    <file src="bin\Release\netstandard2.0\**" target="lib/netstandard2.0/Release" />
+    <file src="bin\Debug\netstandard2.0\**" target="lib/netstandard2.0/Debug" />
+    <file src="bin\Release\net35\**" target="lib/net35/Release" />
+    <file src="bin\Debug\net35\**" target="lib/net35/Debug" />
+    <file src="bin\Release\net40\**" target="lib/net40/Release" />
+    <file src="bin\Debug\net40\**" target="lib/net40/Debug" />
+    <file src="bin\Release\net45\**" target="lib/net45/Release" />
+    <file src="bin\Debug\net45\**" target="lib/net45/Debug" />
+    <file src="bin\Release\net47\**" target="lib/net47/Release" />
+    <file src="bin\Debug\net47\**" target="lib/net47/Debug" />
+    <!--<file src="bin\Release\net5.0\**" target="lib/net5.0/Release" />-->
+    <!--<file src="bin\Debug\net5.0\**" target="lib/net5.0/Debug" />-->
+    <file src="..\*.md" target="" />
+  </files>
+</package>

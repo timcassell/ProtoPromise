@@ -312,7 +312,7 @@ namespace Proto.Promises
 
                 internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
                 {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
@@ -335,7 +335,7 @@ namespace Proto.Promises
 
                 internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
@@ -459,7 +459,7 @@ namespace Proto.Promises
                 internal void SetResultAndMaybeHandle(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     SetResult(valueContainer, state);
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
@@ -482,7 +482,7 @@ namespace Proto.Promises
                 internal void SetResultAndMaybeHandleFromCatch(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     SetResult(valueContainer, state);
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
@@ -504,7 +504,7 @@ namespace Proto.Promises
                 new internal void SetResultAndMaybeHandle(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     SetResult(valueContainer, state);
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
@@ -732,7 +732,7 @@ namespace Proto.Promises
 
                 internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
@@ -768,7 +768,7 @@ namespace Proto.Promises
 
                 private void AddWaiterImpl(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
                 {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
@@ -797,7 +797,7 @@ namespace Proto.Promises
 
                 protected override void OnForgetOrHookupFailed()
                 {
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
@@ -868,7 +868,7 @@ namespace Proto.Promises
                 {
                     SetResult(valueContainer, state);
                     HandleablePromiseBase nextHandler;
-#if !CSHARP_7_3_OR_NEWER // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
