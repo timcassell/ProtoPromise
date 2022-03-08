@@ -85,7 +85,7 @@ See [Release Notes](ReleaseNotes.md) for the full changelog.
     - [Error Retries and Async Recursion](#error-retries-and-async-recursion)
     - [Multiple-Consumer](#multiple-consumer)
     - [Capture Values](#capture-values)
-    - [Switching Execution Context](switching-execution-context)
+    - [Switching Execution Context](#switching-execution-context)
 - [Additional Information](#additional-information)
     - [Understanding Then](#understanding-then)
     - [Finally](#finally)
@@ -594,7 +594,7 @@ If you are in DEBUG mode, you can configure when additional stacktraces will be 
 
 `Promise.Config.UncaughtRejectionHandler` allows you to route unhandled rejections through a delegate instead of being thrown.
 
-`Promise.Config.ForegroundContext` is the context to which foreground operations are posted, typically used to marshal work to the UI thread. This is automatically set in Unity, but in other UI frameworks it should be set at application startup (usually `Promise.Config.ForegroundContext = SynchronizationContext.Current` is enough). Note: if your application uses multiple `SynchronizationContext`s, you should instead pass the context directly to the `WaitAsync` and other APIs instead of using `SynchronizationOption.Foreground`. See [Switching Execution Context](switching-execution-context).
+`Promise.Config.ForegroundContext` is the context to which foreground operations are posted, typically used to marshal work to the UI thread. This is automatically set in Unity, but in other UI frameworks it should be set at application startup (usually `Promise.Config.ForegroundContext = SynchronizationContext.Current` is enough). Note: if your application uses multiple `SynchronizationContext`s, you should instead pass the context directly to the `WaitAsync` and other APIs instead of using `SynchronizationOption.Foreground`. See [Switching Execution Context](#switching-execution-context).
 
 `Promise.Config.BackgroundContext` can be set to override how background operations are executed. If this is null, `ThreadPool.QueueUserWorkItem(callback, state)` is used.
 
