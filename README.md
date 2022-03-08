@@ -52,7 +52,7 @@ See [Release Notes](ReleaseNotes.md) for the full changelog.
 
 - [Package Installation](#package-installation)
     - [Unity](#unity)
-    - [DotNet and Mono](#dotnet-and-mono)
+    - [Nuget](#nuget)
 - [Creating a Promise for an Async Operation](#creating-a-promise-for-an-async-operation)
     - [Creating a Promise, Alternate Method](#creating-a-promise-alternate-method)
 - [Waiting for an Async Operation to Complete](#waiting-for-an-async-operation-to-complete)
