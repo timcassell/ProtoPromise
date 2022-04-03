@@ -15,6 +15,10 @@ jobs:
         mode: [Release, Debug]
         progress: [Progress_Enabled, Progress_Disabled]
         pooling: [Pool_Enabled, Pool_Disabled]
+        # DEBUG mode forces pooling disabled.
+        exclude:
+          - mode: Debug
+            pooling: Pool_Enabled
         include:
           - buildTarget: Editor
             buildTargetId: 1
