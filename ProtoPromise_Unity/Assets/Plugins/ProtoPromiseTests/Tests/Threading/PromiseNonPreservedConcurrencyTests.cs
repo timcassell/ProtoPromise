@@ -8,7 +8,7 @@ using System.Threading;
 
 namespace ProtoPromiseTests.Threading
 {
-    public class NonPreservedPromiseConcurrencyTests
+    public class PromiseNonPreservedConcurrencyTests
     {
         [SetUp]
         public void Setup()

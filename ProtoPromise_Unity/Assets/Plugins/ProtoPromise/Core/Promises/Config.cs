@@ -71,10 +71,20 @@ namespace Proto.Promises
             [Obsolete("Use ObjectPoolingEnabled instead.")]
             public static PoolType ObjectPooling 
             {
-                get { return _objectPoolingEnabled ? PoolType.All : PoolType.None; }
-                set { _objectPoolingEnabled = value != PoolType.None; }
+                get { return ObjectPoolingEnabled ? PoolType.All : PoolType.None; }
+                set { ObjectPoolingEnabled = value != PoolType.None; }
             }
 
+#if PROMISE_DEBUG
+            // Object pooling disabled in DEBUG mode to prevent thread race conditions when validating for circular awaits.
+            public static bool ObjectPoolingEnabled
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return false; }
+                [MethodImpl(Internal.InlineOption)]
+                set { }
+            }
+#else
             volatile private static bool _objectPoolingEnabled = true; // Enabled by default.
             public static bool ObjectPoolingEnabled
             {
@@ -83,6 +93,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 set { _objectPoolingEnabled = value; } 
             }
+#endif
 
             /// <summary>
             /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.

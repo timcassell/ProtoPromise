@@ -8,6 +8,7 @@ jobs:
     executor:
       name: win/default
       size: medium
+    parallelism: 3
     parameters:
       config:
         type: string
@@ -19,13 +20,20 @@ jobs:
         type: boolean
     steps:
       - checkout
+      
       - run:
           name: Run Tests
-          #-nodereuse:false to try to fix hang (see https://github.com/dotnet/sdk/issues/9452)
+          # Max 1 hour for free tier
+          no_output_timeout: 1h
+          # Split for parallel tests
           command: |
+            $SPLIT = $(circleci tests glob "ProtoPromise_Unity/Assets/Plugins/ProtoPromiseTests/Tests/**/*.cs" | circleci tests split)
+            $splitarray = $SPLIT.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries)
+            for (($i = 0); $i -lt $splitarray.length; $i++) { $splitarray[$i] = "FullyQualifiedName~" + [System.IO.Path]::GetFileNameWithoutExtension($splitarray[$i]) }
+            $splitjoined = [System.String]::Join(" | ", $splitarray)
+
             $ResultsFile = "$pwd/dotnet-test-results-<<parameters.runtime>>-<<parameters.config>>.xml"
-            dotnet test -c <<parameters.config>> -f <<parameters.runtime>> -nodereuse:false --logger:"junit;LogFilePath=$ResultsFile" -p:ExtraDefineConstants=PROTO_PROMISE_<<parameters.poolType>> -p:DeveloperMode=<<parameters.developerMode>>
-          no_output_timeout: 5h
+            dotnet test -c <<parameters.config>> -f <<parameters.runtime>> --logger:"junit;LogFilePath=$ResultsFile" -p:ExtraDefineConstants=PROTO_PROMISE_<<parameters.poolType>> -p:DeveloperMode=<<parameters.developerMode>> --filter "$splitjoined"
 
       - store_test_results:
           path: dotnet-test-results-<<parameters.runtime>>-<<parameters.config>>.xml
@@ -40,9 +48,19 @@ workflows:
           name: <<matrix.runtime>> <<matrix.config>> <<matrix.poolType>>
           matrix:
             parameters:
-              config: [Release, Debug, Release_NoProgress, Debug_NoProgress]
+              config: [Release, Release_NoProgress]
               runtime: [net5.0, net472]
               poolType: [POOL_ENABLE, POOL_DISABLE]
+              developerMode: [false]
+      # DEBUG mode forces pooling disabled.
+      # matrix exclude isn't working, so have to create a separate matrix.
+      - run-tests:
+          name: <<matrix.runtime>> <<matrix.config>> <<matrix.poolType>>
+          matrix:
+            parameters:
+              config: [Debug, Debug_NoProgress]
+              runtime: [net5.0, net472]
+              poolType: [POOL_DISABLE]
               developerMode: [false]
       # Just run each configuration with developer mode enabled to make sure it works. We don't need to test all runtimes or pool types for this.
       - run-tests:
@@ -51,5 +69,6 @@ workflows:
             parameters:
               config: [Release, Debug, Release_NoProgress, Debug_NoProgress]
               runtime: [net5.0]
+              # DEBUG mode forces pooling disabled, but it doesn't matter for this purpose.
               poolType: [POOL_ENABLE]
               developerMode: [true]
