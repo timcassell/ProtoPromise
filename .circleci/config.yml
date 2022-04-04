@@ -20,25 +20,14 @@ jobs:
         type: boolean
     steps:
       - checkout
-
-      - run:
-          name: Print Split
-          command: |
-            $SPLIT = $(circleci tests glob "ProtoPromise_Unity/Assets/Plugins/ProtoPromiseTests/**/*.cs" | circleci tests split)
-            echo $SPLIT
-
-            $splitarray = $SPLIT.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries)
-            for (($i = 0); $i -lt $splitarray.length; $i++) { $splitarray[$i] = "FullyQualifiedName~" + [System.IO.Path]::GetFileNameWithoutExtension($splitarray[$i]) }
-            $splitjoined = [System.String]::Join(" | ", $splitarray)
-            echo $splitjoined
-
+      
       - run:
           name: Run Tests
           # Max 1 hour for free tier
           no_output_timeout: 1h
           # Split for parallel tests
           command: |
-            $SPLIT = $(circleci tests glob "ProtoPromise_Unity/Assets/Plugins/ProtoPromiseTests/**/*.cs" | circleci tests split)
+            $SPLIT = $(circleci tests glob "ProtoPromise_Unity/Assets/Plugins/ProtoPromiseTests/Tests/**/*.cs" | circleci tests split)
             $splitarray = $SPLIT.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries)
             for (($i = 0); $i -lt $splitarray.length; $i++) { $splitarray[$i] = "FullyQualifiedName~" + [System.IO.Path]::GetFileNameWithoutExtension($splitarray[$i]) }
             $splitjoined = [System.String]::Join(" | ", $splitarray)

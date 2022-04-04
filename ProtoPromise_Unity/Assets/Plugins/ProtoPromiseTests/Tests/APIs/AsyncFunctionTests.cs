@@ -20,7 +20,7 @@ using System;
 
 namespace ProtoPromiseTests.APIs
 {
-    public class AsyncTests
+    public class AsyncFunctionTests
     {
         [SetUp]
         public void Setup()

@@ -34,7 +34,7 @@
   
   <ItemGroup>
     <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromiseTests\**/*.cs" />
-    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromiseTests\Threading\ForOldRuntime\**/*" />
+    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromiseTests\Helpers\ForOldRuntime\**/*" />
   </ItemGroup>
 
 </Project>
