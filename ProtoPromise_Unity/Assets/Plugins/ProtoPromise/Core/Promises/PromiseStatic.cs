@@ -641,7 +641,7 @@ namespace Proto.Promises
                 return Internal.CreateResolved(value, maxDepth);
             }
             // Check for reference type to not create new object pools for every T1 type.
-            var promise = null == default(T1)
+            var promise = null == default(T1) && !typeof(T1).IsValueType
                 ? Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, (object) value, (feed, target, index) =>
                 {
                     if (index == 0)
