@@ -1,10 +1,22 @@
 # Release Notes
 
-## v 2.0 - March 7, 2022
+## v 2.0.1 - April 7, 2022
+
+Fixes:
+
+- Fixed a memory leak with All/Merge/Race/First promises when object pooling is enabled.
+- Fixed state check in `PromiseYieldInstruction` when the promise is already complete.
+
+Optimizations:
+
+- Less pooled memory when `T` of `Promise<T>` is a reference type and used by more than 1 types (example: `Promise<string>` and `Promise<object>`).
+- More efficient execution in the common case.
+
+## v 2.0.0 - March 7, 2022
 
 Enhancements:
 
-- Full library thread-safety with minimal locks
+- Full library thread-safety with minimal locks.
 - Added `CLSCompliant(true)` to the assembly.
 - `Promise<T>.ResultContainer` now has an implicit conversion to `Promise.ResultContainer`.
 - Added `Promise<T>.{All, Race, First, New, NewDeferred, Resolved, Rejected, Canceled}`.
@@ -32,7 +44,7 @@ Enhancements:
 
 Optimizations:
 
-- Promises are now structs, making already resolved promises live only on the stack, increasing performance
+- Promises are now structs, making already resolved promises live only on the stack, increasing performance.
 - Optimized progress to consume less memory.
 - Decreased cost of garbage collecting promises when object pooling is disabled.
 - Optimized `async Promise(<T>)` functions in Unity 2021.2 or newer when IL2CPP is used.

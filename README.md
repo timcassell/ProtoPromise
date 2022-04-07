@@ -26,25 +26,12 @@ This library took inspiration from [ES6 Promises](https://developer.mozilla.org/
 
 ## Latest Updates
 
-### v 2.0.0 - March 7, 2022
+## v 2.0.1 - April 7, 2022
 
-- Full library thread-safety with minimal locks.
-- Added `Deferred.Cancel`.
-- Added `Deferred` and `CancelationSource` and `CancelationToken` and `CancelationRegistration` `Try...` methods.
-- Added `CancelationRegistration` methods to unregister/check registration and if the token is requesting cancelation atomically.
-- Added static `CancelationToken.Canceled()` to get a token already in the canceled state without allocating.
-- Added `Promise(<T>).WaitAsync(SynchronizationOption)` and `Promise(<T>).WaitAsync(SynchronizationContext)` to schedule the next callback/await on the desired context.
-- Added `Promise.Run` static functions.
-- Added `Promise.SwitchToForeground()`, `Promise.SwitchToBackground()`, and `Promise.SwitchToContext(SynchronizationContext)` static functions.
-- Added `Promise.AwaitWithProgress(float minProgress, float maxProgress)` API to propagate the progress to an `async Promise(<T>)` function.
-
-- Promises are now structs, making already resolved promises live only on the stack, increasing performance.
-- Eliminated potential `StackOverflowException`s from `async`/`await` continuations when both the `async` function and the `await`ed object are `Promise(<T>)`.
-
-- Changed behavior of `Promise.CatchCancelation` to return a new promise and behave more like `Promise.Catch`, where `onCanceled` resolves the returned promise when it returns, or adopts the state of the returned promise.
-- Removed cancelation reasons.
-- A rejected promise awaited in an async function now throws the original exception, if the promise was rejected with an exception.
-- Deprecations and other breaking changes (see full release notes).
+- Fixed a memory leak with All/Merge/Race/First promises when object pooling is enabled.
+- Fixed state check in `PromiseYieldInstruction` when the promise is already complete.
+- Less pooled memory when `T` of `Promise<T>` is a reference type and used by more than 1 types (example: `Promise<string>` and `Promise<object>`).
+- More efficient execution in the common case.
 
 See [Release Notes](ReleaseNotes.md) for the full changelog.
 
