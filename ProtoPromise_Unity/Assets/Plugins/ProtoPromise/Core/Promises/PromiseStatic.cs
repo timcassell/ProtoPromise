@@ -640,13 +640,22 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
-            {
-                if (index == 0)
+            // Check for reference type to not create new object pools for every T1 type.
+            var promise = null == default(T1)
+                ? Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, (object) value, (feed, target, index) =>
                 {
-                    target.value = feed.GetValue<T1>();
-                }
-            }, pendingCount, completedProgress, totalProgress, maxDepth);
+                    if (index == 0)
+                    {
+                        target.value = feed.GetValue<object>();
+                    }
+                }, pendingCount, completedProgress, totalProgress, maxDepth)
+                : Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+                {
+                    if (index == 0)
+                    {
+                        target.value = feed.GetValue<T1>();
+                    }
+                }, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise<T1>(promise, promise.Id, maxDepth);
         }
 

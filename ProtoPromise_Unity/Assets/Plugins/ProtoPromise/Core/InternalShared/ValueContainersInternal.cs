@@ -24,14 +24,162 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
+        internal abstract class ValueContainer
+        {
+            internal abstract Promise.State GetState();
+            internal abstract Type ValueType { get; }
+            internal abstract object Value { get; }
+
+            internal abstract void DisposeAndMaybeAddToUnhandledStack(bool shouldAdd);
+            internal abstract void AddToUnhandledStack();
+
+            internal abstract ValueContainer Clone();
+
+            // TODO: when types implement IValueTaskSource<TResult>, they will have access to their <TResult> to call this direct function which is more efficient than the virtual call.
+
+            //[MethodImpl(InlineOption)]
+            //internal ResolveContainer<T> CloneResolve<T>()
+            //{
+            //    return ResolveContainer<T>.GetOrCreate(GetValue<T>());
+            //}
+
+            [MethodImpl(InlineOption)]
+            internal static ValueContainer CreateResolve<TValue>(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                TValue value)
+            {
+                // null check is same as !typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
+                if (null == default(TValue))
+                {
+                    // Only need to create one object pool for reference types.
+                    return ResolveContainer<object>.GetOrCreate(value);
+                }
+                if (typeof(TValue) == typeof(VoidResult))
+                {
+                    return ResolveContainerVoid.GetOrCreate();
+                }
+                return ResolveContainer<TValue>.GetOrCreate(value);
+            }
+
+            [MethodImpl(InlineOption)]
+            internal TValue GetValue<TValue>()
+            {
+                // null check is same as !typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
+                if (null == default(TValue))
+                {
+                    return (TValue) ((ResolveContainer<object>) this).value;
+                }
+                if (typeof(TValue) == typeof(VoidResult))
+                {
+                    return default(TValue);
+                }
+                return ((ResolveContainer<TValue>) this).value;
+            }
+
+            internal static ValueContainer CreateReject<TReject>(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                TReject reason, int rejectSkipFrames, ITraceable traceable)
+            {
+                ValueContainer valueContainer;
+
+                // Avoid boxing value types.
+                Type type = typeof(TReject);
+                if (type.IsValueType)
+                {
+                    valueContainer = RejectionContainer<TReject>.GetOrCreate(reason);
+                }
+                else
+                {
+                    IRejectionToContainer internalRejection = reason as IRejectionToContainer;
+                    if (internalRejection != null)
+                    {
+                        // reason is an internal rejection object, get its container instead of wrapping it.
+                        return internalRejection.ToContainer(traceable);
+                    }
+
+                    // If reason is null, behave the same way .Net behaves if you throw null.
+                    object o = (object) reason ?? new NullReferenceException();
+                    Exception e = o as Exception;
+                    if (e != null)
+                    {
+                        valueContainer = RejectionContainerException.GetOrCreate(e);
+                    }
+                    else
+                    {
+                        // Only need to create one object pool for reference types.
+                        valueContainer = RejectionContainer<object>.GetOrCreate(o);
+                    }
+                }
+                SetCreatedAndRejectedStacktrace((IRejectValueContainer) valueContainer, rejectSkipFrames + 1, traceable);
+                return valueContainer;
+            }
+
+            internal bool TryGetValue<TValue>(out TValue converted)
+            {
+                // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
+                if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
+                {
+                    converted = default(TValue);
+                    return true;
+                }
+
+                // Try to avoid boxing value types.
+                var directContainer = this as ValueContainer<TValue>;
+                if (directContainer != null)
+                {
+                    converted = directContainer.value;
+                    return true;
+                }
+
+                if (typeof(TValue).IsAssignableFrom(ValueType))
+                {
+                    // Unfortunately, this will box if converting from a non-nullable value type to nullable.
+                    // I couldn't find any way around that without resorting to Expressions (which won't work for this purpose with the IL2CPP AOT compiler).
+                    // Also, this will only occur when catching rejections, so the performance concern is negated.
+                    converted = (TValue) Value;
+                    return true;
+                }
+
+                converted = default(TValue);
+                return false;
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode]
+#endif
         internal abstract class ValueContainer<T> : ValueContainer, ITraceable
         {
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
 #endif
-            // This should be nint to be more efficient in 32-bit runtimes, but it's only available in C# 9 and later, and Interlocked does not have an overload for nint.
-            private long _retainCounter;
             public T value;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            volatile private bool _disposed;
+
+            ~ValueContainer()
+            {
+                try
+                {
+                    if (!_disposed)
+                    {
+                        // For debugging. This should never happen.
+                        string message = "A " + GetType() + " was garbage collected without it being released. value: " + value;
+                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                    }
+                }
+                catch (Exception e)
+                {
+                    // This should never happen.
+                    AddRejectionToUnhandledStack(e, this);
+                }
+            }
+#endif
+
 
             internal override sealed object Value
             {
@@ -61,42 +209,17 @@ namespace Proto.Promises
                 }
             }
 
+            [MethodImpl(InlineOption)]
+            internal override void DisposeAndMaybeAddToUnhandledStack(bool shouldAdd)
+            {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            ~ValueContainer()
-            {
-                try
-                {
-                    if (_retainCounter != 0)
-                    {
-                        // For debugging. This should never happen.
-                        string message = "A " + GetType() + " was garbage collected without it being released. _retainCounter: " + _retainCounter + ", value: " + value;
-                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
-                    }
-                }
-                catch (Exception e)
-                {
-                    // This should never happen.
-                    AddRejectionToUnhandledStack(e, this);
-                }
-            }
+                _disposed = true;
 #endif
-
-            internal override void Retain()
-            {
-                ThrowIfInPool(this);
-                // Generally it is impossible to overflow the long, but it may be possible if the user is abusing promises.
-                InterlockedAddWithOverflowCheck(ref _retainCounter, 1, -1);
             }
 
-            protected bool TryReleaseComplete()
-            {
-                ThrowIfInPool(this);
-                return InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0;
-            }
-
+            [MethodImpl(InlineOption)]
             protected void Reset()
             {
-                _retainCounter = 1;
                 SetCreatedStacktrace(this, 2);
             }
         }
@@ -141,22 +264,24 @@ namespace Proto.Promises
                 return Promise.State.Rejected;
             }
 
-            internal override void Release()
+            internal override ValueContainer Clone()
             {
-                ThrowIfInPool(this);
-                if (TryReleaseComplete())
-                {
-                    Dispose();
-                }
+                var clone = GetOrCreate(value);
+#if PROMISE_DEBUG
+                clone.SetCreatedAndRejectedStacktrace(_rejectedStackTrace, _stackTraces);
+#endif
+                return clone;
             }
 
-            internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            internal override void DisposeAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
+                ThrowIfInPool(this);
                 if (shouldAdd)
                 {
                     AddToUnhandledStack();
                 }
-                Release();
+                base.DisposeAndMaybeAddToUnhandledStack(shouldAdd);
+                Dispose();
             }
 
             internal override void AddToUnhandledStack()
@@ -235,7 +360,7 @@ namespace Proto.Promises
             System.Runtime.ExceptionServices.ExceptionDispatchInfo _capturedInfo;
 #endif
 #if PROMISE_DEBUG
-            RejectionException _rejectException;
+            private RejectionException _rejectException;
             // Stack traces of recursive callbacks.
             private CausalityTrace _stackTraces;
 
@@ -257,10 +382,17 @@ namespace Proto.Promises
 
             private RejectionContainerException() { }
 
-            internal static RejectionContainerException GetOrCreate(Exception value)
+            private static RejectionContainerException GetOrCreate()
             {
                 var container = ObjectPool<RejectionContainerException>.TryTake<RejectionContainerException>()
                     ?? new RejectionContainerException();
+                container.Reset();
+                return container;
+            }
+
+            internal static RejectionContainerException GetOrCreate(Exception value)
+            {
+                var container = GetOrCreate();
                 container.value = value;
 #if !NET_LEGACY
                 container._capturedInfo = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(value);
@@ -277,22 +409,29 @@ namespace Proto.Promises
                 return Promise.State.Rejected;
             }
 
-            internal override void Release()
+            internal override ValueContainer Clone()
             {
-                ThrowIfInPool(this);
-                if (TryReleaseComplete())
-                {
-                    Dispose();
-                }
+                var clone = GetOrCreate();
+                clone.value = value;
+#if !NET_LEGACY
+                clone._capturedInfo = _capturedInfo;
+#endif
+#if PROMISE_DEBUG
+                clone._rejectException = _rejectException;
+                clone._stackTraces = _stackTraces;
+#endif
+                return clone;
             }
 
-            internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            internal override void DisposeAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
+                ThrowIfInPool(this);
                 if (shouldAdd)
                 {
                     AddToUnhandledStack();
                 }
-                Release();
+                base.DisposeAndMaybeAddToUnhandledStack(shouldAdd);
+                Dispose();
             }
 
             internal override void AddToUnhandledStack()
@@ -383,22 +522,20 @@ namespace Proto.Promises
                 return Promise.State.Rejected;
             }
 
-            internal override void Release()
+            internal override ValueContainer Clone()
             {
-                ThrowIfInPool(this);
-                if (TryReleaseComplete())
-                {
-                    Dispose();
-                }
+                return GetOrCreate(_exception);
             }
 
-            internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            internal override void DisposeAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
+                ThrowIfInPool(this);
                 if (shouldAdd)
                 {
                     AddToUnhandledStack();
                 }
-                Release();
+                base.DisposeAndMaybeAddToUnhandledStack(shouldAdd);
+                Dispose();
             }
 
             internal override void AddToUnhandledStack()
@@ -482,23 +619,28 @@ namespace Proto.Promises
 #endif
             }
 
+
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            internal override void Release()
+            internal override ValueContainer Clone()
             {
-                if (TryReleaseComplete())
-                {
-                    ObjectPool<TValueContainer>.MaybeRepool((TValueContainer) this);
-                }
+                var clone = GetOrCreateBase();
+                clone.value = value;
+                return clone;
             }
 
-            internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            internal override void DisposeAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
-                Release();
+                ThrowIfInPool(this);
+                base.DisposeAndMaybeAddToUnhandledStack(shouldAdd);
+                ObjectPool<TValueContainer>.MaybeRepool((TValueContainer) this);
             }
 #else
-            internal override void Retain() { }
-            internal override void Release() { }
-            internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd) { }
+            internal override ValueContainer Clone()
+            {
+                return this;
+            }
+
+            internal override void DisposeAndMaybeAddToUnhandledStack(bool shouldAdd) { }
 #endif
 
             internal override void AddToUnhandledStack() { }
@@ -557,18 +699,15 @@ namespace Proto.Promises
                 return Promise.State.Resolved;
             }
 
-            internal override void Release()
+            internal override ValueContainer Clone()
             {
-                ThrowIfInPool(this);
-                if (TryReleaseComplete())
-                {
-                    Dispose();
-                }
+                return GetOrCreate(value);
             }
 
-            internal override void ReleaseAndMaybeAddToUnhandledStack(bool shouldAdd)
+            internal override void DisposeAndMaybeAddToUnhandledStack(bool shouldAdd)
             {
-                Release();
+                base.DisposeAndMaybeAddToUnhandledStack(shouldAdd);
+                Dispose();
             }
 
             internal override void AddToUnhandledStack() { }
