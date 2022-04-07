@@ -1360,7 +1360,7 @@ namespace Proto.Promises
                 {
                     // owner._ref is checked for nullity before passing into this.
                     owner._target._ref.MarkAwaited(owner._target.Id, ownerSetFlags);
-                    var passThrough = ObjectPool<PromisePassThrough>.TryTake<PromisePassThrough>()
+                    var passThrough = ObjectPool<HandleablePromiseBase>.TryTake<PromisePassThrough>()
                         ?? new PromisePassThrough();
                     passThrough._owner = owner._target._ref;
                     passThrough._smallFields._index = index;
