@@ -2,7 +2,7 @@
 
 To create the UnityPackage for releases:
 
-1. Edit `README.md` to remove the `## Getting Started` and `## Latest Updates` sections, then convert it to `README.pdf` (can use https://www.markdowntopdf.com/) and place it in the `ProtoPromise` directory (discard the changes to `README.md` before git commit).
+1. Edit `README.md` to remove the `## Package Installation` and `## Latest Updates` sections, then convert it to `README.pdf` (can use https://www.markdowntopdf.com/) and place it in the `ProtoPromise_Unity\Assets\Plugins\ProtoPromise` directory (discard the changes to `README.md` before git commit).
 2. Repeat step 1 for `ReleaseNotes.md`.
 3. In the Unity editor, right-click the `ProtoPromise` folder and click `Export Package...`, uncheck `Include dependencies`, include everything, then click `Export...` and name the exported file `ProtoPromise.unitypackage`.
 4. Upload `ProtoPromise.unitypackage` with the release on GitHub.

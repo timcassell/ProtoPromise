@@ -2,7 +2,7 @@
 <package >
   <metadata minClientVersion="2.5">
     <id>ProtoPromise</id>
-    <version>2.0.0</version>
+    <version>2.0.1</version>
     <title>ProtoPromise</title>
     <authors>Tim Cassell</authors>
     <owners>Tim Cassell</owners>
