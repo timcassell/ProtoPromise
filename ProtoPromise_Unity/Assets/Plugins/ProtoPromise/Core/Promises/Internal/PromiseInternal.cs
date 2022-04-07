@@ -98,7 +98,7 @@ namespace Proto.Promises
                     if (State != Promise.State.Pending & _valueOrPrevious != null)
                     {
                         // Rejection maybe wasn't caught.
-                        ((ValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack(!SuppressRejection);
+                        ((ValueContainer) _valueOrPrevious).DisposeAndMaybeAddToUnhandledStack(!SuppressRejection);
                     }
                 }
                 catch (Exception e)
@@ -172,7 +172,7 @@ namespace Proto.Promises
                 }
 #endif
                 // Rejection maybe wasn't caught.
-                ((ValueContainer) _valueOrPrevious).ReleaseAndMaybeAddToUnhandledStack(!SuppressRejection);
+                ((ValueContainer) _valueOrPrevious).DisposeAndMaybeAddToUnhandledStack(!SuppressRejection);
                 _valueOrPrevious = null;
             }
 
@@ -427,8 +427,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            valueContainer = (ValueContainer) previousHandler._valueOrPrevious;
-                            valueContainer.Retain();
+                            valueContainer = ((ValueContainer) previousHandler._valueOrPrevious).Clone();
                         }
                         MaybeDisposePreviousFromCatch(previousHandler, handlerDisposedAfterCallback);
                         SetResultAndMaybeHandleFromCatch(valueContainer, previousState, out nextHandler, ref executionScheduler);
@@ -471,8 +470,7 @@ namespace Proto.Promises
                 internal void HandleSelf(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     var state = handler.State;
-                    var valueContainer = (ValueContainer) handler._valueOrPrevious;
-                    valueContainer.Retain();
+                    var valueContainer = ((ValueContainer) handler._valueOrPrevious).Clone();
                     MaybeDisposePrevious(handler);
                     handler = this;
                     SetResultAndMaybeHandle(valueContainer, state, out nextHandler, ref executionScheduler);
@@ -517,8 +515,7 @@ namespace Proto.Promises
                 new internal void HandleSelf(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     var state = handler.State;
-                    var valueContainer = (ValueContainer) handler._valueOrPrevious;
-                    valueContainer.Retain();
+                    var valueContainer = ((ValueContainer) handler._valueOrPrevious).Clone();
                     MaybeDisposePrevious(handler);
                     handler = this;
                     SetResultAndMaybeHandle(valueContainer, state, out nextHandler, ref executionScheduler);
@@ -633,9 +630,7 @@ namespace Proto.Promises
                 {
                     nextHandler = null;
                     ThrowIfInPool(this);
-                    var valueContainer = (ValueContainer) handler._valueOrPrevious;
-                    valueContainer.Retain();
-                    SetResult(valueContainer, handler.State);
+                    SetResult(((ValueContainer) handler._valueOrPrevious).Clone(), handler.State);
                     executionScheduler.ScheduleSynchronous(this);
                     WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
@@ -737,9 +732,7 @@ namespace Proto.Promises
 #endif
                     {
                         ThrowIfInPool(this);
-                        var valueContainer = (ValueContainer) handler._valueOrPrevious;
-                        valueContainer.Retain();
-                        _valueOrPrevious = valueContainer;
+                        _valueOrPrevious = ((ValueContainer) handler._valueOrPrevious).Clone();
                         nextHandler = null;
                         _previousState = handler.State;
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping schedule method.
@@ -1212,7 +1205,6 @@ namespace Proto.Promises
                 {
                     var callback = _finalizer;
                     _finalizer = default(TFinalizer);
-                    handlerDisposedAfterCallback = true;
                     try
                     {
                         callback.Invoke();
@@ -1221,6 +1213,7 @@ namespace Proto.Promises
                     {
                         // Unlike normal finally clauses, we won't swallow the previous rejection. Instead, we send it to the uncaught rejection handler.
                         ((ValueContainer) handler._valueOrPrevious).AddToUnhandledStack();
+                        MaybeDisposePrevious(handler);
                         throw;
                     }
                     HandleSelf(ref handler, out nextHandler, ref executionScheduler);
@@ -1367,7 +1360,7 @@ namespace Proto.Promises
                 {
                     // owner._ref is checked for nullity before passing into this.
                     owner._target._ref.MarkAwaited(owner._target.Id, ownerSetFlags);
-                    var passThrough = ObjectPool<PromisePassThrough>.TryTake<PromisePassThrough>()
+                    var passThrough = ObjectPool<HandleablePromiseBase>.TryTake<PromisePassThrough>()
                         ?? new PromisePassThrough();
                     passThrough._owner = owner._target._ref;
                     passThrough._smallFields._index = index;

@@ -105,7 +105,7 @@ namespace Proto.Promises
                         {
                             if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                             {
-                                valueContainer.Retain();
+                                _valueOrPrevious = valueContainer.Clone();
                                 Handle(ref _firstSmallFields._waitCount, ref handler, out nextHandler, ref executionScheduler);
                             }
                         }
@@ -118,7 +118,7 @@ namespace Proto.Promises
                     {
                         if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                         {
-                            valueContainer.Retain();
+                            _valueOrPrevious = valueContainer.Clone();
                             Handle(ref _firstSmallFields._waitCount, ref handler, out nextHandler, ref executionScheduler);
                         }
                         if (InterlockedAddWithOverflowCheck(ref _firstSmallFields._waitCount, -1, 0) == 0)

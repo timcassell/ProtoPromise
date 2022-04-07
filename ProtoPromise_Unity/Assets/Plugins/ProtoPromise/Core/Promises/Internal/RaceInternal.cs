@@ -100,7 +100,7 @@ namespace Proto.Promises
                     if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
                     {
                         handler.SuppressRejection = true;
-                        valueContainer.Retain();
+                        _valueOrPrevious = valueContainer.Clone();
                         Handle(ref _raceSmallFields._waitCount, ref handler, out nextHandler, ref executionScheduler);
                     }
                     else

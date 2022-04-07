@@ -435,9 +435,10 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, valueContainer, (feed, target, index) =>
+            // Force to object for reference type value container.
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, (object) valueContainer, (feed, target, index) =>
             {
-                target.value[index] = feed.GetValue<T>();
+                ((IList<T>) target.value)[index] = feed.GetValue<T>();
             }, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
@@ -491,9 +492,10 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, valueContainer, (feed, target, index) =>
+            // Force to object for reference type value container.
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, (object) valueContainer, (feed, target, index) =>
             {
-                target.value[index] = feed.GetValue<T>();
+                ((IList<T>) target.value)[index] = feed.GetValue<T>();
             }, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
@@ -551,9 +553,10 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, valueContainer, (feed, target, index) =>
+            // Force to object for reference type value container.
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, (object) valueContainer, (feed, target, index) =>
             {
-                target.value[index] = feed.GetValue<T>();
+                ((IList<T>) target.value)[index] = feed.GetValue<T>();
             }, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
@@ -637,9 +640,10 @@ namespace Proto.Promises
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
 
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, valueContainer, (feed, target, index) =>
+            // Force to object for reference type value container.
+            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, (object) valueContainer, (feed, target, index) =>
             {
-                target.value[index] = feed.GetValue<T>();
+                ((IList<T>) target.value)[index] = feed.GetValue<T>();
             }, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }

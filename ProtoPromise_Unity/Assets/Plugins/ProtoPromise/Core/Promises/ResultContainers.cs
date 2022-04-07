@@ -73,7 +73,7 @@ namespace Proto.Promises
         public bool TryGetValueAs<T>(out T value)
         {
             Validate();
-            return Internal.TryGetValue(_valueContainer, out value);
+            return _valueContainer.TryGetValue(out value);
         }
 
 

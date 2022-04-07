@@ -224,55 +224,7 @@ namespace Proto.Promises
 #endif
                 TValue value)
         {
-            // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
-            if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
-            {
-                return ResolveContainerVoid.GetOrCreate();
-            }
-            return ResolveContainer<TValue>.GetOrCreate(value);
-        }
-
-        [MethodImpl(InlineOption)]
-        internal static TValue GetValue<TValue>(this ValueContainer valueContainer)
-        {
-            // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
-            if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
-            {
-                return default(TValue);
-            }
-            // TODO: check typeof(TValue).IsValueType == false and use the PromiseRef as the value container for reference types.
-            return ((ResolveContainer<TValue>) valueContainer).value;
-        }
-
-        // ValueContainer.TryGetValue<TValue>() must be implemented as an extension instead of interface member, because AOT might not compile the virtual method when TValue is a value-type.
-        internal static bool TryGetValue<TValue>(this ValueContainer valueContainer, out TValue converted)
-        {
-            // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
-            if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
-            {
-                converted = default(TValue);
-                return true;
-            }
-
-            // Try to avoid boxing value types.
-            var directContainer = valueContainer as ValueContainer<TValue>;
-            if (directContainer != null)
-            {
-                converted = directContainer.value;
-                return true;
-            }
-
-            if (typeof(TValue).IsAssignableFrom(valueContainer.ValueType))
-            {
-                // Unfortunately, this will box if converting from a non-nullable value type to nullable.
-                // I couldn't find any way around that without resorting to Expressions (which won't work for this purpose with the IL2CPP AOT compiler).
-                // Also, this will only occur when catching rejections, so the performance concern is negated.
-                converted = (TValue) valueContainer.Value;
-                return true;
-            }
-
-            converted = default(TValue);
-            return false;
+            return ValueContainer.CreateResolve(value);
         }
 
         internal static ValueContainer CreateRejectContainer<TReject>(
@@ -281,38 +233,7 @@ namespace Proto.Promises
 #endif
                 TReject reason, int rejectSkipFrames, ITraceable traceable)
         {
-            ValueContainer valueContainer;
-
-            // Avoid boxing value types.
-            Type type = typeof(TReject);
-            if (type.IsValueType)
-            {
-                valueContainer = RejectionContainer<TReject>.GetOrCreate(reason);
-            }
-            else
-            {
-                IRejectionToContainer internalRejection = reason as IRejectionToContainer;
-                if (internalRejection != null)
-                {
-                    // reason is an internal rejection object, get its container instead of wrapping it.
-                    return internalRejection.ToContainer(traceable);
-                }
-
-                // If reason is null, behave the same way .Net behaves if you throw null.
-                object o = (object) reason ?? new NullReferenceException();
-                Exception e = o as Exception;
-                if (e != null)
-                {
-                    valueContainer = RejectionContainerException.GetOrCreate(e);
-                }
-                else
-                {
-                    // Only need to create one object pool for reference types.
-                    valueContainer = RejectionContainer<object>.GetOrCreate(o);
-                }
-            }
-            SetCreatedAndRejectedStacktrace((IRejectValueContainer) valueContainer, rejectSkipFrames + 1, traceable);
-            return valueContainer;
+            return ValueContainer.CreateReject(reason, rejectSkipFrames, traceable);
         }
 
         // Handle uncaught errors. These must not be readonly.

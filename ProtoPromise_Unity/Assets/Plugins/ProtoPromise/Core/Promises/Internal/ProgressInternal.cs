@@ -885,9 +885,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     var state = handler.State;
                     _smallProgressFields._previousState = state;
-                    var valueContainer = (ValueContainer) handler._valueOrPrevious;
-                    valueContainer.Retain();
-                    _valueOrPrevious = valueContainer;
+                    _valueOrPrevious = ((ValueContainer) handler._valueOrPrevious).Clone();
 
                     if (!_smallProgressFields._isSynchronous)
                     {
