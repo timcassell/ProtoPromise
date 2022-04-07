@@ -50,8 +50,8 @@ namespace Proto.Promises
 #endif
                 TValue value)
             {
-                // null check is same as !typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
-                if (null == default(TValue))
+                // Null check helps eliminate the IsValueType check for reference types. IsValueType is necessary to detect nullable value types.
+                if (null == default(TValue) && !typeof(TValue).IsValueType)
                 {
                     // Only need to create one object pool for reference types.
                     return ResolveContainer<object>.GetOrCreate(value);
@@ -66,8 +66,8 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal TValue GetValue<TValue>()
             {
-                // null check is same as !typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
-                if (null == default(TValue))
+                // Null check helps eliminate the IsValueType check for reference types. IsValueType is necessary to detect nullable value types.
+                if (null == default(TValue) && !typeof(TValue).IsValueType)
                 {
                     return (TValue) ((ResolveContainer<object>) this).value;
                 }

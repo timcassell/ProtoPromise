@@ -952,5 +952,16 @@ namespace ProtoPromiseTests.APIs
             }
         }
 #endif
+
+        [Test]
+        public void PromiseMayBeResolvedWithNullable(
+            [Values(10, 0, null)] int? expected)
+        {
+            var deferred = Promise.NewDeferred<int?>();
+            deferred.Promise
+                .Then(v => Assert.AreEqual(expected, v))
+                .Forget();
+            deferred.Resolve(expected);
+        }
     }
 }
