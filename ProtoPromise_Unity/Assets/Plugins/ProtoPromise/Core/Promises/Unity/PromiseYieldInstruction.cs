@@ -200,17 +200,15 @@ namespace Proto.Promises
                 yieldInstruction._retainCounter = 2; // 1 retain for complete, 1 for dispose.
                 promise.ContinueWith(yieldInstruction, (yi, resultContainer) =>
                 {
+                    yi._state = resultContainer.State;
                     if (yi._state == Promise.State.Resolved)
                     {
                         yi._result = resultContainer.Result;
                     }
                     else
                     {
-                        ValueContainer valueContainer = (ValueContainer) resultContainer._target._valueOrPrevious;
-                        valueContainer.Retain();
-                        yi._value = valueContainer;
+                        yi._value = ((ValueContainer) resultContainer._target._valueOrPrevious).Clone();
                     }
-                    yi._state = resultContainer.State;
                     
                     yi.MaybeDispose();
                 })
@@ -222,7 +220,7 @@ namespace Proto.Promises
             {
                 if (Interlocked.Exchange(ref _disposeChecker, 1) == 1)
                 {
-                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", GetFormattedStacktrace(1));
                 }
                 MaybeDispose();
             }
