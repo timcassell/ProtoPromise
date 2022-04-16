@@ -1,4 +1,8 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -95,10 +99,10 @@ namespace Proto.Promises
                         string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
                         AddRejectionToUnhandledStack(new UnobservedPromiseException(message), this);
                     }
-                    if (State != Promise.State.Pending & _valueOrPrevious != null)
+                    if (State != Promise.State.Pending & _valueContainer != null)
                     {
                         // Rejection maybe wasn't caught.
-                        ((ValueContainer) _valueOrPrevious).DisposeAndMaybeAddToUnhandledStack(!SuppressRejection);
+                        _valueContainer.DisposeAndMaybeAddToUnhandledStack(!SuppressRejection);
                     }
                 }
                 catch (Exception e)
@@ -171,15 +175,20 @@ namespace Proto.Promises
                     throw new System.InvalidOperationException("Promise disposed while pending: " + this);
                 }
 #endif
+#if PROMISE_DEBUG
+                _previous = null;
+#endif
                 // Rejection maybe wasn't caught.
-                ((ValueContainer) _valueOrPrevious).DisposeAndMaybeAddToUnhandledStack(!SuppressRejection);
-                _valueOrPrevious = null;
+                _valueContainer.DisposeAndMaybeAddToUnhandledStack(!SuppressRejection);
+                _valueContainer = null;
             }
 
             private void HookupNewCancelablePromise(PromiseRef newPromise)
             {
-                // If _valueOrPrevious is not null, it means newPromise was already canceled from the token.
-                if (Interlocked.CompareExchange(ref newPromise._valueOrPrevious, this, null) == null)
+                // TODO: just hook up normally. DelegateWrappers call TryUnregister anyway.
+                //HookupNewPromise(newPromise);
+                // If _valueContainer is not null, it means newPromise was already canceled from the token.
+                if (Interlocked.CompareExchange(ref newPromise._valueContainer, null, null) == null)
                 {
                     HookupNewWaiter(newPromise);
                 }
@@ -200,7 +209,12 @@ namespace Proto.Promises
 
             private void HookupNewPromise(PromiseRef newPromise)
             {
-                newPromise._valueOrPrevious = this;
+#if PROMISE_DEBUG
+                newPromise._previous = this;
+#endif
+#if PROMISE_PROGRESS
+                newPromise._smallFields._currentProgress = _smallFields._currentProgress;
+#endif
                 HookupNewWaiter(newPromise);
             }
 
@@ -215,21 +229,6 @@ namespace Proto.Promises
                 AddWaiter(newWaiter, ref executionScheduler);
                 executionScheduler.Execute();
             }
-
-#if PROMISE_PROGRESS
-            private void HookupNewPromiseWithProgress<TPromiseRef>(TPromiseRef newPromise, ushort depth) where TPromiseRef : PromiseRef, IProgressListener
-            {
-                newPromise._valueOrPrevious = this;
-                HookupNewWaiterWithProgress(newPromise, depth);
-            }
-
-            private void HookupNewWaiterWithProgress<TWaiter>(TWaiter newWaiter, ushort depth) where TWaiter : HandleablePromiseBase, IProgressListener
-            {
-                var executionScheduler = new ExecutionScheduler(true);
-                SubscribeListener(newWaiter, Fixed32.FromWhole(depth), ref executionScheduler);
-                HookupNewWaiter(newWaiter, ref executionScheduler);
-            }
-#endif
 
             internal PromiseRef GetPreserved(short promiseId, ushort depth)
             {
@@ -252,9 +251,10 @@ namespace Proto.Promises
             internal abstract void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler);
             internal abstract void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);
 
+            [MethodImpl(InlineOption)]
             private void SetResult(ValueContainer valueContainer, Promise.State state)
             {
-                _valueOrPrevious = valueContainer;
+                _valueContainer = valueContainer;
                 Thread.MemoryBarrier(); // Make sure state is written after value.
                 State = state;
             }
@@ -262,13 +262,13 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal TResult GetResult<TResult>()
             {
-                return ((ValueContainer) _valueOrPrevious).GetValue<TResult>();
+                return _valueContainer.GetValue<TResult>();
             }
 
             [MethodImpl(InlineOption)]
             private bool TryGetRejectValue<TReject>(out TReject rejectValue)
             {
-                return ((ValueContainer) _valueOrPrevious).TryGetValue(out rejectValue);
+                return _valueContainer.TryGetValue(out rejectValue);
             }
 
             internal void MaybeHandleNext(HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
@@ -276,6 +276,7 @@ namespace Proto.Promises
                 PromiseRef handler = this;
                 while (nextHandler != null)
                 {
+                    handler.WaitWhileProgressReporting();
                     nextHandler.Handle(ref handler, out nextHandler, ref executionScheduler);
                 }
                 handler.MaybeDispose();
@@ -364,10 +365,9 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl(InlineOption)]
                 internal void MaybeDisposePrevious(PromiseRef previous)
                 {
-                    _valueOrPrevious = null;
-                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                     previous.MaybeDispose();
                 }
 
@@ -385,13 +385,11 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal void WaitForProgressSubscribeAfterCanceled(PromiseRef previous)
+                [MethodImpl(InlineOption)]
+                internal void MaybeDisposePreviousAfterSecondWait(PromiseRef previous)
                 {
-#if PROMISE_PROGRESS
-                    // If we were unable to unregister from the cancelation token, we must try to remove the previous PromiseRef from the _valueOrPrevious field
-                    // without overwriting the new value that the token is going to set.
-                    Interlocked.CompareExchange(ref _valueOrPrevious, null, previous);
-                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
+#if PROMISE_DEBUG // Dispose after the callback if we're in debug mode so that if a circular promise chain is detected, it will be disposed properly.
+                    MaybeDisposePrevious(previous);
 #endif
                 }
 
@@ -420,14 +418,14 @@ namespace Proto.Promises
                             if (handlerDisposedAfterCallback)
                             {
                                 // This is a no-op for resolve and cancel containers.
-                                ((ValueContainer) previousHandler._valueOrPrevious).AddToUnhandledStack();
+                                previousHandler._valueContainer.AddToUnhandledStack();
                             }
                             valueContainer = CreateRejectContainer(e, int.MinValue, this);
                             previousState = Promise.State.Rejected;
                         }
                         else
                         {
-                            valueContainer = ((ValueContainer) previousHandler._valueOrPrevious).Clone();
+                            valueContainer = previousHandler._valueContainer.Clone();
                         }
                         MaybeDisposePreviousFromCatch(previousHandler, handlerDisposedAfterCallback);
                         SetResultAndMaybeHandleFromCatch(valueContainer, previousState, out nextHandler, ref executionScheduler);
@@ -455,6 +453,7 @@ namespace Proto.Promises
                     throw new System.InvalidOperationException();
                 }
 
+                [MethodImpl(InlineOption)]
                 internal void SetResultAndMaybeHandle(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     SetResult(valueContainer, state);
@@ -470,7 +469,7 @@ namespace Proto.Promises
                 internal void HandleSelf(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     var state = handler.State;
-                    var valueContainer = ((ValueContainer) handler._valueOrPrevious).Clone();
+                    var valueContainer = handler._valueContainer.Clone();
                     MaybeDisposePrevious(handler);
                     handler = this;
                     SetResultAndMaybeHandle(valueContainer, state, out nextHandler, ref executionScheduler);
@@ -479,53 +478,15 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void SetResultAndMaybeHandleFromCatch(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-                    SetResult(valueContainer, state);
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
-                    {
-                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                        nextHandler = Interlocked.Exchange(ref _waiter, null);
-                    }
-                    HandleProgressListener(state, Depth, ref executionScheduler);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal abstract partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
-            {
-                // These `new` methods are used so that promises without progress can avoid a virtual call to a no-op HandleProgressListener(),
-                // and promises with progress can call it directly without virtual.
-                [MethodImpl(InlineOption)]
-                new internal void SetResultAndMaybeHandle(ValueContainer valueContainer, Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    SetResult(valueContainer, state);
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
-                    {
-                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                        nextHandler = Interlocked.Exchange(ref _waiter, null);
-                    }
-                    HandleProgressListener(state, Depth, ref executionScheduler);
-                }
-
-                new internal void HandleSelf(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
-                {
-                    var state = handler.State;
-                    var valueContainer = ((ValueContainer) handler._valueOrPrevious).Clone();
-                    MaybeDisposePrevious(handler);
-                    handler = this;
                     SetResultAndMaybeHandle(valueContainer, state, out nextHandler, ref executionScheduler);
+                    //HandleProgressListener(state, Depth, ref executionScheduler);
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class PromiseMultiAwait : PromiseRef, IProgressListener
+            internal sealed partial class PromiseMultiAwait : PromiseRef
             {
                 private PromiseMultiAwait() { }
 
@@ -533,6 +494,7 @@ namespace Proto.Promises
                 {
                     try
                     {
+                        // TODO: make sure WasAwaitedOrForgotten is only set to true when this is forgotten.
                         if (!WasAwaitedOrForgotten)
                         {
                             _smallFields.InterlockedSetFlags(PromiseFlags.WasAwaitedOrForgotten); // Stop base finalizer from adding an extra exception.
@@ -580,16 +542,15 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (State == Promise.State.Pending)
                     {
-                        _progressAndLocker._branchLocker.Enter();
-                        if (State == Promise.State.Pending)
+                        lock (this)
                         {
-                            _nextBranches.Enqueue(waiter);
-                            _progressAndLocker._branchLocker.Exit();
-
-                            MaybeDispose();
-                            return;
+                            if (State == Promise.State.Pending)
+                            {
+                                _nextBranches.Enqueue(waiter);
+                                MaybeDispose();
+                                return;
+                            }
                         }
-                        _progressAndLocker._branchLocker.Exit();
                     }
                     HandleablePromiseBase nextHandler;
                     PromiseRef handler = this;
@@ -603,15 +564,15 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (State == Promise.State.Pending)
                     {
-                        _progressAndLocker._branchLocker.Enter();
-                        if (State == Promise.State.Pending)
+                        lock (this)
                         {
-                            _nextBranches.Enqueue(waiter);
-                            _progressAndLocker._branchLocker.Exit();
-                            nextHandler = null;
-                            return;
+                            if (State == Promise.State.Pending)
+                            {
+                                _nextBranches.Enqueue(waiter);
+                                nextHandler = null;
+                                return;
+                            }
                         }
-                        _progressAndLocker._branchLocker.Exit();
                     }
                     nextHandler = waiter;
                 }
@@ -619,10 +580,7 @@ namespace Proto.Promises
                 internal override void Handle(ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-
-                    HandleProgressListeners(State, ref executionScheduler);
                     HandleBranches(ref executionScheduler);
-
                     MaybeDispose();
                 }
 
@@ -630,16 +588,17 @@ namespace Proto.Promises
                 {
                     nextHandler = null;
                     ThrowIfInPool(this);
-                    SetResult(((ValueContainer) handler._valueOrPrevious).Clone(), handler.State);
+                    SetResult(handler._valueContainer.Clone(), handler.State);
                     executionScheduler.ScheduleSynchronous(this);
-                    WaitWhileProgressFlags(PromiseFlags.Subscribing);
                 }
 
                 private void HandleBranches(ref ExecutionScheduler executionScheduler)
                 {
-                    _progressAndLocker._branchLocker.Enter();
-                    var branches = _nextBranches.MoveElementsToStack();
-                    _progressAndLocker._branchLocker.Exit();
+                    ValueLinkedStack<HandleablePromiseBase> branches;
+                    lock (this)
+                    {
+                        branches = _nextBranches.MoveElementsToStack();
+                    }
                     while (branches.IsNotEmpty)
                     {
                         var waiter = branches.Pop();
@@ -712,7 +671,7 @@ namespace Proto.Promises
                     TResult result, ushort depth)
                 {
                     var promise = GetOrCreate(synchronizationContext, depth);
-                    promise._valueOrPrevious = CreateResolveContainer(result);
+                    promise._valueContainer = CreateResolveContainer(result);
                     promise._previousState = Promise.State.Resolved;
                     promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.Handle;
                     return promise;
@@ -732,7 +691,7 @@ namespace Proto.Promises
 #endif
                     {
                         ThrowIfInPool(this);
-                        _valueOrPrevious = ((ValueContainer) handler._valueOrPrevious).Clone();
+                        _valueContainer = handler._valueContainer.Clone();
                         nextHandler = null;
                         _previousState = handler.State;
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping schedule method.
@@ -746,7 +705,6 @@ namespace Proto.Promises
                         {
                             executionScheduler.ScheduleSynchronous(this);
                         }
-                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                     }
                 }
 
@@ -808,16 +766,14 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal abstract partial class PromiseWaitPromise : PromiseSingleAwaitWithProgress, IProgressListener
+            internal abstract partial class PromiseWaitPromise : PromiseSingleAwait
             {
                 [MethodImpl(InlineOption)]
                 internal void WaitFor<T>(Promise<T> other, ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     ValidateReturn(other);
-#if PROMISE_DEBUG
-                    MaybeDisposePrevious(handler);
-#endif
+                    MaybeDisposePreviousAfterSecondWait(handler);
                     var _ref = other._ref;
                     if (_ref == null)
                     {
@@ -829,16 +785,22 @@ namespace Proto.Promises
                     {
                         handler = _ref;
                         _ref.MarkAwaited(other.Id, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
-                        SetPreviousAndSubscribeProgress(_ref, other.Depth, ref executionScheduler);
+                        SetSecondPrevious(_ref);
+                        InterlockedIncrementProgressReportingCount();
                         _ref.AddWaiter(this, out nextHandler, ref executionScheduler);
+                        MaybeReportProgressAfterSecondPreviousHookup(_ref, other.Depth, ref executionScheduler);
                     }
                 }
 
+                partial void MaybeReportProgressAfterSecondPreviousHookup(PromiseRef secondPrevious, ushort depth, ref ExecutionScheduler executionScheduler);
+
 #if !PROMISE_PROGRESS
                 [MethodImpl(InlineOption)]
-                private void SetPreviousAndSubscribeProgress(PromiseRef other, ushort depth, ref ExecutionScheduler executionScheduler)
+                private void SetSecondPrevious(PromiseRef other)
                 {
-                    _valueOrPrevious = other;
+#if PROMISE_DEBUG
+                    _previous = other;
+#endif
                 }
 #endif
             }
@@ -846,12 +808,12 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal abstract partial class AsyncPromiseBase : PromiseSingleAwaitWithProgress
+            internal abstract partial class AsyncPromiseBase : PromiseSingleAwait
             {
                 protected void Reset()
                 {
 #if PROMISE_PROGRESS
-                    _progressAndSubscribeFields._currentProgress = default(Fixed32);
+                    _smallFields._currentProgress = default(Fixed32);
 #endif
                     _smallFields.Reset();
                     SetCreatedStacktrace(this, 3);
@@ -869,7 +831,6 @@ namespace Proto.Promises
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
                     var executionScheduler = new ExecutionScheduler(true);
-                    HandleProgressListener(state, 0, ref executionScheduler);
                     MaybeHandleNext(nextHandler, ref executionScheduler);
                     executionScheduler.Execute();
                 }
@@ -1212,7 +1173,7 @@ namespace Proto.Promises
                     catch
                     {
                         // Unlike normal finally clauses, we won't swallow the previous rejection. Instead, we send it to the uncaught rejection handler.
-                        ((ValueContainer) handler._valueOrPrevious).AddToUnhandledStack();
+                        handler._valueContainer.AddToUnhandledStack();
                         MaybeDisposePrevious(handler);
                         throw;
                     }
@@ -1309,7 +1270,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>, IProgressListener
+            internal sealed partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>
             {
                 internal PromiseRef Owner
                 {
@@ -1343,7 +1304,7 @@ namespace Proto.Promises
                             string message = "A PromisePassThrough was garbage collected without it being released."
                                 + " _retainCounter: " + _smallFields._retainCounter + ", _index: " + _smallFields._index + ", _target: " + _target + ", _owner: " + _owner
 #if PROMISE_PROGRESS
-                                + ", _reportingProgress: " + _smallFields._reportingProgress + ", _settingInitialProgress: " + _smallFields._settingInitialProgress + ", _currentProgress: " + _smallFields._currentProgress.ToDouble()
+                                + ", _depth: " + _smallFields._depth + ", _currentProgress: " + _smallFields._currentProgress.ToDouble()
 #endif
                                 ;
                             AddRejectionToUnhandledStack(new UnreleasedObjectException(message), _target);
@@ -1365,32 +1326,25 @@ namespace Proto.Promises
                     passThrough._owner = owner._target._ref;
                     passThrough._smallFields._index = index;
                     passThrough._smallFields._retainCounter = 1;
-                    passThrough.ResetProgress(owner._target.Depth);
+                    passThrough.SetDepth(owner._target.Depth);
                     return passThrough;
                 }
 
-                partial void ResetProgress(ushort depth);
-                partial void WaitWhileProgressIsBusy();
+                partial void SetDepth(ushort depth);
+                partial void SetInitialProgress();
 
                 internal void SetTargetAndAddToOwner(MultiHandleablePromiseBase target)
                 {
                     ThrowIfInPool(this);
                     _target = target;
-#if PROMISE_PROGRESS
-                    // Unfortunately, we have to eagerly subscribe progress. Lazy algorithm would be much more expensive with thread safety, requiring allocations. (see ValidateReturn)
-                    // But it's not so bad, because it doesn't allocate any memory (just uses CPU cycles to set it up).
-                    _owner.HookupNewWaiterWithProgress(this, _smallFields._depth);
-#else
+                    SetInitialProgress();
                     _owner.HookupNewWaiter(this);
-#endif
                 }
 
                 internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    _owner = null;
-                    WaitWhileProgressIsBusy();
-                    _target.Handle(ref handler, (ValueContainer) handler._valueOrPrevious, this, out nextHandler, ref executionScheduler);
+                    _target.Handle(ref handler, handler._valueContainer, this, out nextHandler, ref executionScheduler);
                     Release();
                 }
 
@@ -1406,18 +1360,11 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (InterlockedAddWithOverflowCheck(ref _smallFields._retainCounter, -1, 0) == 0)
                     {
+                        _owner = null;
                         _target = null;
                         ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                     }
                 }
-
-#if !PROMISE_PROGRESS
-                internal ushort Depth
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return 0; }
-                }
-#endif
             } // PromisePassThrough
 
             partial struct SmallFields

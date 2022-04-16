@@ -380,7 +380,7 @@ namespace ProtoPromiseTests
             throw new Exception("Unexpected callback contexts, expectedContext: " + expectedContext + ", invokeContext: " + invokeContext);
         }
 
-        public static readonly double progressEpsilon = 1d / Math.Pow(2d, Promise.Config.ProgressDecimalBits);
+        public static readonly float progressEpsilon = Promise.Config.ProgressPrecision;
 
         public const int callbacksMultiplier = 3
 #if CSHARP_7_3_OR_NEWER

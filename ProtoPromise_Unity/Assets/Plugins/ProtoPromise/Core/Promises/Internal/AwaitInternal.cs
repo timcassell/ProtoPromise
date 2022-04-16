@@ -7,6 +7,11 @@
 #else
 #undef PROMISE_DEBUG
 #endif
+#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+#endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
@@ -33,7 +38,7 @@ namespace Proto.Promises
                 }
                 if (state == Promise.State.Rejected)
                 {
-                    var exception = ((IRejectValueContainer) _valueOrPrevious).GetException();
+                    var exception = ((IRejectValueContainer) _valueContainer).GetException();
                     MaybeDispose();
                     throw exception;
                 }
@@ -50,7 +55,7 @@ namespace Proto.Promises
                 }
                 if (state == Promise.State.Rejected)
                 {
-                    var exceptionDispatchInfo = ((IRejectValueContainer) _valueOrPrevious).GetExceptionDispatchInfo();
+                    var exceptionDispatchInfo = ((IRejectValueContainer) _valueContainer).GetExceptionDispatchInfo();
                     MaybeDispose();
                     return exceptionDispatchInfo;
                 }
@@ -71,16 +76,6 @@ namespace Proto.Promises
                 asyncPromiseRef.ValidateAwait(this, promiseId);
                 InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
                 HookupNewPromise(asyncPromiseRef);
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void AwaitOnCompletedWithProgressInternal(AsyncPromiseRef asyncPromiseRef, short promiseId, ushort depth, float minProgress, float maxProgress)
-            {
-                asyncPromiseRef.ValidateAwait(this, promiseId);
-                InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
-                var executionScheduler = new ExecutionScheduler(true);
-                asyncPromiseRef.SetPreviousAndMaybeSubscribeProgress(this, depth, minProgress, maxProgress, ref executionScheduler);
-                HookupNewWaiter(asyncPromiseRef, ref executionScheduler);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -142,6 +137,10 @@ namespace Proto.Promises
                     nextHandler = null;
                     Invoke();
                 }
+
+#if PROMISE_PROGRESS
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
+#endif
             }
         }
 
@@ -384,7 +383,7 @@ namespace Proto.Promises
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    T result = ((Internal.ValueContainer) _ref._valueOrPrevious).GetValue<T>();
+                    T result = _ref.GetResult<T>();
                     _ref.MaybeDispose();
                     return result;
                 }
@@ -520,7 +519,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
             {
-                _awaiter._promise._ref.AwaitOnCompletedWithProgressInternal(asyncPromiseRef, _awaiter._promise.Id, _awaiter._promise.Depth, _awaiter._minProgress, _awaiter._maxProgress);
+                asyncPromiseRef.HookupWaiterWithProgress(_awaiter._promise._ref, _awaiter._promise.Id, _awaiter._promise.Depth, _awaiter._minProgress, _awaiter._maxProgress);
             }
 
             static partial void ValidateGetResult(Promise promise, int skipFrames);
@@ -593,7 +592,7 @@ namespace Proto.Promises
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    T result = ((Internal.ValueContainer) _ref._valueOrPrevious).GetValue<T>();
+                    T result = _ref.GetResult<T>();
                     _ref.MaybeDispose();
                     return result;
                 }
@@ -628,7 +627,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
             {
-                _promise._ref.AwaitOnCompletedWithProgressInternal(asyncPromiseRef, _promise.Id, _promise.Depth, _minProgress, _maxProgress);
+                asyncPromiseRef.HookupWaiterWithProgress(_promise._ref, _promise.Id, _promise.Depth, _minProgress, _maxProgress);
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);

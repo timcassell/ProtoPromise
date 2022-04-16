@@ -321,7 +321,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -339,7 +338,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
             }
@@ -415,7 +413,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -441,7 +438,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -482,7 +478,6 @@ namespace Proto.Promises
                     }
 
                     nextHandler = null;
-                    owner.WaitForProgressSubscribeAfterCanceled(handler);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
@@ -520,7 +515,6 @@ namespace Proto.Promises
                     }
                     
                     nextHandler = null;
-                    owner.WaitForProgressSubscribeAfterCanceled(handler);
                 }
             }
 
@@ -591,7 +585,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -630,7 +623,6 @@ namespace Proto.Promises
                     }
 
                     nextHandler = null;
-                    owner.WaitForProgressSubscribeAfterCanceled(handler);
                 }
             }
 
@@ -726,7 +718,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
             }
@@ -821,7 +812,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
             }
@@ -975,7 +965,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -1001,7 +990,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -1042,7 +1030,6 @@ namespace Proto.Promises
                     }
 
                     nextHandler = null;
-                    owner.WaitForProgressSubscribeAfterCanceled(handler);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
@@ -1080,7 +1067,6 @@ namespace Proto.Promises
                     }
 
                     nextHandler = null;
-                    owner.WaitForProgressSubscribeAfterCanceled(handler);
                 }
             }
 
@@ -1163,7 +1149,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -1202,7 +1187,6 @@ namespace Proto.Promises
                     }
 
                     nextHandler = null;
-                    owner.WaitForProgressSubscribeAfterCanceled(handler);
                 }
             }
 
@@ -1304,7 +1288,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
             }
@@ -1405,7 +1388,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        owner.WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
             }

@@ -14,6 +14,7 @@ namespace ProtoPromiseTests
 
     public class ProgressHelper : IProgress<float>
     {
+        private readonly float _delta;
         private readonly object _locker = new object();
         private readonly ProgressType _progressType;
         private readonly SynchronizationType _synchronizationType;
@@ -21,11 +22,12 @@ namespace ProtoPromiseTests
         volatile private bool _wasInvoked;
         volatile private float _currentProgress = float.NaN;
 
-        public ProgressHelper(ProgressType progressType, SynchronizationType synchronizationType, Action<float> onProgress = null)
+        public ProgressHelper(ProgressType progressType, SynchronizationType synchronizationType, Action<float> onProgress = null, float delta = float.NaN)
         {
             _progressType = progressType;
             _synchronizationType = synchronizationType;
             _onProgress = onProgress;
+            _delta = float.IsNaN(delta) ? TestHelper.progressEpsilon : delta;
         }
 
         public void MaybeEnterLock()
@@ -100,7 +102,7 @@ namespace ProtoPromiseTests
                 }
                 else
                 {
-                    Assert.AreEqual(expectedProgress, currentProgress, TestHelper.progressEpsilon);
+                    Assert.AreEqual(expectedProgress, currentProgress, _delta);
                 }
             }
             catch (TimeoutException e)
