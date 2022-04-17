@@ -32,15 +32,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void Register(CancelationToken cancelationToken, ICancelable owner)
                 {
-                    _isCanceled = false;
                     cancelationToken.TryRegister(owner, out _cancelationRegistration);
-                }
-
-                internal void SetCanceled(PromiseSingleAwait owner)
-                {
-                    ThrowIfInPool(owner);
-                    _isCanceled = true;
-                    owner.HandleFromCancelation();
                 }
 
                 internal bool TryUnregister(PromiseSingleAwait owner)
@@ -48,7 +40,7 @@ namespace Proto.Promises
                     ThrowIfInPool(owner);
                     bool isCanceling;
                     bool unregistered = _cancelationRegistration.TryUnregister(out isCanceling);
-                    if (unregistered | (!isCanceling & !_isCanceled))
+                    if (unregistered | (!isCanceling & owner.State == Promise.State.Pending))
                     {
                         owner._smallFields.InterlockedTryReleaseComplete();
                         return true;
@@ -66,8 +58,9 @@ namespace Proto.Promises
 
             partial class PromiseSingleAwait
             {
-                internal void HandleFromCancelation()
+                protected void HandleFromCancelation()
                 {
+                    ThrowIfInPool(this);
                     HandleablePromiseBase nextHandler;
 #if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
@@ -130,7 +123,7 @@ namespace Proto.Promises
 
                 void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this);
+                    HandleFromCancelation();
                 }
             }
 
@@ -190,7 +183,7 @@ namespace Proto.Promises
 
                 void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this);
+                    HandleFromCancelation();
                 }
             }
 
@@ -252,7 +245,7 @@ namespace Proto.Promises
 
                 void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this);
+                    HandleFromCancelation();
                 }
             }
 
@@ -323,7 +316,7 @@ namespace Proto.Promises
 
                 void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this);
+                    HandleFromCancelation();
                 }
             }
 
@@ -369,7 +362,7 @@ namespace Proto.Promises
 
                 void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this);
+                    HandleFromCancelation();
                 }
             }
 
@@ -424,7 +417,7 @@ namespace Proto.Promises
 
                 void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this);
+                    HandleFromCancelation();
                 }
             }
 
@@ -475,7 +468,7 @@ namespace Proto.Promises
 
                 void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this);
+                    HandleFromCancelation();
                 }
             }
 
@@ -535,7 +528,7 @@ namespace Proto.Promises
 
                 void ICancelable.Cancel()
                 {
-                    _cancelationHelper.SetCanceled(this);
+                    HandleFromCancelation();
                 }
             }
         } // PromiseRef

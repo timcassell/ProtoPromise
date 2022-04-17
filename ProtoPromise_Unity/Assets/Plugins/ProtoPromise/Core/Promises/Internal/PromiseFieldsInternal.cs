@@ -302,7 +302,6 @@ namespace Proto.Promises
             partial struct CancelationHelper
             {
                 private CancelationRegistration _cancelationRegistration;
-                volatile private bool _isCanceled;
             }
 
             partial class DeferredPromiseCancel<T> : DeferredPromise<T>
