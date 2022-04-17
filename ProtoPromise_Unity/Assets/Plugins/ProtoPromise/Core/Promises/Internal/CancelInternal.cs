@@ -30,10 +30,9 @@ namespace Proto.Promises
             internal partial struct CancelationHelper
             {
                 [MethodImpl(InlineOption)]
-                internal void Register<TOwner>(CancelationToken cancelationToken, TOwner owner) where TOwner : PromiseSingleAwait, ICancelable
+                internal void Register(CancelationToken cancelationToken, ICancelable owner)
                 {
                     _isCanceled = false;
-                    owner.InterlockedRetainDisregardId();
                     cancelationToken.TryRegister(owner, out _cancelationRegistration);
                 }
 
@@ -97,7 +96,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolve<TResolver>>()
                         ?? new CancelablePromiseResolve<TResolver>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 3);
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
@@ -148,7 +147,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolvePromise<TResolver>>()
                         ?? new CancelablePromiseResolvePromise<TResolver>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 3);
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
@@ -209,7 +208,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolveReject<TResolver, TRejecter>>()
                         ?? new CancelablePromiseResolveReject<TResolver, TRejecter>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 3);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -271,7 +270,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>>()
                         ?? new CancelablePromiseResolveRejectPromise<TResolver, TRejecter>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 3);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
@@ -341,7 +340,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseContinue<TContinuer>>()
                         ?? new CancelablePromiseContinue<TContinuer>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 3);
                     promise._continuer = continuer;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
@@ -387,7 +386,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseContinuePromise<TContinuer>>()
                         ?? new CancelablePromiseContinuePromise<TContinuer>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 3);
                     promise._continuer = continuer;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
@@ -442,7 +441,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseCancel<TCanceler>>()
                         ?? new CancelablePromiseCancel<TCanceler>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 3);
                     promise._canceler = canceler;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
@@ -493,7 +492,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseCancelPromise<TCanceler>>()
                         ?? new CancelablePromiseCancelPromise<TCanceler>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 3);
                     promise._canceler = canceler;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;

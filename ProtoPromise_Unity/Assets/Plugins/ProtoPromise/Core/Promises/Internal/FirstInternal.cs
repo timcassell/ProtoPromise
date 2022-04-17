@@ -58,7 +58,7 @@ namespace Proto.Promises
                     {
                         promise._waitCount = (int) pendingAwaits;
                     }
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
 
                     while (promisePassThroughs.IsNotEmpty)
                     {
@@ -134,12 +134,6 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class FirstPromise
             {
-                new private void Reset(ushort depth)
-                {
-                    _smallFields._currentProgress = default(Fixed32);
-                    base.Reset(depth);
-                }
-
                 internal override PromiseSingleAwait IncrementProgress(uint amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);

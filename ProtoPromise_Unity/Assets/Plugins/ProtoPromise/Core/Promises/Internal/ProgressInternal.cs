@@ -462,7 +462,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseProgress<TProgress>>()
                         ?? new PromiseProgress<TProgress>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._progress = progress;
                     promise.IsCanceled = false;
                     promise._smallProgressFields._isSynchronous = isSynchronous;
@@ -477,7 +477,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseProgress<TProgress>>()
                         ?? new PromiseProgress<TProgress>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._progress = progress;
                     promise.IsCanceled = false;
                     promise._smallProgressFields._isSynchronous = false;
