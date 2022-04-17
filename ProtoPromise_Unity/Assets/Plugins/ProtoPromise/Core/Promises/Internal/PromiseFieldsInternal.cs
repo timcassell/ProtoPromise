@@ -215,7 +215,7 @@ namespace Proto.Promises
                     None,
                     Handle,
                     AddWaiter,
-                    OnForgetOrHookupFailed
+                    OnForget
                 }
 
                 volatile protected HandleablePromiseBase _waiter;
@@ -368,7 +368,8 @@ namespace Proto.Promises
             partial struct CancelationHelper
             {
                 private CancelationRegistration _cancelationRegistration;
-                private int _retainAndCanceled; // 17th bit is canceled, lower 16 bits are retains. This allows us to use Interlocked for both.
+                volatile private bool _isCanceled;
+                //private int _retainAndCanceled; // 17th bit is canceled, lower 16 bits are retains. This allows us to use Interlocked for both.
             }
 
             partial class DeferredPromiseCancel<T> : DeferredPromise<T>

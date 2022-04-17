@@ -953,18 +953,18 @@ namespace Proto.Promises
                     return null;
                 }
 
-                protected override void OnForgetOrHookupFailed()
+                protected override void OnForget()
                 {
 #if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
                         ThrowIfInPool(this);
-                        if ((ScheduleMethod) Interlocked.Exchange(ref _smallProgressFields._mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForgetOrHookupFailed) == ScheduleMethod.Handle)
+                        if ((ScheduleMethod) Interlocked.Exchange(ref _smallProgressFields._mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForget) == ScheduleMethod.Handle)
                         {
                             State = _smallProgressFields._previousState;
                         }
-                        base.OnForgetOrHookupFailed();
+                        base.OnForget();
                     }
                 }
 

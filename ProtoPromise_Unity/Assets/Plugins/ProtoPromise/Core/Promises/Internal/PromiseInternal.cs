@@ -113,7 +113,7 @@ namespace Proto.Promises
             internal void Forget(short promiseId)
             {
                 IncrementIdAndSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten);
-                OnForgetOrHookupFailed();
+                OnForget();
                 MaybeReportUnhandledRejections();
             }
 
@@ -176,24 +176,7 @@ namespace Proto.Promises
                 _valueOrPrevious = null;
             }
 
-            private void HookupNewCancelablePromise(PromiseRef newPromise)
-            {
-                // If _valueOrPrevious is not null, it means newPromise was already canceled from the token.
-                if (Interlocked.CompareExchange(ref newPromise._valueOrPrevious, this, null) == null)
-                {
-                    HookupNewWaiter(newPromise);
-                }
-                else
-                {
-                    newPromise.OnHookupFailed();
-                    OnForgetOrHookupFailed();
-                }
-            }
-
-            // This is only overloaded by cancelable promises.
-            protected virtual void OnHookupFailed() { throw new System.InvalidOperationException(); }
-
-            protected virtual void OnForgetOrHookupFailed()
+            protected virtual void OnForget()
             {
                 MaybeDispose();
             }
@@ -742,7 +725,7 @@ namespace Proto.Promises
                         {
                             executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                         }
-                        else if (previousScheduleType == ScheduleMethod.OnForgetOrHookupFailed)
+                        else if (previousScheduleType == ScheduleMethod.OnForget)
                         {
                             executionScheduler.ScheduleSynchronous(this);
                         }
@@ -788,19 +771,19 @@ namespace Proto.Promises
                     AddWaiterImpl(waiter, ref executionScheduler);
                 }
 
-                protected override void OnForgetOrHookupFailed()
+                protected override void OnForget()
                 {
 #if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
                         ThrowIfInPool(this);
-                        if ((ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForgetOrHookupFailed) == ScheduleMethod.Handle)
+                        if ((ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForget) == ScheduleMethod.Handle)
                         {
                             State = _previousState;
                             _smallFields.InterlockedTryReleaseComplete();
                         }
-                        base.OnForgetOrHookupFailed();
+                        base.OnForget();
                     }
                 }
             }
@@ -896,7 +879,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                protected void CancelDirect()
+                internal void CancelDirect()
                 {
                     ThrowIfInPool(this);
                     HandleInternal(CancelContainerVoid.GetOrCreate(), Promise.State.Canceled);
