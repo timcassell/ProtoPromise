@@ -151,14 +151,9 @@ namespace Proto.Promises
 
             SuppressRejection = 1 << 0,
             WasAwaitedOrForgotten = 1 << 1,
-            HadCallback = 1 << 7, // Shares bit with Subscribed, since HadCallback is only used for SingleAwait and Subscribed is only used for MultiAwait.
-            // For progress below
-            InProgressQueue = 1 << 2,
-            Subscribing = 1 << 3,
-            SettingInitial = 1 << 4,
-            ReportingPriority = 1 << 5,
-            ReportingInitial = 1 << 6,
-            Subscribed = 1 << 7,
+            SecondPrevious = 1 << 2,
+            HadCallback = 1 << 3,
+            InProgressQueue = 1 << 4,
 
             All = byte.MaxValue
         }
@@ -191,6 +186,12 @@ namespace Proto.Promises
                 // _depth shares bit space with _deferredId, because it is always 0 on deferred promises, and _deferredId is not used in non-deferred promises.
                 [FieldOffset(6)]
                 volatile internal ushort _depth;
+#if PROMISE_PROGRESS
+                [FieldOffset(8)]
+                internal Fixed32 _currentProgress;
+                [FieldOffset(12)]
+                volatile internal int _reportingProgressCount;
+#endif
 
                 [MethodImpl(InlineOption)]
                 internal SmallFields(short initialId)
@@ -203,9 +204,9 @@ namespace Proto.Promises
 
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
+            internal PromiseRef _previous; // Used to detect circular awaits.
 #endif
-
-            volatile internal object _valueOrPrevious;
+            volatile internal ValueContainer _valueContainer;
             private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
 
             partial class PromiseSingleAwait : PromiseRef
@@ -228,81 +229,14 @@ namespace Proto.Promises
                 volatile private Promise.State _previousState;
             }
 
-            partial class PromiseSingleAwaitWithProgress : PromiseSingleAwait
-            {
-#if PROMISE_PROGRESS
-                volatile protected IProgressListener _progressListener;
-#endif
-            }
-
             partial class PromiseMultiAwait : PromiseRef
             {
-                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
-                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                private partial struct ProgressAndLocker
-                {
-                    internal SpinLocker _branchLocker;
-#if PROMISE_PROGRESS
-                    internal SpinLocker _progressCollectionLocker;
-                    internal Fixed32 _currentProgress;
-#endif
-                }
-
                 private ValueLinkedQueue<HandleablePromiseBase> _nextBranches = new ValueLinkedQueue<HandleablePromiseBase>();
-                private ProgressAndLocker _progressAndLocker;
 
 #if PROMISE_PROGRESS
-                private ValueLinkedQueue<IProgressListener> _progressListeners = new ValueLinkedQueue<IProgressListener>();
-
-                IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
 #endif
             }
-
-#if PROMISE_PROGRESS
-            [Flags]
-            internal enum ProgressSubscribeFlags : ushort
-            {
-                None = 0,
-
-                AboutToSetPrevious = 1 << 0,
-                HasListener = 1 << 1,
-                HasPrevious = 1 << 2,
-                SubscribedFromSetPrevious = 1 << 3,
-                SubscribedFromAddListener = 1 << 4,
-            }
-
-            [StructLayout(LayoutKind.Explicit)]
-            protected partial struct DepthAndFlags
-            {
-                [FieldOffset(0)]
-                internal ushort _previousDepth;
-                [FieldOffset(2)]
-                internal ProgressSubscribeFlags _flags;
-                [FieldOffset(0)]
-                volatile private int _intValue; // int for Interlocked.
-            }
-
-            // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
-            // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-            protected partial struct ProgressSubscribeFields
-            {
-                internal DepthAndFlags _previousDepthAndFlags;
-                internal Fixed32 _currentProgress; // Fixed32 is only used for progress suspension. It's simpler to just re-use the functionality there than to rewrite it for PromiseWaitPromise.
-            }
-
-            partial class AsyncPromiseBase : PromiseSingleAwaitWithProgress
-            {
-                protected ProgressSubscribeFields _progressAndSubscribeFields;
-            }
-
-            partial class PromiseWaitPromise : PromiseSingleAwaitWithProgress
-            {
-                private ProgressSubscribeFields _progressFields;
-
-                IProgressListener ILinked<IProgressListener>.Next { get; set; }
-            }
-#endif
 
             #region Non-cancelable Promises
             partial class PromiseResolve<TResolver> : PromiseSingleAwait
@@ -439,7 +373,7 @@ namespace Proto.Promises
             #endregion
 
             #region Multi Promises
-            partial class MultiHandleablePromiseBase : PromiseSingleAwaitWithProgress
+            partial class MultiHandleablePromiseBase : PromiseSingleAwait
             {
 #if PROMISE_DEBUG
                 protected readonly object _locker = new object();
@@ -461,32 +395,12 @@ namespace Proto.Promises
 
             partial class RacePromise : MultiHandleablePromiseBase
             {
-                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
-                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                private struct RaceSmallFields
-                {
-                    internal int _waitCount;
-#if PROMISE_PROGRESS
-                    internal Fixed32 _currentProgress;
-#endif
-                }
-
-                private RaceSmallFields _raceSmallFields;
+                private int _waitCount;
             }
 
             partial class FirstPromise : MultiHandleablePromiseBase
             {
-                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
-                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                private struct FirstSmallFields
-                {
-                    internal int _waitCount;
-#if PROMISE_PROGRESS
-                    internal Fixed32 _currentProgress;
-#endif
-                }
-
-                private FirstSmallFields _firstSmallFields;
+                private int _waitCount;
             }
 
             partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>
@@ -500,8 +414,6 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                     internal Fixed32 _currentProgress;
                     internal ushort _depth;
-                    internal volatile bool _settingInitialProgress;
-                    internal volatile bool _reportingProgress;
 #endif
                 }
 
@@ -510,22 +422,17 @@ namespace Proto.Promises
                 private PassThroughSmallFields _smallFields;
 
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
-
-#if PROMISE_PROGRESS
-                IProgressListener ILinked<IProgressListener>.Next { get; set; }
-#endif
             }
             #endregion
 
 #if PROMISE_PROGRESS
-            partial class PromiseProgress<TProgress> : PromiseSingleAwaitWithProgress
+            partial class PromiseProgress<TProgress> : PromiseSingleAwait
                 where TProgress : IProgress<float>
             {
                 // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
                 // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
                 private struct ProgressSmallFields
                 {
-                    internal Fixed32 _currentProgress;
                     volatile internal bool _canceled;
                     internal bool _isSynchronous;
                     volatile internal Promise.State _previousState;
@@ -537,36 +444,7 @@ namespace Proto.Promises
                 private TProgress _progress;
                 private SynchronizationContext _synchronizationContext;
 
-                IProgressListener ILinked<IProgressListener>.Next { get; set; }
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-            }
-#endif
-
-#if PROMISE_PROGRESS
-            partial class AsyncProgressPassThrough
-#if PROMISE_DEBUG
-                : PromiseRef
-#endif
-            {
-                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
-                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                [StructLayout(LayoutKind.Explicit)]
-                private partial struct ProgressSmallFields
-                {
-                    [FieldOffset(0)]
-                    internal Fixed32 _currentProgress;
-                    [FieldOffset(4)]
-                    internal ushort _expectedProgress;
-                    [FieldOffset(6)]
-                    private ushort _retainCounter;
-                    [FieldOffset(4)]
-                    volatile private int _intValue; // int for Interlocked.
-                }
-
-                private AsyncPromiseRef _target;
-                private ProgressSmallFields _progressSmallFields;
-                AsyncProgressPassThrough ILinked<AsyncProgressPassThrough>.Next { get; set; }
-                IProgressListener ILinked<IProgressListener>.Next { get; set; }
             }
 #endif
 

@@ -2,6 +2,12 @@
 #define NET_LEGACY
 #endif
 
+#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+#endif
+
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
@@ -29,11 +35,14 @@ namespace Proto.Promises
             internal abstract void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);
             // This is overridden in PromiseMultiAwait and PromiseProgress and PromiseConfigured.
             internal virtual void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
+#if PROMISE_PROGRESS
+            internal abstract PromiseRef.PromiseSingleAwait SetProgress(ref PromiseRef.Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler);
+#endif
         }
 
         partial class PromiseRef
         {
-            internal abstract partial class MultiHandleablePromiseBase : PromiseSingleAwaitWithProgress
+            internal abstract partial class MultiHandleablePromiseBase : PromiseSingleAwait
             {
                 internal abstract void Handle(ref PromiseRef handler, ValueContainer valueContainer, PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);
                 internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }

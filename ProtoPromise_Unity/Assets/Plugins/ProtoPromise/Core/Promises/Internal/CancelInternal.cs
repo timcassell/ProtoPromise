@@ -1,4 +1,8 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -26,33 +30,17 @@ namespace Proto.Promises
             internal partial struct CancelationHelper
             {
                 [MethodImpl(InlineOption)]
-                internal void Register(CancelationToken cancelationToken, ICancelable cancelable)
+                internal void Register<TOwner>(CancelationToken cancelationToken, TOwner owner) where TOwner : PromiseSingleAwait, ICancelable
                 {
                     _isCanceled = false;
-                    //_retainAndCanceled = (1 << 16) + 1; // 17th bit set is not canceled, 1 retain until TryUnregister .
-                    cancelationToken.TryRegister(cancelable, out _cancelationRegistration);
+                    owner.InterlockedRetainDisregardId();
+                    cancelationToken.TryRegister(owner, out _cancelationRegistration);
                 }
-
-                //[MethodImpl(InlineOption)]
-                //private void RetainAndSetCanceled()
-                //{
-                //    // Subtract 17th bit to set canceled and add 1 to retain. This performs both operations atomically.
-                //    Interlocked.Add(ref _retainAndCanceled, (-(1 << 16)) + 1);
-                //}
-
-                //[MethodImpl(InlineOption)]
-                //private bool Release()
-                //{
-                //    return InterlockedAddWithOverflowCheck(ref _retainAndCanceled, -1, 0) == 0; // If all bits are 0, canceled was set and all calls are complete.
-                //}
 
                 internal void SetCanceled(PromiseSingleAwait owner)
                 {
                     ThrowIfInPool(owner);
                     _isCanceled = true;
-                    //RetainAndSetCanceled();
-                    owner.InterlockedRetainDisregardId(); // Retain since Handle will release indiscriminately.
-                    //MaybeReleaseComplete(owner);
                     owner.HandleFromCancelation();
                 }
 
@@ -60,35 +48,20 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(owner);
                     bool isCanceling;
-                    return _cancelationRegistration.TryUnregister(out isCanceling) | (!isCanceling & !_isCanceled);
-                    //bool unregistered = _cancelationRegistration.TryUnregister(out isCanceling);
-                    //if (unregistered)
-                    //{
-                    //    return true;
-                    //}
-                    //if (Release())
-                    //{
-                    //    owner.MaybeDispose();
-                    //    return false;
-                    //}
-                    //return !isCanceling;
+                    bool unregistered = _cancelationRegistration.TryUnregister(out isCanceling);
+                    if (unregistered | (!isCanceling & !_isCanceled))
+                    {
+                        owner._smallFields.InterlockedTryReleaseComplete();
+                        return true;
+                    }
+                    return false;
                 }
-
-                //private void MaybeReleaseComplete(PromiseSingleAwait owner)
-                //{
-                //    // This is called in HookupNewCancelablePromise when SetCanceled has set the _valueOrPrevious, so this may also be racing with that function on another thread.
-                //    if (Release())
-                //    {
-                //        owner.MaybeDispose();
-                //    }
-                //}
 
                 internal static void SetNextAfterCanceled(PromiseSingleAwait owner, ref PromiseRef handler, out HandleablePromiseBase nextHandler)
                 {
                     nextHandler = null;
                     handler.MaybeDispose();
                     handler = owner;
-                    owner.WaitForProgressSubscribeAfterCanceled(handler);
                 }
             }
 
@@ -96,7 +69,6 @@ namespace Proto.Promises
             {
                 internal void HandleFromCancelation()
                 {
-                    var executionScheduler = new ExecutionScheduler(true);
                     HandleablePromiseBase nextHandler;
 #if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
@@ -106,7 +78,7 @@ namespace Proto.Promises
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
-                    HandleProgressListener(Promise.State.Canceled, Depth, ref executionScheduler);
+                    var executionScheduler = new ExecutionScheduler(true);
                     MaybeHandleNext(nextHandler, ref executionScheduler);
                     executionScheduler.Execute();
                 }

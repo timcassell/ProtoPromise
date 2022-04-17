@@ -704,7 +704,7 @@ namespace ProtoPromiseTests.APIs
                     .AwaitWithProgress(0.5f, 1f);
             }
 
-            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: TestHelper.progressEpsilon * 2); // Increase delta to accommodate for internal scaling operations with loss of precision.
             bool complete = false;
 
             Func()
@@ -812,7 +812,7 @@ namespace ProtoPromiseTests.APIs
                     .AwaitWithProgress(0.5f, 1f);
             }
 
-            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: TestHelper.progressEpsilon * 2); // Increase delta to accommodate for internal scaling operations with loss of precision.
             bool complete = false;
 
             Func()

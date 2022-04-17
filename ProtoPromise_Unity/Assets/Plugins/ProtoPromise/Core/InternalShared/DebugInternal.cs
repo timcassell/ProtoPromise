@@ -146,7 +146,7 @@ namespace Proto.Promises
 
         internal static string FormatStackTrace(IEnumerable<StackTrace> stackTraces)
         {
-#if NET_LEGACY && !NET40_OR_GREATER
+#if NET_LEGACY
             // Format stack trace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
             List<string> _stackTraces = new List<string>();
             string[] separator = new string[1] { Environment.NewLine + " " };
@@ -181,7 +181,7 @@ namespace Proto.Promises
             }
             sb.Append(" ");
             return sb.ToString();
-#else // NET_LEGACY && !NET40_OR_GREATER
+#else // NET_LEGACY
             // StackTrace.ToString() format issue was fixed in the new runtime.
             List<StackFrame> stackFrames = new List<StackFrame>();
             foreach (StackTrace stackTrace in stackTraces)
@@ -204,7 +204,7 @@ namespace Proto.Promises
                 .ToArray();
 
             return string.Join(Environment.NewLine, trace);
-#endif // NET_LEGACY && !NET40_OR_GREATER
+#endif // NET_LEGACY
         }
 
         partial interface ITraceable
@@ -296,11 +296,11 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                // This allows us to check All/Race/First Promises iteratively.
+                // This allows us to check Merge/All/Race/First Promises iteratively.
                 Stack<PromisePassThrough> passThroughs = PassthroughsForIterativeAlgorithm;
-                PromiseRef prev = other._valueOrPrevious as PromiseRef;
+                PromiseRef prev = other._previous;
             Repeat:
-                for (; prev != null; prev = prev._valueOrPrevious as PromiseRef)
+                for (; prev != null; prev = prev._previous)
                 {
                     if (prev == this)
                     {
