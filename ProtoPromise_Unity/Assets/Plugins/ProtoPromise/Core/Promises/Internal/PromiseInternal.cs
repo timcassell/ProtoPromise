@@ -810,11 +810,9 @@ namespace Proto.Promises
 #endif
             internal abstract partial class AsyncPromiseBase : PromiseSingleAwait
             {
+                [MethodImpl(InlineOption)]
                 protected void Reset()
                 {
-#if PROMISE_PROGRESS
-                    _smallFields._currentProgress = default(Fixed32);
-#endif
                     _smallFields.Reset();
                     SetCreatedStacktrace(this, 3);
                 }
@@ -1532,6 +1530,9 @@ namespace Proto.Promises
                     {
                         throw new System.InvalidOperationException("Expected 0 retains, actual retains: " + _retains);
                     }
+#endif
+#if PROMISE_PROGRESS
+                    _currentProgress = default(Fixed32);
 #endif
                     _state = Promise.State.Pending;
                     _flags = PromiseFlags.None;

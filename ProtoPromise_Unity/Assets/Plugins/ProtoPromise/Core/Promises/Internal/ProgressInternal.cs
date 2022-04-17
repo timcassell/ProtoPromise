@@ -925,6 +925,13 @@ namespace Proto.Promises
             partial class AsyncPromiseRef
             {
                 [MethodImpl(InlineOption)]
+                new private void Reset()
+                {
+                    _minProgress = _maxProgress = float.NaN;
+                    base.Reset();
+                }
+
+                [MethodImpl(InlineOption)]
                 private static double Lerp(double a, double b, double t)
                 {
                     return a + (b - a) * t;
@@ -978,7 +985,6 @@ namespace Proto.Promises
 #endif
                     _minProgress = minProgress;
                     _maxProgress = maxProgress;
-                    _smallFields._currentProgress = Fixed32.FromDecimal(minProgress);
                 }
 
                 [MethodImpl(InlineOption)]
