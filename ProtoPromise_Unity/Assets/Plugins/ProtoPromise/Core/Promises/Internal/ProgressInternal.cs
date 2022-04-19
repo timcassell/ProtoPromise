@@ -318,16 +318,19 @@ namespace Proto.Promises
                 internal bool InterlockedTrySetIfGreater(Fixed32 other)
                 {
                     Thread.MemoryBarrier();
-                    int otherValue = other._value;
+                    int setValue = other._value;
+                    int otherValue = other._value & ValueMask;
                     int current;
                     do
                     {
                         current = _value;
-                        if (otherValue <= current)
+                        bool currentHasReported = (current & HasReportedFlag) != 0;
+                        bool isLessOrEqual = otherValue <= (current & ValueMask);
+                        if (currentHasReported & isLessOrEqual)
                         {
                             return false;
                         }
-                    } while (Interlocked.CompareExchange(ref _value, otherValue, current) != current);
+                    } while (Interlocked.CompareExchange(ref _value, setValue, current) != current);
                     return true;
                 }
 
@@ -364,8 +367,10 @@ namespace Proto.Promises
                         current = _value;
                         bool currentHasReported = (current & HasReportedFlag) != 0;
                         bool valuesAreSame = otherValue == (current & ValueMask);
-                        if ((valuesAreSame & !currentHasReported) // If the value is the same, don't report, unless this has not reported.
-                            | (!otherHasReported & currentHasReported)) // If this has already reported, and other is coming from hookup, don't report.
+                        // If this has not reported, set.
+                        if (currentHasReported
+                            & (valuesAreSame // If the value is the same, don't report.
+                            | !otherHasReported)) // If this has already reported, and other is coming from hookup, don't report.
                         {
                             oldValue = 0;
                             return false;
@@ -396,8 +401,10 @@ namespace Proto.Promises
                         current = _value;
                         bool currentHasReported = (current & HasReportedFlag) != 0;
                         bool valuesAreSame = newValue == (current & ValueMask);
-                        if ((valuesAreSame & !currentHasReported) // If the value is the same, don't report, unless this has not reported.
-                            | (!otherHasReported & currentHasReported)) // If this has already reported, and other is coming from hookup, don't report.
+                        // If this has not reported, set.
+                        if (currentHasReported
+                            & (valuesAreSame // If the value is the same, don't report.
+                            | !otherHasReported)) // If this has already reported, and other is coming from hookup, don't report.
                         {
                             result = default(Fixed32);
                             return false;
@@ -419,8 +426,10 @@ namespace Proto.Promises
                         current = _value;
                         bool currentHasReported = (current & HasReportedFlag) != 0;
                         bool valuesAreSame = newValue == (current & ValueMask);
-                        if ((valuesAreSame & !currentHasReported) // If the value is the same, don't report, unless this has not reported.
-                            | (!otherHasReported & currentHasReported)) // If this has already reported, and other is coming from hookup, don't report.
+                        // If this has not reported, set.
+                        if (currentHasReported
+                            & (valuesAreSame // If the value is the same, don't report.
+                            | !otherHasReported)) // If this has already reported, and other is coming from hookup, don't report.
                         {
                             result = default(Fixed32);
                             return false;
@@ -442,7 +451,7 @@ namespace Proto.Promises
                 {
                     int value = _value;
                     double dValue = ConvertToDouble(value) * multiplier / divisor;
-                    return new Fixed32(ConvertToValue(dValue));
+                    return new Fixed32(ConvertToValue(dValue) | (value & HasReportedFlag));
                 }
             }
 
