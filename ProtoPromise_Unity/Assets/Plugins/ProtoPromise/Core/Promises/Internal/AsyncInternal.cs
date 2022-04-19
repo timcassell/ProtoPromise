@@ -504,6 +504,8 @@ namespace Proto.Promises
                     ValidateAwait(waiter, promiseId);
                     waiter.InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
 
+                    // TODO: detect if this is being called from another promise higher in the stack, and allow the stack to unwind instead of calling MaybeHandleNext.
+
                     var executionScheduler = new ExecutionScheduler(true);
                     SetSecondPreviousAndProgress(waiter, minProgress, maxProgress);
                     InterlockedIncrementProgressReportingCount();

@@ -280,8 +280,9 @@ namespace Proto.Promises
 
                 partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                 {
-                    uint dif = passThrough.GetProgressDifferenceToCompletion();
-                    var progress = IncrementProgress(dif);
+                    Fixed32 progressFlags;
+                    uint dif = passThrough.GetProgressDifferenceToCompletion(out progressFlags);
+                    var progress = IncrementProgress(dif, progressFlags);
                     ReportProgress(progress, Depth, ref executionScheduler);
                 }
 
@@ -297,13 +298,13 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     // This essentially acts as a pass-through to normalize the progress.
-                    progress = IncrementProgress(amount);
+                    progress = IncrementProgress(amount, progress);
                     return this;
                 }
 
-                private Fixed32 IncrementProgress(uint amount)
+                private Fixed32 IncrementProgress(uint amount, Fixed32 otherFlags)
                 {
-                    var unscaledProgress = _unscaledProgress.InterlockedIncrement(amount);
+                    var unscaledProgress = _unscaledProgress.InterlockedIncrement(amount, otherFlags);
                     return NormalizeProgress(unscaledProgress);
                 }
             }
