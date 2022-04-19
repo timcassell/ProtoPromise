@@ -140,7 +140,7 @@ namespace Proto.Promises
                     base.Reset(depth);
                 }
 
-                internal override PromiseSingleAwait IncrementProgress(uint amount, ref Fixed32 progress, ushort depth)
+                internal override PromiseSingleAwait IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
 

@@ -286,15 +286,15 @@ namespace Proto.Promises
                     ReportProgress(progress, Depth, ref executionScheduler);
                 }
 
-                private Fixed32 NormalizeProgress(UnsignedFixed64 unscaledProgress)
+                private Fixed32 NormalizeProgress(UnsignedFixed64 unscaledProgress, Fixed32 otherFlags)
                 {
                     ThrowIfInPool(this);
-                    var scaledProgress = Fixed32.GetScaled(unscaledProgress, _progressScaler);
+                    var scaledProgress = Fixed32.GetScaled(unscaledProgress, _progressScaler, otherFlags);
                     _smallFields._currentProgress = scaledProgress;
                     return scaledProgress;
                 }
 
-                internal override PromiseSingleAwait IncrementProgress(uint amount, ref Fixed32 progress, ushort depth)
+                internal override PromiseSingleAwait IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
                     // This essentially acts as a pass-through to normalize the progress.
@@ -302,10 +302,10 @@ namespace Proto.Promises
                     return this;
                 }
 
-                private Fixed32 IncrementProgress(uint amount, Fixed32 otherFlags)
+                private Fixed32 IncrementProgress(long amount, Fixed32 otherFlags)
                 {
-                    var unscaledProgress = _unscaledProgress.InterlockedIncrement(amount, otherFlags);
-                    return NormalizeProgress(unscaledProgress);
+                    var unscaledProgress = _unscaledProgress.InterlockedIncrement(amount);
+                    return NormalizeProgress(unscaledProgress, otherFlags);
                 }
             }
 #endif

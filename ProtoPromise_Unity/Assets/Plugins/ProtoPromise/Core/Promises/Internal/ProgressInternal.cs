@@ -292,12 +292,6 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal int GetHasReportedFlag()
-                {
-                    return _value | HasReportedFlag;
-                }
-
-                [MethodImpl(InlineOption)]
                 internal double ToDouble()
                 {
                     return ConvertToDouble(_value);
@@ -311,13 +305,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Fixed32 GetScaled(UnsignedFixed64 value, double scaler)
+                internal static Fixed32 GetScaled(UnsignedFixed64 value, double scaler, Fixed32 otherFlags)
                 {
                     unchecked
                     {
                         // Don't bother rounding, we don't want to accidentally round to 1.0.
                         int newValue = (int) (value.ToDouble() * scaler * DecimalMax);
-                        return new Fixed32(newValue | (int) (value.GetHasReportedFlag() >> 32));
+                        return new Fixed32(newValue | (otherFlags._value & HasReportedFlag));
                     }
                 }
 
@@ -345,14 +339,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal uint InterlockedSetAndGetDifference(Fixed32 other)
+                internal long InterlockedSetAndGetDifference(Fixed32 other)
                 {
                     int oldValue;
                     if (InterlockedTrySet(other, out oldValue))
                     {
                         unchecked
                         {
-                            return (uint) (other._value & ValueMask) - (uint) (oldValue & ValueMask);
+                            return (long) (other._value & ValueMask) - (long) (oldValue & ValueMask);
                         }
                     }
                     return 0;
@@ -461,7 +455,6 @@ namespace Proto.Promises
 #endif
             internal partial struct UnsignedFixed64 // Simplified compared to Fixed32 to remove unused functions.
             {
-                internal const long HasReportedFlag = ((long) Fixed32.HasReportedFlag) << 32;
                 private const double DecimalMax = 1L << Fixed32.DecimalBits;
                 private const long DecimalMask = (1L << Fixed32.DecimalBits) - 1L;
                 private const long WholeMask = ~DecimalMask;
@@ -481,12 +474,6 @@ namespace Proto.Promises
                     _value = value;
                 }
 
-                [MethodImpl(InlineOption)]
-                internal long GetHasReportedFlag()
-                {
-                    return _value | HasReportedFlag;
-                }
-
                 internal double ToDouble()
                 {
                     unchecked
@@ -499,16 +486,15 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal UnsignedFixed64 InterlockedIncrement(uint increment, Fixed32 otherFlags)
+                internal UnsignedFixed64 InterlockedIncrement(long increment)
                 {
                     Thread.MemoryBarrier();
-                    long priorityFlag = ((long) otherFlags.GetHasReportedFlag()) << 32;
                     long current;
                     long newValue;
                     do
                     {
                         current = Interlocked.Read(ref _value);
-                        newValue = (current + increment) | priorityFlag;
+                        newValue = current + increment;
                     } while (Interlocked.CompareExchange(ref _value, newValue, current) != current);
                     return new UnsignedFixed64(newValue);
                 }
@@ -516,7 +502,7 @@ namespace Proto.Promises
 
             partial class MultiHandleablePromiseBase
             {
-                internal abstract PromiseSingleAwait IncrementProgress(uint increment, ref Fixed32 progress, ushort depth);
+                internal abstract PromiseSingleAwait IncrementProgress(long increment, ref Fixed32 progress, ushort depth);
             }
 
 
@@ -972,8 +958,7 @@ namespace Proto.Promises
                 internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    // TODO: uint can't decrement negative numbers if new progress is less than old progress. Use long instead.
-                    uint dif = _smallFields._currentProgress.InterlockedSetAndGetDifference(progress);
+                    long dif = _smallFields._currentProgress.InterlockedSetAndGetDifference(progress);
                     return _target.IncrementProgress(dif, ref progress, _smallFields._depth);
                 }
 
