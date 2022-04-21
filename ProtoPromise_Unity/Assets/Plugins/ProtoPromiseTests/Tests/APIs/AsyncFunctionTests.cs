@@ -637,6 +637,84 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void AsyncPromiseNestedWillHaveProgressScaledProperly_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            async Promise Func()
+            {
+                await Func1().AwaitWithProgress(0f, 0.3f);
+                await Func2().AwaitWithProgress(0.5f, 1f);
+            }
+
+            async Promise Func1()
+            {
+                await deferred1.Promise.AwaitWithProgress(0f, 1f);
+            }
+
+            async Promise Func2()
+            {
+                await deferred2.Promise.AwaitWithProgress(0f, 1f);
+            }
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            bool complete = false;
+
+            Func()
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Then(() => complete = true)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.3f, 0.5f));
+            progressHelper.ResolveAndAssertResult(deferred1, 0.5f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, TestHelper.Lerp(0.5f, 1f, 0.5f));
+            progressHelper.ResolveAndAssertResult(deferred2, 1f);
+
+            Assert.IsTrue(complete);
+        }
+
+        [Test]
+        public void AsyncPromiseNestedWillHaveProgressScaledProperly_T()
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+
+            async Promise<int> Func()
+            {
+                await Func1().AwaitWithProgress(0f, 0.3f);
+                return await Func2().AwaitWithProgress(0.5f, 1f);
+            }
+
+            async Promise<int> Func1()
+            {
+                return await deferred1.Promise.AwaitWithProgress(0f, 1f);
+            }
+
+            async Promise<int> Func2()
+            {
+                return await deferred2.Promise.AwaitWithProgress(0f, 1f);
+            }
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            bool complete = false;
+
+            Func()
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Then(() => complete = true)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.3f, 0.5f));
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 0.5f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, TestHelper.Lerp(0.5f, 1f, 0.5f));
+            progressHelper.ResolveAndAssertResult(deferred2, 2, 1f);
+
+            Assert.IsTrue(complete);
+        }
+
+        [Test]
         public void AsyncPromiseWontReportProgressFromCanceledPromiseChain_void0()
         {
             var deferred1 = Promise.NewDeferred();

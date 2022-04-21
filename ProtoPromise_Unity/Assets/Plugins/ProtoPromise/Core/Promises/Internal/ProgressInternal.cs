@@ -170,6 +170,7 @@ namespace Proto.Promises
             partial void WaitWhileProgressReporting();
             partial void InterlockedIncrementProgressReportingCount();
             partial void InterlockedDecrementProgressReportingCount();
+            partial void ReportProgressFromAddWaiter(HandleablePromiseBase waiter, ushort depth, ref ExecutionScheduler executionScheduler);
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
@@ -203,6 +204,22 @@ namespace Proto.Promises
                 {
                     spinner.SpinOnce();
                 } while (_smallFields._reportingProgressCount != 0);
+            }
+
+            partial void ReportProgressFromAddWaiter(HandleablePromiseBase waiter, ushort depth, ref ExecutionScheduler executionScheduler)
+            {
+                var progress = _smallFields._currentProgress;
+                var next = waiter.SetProgress(ref progress, ref depth, ref executionScheduler);
+                if (next != null)
+                {
+                    next.InterlockedIncrementProgressReportingCount();
+                    InterlockedDecrementProgressReportingCount();
+                    next.ReportProgressAlreadyIncremented(progress, ref depth, ref executionScheduler);
+                }
+                else
+                {
+                    InterlockedDecrementProgressReportingCount();
+                }
             }
 
             internal partial struct Fixed32
@@ -614,7 +631,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     if (_smallFields._currentProgress.InterlockedTrySet(progress) & !IsCanceled)
@@ -704,20 +721,12 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
-                {
-                    HandleablePromiseBase nextHandler;
-                    AddWaiter(waiter, out nextHandler, ref executionScheduler);
-                    MaybeHandleNext(nextHandler, ref executionScheduler);
-                }
-
-                internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                private void AddWaiterImpl(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
 #if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
-                        ThrowIfInPool(this);
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
                         Thread.MemoryBarrier();
                         SetWaiter(waiter);
@@ -748,6 +757,14 @@ namespace Proto.Promises
                         }
                         nextHandler = null;
                     }
+                }
+
+                internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                {
+                    ThrowIfInPool(this);
+                    InterlockedIncrementProgressReportingCount();
+                    AddWaiterImpl(waiter, out nextHandler, ref executionScheduler);
+                    ReportProgressFromAddWaiter(waiter, Depth, ref executionScheduler);
                 }
 
                 private static void ExecuteFromContext(object state)
@@ -789,7 +806,7 @@ namespace Proto.Promises
 
             partial class PromiseSingleAwait
             {
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     return _smallFields._currentProgress.InterlockedTrySet(progress) ? this : null;
                 }
@@ -798,10 +815,10 @@ namespace Proto.Promises
                 internal void ReportProgress(Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     InterlockedIncrementProgressReportingCount();
-                    ReportProgressAlreadyIncremented(progress, depth, ref executionScheduler);
+                    ReportProgressAlreadyIncremented(progress, ref depth, ref executionScheduler);
                 }
 
-                protected void ReportProgressAlreadyIncremented(Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal void ReportProgressAlreadyIncremented(Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     PromiseSingleAwait current = this;
                     while (true)
@@ -811,7 +828,7 @@ namespace Proto.Promises
                         {
                             break;
                         }
-                        var next = progressListener.SetProgress(ref progress, depth, ref executionScheduler);
+                        var next = progressListener.SetProgress(ref progress, ref depth, ref executionScheduler);
                         if (next == null)
                         {
                             break;
@@ -819,7 +836,6 @@ namespace Proto.Promises
                         next.InterlockedIncrementProgressReportingCount();
                         current.InterlockedDecrementProgressReportingCount();
                         current = next;
-                        depth = current.Depth;
                     }
                     current.InterlockedDecrementProgressReportingCount();
                 }
@@ -827,7 +843,7 @@ namespace Proto.Promises
 
             partial class PromiseMultiAwait : IProgressInvokable
             {
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
                     if (_smallFields._currentProgress.InterlockedTrySet(progress)
@@ -854,10 +870,11 @@ namespace Proto.Promises
                             foreach (var progressListener in _nextBranches)
                             {
                                 Fixed32 progressCopy = progress;
-                                PromiseSingleAwait nextRef = progressListener.SetProgress(ref progressCopy, Depth, ref executionScheduler);
+                                var depth = Depth;
+                                PromiseSingleAwait nextRef = progressListener.SetProgress(ref progressCopy, ref depth, ref executionScheduler);
                                 if (nextRef != null)
                                 {
-                                    nextRef.ReportProgress(progressCopy, nextRef.Depth, ref executionScheduler);
+                                    nextRef.ReportProgress(progressCopy, depth, ref executionScheduler);
                                 }
                             }
                         }
@@ -908,10 +925,8 @@ namespace Proto.Promises
 
                     var executionScheduler = new ExecutionScheduler(true);
                     SetSecondPrevious(_ref);
-                    InterlockedIncrementProgressReportingCount();
                     HandleablePromiseBase nextRef;
                     _ref.AddWaiter(this, out nextRef, ref executionScheduler);
-                    MaybeReportProgressAfterSecondPreviousHookup(_ref, other.Depth, ref executionScheduler);
                     _ref.MaybeHandleNext(nextRef, ref executionScheduler);
                     executionScheduler.Execute();
                 }
@@ -928,21 +943,6 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                partial void MaybeReportProgressAfterSecondPreviousHookup(PromiseRef secondPrevious, ushort depth, ref ExecutionScheduler executionScheduler)
-                {
-                    Fixed32 progress;
-                    if (secondPrevious.State == Promise.State.Pending
-                        & TryNormalizeProgress(secondPrevious._smallFields._currentProgress, depth, out progress))
-                    {
-                        ReportProgressAlreadyIncremented(progress, Depth, ref executionScheduler);
-                    }
-                    else
-                    {
-                        InterlockedDecrementProgressReportingCount();
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
                 private bool TryNormalizeProgress(Fixed32 progress, ushort depth, out Fixed32 result)
                 {
                     // Calculate the normalized progress for this and previous depth.
@@ -950,7 +950,7 @@ namespace Proto.Promises
                     return _smallFields._currentProgress.TrySetNewDecimalPartFromWaitPromise(normalizedProgress, Depth, progress, out result);
                 }
 
-                internal override sealed PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override sealed PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     // This acts as a pass-through to normalize the progress.
                     ThrowIfInPool(this);
@@ -958,15 +958,17 @@ namespace Proto.Promises
                     bool didSet = _smallFields.AreFlagsSet(PromiseFlags.SecondPrevious)
                         ? TryNormalizeProgress(progress, depth, out progress)
                         : _smallFields._currentProgress.InterlockedTrySet(progress);
+                    depth = Depth;
                     return didSet ? this : null;
                 }
             } // PromiseWaitPromise
 
             partial class PromisePassThrough
             {
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
+                    depth = _target.Depth;
                     long dif = _smallFields._currentProgress.InterlockedSetAndGetDifference(progress);
                     return _target.IncrementProgress(dif, ref progress, _smallFields._depth);
                 }
@@ -1026,13 +1028,14 @@ namespace Proto.Promises
                     return newValue;
                 }
 
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     if (float.IsNaN(_minProgress))
                     {
                         return null;
                     }
                     var lerpedProgress = LerpProgress(progress, depth);
+                    depth = 0;
                     return _smallFields._currentProgress.TrySetNewDecimalPartFromAsync(lerpedProgress, progress, out progress) ? this : null;
                 }
 
@@ -1058,26 +1061,6 @@ namespace Proto.Promises
 #endif
                     _minProgress = minProgress;
                     _maxProgress = maxProgress;
-                }
-
-                [MethodImpl(InlineOption)]
-                partial void MaybeReportProgressAfterHookup(PromiseRef waiter, ushort depth, ref ExecutionScheduler executionScheduler)
-                {
-                    if (waiter.State != Promise.State.Pending)
-                    {
-                        return;
-                    }
-                    var waiterProgress = waiter._smallFields._currentProgress;
-                    var lerpedProgress = LerpProgress(waiterProgress, waiter.Depth);
-                    Fixed32 progress;
-                    if (_smallFields._currentProgress.TrySetNewDecimalPartFromAsync(lerpedProgress, waiterProgress, out progress))
-                    {
-                        ReportProgressAlreadyIncremented(progress, 0, ref executionScheduler);
-                    }
-                    else
-                    {
-                        InterlockedDecrementProgressReportingCount();
-                    }
                 }
             } // AsyncPromiseRef
 #endif // PROMISE_PROGRESS

@@ -508,15 +508,11 @@ namespace Proto.Promises
 
                     var executionScheduler = new ExecutionScheduler(true);
                     SetSecondPreviousAndProgress(waiter, minProgress, maxProgress);
-                    InterlockedIncrementProgressReportingCount();
                     HandleablePromiseBase nextRef;
                     waiter.AddWaiter(this, out nextRef, ref executionScheduler);
-                    MaybeReportProgressAfterHookup(waiter, depth, ref executionScheduler);
                     waiter.MaybeHandleNext(nextRef, ref executionScheduler);
                     executionScheduler.Execute();
                 }
-
-                partial void MaybeReportProgressAfterHookup(PromiseRef waiter, ushort depth, ref ExecutionScheduler executionScheduler);
             }
 
 #if !OPTIMIZED_ASYNC_MODE

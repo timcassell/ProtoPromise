@@ -36,7 +36,7 @@ namespace Proto.Promises
             // This is overridden in PromiseMultiAwait and PromiseProgress and PromiseConfigured.
             internal virtual void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
 #if PROMISE_PROGRESS
-            internal abstract PromiseRef.PromiseSingleAwait SetProgress(ref PromiseRef.Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler);
+            internal abstract PromiseRef.PromiseSingleAwait SetProgress(ref PromiseRef.Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler);
 #endif
         }
 
