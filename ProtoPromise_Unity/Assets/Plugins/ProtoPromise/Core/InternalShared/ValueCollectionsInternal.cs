@@ -1,4 +1,8 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -281,12 +285,29 @@ namespace Proto.Promises
             internal void Enter()
             {
                 Thread.MemoryBarrier();
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
+                if (Interlocked.CompareExchange(ref _locker, 1, 0) == 1)
+#else
+                if (Interlocked.Exchange(ref _locker, 1) == 1)
+#endif
+                {
+                    EnterCore();
+                }
+            }
+
+            private void EnterCore()
+            {
                 // Spin until we successfully get lock.
-                SpinWait spinner = new SpinWait();
-                while (Interlocked.Exchange(ref _locker, 1) == 1)
+                var spinner = new SpinWait();
+                do
                 {
                     spinner.SpinOnce();
                 }
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
+                while (Interlocked.CompareExchange(ref _locker, 1, 0) == 1);
+#else
+                while (Interlocked.Exchange(ref _locker, 1) == 1);
+#endif
             }
 
             [MethodImpl(InlineOption)]

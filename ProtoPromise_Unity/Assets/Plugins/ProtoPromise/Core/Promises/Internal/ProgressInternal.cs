@@ -823,23 +823,20 @@ namespace Proto.Promises
                     Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
                     var progress = _smallFields._currentProgress;
                     _smallFields.InterlockedUnsetFlags(PromiseFlags.InProgressQueue);
-                    // Lock is necessary for race condition with Handle.
-                    // TODO: refactor to remove the need for a lock here.
-                    lock (this)
+                    if (State == Promise.State.Pending)
                     {
-                        if (State == Promise.State.Pending)
+                        InterlockedIncrementProgressReportingCount();
+                        foreach (var progressListener in _nextBranches)
                         {
-                            foreach (var progressListener in _nextBranches)
+                            Fixed32 progressCopy = progress;
+                            var depth = Depth;
+                            PromiseSingleAwait nextRef = progressListener.SetProgress(ref progressCopy, ref depth, ref executionScheduler);
+                            if (nextRef != null)
                             {
-                                Fixed32 progressCopy = progress;
-                                var depth = Depth;
-                                PromiseSingleAwait nextRef = progressListener.SetProgress(ref progressCopy, ref depth, ref executionScheduler);
-                                if (nextRef != null)
-                                {
-                                    nextRef.ReportProgress(progressCopy, depth, ref executionScheduler);
-                                }
+                                nextRef.ReportProgress(progressCopy, depth, ref executionScheduler);
                             }
                         }
+                        InterlockedDecrementProgressReportingCount();
                     }
                     MaybeDispose();
                 }

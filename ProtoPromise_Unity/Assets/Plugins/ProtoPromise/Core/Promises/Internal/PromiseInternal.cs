@@ -559,6 +559,7 @@ namespace Proto.Promises
                     {
                         branches = _nextBranches.MoveElementsToStack();
                     }
+                    WaitWhileProgressReporting();
                     while (branches.IsNotEmpty)
                     {
                         var waiter = branches.Pop();
