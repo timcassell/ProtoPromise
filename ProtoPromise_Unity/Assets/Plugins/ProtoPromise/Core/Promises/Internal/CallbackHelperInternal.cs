@@ -1057,16 +1057,14 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                     promise._previous = _this._ref;
 #endif
-                    promise._smallFields._currentProgress = _this._ref._smallFields._currentProgress;
                     var executionScheduler = new ExecutionScheduler(true);
-                    _this._ref.InterlockedIncrementProgressReportingCount();
                     HandleablePromiseBase nextRef;
                     _this._ref.AddWaiter(promise, out nextRef, ref executionScheduler);
-                    if (_this._ref.State == Promise.State.Pending)
+                    // If the progress is 0, progress in AddWaiter will not set, so we force the report here.
+                    if (_this._ref.State == Promise.State.Pending & (promise._smallFields._currentProgress.GetRawValue() == 0))
                     {
                         promise.MaybeReportProgress(ref executionScheduler);
                     }
-                    _this._ref.InterlockedDecrementProgressReportingCount();
                     _this._ref.MaybeHandleNext(nextRef, ref executionScheduler);
                     executionScheduler.Execute();
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);

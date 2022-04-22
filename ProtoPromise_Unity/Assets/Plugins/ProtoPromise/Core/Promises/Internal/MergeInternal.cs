@@ -280,10 +280,15 @@ namespace Proto.Promises
 
                 partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                 {
+                    var wasReportingPriority = Fixed32.ts_reportingPriority;
+                    Fixed32.ts_reportingPriority = true;
+
                     Fixed32 progressFlags;
                     uint dif = passThrough.GetProgressDifferenceToCompletion(out progressFlags);
                     var progress = IncrementProgress(dif, progressFlags);
                     ReportProgress(progress, Depth, ref executionScheduler);
+                    
+                    Fixed32.ts_reportingPriority = wasReportingPriority;
                 }
 
                 private Fixed32 NormalizeProgress(UnsignedFixed64 unscaledProgress, Fixed32 otherFlags)

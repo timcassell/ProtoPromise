@@ -75,7 +75,8 @@ namespace Proto.Promises
             {
                 asyncPromiseRef.ValidateAwait(this, promiseId);
                 InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
-                HookupNewPromise(asyncPromiseRef);
+                asyncPromiseRef.SetPreviousAndProgress(this, float.NaN, float.NaN);
+                HookupNewWaiter(asyncPromiseRef);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

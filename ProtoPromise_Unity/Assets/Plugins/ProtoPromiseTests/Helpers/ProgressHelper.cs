@@ -91,23 +91,56 @@ namespace ProtoPromiseTests
             }
         }
 
+        private bool AreEqual(float expected, float actual)
+        {
+            if (float.IsNaN(expected))
+            {
+                return float.IsNaN(actual);
+            }
+            float dif = Math.Abs(expected - actual);
+            return dif <= _delta;
+        }
+
         public void AssertCurrentProgress(float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
+        {
+            if (!GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout))
+            {
+                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+            }
+        }
+
+        private bool GetCurrentProgressEqualsExpected(float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
             try
             {
                 float currentProgress = GetCurrentProgress(waitForInvoke, executeForeground, timeout);
-                if (float.IsNaN(expectedProgress))
-                {
-                    Assert.IsNaN(currentProgress);
-                }
-                else
-                {
-                    Assert.AreEqual(expectedProgress, currentProgress, _delta);
-                }
+                return AreEqual(expectedProgress, currentProgress);
             }
             catch (TimeoutException e)
             {
                 throw new TimeoutException("expectedProgress: " + expectedProgress + ", executeForeground: " + executeForeground, e);
+            }
+        }
+
+        private void WaitForExpectedProgress(float expectedProgress, bool waitForInvoke, bool executeForeground, TimeSpan timeout = default(TimeSpan))
+        {
+            if (executeForeground)
+            {
+                TestHelper.ExecuteForegroundCallbacks();
+            }
+            if (!waitForInvoke)
+            {
+                return;
+            }
+
+            if (timeout <= TimeSpan.Zero)
+            {
+                timeout = TimeSpan.FromSeconds(1);
+            }
+            float current = float.NaN;
+            if (!SpinWait.SpinUntil(() => { current = _currentProgress; return current == expectedProgress; }, timeout))
+            {
+                throw new TimeoutException("Progress was not invoked with expected progress " + expectedProgress + " after " + timeout + ", _currentProgress: " + _currentProgress + ", current thread is background: " + Thread.CurrentThread.IsBackground);
             }
         }
 
@@ -122,84 +155,124 @@ namespace ProtoPromiseTests
 
         public void ReportProgressAndAssertResult(Promise.DeferredBase deferred, float reportValue, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            bool areEqual;
             lock (_locker)
             {
                 PrepareForInvoke();
                 deferred.ReportProgress(reportValue);
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
+            }
+            if (!areEqual)
+            {
+                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
         }
 
         public void RejectAndAssertResult<TReject>(Promise.DeferredBase deferred, TReject reason, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            bool areEqual;
             lock (_locker)
             {
                 PrepareForInvoke();
                 deferred.Reject(reason);
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
+            }
+            if (!areEqual)
+            {
+                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
         }
 
         public void CancelAndAssertResult(Promise.DeferredBase deferred, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            bool areEqual;
             lock (_locker)
             {
                 PrepareForInvoke();
                 deferred.Cancel();
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
+            }
+            if (!areEqual)
+            {
+                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
         }
 
         public void CancelAndAssertResult(CancelationSource cancelationSource, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            bool areEqual;
             lock (_locker)
             {
                 PrepareForInvoke();
                 cancelationSource.Cancel();
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
+            }
+            if (!areEqual)
+            {
+                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
         }
 
         public void ResolveAndAssertResult(Promise.Deferred deferred, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            bool areEqual;
             lock (_locker)
             {
                 PrepareForInvoke();
                 deferred.Resolve();
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
+            }
+            if (!areEqual)
+            {
+                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
         }
 
         public void ResolveAndAssertResult<T>(Promise<T>.Deferred deferred, T result, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            bool areEqual;
             lock (_locker)
             {
                 PrepareForInvoke();
                 deferred.Resolve(result);
-                AssertCurrentProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
+            }
+            if (!areEqual)
+            {
+                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
         }
 
         public Promise SubscribeAndAssertCurrentProgress(Promise promise, float expectedProgress, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
         {
+            bool areEqual;
             lock (_locker)
             {
                 PrepareForInvoke();
                 promise = Subscribe(promise, cancelationToken);
-                AssertCurrentProgress(expectedProgress, timeout: timeout);
-                return promise;
+                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, timeout: timeout);
             }
+            if (!areEqual)
+            {
+                WaitForExpectedProgress(expectedProgress, true, true, timeout);
+            }
+            return promise;
         }
 
         public Promise<T> SubscribeAndAssertCurrentProgress<T>(Promise<T> promise, float expectedProgress, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
         {
+            bool areEqual;
             lock (_locker)
             {
                 PrepareForInvoke();
                 promise = Subscribe(promise, cancelationToken);
-                AssertCurrentProgress(expectedProgress, timeout: timeout);
-                return promise;
+                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, timeout: timeout);
             }
+            if (!areEqual)
+            {
+                WaitForExpectedProgress(expectedProgress, true, true, timeout);
+            }
+            return promise;
         }
 
         public Promise Subscribe(Promise promise, CancelationToken cancelationToken = default(CancelationToken))

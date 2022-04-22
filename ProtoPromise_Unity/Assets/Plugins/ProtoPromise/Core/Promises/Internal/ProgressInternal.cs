@@ -177,12 +177,10 @@ namespace Proto.Promises
 #endif
             internal partial struct Fixed32
             {
-                // 1 bit is taken for HasReportedFlag.
-
-                // 15 bits for decimal part gives us 1/2^15 or 0.000030517578125 step size (4 digits of precision)
+                // 16 bits for decimal part gives us 1/2^16 or 0.0000152587890625 step size (nearly 5 digits of precision)
                 // and the remaining 16 bits for whole part/depth allows up to 2^16 - 2 or 65534 promise.Then(() => otherPromise) chains, which should be plenty for typical use cases.
-                // Also, SmallFields._depth is a ushort with 16 bits, so this should not be smaller than 15 (though it can be larger, as long as it leaves some bits for the whole part).
-                internal const int DecimalBits = 15;
+                // Also, SmallFields._depth is a ushort with 16 bits, so this should not be smaller than 16 (though it can be larger, as long as it leaves some bits for the whole part).
+                internal const int DecimalBits = 16;
             }
 
 #if PROMISE_PROGRESS
@@ -208,6 +206,9 @@ namespace Proto.Promises
 
             partial void ReportProgressFromAddWaiter(HandleablePromiseBase waiter, ushort depth, ref ExecutionScheduler executionScheduler)
             {
+                var wasReportingPriority = Fixed32.ts_reportingPriority;
+                Fixed32.ts_reportingPriority = false;
+
                 var progress = _smallFields._currentProgress;
                 var next = waiter.SetProgress(ref progress, ref depth, ref executionScheduler);
                 if (next != null)
@@ -220,18 +221,19 @@ namespace Proto.Promises
                 {
                     InterlockedDecrementProgressReportingCount();
                 }
+
+                Fixed32.ts_reportingPriority = wasReportingPriority;
             }
 
             internal partial struct Fixed32
             {
                 // Necessary to fix a race condition when hooking up a promise and the promise's deferred reports progress. Deferred report takes precedence.
-                internal const int HasReportedFlag = 1 << 31;
-
-                private const int ValueMask = ~HasReportedFlag;
+                [ThreadStatic]
+                internal static bool ts_reportingPriority;
 
                 private const double DecimalMax = 1 << DecimalBits;
                 private const int DecimalMask = (1 << DecimalBits) - 1;
-                private const int WholeMask = ~DecimalMask & ValueMask;
+                private const int WholeMask = ~DecimalMask;
 
                 [MethodImpl(InlineOption)]
                 private Fixed32(int value)
@@ -255,13 +257,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static Fixed32 FromDecimalForResolve(double decimalValue)
                 {
-                    return new Fixed32(ConvertToValue(decimalValue) | HasReportedFlag);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal Fixed32 WithoutHasReportedFlag()
-                {
-                    return new Fixed32(_value & ValueMask);
+                    return new Fixed32(ConvertToValue(decimalValue));
                 }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE // Useful for debugging, but not actually used.
@@ -274,11 +270,6 @@ namespace Proto.Promises
                 {
                     get { return (double) (_value & DecimalMask) / DecimalMax; }
                 }
-
-                internal bool HasReported
-                {
-                    get { return (_value & HasReportedFlag) != 0; }
-                }
 #endif
 
                 [MethodImpl(InlineOption)]
@@ -286,7 +277,7 @@ namespace Proto.Promises
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     // We allow ushort.MaxValue to rollover for progress normalization purposes, but we don't allow overflow for regular user chains.
-                    const int DepthBits = (32 - 1) - DecimalBits;
+                    const int DepthBits = 32 - DecimalBits;
                     const ushort MaxValue = (1 << DepthBits) - 2;
                     if (depth == MaxValue)
                     {
@@ -304,7 +295,7 @@ namespace Proto.Promises
                 {
                     unchecked
                     {
-                        return (uint) (_value & ValueMask);
+                        return (uint) _value;
                     }
                 }
 
@@ -328,26 +319,26 @@ namespace Proto.Promises
                     {
                         // Don't bother rounding, we don't want to accidentally round to 1.0.
                         int newValue = (int) (value.ToDouble() * scaler * DecimalMax);
-                        return new Fixed32(newValue | (otherFlags._value & HasReportedFlag));
+                        return new Fixed32(newValue);
                     }
                 }
 
                 internal bool InterlockedTrySetIfGreater(Fixed32 other)
                 {
                     Thread.MemoryBarrier();
-                    int setValue = other._value;
-                    int otherValue = other._value & ValueMask;
+                    int otherValue = other._value;
                     int current;
                     do
                     {
                         current = _value;
-                        bool currentHasReported = (current & HasReportedFlag) != 0;
-                        bool isLessOrEqual = otherValue <= (current & ValueMask);
-                        if (currentHasReported & isLessOrEqual)
+                        unchecked
                         {
-                            return false;
+                            if ((uint) otherValue <= (uint) current)
+                            {
+                                return false;
+                            }
                         }
-                    } while (Interlocked.CompareExchange(ref _value, setValue, current) != current);
+                    } while (Interlocked.CompareExchange(ref _value, otherValue, current) != current);
                     return true;
                 }
 
@@ -366,7 +357,7 @@ namespace Proto.Promises
                     {
                         unchecked
                         {
-                            return (long) (other._value & ValueMask) - (long) (oldValue & ValueMask);
+                            return (long) (uint) other._value - (long) (uint) oldValue;
                         }
                     }
                     return 0;
@@ -375,24 +366,27 @@ namespace Proto.Promises
                 private bool InterlockedTrySet(Fixed32 other, out int oldValue)
                 {
                     Thread.MemoryBarrier();
-                    bool otherHasReported = (other._value & HasReportedFlag) != 0;
-                    int otherValue = other._value & ValueMask;
-                    int setValue = otherValue | HasReportedFlag;
+                    int otherValue = other._value;
+                    bool isReportingPriority = ts_reportingPriority;
                     int current;
                     do
                     {
                         current = _value;
-                        bool currentHasReported = (current & HasReportedFlag) != 0;
-                        bool valuesAreSame = otherValue == (current & ValueMask);
-                        // If this has not reported, set.
-                        if (currentHasReported
-                            & (valuesAreSame // If the value is the same, don't report.
-                            | !otherHasReported)) // If this has already reported, and other is coming from hookup, don't report.
+                        // If value is greater, always set.
+                        // If value is equal, don't set.
+                        // if value is less, only set if progress is being reported with priority.
+                        unchecked
                         {
-                            oldValue = 0;
-                            return false;
+                            bool valueIsGreater = (uint) otherValue > (uint) current;
+                            bool valueIsLess = (uint) otherValue < (uint) current;
+                            bool isOkay = valueIsGreater | (valueIsLess & isReportingPriority);
+                            if (!isOkay)
+                            {
+                                oldValue = 0;
+                                return false;
+                            }
                         }
-                    } while (Interlocked.CompareExchange(ref _value, setValue, current) != current);
+                    } while (Interlocked.CompareExchange(ref _value, otherValue, current) != current);
                     oldValue = current;
                     return true;
                 }
@@ -400,60 +394,29 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal Fixed32 SetNewDecimalPartFromDeferred(double decimalPart)
                 {
-                    int newValue = ConvertToValue(decimalPart) | HasReportedFlag;
+                    int newValue = ConvertToValue(decimalPart);
                     _value = newValue;
                     return new Fixed32(newValue);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal bool TrySetNewDecimalPartFromAsync(double decimalPart, Fixed32 other, out Fixed32 result)
+                internal bool TrySetNewDecimalPartFromAsync(double decimalPart, out Fixed32 result)
                 {
                     int newValue = ConvertToValue(decimalPart);
-                    int setValue = newValue | HasReportedFlag;
-                    bool otherHasReported = (other._value & HasReportedFlag) != 0;
-                    Thread.MemoryBarrier();
-                    int current;
-                    do
-                    {
-                        current = _value;
-                        bool currentHasReported = (current & HasReportedFlag) != 0;
-                        bool valuesAreSame = newValue == (current & ValueMask);
-                        // If this has not reported, set.
-                        if (currentHasReported
-                            & (valuesAreSame // If the value is the same, don't report.
-                            | !otherHasReported)) // If this has already reported, and other is coming from hookup, don't report.
-                        {
-                            result = default(Fixed32);
-                            return false;
-                        }
-                    } while (Interlocked.CompareExchange(ref _value, setValue, current) != current);
-                    result = new Fixed32(setValue);
-                    return true;
+                    int _;
+                    bool success = InterlockedTrySet(new Fixed32(newValue), out _);
+                    result = new Fixed32(newValue);
+                    return success;
                 }
 
                 [MethodImpl(InlineOption)]
-                internal bool TrySetNewDecimalPartFromWaitPromise(double decimalPart, ushort wholePart, Fixed32 other, out Fixed32 result)
+                internal bool TrySetNewDecimalPartFromWaitPromise(double decimalPart, ushort wholePart, out Fixed32 result)
                 {
-                    int newValue = ConvertToValue(decimalPart) | (wholePart << DecimalBits) | HasReportedFlag;
-                    bool otherHasReported = (other._value & HasReportedFlag) != 0;
-                    Thread.MemoryBarrier();
-                    int current;
-                    do
-                    {
-                        current = _value;
-                        bool currentHasReported = (current & HasReportedFlag) != 0;
-                        bool valuesAreSame = newValue == (current & ValueMask);
-                        // If this has not reported, set.
-                        if (currentHasReported
-                            & (valuesAreSame // If the value is the same, don't report.
-                            | !otherHasReported)) // If this has already reported, and other is coming from hookup, don't report.
-                        {
-                            result = default(Fixed32);
-                            return false;
-                        }
-                    } while (Interlocked.CompareExchange(ref _value, newValue, current) != current);
+                    int newValue = ConvertToValue(decimalPart) | (wholePart << DecimalBits);
+                    int _;
+                    bool success = InterlockedTrySet(new Fixed32(newValue), out _);
                     result = new Fixed32(newValue);
-                    return true;
+                    return success;
                 }
 
                 [MethodImpl(InlineOption)]
@@ -466,9 +429,8 @@ namespace Proto.Promises
                 // Using double for better precision.
                 internal Fixed32 MultiplyAndDivide(double multiplier, double divisor)
                 {
-                    int value = _value;
-                    double dValue = ConvertToDouble(value) * multiplier / divisor;
-                    return new Fixed32(ConvertToValue(dValue) | (value & HasReportedFlag));
+                    double dValue = ConvertToDouble(_value) * multiplier / divisor;
+                    return new Fixed32(ConvertToValue(dValue));
                 }
             }
 
@@ -899,9 +861,14 @@ namespace Proto.Promises
                     if (progress >= 0 & progress < 1f)
                     {
                         Fixed32 newProgress = _smallFields._currentProgress.SetNewDecimalPartFromDeferred(progress);
+                        var wasReportingPriority = Fixed32.ts_reportingPriority;
+                        Fixed32.ts_reportingPriority = true;
+
                         var executionScheduler = new ExecutionScheduler(false);
                         ReportProgress(newProgress, 0, ref executionScheduler);
                         executionScheduler.ExecuteProgress();
+
+                        Fixed32.ts_reportingPriority = wasReportingPriority;
                     }
                     MaybeDispose();
                     return true;
@@ -939,7 +906,6 @@ namespace Proto.Promises
 #endif
                     //_secondPrevious = true; // TODO
                     _smallFields.InterlockedSetFlags(PromiseFlags.SecondPrevious);
-                    _smallFields._currentProgress = Fixed32.FromWhole(Depth);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -947,7 +913,7 @@ namespace Proto.Promises
                 {
                     // Calculate the normalized progress for this and previous depth.
                     double normalizedProgress = progress.ToDouble() / (depth + 1d);
-                    return _smallFields._currentProgress.TrySetNewDecimalPartFromWaitPromise(normalizedProgress, Depth, progress, out result);
+                    return _smallFields._currentProgress.TrySetNewDecimalPartFromWaitPromise(normalizedProgress, Depth, out result);
                 }
 
                 internal override sealed PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
@@ -1036,25 +1002,25 @@ namespace Proto.Promises
                     }
                     var lerpedProgress = LerpProgress(progress, depth);
                     depth = 0;
-                    return _smallFields._currentProgress.TrySetNewDecimalPartFromAsync(lerpedProgress, progress, out progress) ? this : null;
+                    return _smallFields._currentProgress.TrySetNewDecimalPartFromAsync(lerpedProgress, out progress) ? this : null;
                 }
 
                 private void SetAwaitedComplete(PromiseRef handler, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    // Don't report progress if it's 1. That will be reported when the async promise is resolved.
+                    // Don't report progress if it's 1 or NaN. 1 will be reported when the async promise is resolved.
                     // Also don't report if the awaited promise was rejected or canceled.
                     if (handler.State == Promise.State.Resolved & _maxProgress < 1f)
                     {
                         var progress = Fixed32.FromDecimalForResolve(_maxProgress);
-                        _smallFields._currentProgress = progress.WithoutHasReportedFlag();
+                        _smallFields._currentProgress = progress;
                         ReportProgress(progress, 0, ref executionScheduler);
                     }
                     _minProgress = _maxProgress = float.NaN;
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void SetSecondPreviousAndProgress(PromiseRef waiter, float minProgress, float maxProgress)
+                internal void SetPreviousAndProgress(PromiseRef waiter, float minProgress, float maxProgress)
                 {
 #if PROMISE_DEBUG
                     _previous = waiter;

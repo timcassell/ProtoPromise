@@ -119,12 +119,6 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class RacePromise
             {
-                new private void Reset(ushort depth)
-                {
-                    _smallFields._currentProgress = default(Fixed32);
-                    base.Reset(depth);
-                }
-
                 internal override PromiseSingleAwait IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
