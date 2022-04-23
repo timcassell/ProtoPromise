@@ -307,7 +307,7 @@ namespace Proto.Promises
                 {
                     ValidateCall();
                     ValidateRejected();
-                    return new ReasonContainer((Internal.ValueContainer) _target._valueOrPrevious, Id);
+                    return new ReasonContainer(_target._valueContainer, Id);
                 }
             }
 

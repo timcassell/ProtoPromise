@@ -6,7 +6,7 @@
     <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
     <Version>2.0.1</Version>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <!--Only for function pointers in await override implementation. All other async/await code should be C# 7.3 compatible, and all other code should be C# 4 compatible for old Unity versions.-->
+    <!--Only for function pointers in await override implementation. All other code should be C# 4 compatible for old Unity versions.-->
     <LangVersion>9</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!--Set true to help debug internal promise code (allows the debugger to step into the code and includes internal stacktraces).-->

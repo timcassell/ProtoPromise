@@ -22,6 +22,8 @@
 #define OPTIMIZED_ASYNC_MODE
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0060 // Remove unused parameter
 #pragma warning disable 0436 // Type conflicts with imported type
@@ -37,7 +39,6 @@ using Proto.Promises.Async.CompilerServices;
 
 namespace System.Runtime.CompilerServices
 {
-    // I would #ifdef this entire file, but Unity complains about namespaces changed with define symbols.
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Interface | AttributeTargets.Delegate, Inherited = false, AllowMultiple = false)]
     internal sealed class AsyncMethodBuilderAttribute : Attribute
     {
@@ -430,15 +431,19 @@ namespace Proto.Promises
 
 #if !PROMISE_PROGRESS
                 [MethodImpl(InlineOption)]
-                internal void SetPreviousAndMaybeSubscribeProgress(PromiseRef other, ushort depth, float minProgress, float maxProgress, ref ExecutionScheduler executionScheduler)
+                internal void SetPreviousAndProgress(PromiseRef other, float minProgress, float maxProgress)
                 {
-                    _valueOrPrevious = other;
+#if PROMISE_DEBUG
+                    _previous = other;
+#endif
                 }
 
                 [MethodImpl(InlineOption)]
                 private void SetAwaitedComplete(PromiseRef handler, ref ExecutionScheduler executionScheduler)
                 {
-                    _valueOrPrevious = null;
+#if PROMISE_DEBUG
+                    _previous = null;
+#endif
                 }
 #endif
 
@@ -491,6 +496,18 @@ namespace Proto.Promises
                     {
                         HandleInternal(valueContainer, state);
                     }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void HookupWaiterWithProgress(PromiseRef waiter, short promiseId, ushort depth, float minProgress, float maxProgress)
+                {
+                    ValidateAwait(waiter, promiseId);
+                    waiter.InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
+
+                    // TODO: detect if this is being called from another promise higher in the stack, and call AddWaiter and allow the stack to unwind instead of calling HookupNewWaiter.
+
+                    SetPreviousAndProgress(waiter, minProgress, maxProgress);
+                    waiter.HookupNewWaiter(this);
                 }
             }
 
@@ -618,15 +635,12 @@ namespace Proto.Promises
                             Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                             nextHandler = Interlocked.Exchange(ref _waiter, null);
                         }
-                        HandleProgressListener(handler.State, 0, ref executionScheduler);
-                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         handler.MaybeDispose();
                         handler = this;
                     }
                     else
                     {
                         nextHandler = null;
-                        WaitWhileProgressFlags(PromiseFlags.Subscribing);
                     }
                 }
             } // class AsyncPromiseRef
@@ -687,15 +701,12 @@ namespace Proto.Promises
                                 Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                                 nextHandler = Interlocked.Exchange(ref _waiter, null);
                             }
-                            HandleProgressListener(handler.State, 0, ref executionScheduler);
-                            WaitWhileProgressFlags(PromiseFlags.Subscribing);
                             handler.MaybeDispose();
                             handler = this;
                         }
                         else
                         {
                             nextHandler = null;
-                            WaitWhileProgressFlags(PromiseFlags.Subscribing);
                         }
                     }
                 }

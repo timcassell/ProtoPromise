@@ -207,7 +207,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        yi._value = ((ValueContainer) resultContainer._target._valueOrPrevious).Clone();
+                        yi._value = resultContainer._target._valueContainer.Clone();
                     }
                     
                     yi.MaybeDispose();
@@ -233,7 +233,7 @@ namespace Proto.Promises
                     _value = null;
                     if (container != null)
                     {
-                        ((IRetainable) container).Release();
+                        ((ValueContainer) container).DisposeAndMaybeAddToUnhandledStack(false);
                     }
 #if !PROMISE_DEBUG // Don't repool in DEBUG mode.
                     ObjectPool<YieldInstruction<T>>.MaybeRepool(this);

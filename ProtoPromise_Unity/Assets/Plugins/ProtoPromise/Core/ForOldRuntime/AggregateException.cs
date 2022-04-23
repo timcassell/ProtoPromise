@@ -10,7 +10,7 @@ using System.Globalization;
 
 namespace Proto.Promises
 {
-#if !NET_LEGACY || NET40_OR_GREATER
+#if !NET_LEGACY
     /// <summary>Represents one or more errors that occur during application execution.</summary>
     /// <remarks>
     /// <see cref="AggregateException"/> is used to consolidate multiple failures into a single, throwable

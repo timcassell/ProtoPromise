@@ -1,4 +1,8 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -85,7 +89,6 @@ namespace Proto.Promises
             {
                 internal void HandleFromCancelation()
                 {
-                    var executionScheduler = new ExecutionScheduler(true);
                     HandleablePromiseBase nextHandler;
 #if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
@@ -95,7 +98,7 @@ namespace Proto.Promises
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
-                    HandleProgressListener(Promise.State.Canceled, Depth, ref executionScheduler);
+                    var executionScheduler = new ExecutionScheduler(true);
                     MaybeHandleNext(nextHandler, ref executionScheduler);
                     executionScheduler.Execute();
                 }
@@ -147,7 +150,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -212,7 +214,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -279,7 +280,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -355,7 +355,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -508,7 +507,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 
@@ -573,7 +571,6 @@ namespace Proto.Promises
                     else
                     {
                         nextHandler = null;
-                        WaitForProgressSubscribeAfterCanceled(handler);
                     }
                 }
 

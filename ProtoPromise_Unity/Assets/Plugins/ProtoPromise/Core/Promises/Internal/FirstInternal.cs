@@ -56,7 +56,7 @@ namespace Proto.Promises
                     }
                     unchecked
                     {
-                        promise._firstSmallFields._waitCount = (int) pendingAwaits;
+                        promise._waitCount = (int) pendingAwaits;
                     }
                     promise.Reset(depth);
 
@@ -71,7 +71,7 @@ namespace Proto.Promises
                         }
 #endif
                         passThrough.SetTargetAndAddToOwner(promise);
-                        if (promise._valueOrPrevious != null)
+                        if (promise._valueContainer != null)
                         {
                             // This was completed potentially before all passthroughs were hooked up. Release all remaining passthroughs.
                             int addCount = 0;
@@ -82,7 +82,7 @@ namespace Proto.Promises
                                 p.Release();
                                 --addCount;
                             }
-                            if (addCount != 0 && InterlockedAddWithOverflowCheck(ref promise._firstSmallFields._waitCount, addCount, 0) == 0)
+                            if (addCount != 0 && InterlockedAddWithOverflowCheck(ref promise._waitCount, addCount, 0) == 0)
                             {
                                 promise.MaybeDispose();
                             }
@@ -100,13 +100,13 @@ namespace Proto.Promises
 
                     if (handler.State != Promise.State.Resolved) // Rejected/Canceled
                     {
-                        int remaining = InterlockedAddWithOverflowCheck(ref _firstSmallFields._waitCount, -1, 0);
+                        int remaining = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                         if (remaining == 1)
                         {
-                            if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
+                            if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                             {
-                                _valueOrPrevious = valueContainer.Clone();
-                                Handle(ref _firstSmallFields._waitCount, ref handler, out nextHandler, ref executionScheduler);
+                                _valueContainer = valueContainer.Clone();
+                                Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
                             }
                         }
                         else if (remaining == 0)
@@ -116,12 +116,12 @@ namespace Proto.Promises
                     }
                     else // Resolved
                     {
-                        if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
+                        if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
-                            _valueOrPrevious = valueContainer.Clone();
-                            Handle(ref _firstSmallFields._waitCount, ref handler, out nextHandler, ref executionScheduler);
+                            _valueContainer = valueContainer.Clone();
+                            Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
                         }
-                        if (InterlockedAddWithOverflowCheck(ref _firstSmallFields._waitCount, -1, 0) == 0)
+                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
                         {
                             _smallFields.InterlockedTryReleaseComplete();
                         }
@@ -134,41 +134,17 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class FirstPromise
             {
-                new private void Reset(ushort depth)
-                {
-                    _firstSmallFields._currentProgress = default(Fixed32);
-                    base.Reset(depth);
-                }
-
-                protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
-                {
-                    // Unnecessary to set last known since we know SetInitialProgress will be called on this.
-                    ThrowIfInPool(this);
-                    progressListener.Retain();
-                    _progressListener = progressListener;
-                    return null;
-                }
-
-                protected override sealed void SetInitialProgress(IProgressListener progressListener, ref Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler)
-                {
-                    progress = _firstSmallFields._currentProgress;
-                    SetInitialProgress(progressListener, ref progress, Fixed32.FromWholePlusOne(Depth), out nextRef, ref executionScheduler);
-                }
-
-                internal override void IncrementProgress(uint amount, ref Fixed32 progress, ushort depth, out PromiseSingleAwaitWithProgress nextRef)
+                internal override PromiseSingleAwait IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
 
                     var newAmount = progress.MultiplyAndDivide(Depth + 1, depth + 1);
-                    if (_firstSmallFields._currentProgress.InterlockedTrySetIfGreater(newAmount, progress))
+                    if (_smallFields._currentProgress.InterlockedTrySetIfGreater(newAmount))
                     {
-                        nextRef = this;
                         progress = newAmount;
+                        return this;
                     }
-                    else
-                    {
-                        nextRef = null;
-                    }
+                    return null;
                 }
             }
 #endif

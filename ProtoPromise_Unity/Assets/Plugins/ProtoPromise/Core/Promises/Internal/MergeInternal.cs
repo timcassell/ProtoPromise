@@ -1,4 +1,8 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -35,7 +39,6 @@ namespace Proto.Promises
                         Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
                         nextHandler = Interlocked.Exchange(ref _waiter, null);
                     }
-                    HandleProgressListener(state, Depth, ref executionScheduler);
                     // handler will be disposed higher in the call stack. We only set it if this is released completely.
                     if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
                     {
@@ -121,7 +124,7 @@ namespace Proto.Promises
                         }
 #endif
                         passThrough.SetTargetAndAddToOwner(this);
-                        if (_valueOrPrevious != null)
+                        if (_valueContainer != null)
                         {
                             // This was rejected or canceled potentially before all passthroughs were hooked up. Release all remaining passthroughs.
                             int addCount = 0;
@@ -148,9 +151,9 @@ namespace Proto.Promises
 
                     if (handler.State != Promise.State.Resolved) // Rejected/Canceled
                     {
-                        if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
+                        if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
-                            _valueOrPrevious = valueContainer.Clone();
+                            _valueContainer = valueContainer.Clone();
                             Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
                         }
                         if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
@@ -164,9 +167,9 @@ namespace Proto.Promises
                         int remaining = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                         if (remaining == 1)
                         {
-                            if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
+                            if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                             {
-                                _valueOrPrevious = valueContainer.Clone();
+                                _valueContainer = valueContainer.Clone();
                                 Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
                             }
                         }
@@ -185,7 +188,7 @@ namespace Proto.Promises
                 private sealed class MergePromiseT<T> : MergePromise
                 {
                     private Action<ValueContainer, ResolveContainer<T>, int> _onPromiseResolved;
-                    private ResolveContainer<T> _valueContainer;
+                    private ResolveContainer<T> _resolveContainer;
 
                     private MergePromiseT() { }
 
@@ -193,10 +196,10 @@ namespace Proto.Promises
                     {
                         SuperDispose();
                         _onPromiseResolved = null;
-                        if (_valueContainer != null)
+                        if (_resolveContainer != null)
                         {
-                            _valueContainer.DisposeAndMaybeAddToUnhandledStack(false);
-                            _valueContainer = null;
+                            _resolveContainer.DisposeAndMaybeAddToUnhandledStack(false);
+                            _resolveContainer = null;
                         }
 #if PROMISE_DEBUG
                         lock (_locker)
@@ -219,7 +222,7 @@ namespace Proto.Promises
                         var promise = ObjectPool<HandleablePromiseBase>.TryTake<MergePromiseT<T>>()
                             ?? new MergePromiseT<T>();
                         promise._onPromiseResolved = onPromiseResolved;
-                        promise._valueContainer = ResolveContainer<T>.GetOrCreate(value);
+                        promise._resolveContainer = ResolveContainer<T>.GetOrCreate(value);
                         return promise;
                     }
 
@@ -231,9 +234,9 @@ namespace Proto.Promises
 
                         if (handler.State != Promise.State.Resolved) // Rejected/Canceled
                         {
-                            if (Interlocked.CompareExchange(ref _valueOrPrevious, valueContainer, null) == null)
+                            if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                             {
-                                _valueOrPrevious = valueContainer.Clone();
+                                _valueContainer = valueContainer.Clone();
                                 Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
                             }
                             if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
@@ -243,15 +246,15 @@ namespace Proto.Promises
                         }
                         else // Resolved
                         {
-                            _onPromiseResolved.Invoke(valueContainer, _valueContainer, passThrough.Index);
+                            _onPromiseResolved.Invoke(valueContainer, _resolveContainer, passThrough.Index);
                             IncrementProgress(passThrough, ref executionScheduler);
                             int remaining = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                             if (remaining == 1)
                             {
-                                if (Interlocked.CompareExchange(ref _valueOrPrevious, _valueContainer, null) == null)
+                                if (Interlocked.CompareExchange(ref _valueContainer, _resolveContainer, null) == null)
                                 {
                                     // Only nullify if all promises resolved, otherwise we let Dispose release it.
-                                    _valueContainer = null;
+                                    _resolveContainer = null;
                                     Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
                                 }
                             }
@@ -269,21 +272,6 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class MergePromise
             {
-                protected override sealed PromiseRef MaybeAddProgressListenerAndGetPreviousRetained(ref IProgressListener progressListener, ref Fixed32 lastKnownProgress)
-                {
-                    // Unnecessary to set last known since we know SetInitialProgress will be called on this.
-                    ThrowIfInPool(this);
-                    progressListener.Retain();
-                    _progressListener = progressListener;
-                    return null;
-                }
-
-                protected override sealed void SetInitialProgress(IProgressListener progressListener, ref Fixed32 progress, out PromiseSingleAwaitWithProgress nextRef, ref ExecutionScheduler executionScheduler)
-                {
-                    progress = NormalizeProgress(_unscaledProgress);
-                    SetInitialProgress(progressListener, ref progress, Fixed32.FromWholePlusOne(Depth), out nextRef, ref executionScheduler);
-                }
-
                 partial void SetupProgress(ValueLinkedStack<PromisePassThrough> promisePassThroughs, ulong completedProgress, ulong totalProgress)
                 {
                     _unscaledProgress = new UnsignedFixed64(completedProgress);
@@ -292,30 +280,37 @@ namespace Proto.Promises
 
                 partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                 {
+                    var wasReportingPriority = Fixed32.ts_reportingPriority;
+                    Fixed32.ts_reportingPriority = true;
+
                     Fixed32 progressFlags;
                     uint dif = passThrough.GetProgressDifferenceToCompletion(out progressFlags);
                     var progress = IncrementProgress(dif, progressFlags);
-                    ReportProgress(progress, ref executionScheduler);
+                    ReportProgress(progress, Depth, ref executionScheduler);
+                    
+                    Fixed32.ts_reportingPriority = wasReportingPriority;
                 }
 
-                private Fixed32 NormalizeProgress(UnsignedFixed64 unscaledProgress)
+                private Fixed32 NormalizeProgress(UnsignedFixed64 unscaledProgress, Fixed32 otherFlags)
                 {
                     ThrowIfInPool(this);
-                    return Fixed32.GetScaled(unscaledProgress, _progressScaler);
+                    var scaledProgress = Fixed32.GetScaled(unscaledProgress, _progressScaler, otherFlags);
+                    _smallFields._currentProgress = scaledProgress;
+                    return scaledProgress;
                 }
 
-                internal override void IncrementProgress(uint amount, ref Fixed32 progress, ushort depth, out PromiseSingleAwaitWithProgress nextRef)
+                internal override PromiseSingleAwait IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
                     // This essentially acts as a pass-through to normalize the progress.
-                    nextRef = this;
                     progress = IncrementProgress(amount, progress);
+                    return this;
                 }
 
-                private Fixed32 IncrementProgress(uint amount, Fixed32 otherFlags)
+                private Fixed32 IncrementProgress(long amount, Fixed32 otherFlags)
                 {
-                    var unscaledProgress = _unscaledProgress.InterlockedIncrement(amount, otherFlags);
-                    return NormalizeProgress(unscaledProgress);
+                    var unscaledProgress = _unscaledProgress.InterlockedIncrement(amount);
+                    return NormalizeProgress(unscaledProgress, otherFlags);
                 }
             }
 #endif

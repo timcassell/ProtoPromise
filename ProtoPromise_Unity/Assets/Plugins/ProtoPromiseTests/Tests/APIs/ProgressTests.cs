@@ -1687,6 +1687,78 @@ namespace ProtoPromiseTests.APIs
             CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
         }
 
+        [Test]
+        public void AllProgressMayIncrementOrDecrement_void(
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, synchronizationType);
+
+            Promise.All(deferred1.Promise, deferred2.Promise)
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0f, 0.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.75f, 0.75f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0f, 0f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0f, 1f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred2, 2f / 2f);
+        }
+
+        [Test]
+        public void AllProgressMayIncrementOrDecrement_T(
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, synchronizationType);
+
+            Promise<int>.All(deferred1.Promise, deferred2.Promise)
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0f, 0.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.75f, 0.75f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0f, 0f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 1f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0f, 1f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred2, 2, 2f / 2f);
+        }
+
+        [Test]
+        public void MergeProgressMayIncrementOrDecrement(
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<string>();
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, synchronizationType);
+
+            Promise.Merge(deferred1.Promise, deferred2.Promise)
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0f, 0.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.75f, 0.75f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0f, 0f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred1, 1, 1f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 2f);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0f, 1f / 2f);
+            progressHelper.ResolveAndAssertResult(deferred2, "success", 2f / 2f);
+        }
+
 #else // PROMISE_PROGRESS
 
 #pragma warning disable CS0618 // Type or member is obsolete
