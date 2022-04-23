@@ -58,7 +58,7 @@ namespace Proto.Promises
                     {
                         promise._waitCount = (int) pendingAwaits;
                     }
-                    promise.Reset(depth, 2);
+                    promise.Reset(depth);
 
                     while (promisePassThroughs.IsNotEmpty)
                     {
@@ -119,7 +119,7 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class RacePromise
             {
-                internal override PromiseSingleAwait IncrementProgress(uint amount, ref Fixed32 progress, ushort depth)
+                internal override PromiseSingleAwait IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
 

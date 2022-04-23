@@ -424,6 +424,16 @@ namespace Proto.Promises
             #endregion
 
 #if PROMISE_PROGRESS
+            partial struct Fixed32
+            {
+                private volatile int _value; // int for Interlocked.
+            }
+
+            partial struct UnsignedFixed64
+            {
+                private long _value; // long for Interlocked.
+            }
+
             partial class PromiseProgress<TProgress> : PromiseSingleAwait
                 where TProgress : IProgress<float>
             {

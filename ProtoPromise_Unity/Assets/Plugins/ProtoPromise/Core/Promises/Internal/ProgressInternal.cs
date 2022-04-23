@@ -170,14 +170,15 @@ namespace Proto.Promises
             partial void WaitWhileProgressReporting();
             partial void InterlockedIncrementProgressReportingCount();
             partial void InterlockedDecrementProgressReportingCount();
+            partial void ReportProgressFromAddWaiter(HandleablePromiseBase waiter, ushort depth, ref ExecutionScheduler executionScheduler);
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             internal partial struct Fixed32
             {
-                // 16 bits for decimal part gives us 1/2^16 or 0.0000152587890625 step size which is nearly 5 digits of precision
-                // and the remaining 16 bits for whole part/depth allows up to 2^16 - 4 or 65532 promise.Then(() => otherPromise) chains, which should be plenty for typical use cases.
+                // 16 bits for decimal part gives us 1/2^16 or 0.0000152587890625 step size (nearly 5 digits of precision)
+                // and the remaining 16 bits for whole part/depth allows up to 2^16 - 2 or 65534 promise.Then(() => otherPromise) chains, which should be plenty for typical use cases.
                 // Also, SmallFields._depth is a ushort with 16 bits, so this should not be smaller than 16 (though it can be larger, as long as it leaves some bits for the whole part).
                 internal const int DecimalBits = 16;
             }
@@ -203,13 +204,36 @@ namespace Proto.Promises
                 } while (_smallFields._reportingProgressCount != 0);
             }
 
+            partial void ReportProgressFromAddWaiter(HandleablePromiseBase waiter, ushort depth, ref ExecutionScheduler executionScheduler)
+            {
+                var wasReportingPriority = Fixed32.ts_reportingPriority;
+                Fixed32.ts_reportingPriority = false;
+
+                var progress = _smallFields._currentProgress;
+                var next = waiter.SetProgress(ref progress, ref depth, ref executionScheduler);
+                if (next != null)
+                {
+                    next.InterlockedIncrementProgressReportingCount();
+                    InterlockedDecrementProgressReportingCount();
+                    next.ReportProgressAlreadyIncremented(progress, ref depth, ref executionScheduler);
+                }
+                else
+                {
+                    InterlockedDecrementProgressReportingCount();
+                }
+
+                Fixed32.ts_reportingPriority = wasReportingPriority;
+            }
+
             internal partial struct Fixed32
             {
+                // Necessary to fix a race condition when hooking up a promise and the promise's deferred reports progress. Deferred report takes precedence.
+                [ThreadStatic]
+                internal static bool ts_reportingPriority;
+
                 private const double DecimalMax = 1 << DecimalBits;
                 private const int DecimalMask = (1 << DecimalBits) - 1;
                 private const int WholeMask = ~DecimalMask;
-
-                private volatile int _value; // int for Interlocked.
 
                 [MethodImpl(InlineOption)]
                 private Fixed32(int value)
@@ -231,7 +255,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Fixed32 FromDecimal(double decimalValue)
+                internal static Fixed32 FromDecimalForResolve(double decimalValue)
                 {
                     return new Fixed32(ConvertToValue(decimalValue));
                 }
@@ -239,13 +263,11 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE // Useful for debugging, but not actually used.
                 internal ushort WholePart
                 {
-                    [MethodImpl(InlineOption)]
                     get { return (ushort) ((_value & WholeMask) >> DecimalBits); }
                 }
 
                 internal double DecimalPart
                 {
-                    [MethodImpl(InlineOption)]
                     get { return (double) (_value & DecimalMask) / DecimalMax; }
                 }
 #endif
@@ -255,9 +277,8 @@ namespace Proto.Promises
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     // We allow ushort.MaxValue to rollover for progress normalization purposes, but we don't allow overflow for regular user chains.
-                    // Subtract 4 so that promise retains will not overflow (2 initial retains plus some buffer).
                     const int DepthBits = 32 - DecimalBits;
-                    const ushort MaxValue = (1 << DepthBits) - 2 - 4;
+                    const ushort MaxValue = (1 << DepthBits) - 2;
                     if (depth == MaxValue)
                     {
                         throw new OverflowException("Promise chain length exceeded maximum of " + MaxValue);
@@ -292,7 +313,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Fixed32 GetScaled(UnsignedFixed64 value, double scaler)
+                internal static Fixed32 GetScaled(UnsignedFixed64 value, double scaler, Fixed32 otherFlags)
                 {
                     unchecked
                     {
@@ -310,48 +331,92 @@ namespace Proto.Promises
                     do
                     {
                         current = _value;
-                        if (otherValue <= current)
+                        unchecked
                         {
-                            return false;
+                            if ((uint) otherValue <= (uint) current)
+                            {
+                                return false;
+                            }
                         }
                     } while (Interlocked.CompareExchange(ref _value, otherValue, current) != current);
                     return true;
                 }
 
                 [MethodImpl(InlineOption)]
-                internal uint InterlockedSetAndGetDifference(Fixed32 other)
+                internal bool InterlockedTrySet(Fixed32 other)
+                {
+                    int _;
+                    return InterlockedTrySet(other, out _);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal long InterlockedSetAndGetDifference(Fixed32 other)
+                {
+                    int oldValue;
+                    if (InterlockedTrySet(other, out oldValue))
+                    {
+                        unchecked
+                        {
+                            return (long) (uint) other._value - (long) (uint) oldValue;
+                        }
+                    }
+                    return 0;
+                }
+
+                private bool InterlockedTrySet(Fixed32 other, out int oldValue)
                 {
                     Thread.MemoryBarrier();
-                    int oldValue = Exchange(other._value);
-                    unchecked
-                    {
-                        return (uint) other._value - (uint) oldValue;
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                private int Exchange(int value)
-                {
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. Use CompareExchange in a loop instead.
-                    int oldValue;
+                    int otherValue = other._value;
+                    bool isReportingPriority = ts_reportingPriority;
+                    int current;
                     do
                     {
-                        oldValue = _value;
-                    } while (Interlocked.CompareExchange(ref _value, value, oldValue) != oldValue);
-                    return oldValue;
-#else
-                    return Interlocked.Exchange(ref _value, value);
-#endif
+                        current = _value;
+                        // If value is greater, always set.
+                        // If value is equal, don't set.
+                        // if value is less, only set if progress is being reported with priority.
+                        unchecked
+                        {
+                            bool valueIsGreater = (uint) otherValue > (uint) current;
+                            bool valueIsLess = (uint) otherValue < (uint) current;
+                            bool isOkay = valueIsGreater | (valueIsLess & isReportingPriority);
+                            if (!isOkay)
+                            {
+                                oldValue = 0;
+                                return false;
+                            }
+                        }
+                    } while (Interlocked.CompareExchange(ref _value, otherValue, current) != current);
+                    oldValue = current;
+                    return true;
                 }
 
                 [MethodImpl(InlineOption)]
-                internal bool TrySetNewDecimalPartFromDeferred(double decimalPart, out Fixed32 result)
+                internal Fixed32 SetNewDecimalPartFromDeferred(double decimalPart)
                 {
                     int newValue = ConvertToValue(decimalPart);
-                    int oldValue = Exchange(newValue);
+                    _value = newValue;
+                    return new Fixed32(newValue);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal bool TrySetNewDecimalPartFromAsync(double decimalPart, out Fixed32 result)
+                {
+                    int newValue = ConvertToValue(decimalPart);
+                    int _;
+                    bool success = InterlockedTrySet(new Fixed32(newValue), out _);
                     result = new Fixed32(newValue);
-                    // If the new value is the same as the old value, we won't bother to report it.
-                    return newValue != oldValue;
+                    return success;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal bool TrySetNewDecimalPartFromWaitPromise(double decimalPart, ushort wholePart, out Fixed32 result)
+                {
+                    int newValue = ConvertToValue(decimalPart) | (wholePart << DecimalBits);
+                    int _;
+                    bool success = InterlockedTrySet(new Fixed32(newValue), out _);
+                    result = new Fixed32(newValue);
+                    return success;
                 }
 
                 [MethodImpl(InlineOption)]
@@ -364,17 +429,8 @@ namespace Proto.Promises
                 // Using double for better precision.
                 internal Fixed32 MultiplyAndDivide(double multiplier, double divisor)
                 {
-                    int value = _value;
-                    double dValue = ConvertToDouble(value) * multiplier / divisor;
+                    double dValue = ConvertToDouble(_value) * multiplier / divisor;
                     return new Fixed32(ConvertToValue(dValue));
-                }
-
-                internal Fixed32 DivideAndAdd(double divisor, ushort addend)
-                {
-                    int value = _value;
-                    double dValue = ConvertToDouble(value) / divisor;
-                    value = ConvertToValue(dValue) + (addend << DecimalBits);
-                    return new Fixed32(value);
                 }
             }
 
@@ -385,13 +441,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct UnsignedFixed64 // Simplified compared to Fixed32 to remove unused functions.
+            internal partial struct UnsignedFixed64 // Simplified compared to Fixed32 to remove unused functions.
             {
                 private const double DecimalMax = 1L << Fixed32.DecimalBits;
                 private const long DecimalMask = (1L << Fixed32.DecimalBits) - 1L;
                 private const long WholeMask = ~DecimalMask;
-
-                private long _value; // long for Interlocked.
 
                 [MethodImpl(InlineOption)]
                 internal UnsignedFixed64(ulong wholePart)
@@ -420,16 +474,23 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal UnsignedFixed64 InterlockedIncrement(uint increment)
+                internal UnsignedFixed64 InterlockedIncrement(long increment)
                 {
-                    long newValue = Interlocked.Add(ref _value, increment);
+                    Thread.MemoryBarrier();
+                    long current;
+                    long newValue;
+                    do
+                    {
+                        current = Interlocked.Read(ref _value);
+                        newValue = current + increment;
+                    } while (Interlocked.CompareExchange(ref _value, newValue, current) != current);
                     return new UnsignedFixed64(newValue);
                 }
             }
 
             partial class MultiHandleablePromiseBase
             {
-                internal abstract PromiseSingleAwait IncrementProgress(uint increment, ref Fixed32 progress, ushort depth);
+                internal abstract PromiseSingleAwait IncrementProgress(long increment, ref Fixed32 progress, ushort depth);
             }
 
 
@@ -532,11 +593,10 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    _smallFields._currentProgress = progress;
-                    if (!IsCanceled)
+                    if (_smallFields._currentProgress.InterlockedTrySet(progress) & !IsCanceled)
                     {
                         MaybeReportProgress(ref executionScheduler);
                         return this;
@@ -623,20 +683,12 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
-                {
-                    HandleablePromiseBase nextHandler;
-                    AddWaiter(waiter, out nextHandler, ref executionScheduler);
-                    MaybeHandleNext(nextHandler, ref executionScheduler);
-                }
-
-                internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                private void AddWaiterImpl(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
 #if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
-                        ThrowIfInPool(this);
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
                         Thread.MemoryBarrier();
                         SetWaiter(waiter);
@@ -667,6 +719,14 @@ namespace Proto.Promises
                         }
                         nextHandler = null;
                     }
+                }
+
+                internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                {
+                    ThrowIfInPool(this);
+                    InterlockedIncrementProgressReportingCount();
+                    AddWaiterImpl(waiter, out nextHandler, ref executionScheduler);
+                    ReportProgressFromAddWaiter(waiter, Depth, ref executionScheduler);
                 }
 
                 private static void ExecuteFromContext(object state)
@@ -708,20 +768,19 @@ namespace Proto.Promises
 
             partial class PromiseSingleAwait
             {
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
-                    _smallFields._currentProgress = progress;
-                    return this;
+                    return _smallFields._currentProgress.InterlockedTrySet(progress) ? this : null;
                 }
 
                 [MethodImpl(InlineOption)]
                 internal void ReportProgress(Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     InterlockedIncrementProgressReportingCount();
-                    ReportProgressAlreadyIncremented(progress, depth, ref executionScheduler);
+                    ReportProgressAlreadyIncremented(progress, ref depth, ref executionScheduler);
                 }
 
-                protected void ReportProgressAlreadyIncremented(Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal void ReportProgressAlreadyIncremented(Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     PromiseSingleAwait current = this;
                     while (true)
@@ -731,7 +790,7 @@ namespace Proto.Promises
                         {
                             break;
                         }
-                        var next = progressListener.SetProgress(ref progress, depth, ref executionScheduler);
+                        var next = progressListener.SetProgress(ref progress, ref depth, ref executionScheduler);
                         if (next == null)
                         {
                             break;
@@ -739,7 +798,6 @@ namespace Proto.Promises
                         next.InterlockedIncrementProgressReportingCount();
                         current.InterlockedDecrementProgressReportingCount();
                         current = next;
-                        depth = current.Depth;
                     }
                     current.InterlockedDecrementProgressReportingCount();
                 }
@@ -747,11 +805,11 @@ namespace Proto.Promises
 
             partial class PromiseMultiAwait : IProgressInvokable
             {
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    _smallFields._currentProgress = progress;
-                    if ((_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
+                    if (_smallFields._currentProgress.InterlockedTrySet(progress)
+                        && (_smallFields.InterlockedSetFlags(PromiseFlags.InProgressQueue) & PromiseFlags.InProgressQueue) == 0) // Was not already in progress queue?
                     {
                         InterlockedRetainDisregardId();
                         executionScheduler.ScheduleProgressSynchronous(this);
@@ -765,22 +823,20 @@ namespace Proto.Promises
                     Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
                     var progress = _smallFields._currentProgress;
                     _smallFields.InterlockedUnsetFlags(PromiseFlags.InProgressQueue);
-                    // Lock is necessary for race condition with Handle.
-                    // TODO: refactor to remove the need for a lock here.
-                    lock (this)
+                    if (State == Promise.State.Pending)
                     {
-                        if (State == Promise.State.Pending)
+                        InterlockedIncrementProgressReportingCount();
+                        foreach (var progressListener in _nextBranches)
                         {
-                            foreach (var progressListener in _nextBranches)
+                            Fixed32 progressCopy = progress;
+                            var depth = Depth;
+                            PromiseSingleAwait nextRef = progressListener.SetProgress(ref progressCopy, ref depth, ref executionScheduler);
+                            if (nextRef != null)
                             {
-                                Fixed32 progressCopy = progress;
-                                PromiseSingleAwait nextRef = progressListener.SetProgress(ref progressCopy, Depth, ref executionScheduler);
-                                if (nextRef != null)
-                                {
-                                    nextRef.ReportProgress(progressCopy, nextRef.Depth, ref executionScheduler);
-                                }
+                                nextRef.ReportProgress(progressCopy, depth, ref executionScheduler);
                             }
                         }
+                        InterlockedDecrementProgressReportingCount();
                     }
                     MaybeDispose();
                 }
@@ -801,13 +857,15 @@ namespace Proto.Promises
                     // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
                     if (progress >= 0 & progress < 1f)
                     {
-                        Fixed32 newProgress;
-                        if (_smallFields._currentProgress.TrySetNewDecimalPartFromDeferred(progress, out newProgress))
-                        {
-                            var executionScheduler = new ExecutionScheduler(false);
-                            ReportProgress(newProgress, 0, ref executionScheduler);
-                            executionScheduler.ExecuteProgress();
-                        }
+                        Fixed32 newProgress = _smallFields._currentProgress.SetNewDecimalPartFromDeferred(progress);
+                        var wasReportingPriority = Fixed32.ts_reportingPriority;
+                        Fixed32.ts_reportingPriority = true;
+
+                        var executionScheduler = new ExecutionScheduler(false);
+                        ReportProgress(newProgress, 0, ref executionScheduler);
+                        executionScheduler.ExecuteProgress();
+
+                        Fixed32.ts_reportingPriority = wasReportingPriority;
                     }
                     MaybeDispose();
                     return true;
@@ -816,6 +874,7 @@ namespace Proto.Promises
 
             partial class PromiseWaitPromise
             {
+                //[MethodImpl(InlineOption)]
                 //new protected void Reset(ushort depth)
                 //{
                 //    _secondPrevious = false; // TODO
@@ -830,81 +889,60 @@ namespace Proto.Promises
 
                     var executionScheduler = new ExecutionScheduler(true);
                     SetSecondPrevious(_ref);
-                    InterlockedIncrementProgressReportingCount();
                     HandleablePromiseBase nextRef;
                     _ref.AddWaiter(this, out nextRef, ref executionScheduler);
-                    MaybeReportProgressAfterSecondPreviousHookup(_ref, other.Depth, ref executionScheduler);
                     _ref.MaybeHandleNext(nextRef, ref executionScheduler);
                     executionScheduler.Execute();
                 }
 
                 [MethodImpl(InlineOption)]
-                private void SetSecondPrevious(PromiseRef other)
+                private void SetSecondPrevious(PromiseRef secondPrevious)
                 {
 #if PROMISE_DEBUG
-                    _previous = other;
+                    _previous = secondPrevious;
 #endif
                     //_secondPrevious = true; // TODO
                     _smallFields.InterlockedSetFlags(PromiseFlags.SecondPrevious);
-                    _smallFields._currentProgress = Fixed32.FromWhole(Depth);
                 }
 
                 [MethodImpl(InlineOption)]
-                partial void MaybeReportProgressAfterSecondPreviousHookup(PromiseRef secondPrevious, ushort depth, ref ExecutionScheduler executionScheduler)
+                private bool TryNormalizeProgress(Fixed32 progress, ushort depth, out Fixed32 result)
                 {
-                    if (secondPrevious.State != Promise.State.Pending)
-                    {
-                        InterlockedDecrementProgressReportingCount();
-                        return;
-                    }
-                    var progress = NormalizeProgress(secondPrevious._smallFields._currentProgress, depth);
-                    _smallFields._currentProgress = progress;
-                    ReportProgressAlreadyIncremented(progress, Depth, ref executionScheduler);
-                }
-
-                [MethodImpl(InlineOption)]
-                private Fixed32 NormalizeProgress(Fixed32 progress, ushort depth)
-                {
-                    // TODO: just calculate the decimal and assign it to the progress after setting the progress to Depth before the second await.
                     // Calculate the normalized progress for this and previous depth.
-                    return progress.DivideAndAdd(depth + 1d, Depth);
+                    double normalizedProgress = progress.ToDouble() / (depth + 1d);
+                    return _smallFields._currentProgress.TrySetNewDecimalPartFromWaitPromise(normalizedProgress, Depth, out result);
                 }
 
-                internal override sealed PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override sealed PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     // This acts as a pass-through to normalize the progress.
                     ThrowIfInPool(this);
                     //if (_secondPrevious) // TODO
-                    if (_smallFields.AreFlagsSet(PromiseFlags.SecondPrevious))
-                    {
-                        var normalizedProgress = NormalizeProgress(progress, depth);
-                        _smallFields._currentProgress = normalizedProgress;
-                        progress = normalizedProgress;
-                    }
-                    else
-                    {
-                        _smallFields._currentProgress = progress;
-                    }
-                    return this;
+                    bool didSet = _smallFields.AreFlagsSet(PromiseFlags.SecondPrevious)
+                        ? TryNormalizeProgress(progress, depth, out progress)
+                        : _smallFields._currentProgress.InterlockedTrySet(progress);
+                    depth = Depth;
+                    return didSet ? this : null;
                 }
             } // PromiseWaitPromise
 
             partial class PromisePassThrough
             {
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    // InterlockedTrySetAndGetDifference has a MemoryBarrier in it, so we know _owner is read after _reportingProgress is written.
-                    uint dif = _smallFields._currentProgress.InterlockedSetAndGetDifference(progress);
+                    depth = _target.Depth;
+                    long dif = _smallFields._currentProgress.InterlockedSetAndGetDifference(progress);
                     return _target.IncrementProgress(dif, ref progress, _smallFields._depth);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal uint GetProgressDifferenceToCompletion()
+                internal uint GetProgressDifferenceToCompletion(out Fixed32 progressFlags)
                 {
                     ThrowIfInPool(this);
                     Fixed32 incrementedWhole = Fixed32.FromWholePlusOne(_smallFields._depth);
-                    return incrementedWhole.GetRawValue() - _smallFields._currentProgress.GetRawValue();
+                    progressFlags = _smallFields._currentProgress;
+                    return incrementedWhole.GetRawValue() - progressFlags.GetRawValue();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -953,24 +991,25 @@ namespace Proto.Promises
                     return newValue;
                 }
 
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     if (float.IsNaN(_minProgress))
                     {
                         return null;
                     }
                     var lerpedProgress = LerpProgress(progress, depth);
-                    return _smallFields._currentProgress.TrySetNewDecimalPartFromDeferred(lerpedProgress, out progress) ? this : null;
+                    depth = 0;
+                    return _smallFields._currentProgress.TrySetNewDecimalPartFromAsync(lerpedProgress, out progress) ? this : null;
                 }
 
                 private void SetAwaitedComplete(PromiseRef handler, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    // Don't report progress if it's 1. That will be reported when the async promise is resolved.
+                    // Don't report progress if it's 1 or NaN. 1 will be reported when the async promise is resolved.
                     // Also don't report if the awaited promise was rejected or canceled.
                     if (handler.State == Promise.State.Resolved & _maxProgress < 1f)
                     {
-                        var progress = Fixed32.FromDecimal(_maxProgress);
+                        var progress = Fixed32.FromDecimalForResolve(_maxProgress);
                         _smallFields._currentProgress = progress;
                         ReportProgress(progress, 0, ref executionScheduler);
                     }
@@ -978,33 +1017,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void SetSecondPreviousAndProgress(PromiseRef other, float minProgress, float maxProgress)
+                internal void SetPreviousAndProgress(PromiseRef waiter, float minProgress, float maxProgress)
                 {
 #if PROMISE_DEBUG
-                    _previous = other;
+                    _previous = waiter;
 #endif
                     _minProgress = minProgress;
                     _maxProgress = maxProgress;
-                }
-
-                [MethodImpl(InlineOption)]
-                partial void MaybeReportProgressAfterHookup(PromiseRef waiter, ushort depth, ref ExecutionScheduler executionScheduler)
-                {
-                    if (waiter.State != Promise.State.Pending)
-                    {
-                        InterlockedDecrementProgressReportingCount();
-                        return;
-                    }
-                    var lerpedProgress = LerpProgress(waiter._smallFields._currentProgress, depth);
-                    Fixed32 progress;
-                    if (_smallFields._currentProgress.TrySetNewDecimalPartFromDeferred(lerpedProgress, out progress))
-                    {
-                        ReportProgressAlreadyIncremented(progress, 0, ref executionScheduler);
-                    }
-                    else
-                    {
-                        InterlockedDecrementProgressReportingCount();
-                    }
                 }
             } // AsyncPromiseRef
 #endif // PROMISE_PROGRESS

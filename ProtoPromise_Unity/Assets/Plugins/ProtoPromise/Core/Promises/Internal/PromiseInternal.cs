@@ -193,21 +193,14 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 newPromise._previous = this;
 #endif
-#if PROMISE_PROGRESS
-                newPromise._smallFields._currentProgress = _smallFields._currentProgress;
-#endif
                 HookupNewWaiter(newPromise);
             }
 
             private void HookupNewWaiter(HandleablePromiseBase newWaiter)
             {
                 var executionScheduler = new ExecutionScheduler(true);
-                HookupNewWaiter(newWaiter, ref executionScheduler);
-            }
-
-            private void HookupNewWaiter(HandleablePromiseBase newWaiter, ref ExecutionScheduler executionScheduler)
-            {
-                AddWaiter(newWaiter, ref executionScheduler);
+                AddWaiter(newWaiter, out newWaiter, ref executionScheduler);
+                MaybeHandleNext(newWaiter, ref executionScheduler);
                 executionScheduler.Execute();
             }
 
@@ -229,7 +222,6 @@ namespace Proto.Promises
 
             internal abstract PromiseRef GetDuplicate(short promiseId, ushort depth);
 
-            internal abstract void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler);
             internal abstract void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);
 
             [MethodImpl(InlineOption)]
@@ -292,7 +284,7 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
+                protected void AddWaiterImpl(HandleablePromiseBase waiter, ushort depth, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
 #if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
@@ -301,41 +293,26 @@ namespace Proto.Promises
                         ThrowIfInPool(this);
                         // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
                         Thread.MemoryBarrier();
+                        InterlockedIncrementProgressReportingCount();
                         SetWaiter(waiter);
                         Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
-                        if (State != Promise.State.Pending)
+                        if (State == Promise.State.Pending)
                         {
-                            // Interlocked.Exchange to handle race condition with Handle on another thread.
-                            MaybeHandleNext(Interlocked.Exchange(ref _waiter, null), ref executionScheduler);
+                            nextHandler = null;
+                            ReportProgressFromAddWaiter(waiter, depth, ref executionScheduler);
                         }
                         else
                         {
-                            MaybeDispose();
+                            // Interlocked.Exchange to handle race condition with Handle on another thread.
+                            nextHandler = Interlocked.Exchange(ref _waiter, null);
+                            InterlockedDecrementProgressReportingCount();
                         }
                     }
                 }
 
                 internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
-                    {
-                        ThrowIfInPool(this);
-                        // When this is completed, State is set then _waiter is swapped, so we must reverse that process here.
-                        Thread.MemoryBarrier();
-                        SetWaiter(waiter);
-                        Thread.MemoryBarrier(); // Make sure State is read after _waiter is written.
-                        if (State != Promise.State.Pending)
-                        {
-                            // Interlocked.Exchange to handle race condition with Handle on another thread.
-                            nextHandler = Interlocked.Exchange(ref _waiter, null);
-                        }
-                        else
-                        {
-                            nextHandler = null;
-                        }
-                    }
+                    AddWaiterImpl(waiter, Depth, out nextHandler, ref executionScheduler);
                 }
 
                 internal void MaybeDisposePreviousFromCatch(PromiseRef previous, bool dispose)
@@ -518,31 +495,11 @@ namespace Proto.Promises
                     return newPromise;
                 }
 
-                internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
-                {
-                    ThrowIfInPool(this);
-                    if (State == Promise.State.Pending)
-                    {
-                        lock (this)
-                        {
-                            if (State == Promise.State.Pending)
-                            {
-                                _nextBranches.Enqueue(waiter);
-                                MaybeDispose();
-                                return;
-                            }
-                        }
-                    }
-                    HandleablePromiseBase nextHandler;
-                    PromiseRef handler = this;
-                    // Handle or MaybeHandleNext will call MaybeDispose on this, so we don't need an extra call here.
-                    waiter.Handle(ref handler, out nextHandler, ref executionScheduler);
-                    handler.MaybeHandleNext(nextHandler, ref executionScheduler);
-                }
-
                 internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
+                    nextHandler = waiter;
+                    InterlockedIncrementProgressReportingCount();
                     if (State == Promise.State.Pending)
                     {
                         lock (this)
@@ -551,11 +508,14 @@ namespace Proto.Promises
                             {
                                 _nextBranches.Enqueue(waiter);
                                 nextHandler = null;
-                                return;
+                                goto ReportProgress;
                             }
                         }
                     }
-                    nextHandler = waiter;
+                    InterlockedDecrementProgressReportingCount();
+                    return;
+                ReportProgress:
+                    ReportProgressFromAddWaiter(waiter, Depth, ref executionScheduler);
                 }
 
                 internal override void Handle(ref ExecutionScheduler executionScheduler)
@@ -580,6 +540,7 @@ namespace Proto.Promises
                     {
                         branches = _nextBranches.MoveElementsToStack();
                     }
+                    WaitWhileProgressReporting();
                     while (branches.IsNotEmpty)
                     {
                         var waiter = branches.Pop();
@@ -715,16 +676,12 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void AddWaiter(HandleablePromiseBase waiter, ref ExecutionScheduler executionScheduler)
-                {
-                    AddWaiterImpl(waiter, ref executionScheduler);
-                    MaybeDispose();
-                }
-
                 internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     nextHandler = null;
+                    InterlockedIncrementProgressReportingCount();
                     AddWaiterImpl(waiter, ref executionScheduler);
+                    ReportProgressFromAddWaiter(waiter, Depth, ref executionScheduler);
                 }
 
                 protected override void OnForget()
@@ -767,13 +724,9 @@ namespace Proto.Promises
                         handler = _ref;
                         _ref.MarkAwaited(other.Id, PromiseFlags.SuppressRejection | PromiseFlags.WasAwaitedOrForgotten);
                         SetSecondPrevious(_ref);
-                        InterlockedIncrementProgressReportingCount();
                         _ref.AddWaiter(this, out nextHandler, ref executionScheduler);
-                        MaybeReportProgressAfterSecondPreviousHookup(_ref, other.Depth, ref executionScheduler);
                     }
                 }
-
-                partial void MaybeReportProgressAfterSecondPreviousHookup(PromiseRef secondPrevious, ushort depth, ref ExecutionScheduler executionScheduler);
 
 #if !PROMISE_PROGRESS
                 [MethodImpl(InlineOption)]
@@ -796,6 +749,11 @@ namespace Proto.Promises
                 {
                     _smallFields.Reset(2);
                     SetCreatedStacktrace(this, 3);
+                }
+
+                internal override void AddWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                {
+                    AddWaiterImpl(waiter, 0, out nextHandler, ref executionScheduler);
                 }
 
                 protected void HandleInternal(ValueContainer valueContainer, Promise.State state)

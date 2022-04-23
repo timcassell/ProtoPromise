@@ -280,31 +280,37 @@ namespace Proto.Promises
 
                 partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
                 {
-                    uint dif = passThrough.GetProgressDifferenceToCompletion();
-                    var progress = IncrementProgress(dif);
+                    var wasReportingPriority = Fixed32.ts_reportingPriority;
+                    Fixed32.ts_reportingPriority = true;
+
+                    Fixed32 progressFlags;
+                    uint dif = passThrough.GetProgressDifferenceToCompletion(out progressFlags);
+                    var progress = IncrementProgress(dif, progressFlags);
                     ReportProgress(progress, Depth, ref executionScheduler);
+                    
+                    Fixed32.ts_reportingPriority = wasReportingPriority;
                 }
 
-                private Fixed32 NormalizeProgress(UnsignedFixed64 unscaledProgress)
+                private Fixed32 NormalizeProgress(UnsignedFixed64 unscaledProgress, Fixed32 otherFlags)
                 {
                     ThrowIfInPool(this);
-                    var scaledProgress = Fixed32.GetScaled(unscaledProgress, _progressScaler);
+                    var scaledProgress = Fixed32.GetScaled(unscaledProgress, _progressScaler, otherFlags);
                     _smallFields._currentProgress = scaledProgress;
                     return scaledProgress;
                 }
 
-                internal override PromiseSingleAwait IncrementProgress(uint amount, ref Fixed32 progress, ushort depth)
+                internal override PromiseSingleAwait IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
                     // This essentially acts as a pass-through to normalize the progress.
-                    progress = IncrementProgress(amount);
+                    progress = IncrementProgress(amount, progress);
                     return this;
                 }
 
-                private Fixed32 IncrementProgress(uint amount)
+                private Fixed32 IncrementProgress(long amount, Fixed32 otherFlags)
                 {
                     var unscaledProgress = _unscaledProgress.InterlockedIncrement(amount);
-                    return NormalizeProgress(unscaledProgress);
+                    return NormalizeProgress(unscaledProgress, otherFlags);
                 }
             }
 #endif

@@ -75,7 +75,8 @@ namespace Proto.Promises
             {
                 asyncPromiseRef.ValidateAwait(this, promiseId);
                 InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
-                HookupNewPromise(asyncPromiseRef);
+                asyncPromiseRef.SetPreviousAndProgress(this, float.NaN, float.NaN);
+                HookupNewWaiter(asyncPromiseRef);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -139,7 +140,10 @@ namespace Proto.Promises
                 }
 
 #if PROMISE_PROGRESS
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                {
+                    return null;
+                }
 #endif
             }
         }

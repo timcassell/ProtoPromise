@@ -431,7 +431,7 @@ namespace Proto.Promises
 
 #if !PROMISE_PROGRESS
                 [MethodImpl(InlineOption)]
-                internal void SetSecondPreviousAndProgress(PromiseRef other, float minProgress, float maxProgress)
+                internal void SetPreviousAndProgress(PromiseRef other, float minProgress, float maxProgress)
                 {
 #if PROMISE_DEBUG
                     _previous = other;
@@ -504,17 +504,11 @@ namespace Proto.Promises
                     ValidateAwait(waiter, promiseId);
                     waiter.InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
 
-                    var executionScheduler = new ExecutionScheduler(true);
-                    SetSecondPreviousAndProgress(waiter, minProgress, maxProgress);
-                    InterlockedIncrementProgressReportingCount();
-                    HandleablePromiseBase nextRef;
-                    waiter.AddWaiter(this, out nextRef, ref executionScheduler);
-                    MaybeReportProgressAfterHookup(waiter, depth, ref executionScheduler);
-                    waiter.MaybeHandleNext(nextRef, ref executionScheduler);
-                    executionScheduler.Execute();
-                }
+                    // TODO: detect if this is being called from another promise higher in the stack, and call AddWaiter and allow the stack to unwind instead of calling HookupNewWaiter.
 
-                partial void MaybeReportProgressAfterHookup(PromiseRef waiter, ushort depth, ref ExecutionScheduler executionScheduler);
+                    SetPreviousAndProgress(waiter, minProgress, maxProgress);
+                    waiter.HookupNewWaiter(this);
+                }
             }
 
 #if !OPTIMIZED_ASYNC_MODE
