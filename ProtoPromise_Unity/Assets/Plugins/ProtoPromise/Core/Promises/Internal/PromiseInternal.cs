@@ -117,7 +117,7 @@ namespace Proto.Promises
             internal void Forget(short promiseId)
             {
                 IncrementIdAndSetFlags(promiseId, PromiseFlags.WasAwaitedOrForgotten);
-                OnForgetOrHookupFailed();
+                OnForget();
                 MaybeReportUnhandledRejections();
             }
 
@@ -152,9 +152,9 @@ namespace Proto.Promises
                 _smallFields.InterlockedRetainDisregardId();
             }
 
-            protected void Reset(ushort depth)
+            protected void Reset(ushort depth, ushort retains)
             {
-                _smallFields.Reset(depth);
+                _smallFields.Reset(depth, retains);
                 SetCreatedStacktrace(this, 3);
             }
 
@@ -183,26 +183,7 @@ namespace Proto.Promises
                 _valueContainer = null;
             }
 
-            private void HookupNewCancelablePromise(PromiseRef newPromise)
-            {
-                // TODO: just hook up normally. DelegateWrappers call TryUnregister anyway.
-                //HookupNewPromise(newPromise);
-                // If _valueContainer is not null, it means newPromise was already canceled from the token.
-                if (Interlocked.CompareExchange(ref newPromise._valueContainer, null, null) == null)
-                {
-                    HookupNewWaiter(newPromise);
-                }
-                else
-                {
-                    newPromise.OnHookupFailed();
-                    OnForgetOrHookupFailed();
-                }
-            }
-
-            // This is only overloaded by cancelable promises.
-            protected virtual void OnHookupFailed() { throw new System.InvalidOperationException(); }
-
-            protected virtual void OnForgetOrHookupFailed()
+            protected virtual void OnForget()
             {
                 MaybeDispose();
             }
@@ -491,7 +472,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseMultiAwait>()
                         ?? new PromiseMultiAwait();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     return promise;
                 }
 
@@ -590,7 +571,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseDuplicate>()
                         ?? new PromiseDuplicate();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     return promise;
                 }
 
@@ -618,7 +599,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseConfigured>()
                         ?? new PromiseConfigured();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._synchronizationContext = synchronizationContext;
                     promise._mostRecentPotentialScheduleMethod = (int) ScheduleMethod.None;
                     return promise;
@@ -662,7 +643,7 @@ namespace Proto.Promises
                         {
                             executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                         }
-                        else if (previousScheduleType == ScheduleMethod.OnForgetOrHookupFailed)
+                        else if (previousScheduleType == ScheduleMethod.OnForget)
                         {
                             executionScheduler.ScheduleSynchronous(this);
                         }
@@ -703,19 +684,19 @@ namespace Proto.Promises
                     ReportProgressFromAddWaiter(waiter, Depth, ref executionScheduler);
                 }
 
-                protected override void OnForgetOrHookupFailed()
+                protected override void OnForget()
                 {
 #if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
                         ThrowIfInPool(this);
-                        if ((ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForgetOrHookupFailed) == ScheduleMethod.Handle)
+                        if ((ScheduleMethod) Interlocked.Exchange(ref _mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForget) == ScheduleMethod.Handle)
                         {
                             State = _previousState;
                             _smallFields.InterlockedTryReleaseComplete();
                         }
-                        base.OnForgetOrHookupFailed();
+                        base.OnForget();
                     }
                 }
             }
@@ -766,7 +747,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 protected void Reset()
                 {
-                    _smallFields.Reset();
+                    _smallFields.Reset(2);
                     SetCreatedStacktrace(this, 3);
                 }
 
@@ -813,7 +794,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                protected void CancelDirect()
+                internal void CancelDirect()
                 {
                     ThrowIfInPool(this);
                     HandleInternal(CancelContainerVoid.GetOrCreate(), Promise.State.Canceled);
@@ -840,7 +821,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolve<TResolver>>()
                         ?? new PromiseResolve<TResolver>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._resolver = resolver;
                     return promise;
                 }
@@ -879,7 +860,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolvePromise<TResolver>>()
                         ?? new PromiseResolvePromise<TResolver>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._resolver = resolver;
                     return promise;
                 }
@@ -927,7 +908,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolveReject<TResolver, TRejecter>>()
                         ?? new PromiseResolveReject<TResolver, TRejecter>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     return promise;
@@ -977,7 +958,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolveRejectPromise<TResolver, TRejecter>>()
                         ?? new PromiseResolveRejectPromise<TResolver, TRejecter>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     return promise;
@@ -1034,7 +1015,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseContinue<TContinuer>>()
                         ?? new PromiseContinue<TContinuer>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._continuer = continuer;
                     return promise;
                 }
@@ -1067,7 +1048,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseContinuePromise<TContinuer>>()
                         ?? new PromiseContinuePromise<TContinuer>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._continuer = continuer;
                     return promise;
                 }
@@ -1107,7 +1088,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseFinally<TFinalizer>>()
                         ?? new PromiseFinally<TFinalizer>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._finalizer = finalizer;
                     return promise;
                 }
@@ -1150,7 +1131,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseCancel<TCanceler>>()
                         ?? new PromiseCancel<TCanceler>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._canceler = canceler;
                     return promise;
                 }
@@ -1189,7 +1170,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseCancelPromise<TCanceler>>()
                         ?? new PromiseCancelPromise<TCanceler>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._canceler = resolver;
                     return promise;
                 }
@@ -1481,7 +1462,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void Reset()
+                internal void Reset(ushort retains)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (_retains != 0)
@@ -1494,16 +1475,16 @@ namespace Proto.Promises
 #endif
                     _state = Promise.State.Pending;
                     _flags = PromiseFlags.None;
-                    // Set retain counter to 2.
-                    // 1 retain for state, 1 retain for await/forget.
-                    _retains = 2;
+                    // Default retains is 2 for non-cancelable promises, 3 for cancelable promises.
+                    // 1 retain for state, 1 retain for await/forget, and 1 for cancelation.
+                    _retains = retains;
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void Reset(ushort depth)
+                internal void Reset(ushort depth, ushort retains)
                 {
-                    Reset();
                     _depth = depth;
+                    Reset(retains);
                 }
 
                 internal PromiseFlags InterlockedSetFlags(PromiseFlags flags)

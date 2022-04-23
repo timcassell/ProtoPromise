@@ -523,7 +523,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseProgress<TProgress>>()
                         ?? new PromiseProgress<TProgress>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._progress = progress;
                     promise.IsCanceled = false;
                     promise._smallProgressFields._isSynchronous = isSynchronous;
@@ -538,7 +538,7 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseProgress<TProgress>>()
                         ?? new PromiseProgress<TProgress>();
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
                     promise._progress = progress;
                     promise.IsCanceled = false;
                     promise._smallProgressFields._isSynchronous = false;
@@ -668,18 +668,18 @@ namespace Proto.Promises
                     IsCanceled = true;
                 }
 
-                protected override void OnForgetOrHookupFailed()
+                protected override void OnForget()
                 {
 #if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
                     lock (this)
 #endif
                     {
                         ThrowIfInPool(this);
-                        if ((ScheduleMethod) Interlocked.Exchange(ref _smallProgressFields._mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForgetOrHookupFailed) == ScheduleMethod.Handle)
+                        if ((ScheduleMethod) Interlocked.Exchange(ref _smallProgressFields._mostRecentPotentialScheduleMethod, (int) ScheduleMethod.OnForget) == ScheduleMethod.Handle)
                         {
                             State = _smallProgressFields._previousState;
                         }
-                        base.OnForgetOrHookupFailed();
+                        base.OnForget();
                     }
                 }
 

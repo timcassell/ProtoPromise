@@ -311,34 +311,9 @@ namespace Proto.Promises
                     owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                 }
 
-                [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
-                }
-
                 void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
                 }
             }
 
@@ -400,45 +375,12 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg = handler.GetResult<TArg>();
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.MaybeDisposePrevious(handler);
-                        handler = owner;
-                        TResult result = Invoke(arg);
-                        owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     TResult result = Invoke(arg);
                     owner.WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg = handler.GetResult<TArg>();
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        TResult result = Invoke(arg);
-                        owner.WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
                 }
 
                 void IDelegateReject.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
@@ -457,29 +399,6 @@ namespace Proto.Promises
                     }
                 }
 
-                void IDelegateReject.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg;
-                    if (handler.TryGetRejectValue(out arg))
-                    {
-                        if (cancelationHelper.TryUnregister(owner))
-                        {
-                            TResult result = Invoke(arg);
-                            owner.MaybeDisposePrevious(handler);
-                            handler = owner;
-                            owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
-                            return;
-                        }
-                    }
-                    else if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
-                        return;
-                    }
-
-                    nextHandler = null;
-                }
-
                 void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
@@ -493,28 +412,6 @@ namespace Proto.Promises
                     {
                         owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                     }
-                }
-
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg;
-                    if (handler.TryGetRejectValue(out arg))
-                    {
-                        if (cancelationHelper.TryUnregister(owner))
-                        {
-                            TResult result = Invoke(arg);
-                            owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                            owner.WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
-                            return;
-                        }
-                    }
-                    else if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
-                        return;
-                    }
-                    
-                    nextHandler = null;
                 }
             }
 
@@ -572,22 +469,6 @@ namespace Proto.Promises
                     owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                 }
 
-                [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg = handler.GetResult<TArg>();
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        Promise<TResult> result = Invoke(arg);
-                        owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
-                }
-
                 void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
@@ -601,28 +482,6 @@ namespace Proto.Promises
                     {
                         owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                     }
-                }
-
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg;
-                    if (handler.TryGetRejectValue(out arg))
-                    {
-                        if (cancelationHelper.TryUnregister(owner))
-                        {
-                            Promise<TResult> result = Invoke(arg);
-                            owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                            owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
-                            return;
-                        }
-                    }
-                    else if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
-                        return;
-                    }
-
-                    nextHandler = null;
                 }
             }
 
@@ -707,19 +566,6 @@ namespace Proto.Promises
                     handler = owner;
                     owner.SetResultAndMaybeHandle(valueContainer, Promise.State.Resolved, out nextHandler, ref executionScheduler);
                 }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(ref handler, out nextHandler, owner, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
-                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -800,19 +646,6 @@ namespace Proto.Promises
                     }
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(ref handler, out nextHandler, owner, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
                 }
             }
 
@@ -952,45 +785,12 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg = handler.GetResult<TArg>();
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.MaybeDisposePrevious(handler);
-                        handler = owner;
-                        TResult result = Invoke(arg);
-                        owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     TResult result = Invoke(arg);
                     owner.WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg = handler.GetResult<TArg>();
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        TResult result = Invoke(arg);
-                        owner.WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
                 }
 
                 void IDelegateReject.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
@@ -1009,29 +809,6 @@ namespace Proto.Promises
                     }
                 }
 
-                void IDelegateReject.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg;
-                    if (handler.TryGetRejectValue(out arg))
-                    {
-                        if (cancelationHelper.TryUnregister(owner))
-                        {
-                            TResult result = Invoke(arg);
-                            owner.MaybeDisposePrevious(handler);
-                            handler = owner;
-                            owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
-                            return;
-                        }
-                    }
-                    else if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
-                        return;
-                    }
-
-                    nextHandler = null;
-                }
-
                 void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
@@ -1045,28 +822,6 @@ namespace Proto.Promises
                     {
                         owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                     }
-                }
-
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg;
-                    if (handler.TryGetRejectValue(out arg))
-                    {
-                        if (cancelationHelper.TryUnregister(owner))
-                        {
-                            TResult result = Invoke(arg);
-                            owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                            owner.WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
-                            return;
-                        }
-                    }
-                    else if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
-                        return;
-                    }
-
-                    nextHandler = null;
                 }
             }
 
@@ -1136,22 +891,6 @@ namespace Proto.Promises
                     owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                 }
 
-                [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg = handler.GetResult<TArg>();
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        Promise<TResult> result = Invoke(arg);
-                        owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
-                }
-
                 void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
@@ -1165,28 +904,6 @@ namespace Proto.Promises
                     {
                         owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                     }
-                }
-
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    TArg arg;
-                    if (handler.TryGetRejectValue(out arg))
-                    {
-                        if (cancelationHelper.TryUnregister(owner))
-                        {
-                            Promise<TResult> result = Invoke(arg);
-                            owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                            owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
-                            return;
-                        }
-                    }
-                    else if (cancelationHelper.TryUnregister(owner))
-                    {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
-                        return;
-                    }
-
-                    nextHandler = null;
                 }
             }
 
@@ -1277,19 +994,6 @@ namespace Proto.Promises
                     handler = owner;
                     owner.SetResultAndMaybeHandle(valueContainer, Promise.State.Resolved, out nextHandler, ref executionScheduler);
                 }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(ref handler, out nextHandler, owner, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
-                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -1376,19 +1080,6 @@ namespace Proto.Promises
                     }
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref CancelationHelper cancelationHelper, ref ExecutionScheduler executionScheduler)
-                {
-                    if (cancelationHelper.TryUnregister(owner))
-                    {
-                        Invoke(ref handler, out nextHandler, owner, ref executionScheduler);
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
                 }
             }
 

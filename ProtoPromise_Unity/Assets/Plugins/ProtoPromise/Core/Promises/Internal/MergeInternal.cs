@@ -110,7 +110,7 @@ namespace Proto.Promises
                     {
                         _waitCount = (int) pendingAwaits;
                     }
-                    Reset(depth);
+                    Reset(depth, 2);
                     SetupProgress(promisePassThroughs, completedProgress, totalProgress);
 
                     while (promisePassThroughs.IsNotEmpty)
