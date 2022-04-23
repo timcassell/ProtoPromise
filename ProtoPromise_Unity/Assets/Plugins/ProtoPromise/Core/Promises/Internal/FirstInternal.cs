@@ -58,7 +58,7 @@ namespace Proto.Promises
                     {
                         promise._waitCount = (int) pendingAwaits;
                     }
-                    promise.Reset(depth);
+                    promise.Reset(depth, 2);
 
                     while (promisePassThroughs.IsNotEmpty)
                     {
