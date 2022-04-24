@@ -18,7 +18,7 @@ Robust and efficient library for management of asynchronous operations.
 - Combine async operations
 - CLS compliant
 
-This library was built to work in all C#/.Net ecosystems, including Unity, Mono, .Net Framework, .Net Core and UI frameworks. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.
+This library was built to work in all C#/.Net ecosystems, including Unity, Mono, .Net Framework, .Net Core, UI frameworks, and AOT compilation. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.
 
 ProtoPromise conforms to the [Promises/A+ Spec](https://promisesaplus.com/) as far as is possible with C# (using static typing instead of dynamic), and further extends it to support Cancelations and Progress.
 
@@ -26,12 +26,14 @@ This library took inspiration from [ES6 Promises](https://developer.mozilla.org/
 
 ## Latest Updates
 
-## v 2.0.1 - April 7, 2022
+## v 2.0.2 - April 25, 2022
 
-- Fixed a memory leak with All/Merge/Race/First promises when object pooling is enabled.
-- Fixed state check in `PromiseYieldInstruction` when the promise is already complete.
-- Less pooled memory when `T` of `Promise<T>` is a reference type and used by more than 1 types (example: `Promise<string>` and `Promise<object>`).
-- More efficient execution in the common case.
+- Fixed `Promise.AwaitWithProgress` not working in IL2CPP.
+- Fixed a rare race condition where a canceled promise could cause an invalid cast exception.
+- Fixed boxing nullable value-types.
+- Reduced size of cancelable promises.
+- Subscribing to progress now runs in O(1) time and consumes O(1) memory, down from O(n) for both.
+- Increased precision of progress, from 1/(2^13) to 1/(2^16).
 
 See [Release Notes](ReleaseNotes.md) for the full changelog.
 
@@ -84,15 +86,15 @@ See [Release Notes](ReleaseNotes.md) for the full changelog.
 
 ### Unity
 
-- Install via package manager (recommended)
+- Install via Unity's Asset Store
+
+Add to your assets from the Asset Store at https://assetstore.unity.com/packages/tools/integration/protopromise-181997.
+
+- Install via package manager
 
 In the Package Manager, open the dropdown and click on `Add Package from git url` and enter `https://github.com/TimCassell/ProtoPromise.git?path=ProtoPromise_Unity/Assets/Plugins/ProtoPromise`.
 Or add `"com.timcassell.protopromise": "https://github.com/TimCassell/ProtoPromise.git?path=ProtoPromise_Unity/Assets/Plugins/ProtoPromise"` to `Packages/manifest.json`.
 You may append `#vX.X.X` to use a specific version, for exampe `#v2.0.0`.
-
-- Install via Unity's Asset Store
-
-Add to your assets from the Asset Store at https://assetstore.unity.com/packages/tools/integration/protopromise-181997.
 
 - Download unitypackage from GitHub
 
@@ -376,12 +378,6 @@ void Func()
 }
 ```
 
-## Forget
-
-All `Promise` and `Promise<T>` objects must either be awaited (using the `await` keyword or `.Then` or `.Catch`, etc or passing into Promise.`All`, `Race`, etc), returned, or forgotten. `promise.Forget()` means you are done with the promise and no more operations will be performed on it. It is the call that allows the backing object to be repooled and uncaught rejections to be reported. The C# compiler will warn when you do not await or use an awaitable object, and calling `Forget()` is the proper way to fix that warning.
-
-See previous examples that demonstrate returning promises, awaiting promises, and forgetting promises after a promise chain.
-
 ### Type Matching Error Handling
 
 Promises can be rejected with any type of object or value, so you may decide to filter the type you want to handle:
@@ -420,6 +416,12 @@ rejectedPromise
 When `Catch` is omitted, or none of the filters apply, an `UnhandledException` is sent to the `Promise.Config.UncaughtRejectionHandler` if it exists. If it does not exist, a `System.AggregateException` (which contains `UnhandledException`s) is thrown on the `Promise.Config.ForegroundContext` if it exists, or `Promise.Config.BackgroundContext` if it does not.
 
 `UnhandledException`s wrap the rejections and contain the full causality trace so you can more easily debug what caused an error to occur in your async functions. Causality traces for `.Then` API is only available in `DEBUG` mode, for performance reasons (See [Compiler Options](#compiler-options)). Exceptions in async functions contain the async stack traces natively.
+
+## Forget
+
+All `Promise` and `Promise<T>` objects must either be awaited (using the `await` keyword or `.Then` or `.Catch`, etc or passing into Promise.`All`, `Race`, etc), returned, or forgotten. `promise.Forget()` means you are done with the promise and no more operations will be performed on it. It is the call that allows the backing object to be repooled and uncaught rejections to be reported. The C# compiler will warn when you do not await or use an awaitable object, and calling `Forget()` is the proper way to fix that warning.
+
+See previous examples that demonstrate returning promises, awaiting promises, and forgetting promises after a promise chain.
 
 ## Promises that are already settled
 

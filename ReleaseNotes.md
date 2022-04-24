@@ -1,5 +1,22 @@
 # Release Notes
 
+## v 2.0.2 - April 25, 2022
+
+Fixes:
+
+- Fixed `Promise.AwaitWithProgress` not working in IL2CPP.
+- Fixed a rare race condition where a canceled promise could cause an invalid cast exception.
+
+Optimizations:
+
+- Fixed boxing nullable value-types.
+- Reduced size of cancelable promises.
+- Subscribing to progress now runs in O(1) time and consumes O(1) memory, down from O(n) for both.
+
+Misc:
+
+- Increased precision of progress, from 1/(2^13) to 1/(2^16).
+
 ## v 2.0.1 - April 7, 2022
 
 Fixes:

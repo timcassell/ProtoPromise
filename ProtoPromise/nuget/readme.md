@@ -11,7 +11,7 @@ Robust and efficient library for management of asynchronous operations.
 - Combine async operations
 - CLS compliant
 
-This library was built to work in all C#/.Net ecosystems, including Unity, Mono, .Net Framework, .Net Core and UI frameworks. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.
+This library was built to work in all C#/.Net ecosystems, including Unity, Mono, .Net Framework, .Net Core, UI frameworks, and AOT compilation. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.
 
 ProtoPromise conforms to the [Promises/A+ Spec](https://promisesaplus.com/) as far as is possible with C# (using static typing instead of dynamic), and further extends it to support Cancelations and Progress.
 
