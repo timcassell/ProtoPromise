@@ -30,10 +30,15 @@ jobs:
           echo "version ${VERSION} not found in ProtoPromise.nuspec"
           exit 1
         fi
-        if ! grep -q '"version": "${VERSION}"' ProtoPromise_Unity/Assets/Plugins/ProtoPromise/package.json; then
+        if ! grep -q "\"version\": \"${VERSION}\"" ProtoPromise_Unity/Assets/Plugins/ProtoPromise/package.json; then
           echo "version ${VERSION} not found in package.json"
           exit 1
         fi
+
+    - name: Setup nuget
+      uses: nuget/setup-nuget@v1
+      with:
+        nuget-api-key: ${{ secrets.NUGET_API_KEY }}
 
     - name: Build Debug
       run: dotnet build -c Debug
