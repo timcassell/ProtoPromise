@@ -1,4 +1,4 @@
-﻿For each new release, update the version in both `ProtoPromise.csproj` and `ProtoPromise.nuspec`.
+﻿For each new release, update the version in both `ProtoPromise.csproj` and `ProtoPromise.nuspec` and `package.json`.
 
 To create the UnityPackage for releases:
 
@@ -10,15 +10,6 @@ To create the UnityPackage for releases:
 6. Repeat these steps for each new release.
 
 Unity version may need to be updated to use the earliest version that the Asset Store Tools supports.
-
-
-To pack and publish the Nuget package:
-
-1. Build `Release` and `Debug` configurations.
-2. Run `nuget pack ProtoPromise.nuspec` to generate the package.
-3. Run `dotnet nuget push TimCassell.ProtoPromise.2.0.0.nupkg --api-key {nuget api key} --source https://api.nuget.org/v3/index.json` to upload the package to nuget.org.
-
-This process may be automated in CI at some point. Unfortunately, Unity package uploads and submits cannot be automated.
 
 
 By default, ProtoPromise types are marked with the `DebuggerNonUserCodeAttribute`, making it impossible to step into the library code with Visual Studio's debugger. To disable this (or rather, to enable debugging), define the compiler symbol `PROTO_PROMISE_DEVELOPER_MODE` in Unity, or change `<DeveloperMode>` to `true` in the non-unity csproj.

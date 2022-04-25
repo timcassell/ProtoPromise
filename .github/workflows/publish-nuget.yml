@@ -1,0 +1,50 @@
+name: Publish nuget package
+on:
+  push:
+    tags:
+    - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Verify commit exists in origin/master
+      run: |
+        git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/*
+        git branch --remote --contains | grep origin/master
+
+    - name: Set VERSION variable from tag
+      run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
+
+    - name: Verify version in csproj, nuspec, and package.json
+      run: |
+        if ! grep -q "<Version>${VERSION}</Version>" ProtoPromise/ProtoPromise.csproj; then
+          echo "version ${VERSION} not found in ProtoPromise.csproj"
+          exit 1
+        fi
+        if ! grep -q "<version>${VERSION}</version>" ProtoPromise/nuget/ProtoPromise.nuspec; then
+          echo "version ${VERSION} not found in ProtoPromise.nuspec"
+          exit 1
+        fi
+        if ! grep -q '"version": "${VERSION}"' ProtoPromise_Unity/Assets/Plugins/ProtoPromise/package.json; then
+          echo "version ${VERSION} not found in package.json"
+          exit 1
+        fi
+
+    - name: Build Debug
+      run: dotnet build -c Debug
+
+    - name: Build Release
+      run: dotnet build -c Release
+
+    - name: Pack
+      run: nuget pack ProtoPromise/nuget/ProtoPromise.nuspec
+
+    - name: Push
+      run: dotnet nuget push ProtoPromise.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
+      env:
+        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}

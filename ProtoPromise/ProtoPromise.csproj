@@ -4,7 +4,7 @@
     <TargetFrameworks>net35;net40;net45;net47;netstandard2.0</TargetFrameworks>
     <DefineConstants>CSHARP_7_3_OR_NEWER</DefineConstants>
     <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
-    <Version>2.0.1</Version>
+    <Version>2.0.2</Version>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <!--Only for function pointers in await override implementation. All other code should be C# 4 compatible for old Unity versions.-->
     <LangVersion>9</LangVersion>
