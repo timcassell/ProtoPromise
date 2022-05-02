@@ -393,10 +393,17 @@ namespace Proto.Promises
                 get { return _head != null; }
             }
 
+            [MethodImpl(InlineOption)]
             internal ValueLinkedQueue(T head, T tail)
             {
                 _head = head;
                 _tail = tail;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal T PeekTail()
+            {
+                return _tail;
             }
 
             internal void Enqueue(T item)
@@ -412,69 +419,6 @@ namespace Proto.Promises
                     _tail.Next = item;
                     _tail = item;
                 }
-            }
-
-            internal void Push(T item)
-            {
-                AssertNotInCollection(item);
-
-                if (_head == null)
-                {
-                    _head = _tail = item;
-                }
-                else
-                {
-                    item.Next = _head;
-                    _head = item;
-                }
-            }
-
-            internal bool TryRemove(T item)
-            {
-                if (IsEmpty)
-                {
-                    return false;
-                }
-                if (item == _head)
-                {
-                    _head = _head.Next;
-                    if (item == _tail)
-                    {
-                        _tail = null;
-                    }
-                    MarkRemovedFromCollection(item);
-                    return true;
-                }
-                T node = _head;
-                T next = node.Next;
-                while (next != null)
-                {
-                    if (next == item)
-                    {
-                        node.Next = next.Next;
-                        if (item == _tail)
-                        {
-                            _tail = node;
-                        }
-                        MarkRemovedFromCollection(item);
-                        return true;
-                    }
-                    node = next;
-                    next = node.Next;
-                }
-                return false;
-            }
-
-            internal bool Contains(T item)
-            {
-                foreach (T node in this)
-                {
-                    if (item == node)
-                    {
-                        return true;
-                    }
-                }
-                return false;
             }
 
             internal ValueLinkedStack<T> MoveElementsToStack()

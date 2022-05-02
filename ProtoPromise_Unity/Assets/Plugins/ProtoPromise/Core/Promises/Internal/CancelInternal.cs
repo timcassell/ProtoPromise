@@ -32,27 +32,28 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void Register(CancelationToken cancelationToken, ICancelable owner)
                 {
+                    // _retainCounter is necessary to make sure the promise is disposed after the cancelation has invoked or unregistered,
+                    // and the previous promise has handled this.
+                    _retainCounter = 2;
                     cancelationToken.TryRegister(owner, out _cancelationRegistration);
                 }
 
                 internal bool TryUnregister(PromiseSingleAwait owner)
                 {
                     ThrowIfInPool(owner);
-                    bool isCanceling;
-                    bool unregistered = _cancelationRegistration.TryUnregister(out isCanceling);
-                    if (unregistered | (!isCanceling & owner.State == Promise.State.Pending))
-                    {
-                        owner._smallFields.InterlockedTryReleaseComplete();
-                        return true;
-                    }
-                    return false;
+                    return TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & owner.State == Promise.State.Pending;
                 }
 
-                internal static void SetNextAfterCanceled(PromiseSingleAwait owner, ref PromiseRef handler, out HandleablePromiseBase nextHandler)
+                internal static void SetNextAfterCanceled(ref PromiseRef handler, out HandleablePromiseBase nextHandler)
                 {
                     nextHandler = null;
                     handler.MaybeDispose();
-                    handler = owner;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal bool TryRelease()
+                {
+                    return InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0;
                 }
             }
 
@@ -61,17 +62,23 @@ namespace Proto.Promises
                 protected void HandleFromCancelation()
                 {
                     ThrowIfInPool(this);
-                    HandleablePromiseBase nextHandler;
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                    lock (this)
-#endif
+                    SetResult(CancelContainerVoid.GetOrCreate(), Promise.State.Canceled);
+                    HandleablePromiseBase nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel._instance, null);
+                    if (nextHandler == null)
                     {
-                        SetResult(CancelContainerVoid.GetOrCreate(), Promise.State.Canceled);
-                        Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                        nextHandler = Interlocked.Exchange(ref _waiter, null);
+                        return;
                     }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    if (nextHandler == PromiseCompletionSentinel._instance)
+                    {
+                        throw new System.InvalidOperationException("waiter was PromiseCompletionSentinel");
+                    }
+#endif
+                    // Set the waiter to InvalidAwaitSentinel to break the chain.
+                    _waiter = InvalidAwaitSentinel._instance;
                     var executionScheduler = new ExecutionScheduler(true);
-                    MaybeHandleNext(nextHandler, ref executionScheduler);
+                    // We already checked nextHandler for null, so we can call HandleNext instead of MaybeHandleNext.
+                    HandleNext(nextHandler, ref executionScheduler);
                     executionScheduler.Execute();
                 }
             }
@@ -89,13 +96,21 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolve<TResolver>>()
                         ?? new CancelablePromiseResolve<TResolver>();
-                    promise.Reset(depth, 3);
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
                 }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
                 {
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
@@ -109,15 +124,19 @@ namespace Proto.Promises
                     bool unregistered = _cancelationHelper.TryUnregister(this);
                     if (unregistered & handler.State == Promise.State.Resolved)
                     {
+                        _cancelationHelper.TryRelease();
                         resolveCallback.InvokeResolver(ref handler, out nextHandler, this, ref executionScheduler);
                     }
                     else if (unregistered)
                     {
-                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        handler.SuppressRejection = true;
+                        _cancelationHelper.TryRelease();
+                        HandleSelf(ref handler, out nextHandler);
                     }
                     else
                     {
-                        CancelationHelper.SetNextAfterCanceled(this, ref handler, out nextHandler);
+                        MaybeDispose();
+                        CancelationHelper.SetNextAfterCanceled(ref handler, out nextHandler);
                     }
                 }
 
@@ -140,13 +159,21 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolvePromise<TResolver>>()
                         ?? new CancelablePromiseResolvePromise<TResolver>();
-                    promise.Reset(depth, 3);
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
                 }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
                 {
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
@@ -159,7 +186,8 @@ namespace Proto.Promises
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        handler.SuppressRejection = true;
+                        HandleSelf(ref handler, out nextHandler);
                         return;
                     }
 
@@ -168,16 +196,20 @@ namespace Proto.Promises
                     bool unregistered = _cancelationHelper.TryUnregister(this);
                     if (unregistered & handler.State == Promise.State.Resolved)
                     {
+                        _cancelationHelper.TryRelease();
                         handlerDisposedAfterCallback = _resolveWillDisposeAfterSecondAwait;
                         resolveCallback.InvokeResolver(ref handler, out nextHandler, this, ref executionScheduler);
                     }
                     else if (unregistered)
                     {
-                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        handler.SuppressRejection = true;
+                        _cancelationHelper.TryRelease();
+                        HandleSelf(ref handler, out nextHandler);
                     }
                     else
                     {
-                        CancelationHelper.SetNextAfterCanceled(this, ref handler, out nextHandler);
+                        MaybeDispose();
+                        CancelationHelper.SetNextAfterCanceled(ref handler, out nextHandler);
                     }
                 }
 
@@ -201,14 +233,22 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolveReject<TResolver, TRejecter>>()
                         ?? new CancelablePromiseResolveReject<TResolver, TRejecter>();
-                    promise.Reset(depth, 3);
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
                 }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
                 {
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
@@ -225,21 +265,26 @@ namespace Proto.Promises
                     bool unregistered = _cancelationHelper.TryUnregister(this);
                     if (unregistered & state == Promise.State.Resolved)
                     {
+                        _cancelationHelper.TryRelease();
                         resolveCallback.InvokeResolver(ref handler, out nextHandler, this, ref executionScheduler);
                     }
                     else if (!unregistered)
                     {
-                        CancelationHelper.SetNextAfterCanceled(this, ref handler, out nextHandler);
+                        MaybeDispose();
+                        CancelationHelper.SetNextAfterCanceled(ref handler, out nextHandler);
                     }
                     else if (state == Promise.State.Rejected)
                     {
+                        handler.SuppressRejection = true;
+                        _cancelationHelper.TryRelease();
                         invokingRejected = true;
                         handlerDisposedAfterCallback = true;
                         rejectCallback.InvokeRejecter(ref handler, out nextHandler, this, ref executionScheduler);
                     }
                     else
                     {
-                        HandleSelf(ref handler , out nextHandler, ref executionScheduler);
+                        _cancelationHelper.TryRelease();
+                        HandleSelf(ref handler, out nextHandler);
                     }
                 }
 
@@ -263,14 +308,22 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolveRejectPromise<TResolver, TRejecter>>()
                         ?? new CancelablePromiseResolveRejectPromise<TResolver, TRejecter>();
-                    promise.Reset(depth, 3);
+                    promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
                 }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
                 {
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
@@ -284,7 +337,8 @@ namespace Proto.Promises
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        handler.SuppressRejection = true;
+                        HandleSelf(ref handler, out nextHandler);
                         return;
                     }
 
@@ -295,22 +349,27 @@ namespace Proto.Promises
                     bool unregistered = _cancelationHelper.TryUnregister(this);
                     if (unregistered & state == Promise.State.Resolved)
                     {
+                        _cancelationHelper.TryRelease();
                         handlerDisposedAfterCallback = _resolveWillDisposeAfterSecondAwait;
                         resolveCallback.InvokeResolver(ref handler, out nextHandler, this, ref executionScheduler);
                     }
                     else if (!unregistered)
                     {
-                        CancelationHelper.SetNextAfterCanceled(this, ref handler, out nextHandler);
+                        MaybeDispose();
+                        CancelationHelper.SetNextAfterCanceled(ref handler, out nextHandler);
                     }
                     else if (state == Promise.State.Rejected)
                     {
+                        handler.SuppressRejection = true;
+                        _cancelationHelper.TryRelease();
                         invokingRejected = true;
                         handlerDisposedAfterCallback = true;
                         rejectCallback.InvokeRejecter(ref handler, out nextHandler, this, ref executionScheduler);
                     }
                     else
                     {
-                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        _cancelationHelper.TryRelease();
+                        HandleSelf(ref handler, out nextHandler);
                     }
                 }
 
@@ -333,13 +392,21 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseContinue<TContinuer>>()
                         ?? new CancelablePromiseContinue<TContinuer>();
-                    promise.Reset(depth, 3);
+                    promise.Reset(depth);
                     promise._continuer = continuer;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
                 }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
                 {
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
@@ -352,11 +419,14 @@ namespace Proto.Promises
                     handlerDisposedAfterCallback = true;
                     if (_cancelationHelper.TryUnregister(this))
                     {
+                        handler.SuppressRejection = true;
+                        _cancelationHelper.TryRelease();
                         _continuer.Invoke(ref handler, out nextHandler, this, ref executionScheduler);
                     }
                     else
                     {
-                        CancelationHelper.SetNextAfterCanceled(this, ref handler, out nextHandler);
+                        MaybeDispose();
+                        CancelationHelper.SetNextAfterCanceled(ref handler, out nextHandler);
                     }
                 }
 
@@ -379,13 +449,21 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseContinuePromise<TContinuer>>()
                         ?? new CancelablePromiseContinuePromise<TContinuer>();
-                    promise.Reset(depth, 3);
+                    promise.Reset(depth);
                     promise._continuer = continuer;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
                 }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
                 {
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
@@ -398,7 +476,8 @@ namespace Proto.Promises
                     if (_continuer.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        handler.SuppressRejection = true;
+                        HandleSelf(ref handler, out nextHandler);
                         return;
                     }
 
@@ -407,11 +486,14 @@ namespace Proto.Promises
                     handlerDisposedAfterCallback = true;
                     if (_cancelationHelper.TryUnregister(this))
                     {
+                        handler.SuppressRejection = true;
+                        _cancelationHelper.TryRelease();
                         callback.Invoke(ref handler, out nextHandler, this, ref executionScheduler);
                     }
                     else
                     {
-                        CancelationHelper.SetNextAfterCanceled(this, ref handler, out nextHandler);
+                        MaybeDispose();
+                        CancelationHelper.SetNextAfterCanceled(ref handler, out nextHandler);
                     }
                 }
 
@@ -434,13 +516,21 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseCancel<TCanceler>>()
                         ?? new CancelablePromiseCancel<TCanceler>();
-                    promise.Reset(depth, 3);
+                    promise.Reset(depth);
                     promise._canceler = canceler;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
                 }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
                 {
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
@@ -454,15 +544,19 @@ namespace Proto.Promises
                     bool unregistered = _cancelationHelper.TryUnregister(this);
                     if (unregistered & handler.State == Promise.State.Canceled)
                     {
+                        _cancelationHelper.TryRelease();
                         callback.InvokeResolver(ref handler, out nextHandler, this, ref executionScheduler);
                     }
                     else if (unregistered)
                     {
-                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        handler.SuppressRejection = true;
+                        _cancelationHelper.TryRelease();
+                        HandleSelf(ref handler, out nextHandler);
                     }
                     else
                     {
-                        CancelationHelper.SetNextAfterCanceled(this, ref handler, out nextHandler);
+                        MaybeDispose();
+                        CancelationHelper.SetNextAfterCanceled(ref handler, out nextHandler);
                     }
                 }
 
@@ -485,13 +579,21 @@ namespace Proto.Promises
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseCancelPromise<TCanceler>>()
                         ?? new CancelablePromiseCancelPromise<TCanceler>();
-                    promise.Reset(depth, 3);
+                    promise.Reset(depth);
                     promise._canceler = canceler;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
                 }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
                 {
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
@@ -504,7 +606,8 @@ namespace Proto.Promises
                     if (_canceler.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        handler.SuppressRejection = true;
+                        HandleSelf(ref handler, out nextHandler);
                         return;
                     }
 
@@ -513,16 +616,20 @@ namespace Proto.Promises
                     bool unregistered = _cancelationHelper.TryUnregister(this);
                     if (unregistered & handler.State == Promise.State.Canceled)
                     {
+                        _cancelationHelper.TryRelease();
                         handlerDisposedAfterCallback = _resolveWillDisposeAfterSecondAwait;
                         callback.InvokeResolver(ref handler, out nextHandler, this, ref executionScheduler);
                     }
                     else if (unregistered)
                     {
-                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        handler.SuppressRejection = true;
+                        _cancelationHelper.TryRelease();
+                        HandleSelf(ref handler, out nextHandler);
                     }
                     else
                     {
-                        CancelationHelper.SetNextAfterCanceled(this, ref handler, out nextHandler);
+                        MaybeDispose();
+                        CancelationHelper.SetNextAfterCanceled(ref handler, out nextHandler);
                     }
                 }
 

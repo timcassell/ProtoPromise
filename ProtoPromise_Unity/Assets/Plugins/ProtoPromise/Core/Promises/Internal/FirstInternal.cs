@@ -29,36 +29,31 @@ namespace Proto.Promises
             {
                 private FirstPromise() { }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
+                {
+                    if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
                 {
                     base.Dispose();
-#if PROMISE_DEBUG
-                    lock (_locker)
-                    {
-                        while (_passThroughs.IsNotEmpty)
-                        {
-                            _passThroughs.Pop().Release();
-                        }
-                    }
-#endif
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                internal static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, ushort depth)
+                internal static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<FirstPromise>()
                         ?? new FirstPromise();
 
-                    checked
-                    {
-                        // Extra retain for handle.
-                        ++pendingAwaits;
-                    }
+                    promise._waitCount = pendingAwaits;
                     unchecked
                     {
-                        promise._waitCount = (int) pendingAwaits;
+                        promise._retainCounter = pendingAwaits + 1;
                     }
-                    promise.Reset(depth, 2);
+                    promise.Reset(depth);
 
                     while (promisePassThroughs.IsNotEmpty)
                     {
@@ -74,17 +69,17 @@ namespace Proto.Promises
                         if (promise._valueContainer != null)
                         {
                             // This was completed potentially before all passthroughs were hooked up. Release all remaining passthroughs.
-                            int addCount = 0;
+                            int releaseCount = 0;
                             while (promisePassThroughs.IsNotEmpty)
                             {
                                 var p = promisePassThroughs.Pop();
                                 p.Owner.MaybeDispose();
                                 p.Release();
-                                --addCount;
+                                ++releaseCount;
                             }
-                            if (addCount != 0 && InterlockedAddWithOverflowCheck(ref promise._waitCount, addCount, 0) == 0)
+                            if (releaseCount != 0 && InterlockedAddWithOverflowCheck(ref promise._retainCounter, -releaseCount, releaseCount - 1) == 0)
                             {
-                                promise.MaybeDispose();
+                                promise.Dispose();
                             }
                         }
                     }
@@ -92,41 +87,29 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal override void Handle(ref PromiseRef handler, ValueContainer valueContainer, PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-                    // Retain while handling, then release when complete for thread safety.
-                    InterlockedRetainDisregardId();
+                    var handler = passThrough.Owner;
+                    var valueContainer = handler._valueContainer;
                     nextHandler = null;
-
-                    if (handler.State != Promise.State.Resolved) // Rejected/Canceled
+                    var state = handler.State;
+                    if (state != Promise.State.Resolved) // Rejected/Canceled
                     {
-                        int remaining = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
-                        if (remaining == 1)
+                        handler.SuppressRejection = true;
+                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
+                            && Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
-                            if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
-                            {
-                                _valueContainer = valueContainer.Clone();
-                                Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
-                            }
-                        }
-                        else if (remaining == 0)
-                        {
-                            _smallFields.InterlockedTryReleaseComplete();
+                            SetResultAndMaybeHandle(valueContainer.Clone(), state, out nextHandler);
                         }
                     }
                     else // Resolved
                     {
                         if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
-                            _valueContainer = valueContainer.Clone();
-                            Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
+                            SetResultAndMaybeHandle(valueContainer.Clone(), state, out nextHandler);
                         }
-                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
-                        {
-                            _smallFields.InterlockedTryReleaseComplete();
-                        }
+                        InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                     }
-
                     MaybeDispose();
                 }
             }

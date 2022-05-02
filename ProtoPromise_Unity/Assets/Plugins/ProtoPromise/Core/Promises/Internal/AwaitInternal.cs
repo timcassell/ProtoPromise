@@ -18,7 +18,6 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using Proto.Promises.Async.CompilerServices;
 
 namespace Proto.Promises
@@ -27,10 +26,20 @@ namespace Proto.Promises
     {
         partial class PromiseRef
         {
+            [MethodImpl(InlineOption)]
+            internal TResult GetResult<TResult>(short promiseId)
+            {
+                // TODO: when _ref is changed to PromiseRef<T>, implement GetResult(short promiseId) for thread-safe verification.
+                TResult result = GetResult<TResult>();
+                MaybeDispose();
+                return result;
+            }
+
 #if NET_LEGACY
             [MethodImpl(MethodImplOptions.NoInlining)]
-            internal void Throw(Promise.State state)
+            internal void Throw(Promise.State state, short promiseId)
             {
+                // TODO: verify promiseId in a thread-safe manner.
                 if (state == Promise.State.Canceled)
                 {
                     MaybeDispose();
@@ -38,6 +47,7 @@ namespace Proto.Promises
                 }
                 if (state == Promise.State.Rejected)
                 {
+                    SuppressRejection = true;
                     var exception = ((IRejectValueContainer) _valueContainer).GetException();
                     MaybeDispose();
                     throw exception;
@@ -46,8 +56,9 @@ namespace Proto.Promises
             }
 #else
             [MethodImpl(MethodImplOptions.NoInlining)]
-            internal System.Runtime.ExceptionServices.ExceptionDispatchInfo GetExceptionDispatchInfo(Promise.State state)
+            internal System.Runtime.ExceptionServices.ExceptionDispatchInfo GetExceptionDispatchInfo(Promise.State state, short promiseId)
             {
+                // TODO: verify promiseId in a thread-safe manner.
                 if (state == Promise.State.Canceled)
                 {
                     MaybeDispose();
@@ -55,6 +66,7 @@ namespace Proto.Promises
                 }
                 if (state == Promise.State.Rejected)
                 {
+                    SuppressRejection = true;
                     var exceptionDispatchInfo = ((IRejectValueContainer) _valueContainer).GetExceptionDispatchInfo();
                     MaybeDispose();
                     return exceptionDispatchInfo;
@@ -66,17 +78,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, short promiseId)
             {
-                InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
-                HookupNewWaiter(AwaiterRef.GetOrCreate(continuation));
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void AwaitOnCompletedInternal(AsyncPromiseRef asyncPromiseRef, short promiseId)
-            {
-                asyncPromiseRef.ValidateAwait(this, promiseId);
-                InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
-                asyncPromiseRef.SetPreviousAndProgress(this, float.NaN, float.NaN);
-                HookupNewWaiter(asyncPromiseRef);
+                HookupNewWaiter(promiseId, AwaiterRef.GetOrCreate(continuation));
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -244,14 +246,11 @@ namespace Proto.Promises
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
 
 #if PROMISE_DEBUG
-                    internal static void ValidateAwaiterOperation(Promise promise, bool checkForIncremented, int skipFrames)
+        internal static void ValidateAwaiterOperation(Promise promise, int skipFrames)
         {
-            bool isValid = promise.IsValid
-                // Also check for id + 1 since this might be called after OnCompleted is hooked up or the promise is forgotten.
-                || (checkForIncremented && promise._target._ref != null && promise._target.Id + 1 == promise._target._ref.Id);
-            if (!isValid)
+            if (!promise.IsValid)
             {
-                throw new InvalidOperationException("Attempted to use PromiseAwaiter incorrectly. You must call IsCompleted, then maybe OnCompleted, then GetResult when it is complete.", GetFormattedStacktrace(skipFrames + 1));
+                throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(skipFrames + 1));
             }
         }
 #endif
@@ -296,23 +295,22 @@ namespace Proto.Promises
             public void GetResult()
             {
                 var promise = _awaiter._promise;
-                ValidateGetResult(promise, 1);
+                ValidateOperation(promise, 1);
                 var _ref = promise._ref;
                 if (_ref == null)
                 {
                     return;
                 }
-                _ref.IncrementIdAndSetFlags(promise.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    _ref.MaybeDispose();
+                    _ref.GetResult<Internal.VoidResult>(promise.Id);
                     return;
                 }
 #if NET_LEGACY
-                _ref.Throw(state);
+                _ref.Throw(state, promise.Id);
 #else
-                _ref.GetExceptionDispatchInfo(state).Throw();
+                _ref.GetExceptionDispatchInfo(state, promise.Id).Throw();
 #endif
             }
 
@@ -331,14 +329,14 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
             {
-                _awaiter._promise._ref.AwaitOnCompletedInternal(asyncPromiseRef, _awaiter._promise.Id);
+                asyncPromiseRef.HookupWaiter(_awaiter._promise._ref, _awaiter._promise.Id);
             }
 
-            static partial void ValidateGetResult(Promise promise, int skipFrames);
+            static partial void ValidateOperation(Promise promise, int skipFrames);
 #if PROMISE_DEBUG
-            static partial void ValidateGetResult(Promise promise, int skipFrames)
+            static partial void ValidateOperation(Promise promise, int skipFrames)
             {
-                Internal.ValidateAwaiterOperation(promise, true, skipFrames + 1);
+                Internal.ValidateAwaiterOperation(promise, skipFrames + 1);
             }
 #endif
         } // struct PromiseAwaiterVoid
@@ -385,24 +383,21 @@ namespace Proto.Promises
             public T GetResult()
             {
                 var promise = _promise;
-                ValidateGetResult(promise, 1);
+                ValidateOperation(promise, 1);
                 var _ref = promise._ref;
                 if (_ref == null)
                 {
                     return promise.Result;
                 }
-                _ref.IncrementIdAndSetFlags(promise.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    T result = _ref.GetResult<T>();
-                    _ref.MaybeDispose();
-                    return result;
+                    return _ref.GetResult<T>(promise.Id);
                 }
 #if NET_LEGACY
-                _ref.Throw(state);
+                _ref.Throw(state, promise.Id);
 #else
-                _ref.GetExceptionDispatchInfo(state).Throw();
+                _ref.GetExceptionDispatchInfo(state, promise.Id).Throw();
 #endif
                 throw new Exception(); // This will never be reached, but the compiler needs help understanding that.
             }
@@ -430,11 +425,10 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
             {
-                _promise._ref.AwaitOnCompletedInternal(asyncPromiseRef, _promise.Id);
+                asyncPromiseRef.HookupWaiter(_promise._ref, _promise.Id);
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
-            static partial void ValidateGetResult(Promise promise, int skipFrames);
             static partial void ValidateOperation(Promise promise, int skipFrames);
 #if PROMISE_DEBUG
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
@@ -442,14 +436,9 @@ namespace Proto.Promises
                 Internal.ValidateArgument(arg, argName, skipFrames + 1);
             }
 
-            static partial void ValidateGetResult(Promise promise, int skipFrames)
-            {
-                Internal.ValidateAwaiterOperation(promise, true, skipFrames + 1);
-            }
-
             static partial void ValidateOperation(Promise promise, int skipFrames)
             {
-                Internal.ValidateAwaiterOperation(promise, false, skipFrames + 1);
+                Internal.ValidateAwaiterOperation(promise, skipFrames + 1);
             }
 #endif
         } // struct PromiseAwaiter<T>
@@ -503,17 +492,16 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                _ref.IncrementIdAndSetFlags(promise.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    _ref.MaybeDispose();
+                    _ref.GetResult<Internal.VoidResult>(promise.Id);
                     return;
                 }
 #if NET_LEGACY
-                _ref.Throw(state);
+                _ref.Throw(state, promise.Id);
 #else
-                _ref.GetExceptionDispatchInfo(state).Throw();
+                _ref.GetExceptionDispatchInfo(state, promise.Id).Throw();
 #endif
             }
 
@@ -539,7 +527,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             static partial void ValidateGetResult(Promise promise, int skipFrames)
             {
-                Internal.ValidateAwaiterOperation(promise, true, skipFrames + 1);
+                Internal.ValidateAwaiterOperation(promise, skipFrames + 1);
             }
 #endif
         } // struct PromiseAwaiterVoid
@@ -596,24 +584,21 @@ namespace Proto.Promises
             public T GetResult()
             {
                 var promise = _promise;
-                ValidateGetResult(promise, 1);
+                ValidateOperation(promise, 1);
                 var _ref = promise._ref;
                 if (_ref == null)
                 {
                     return promise.Result;
                 }
-                _ref.IncrementIdAndSetFlags(promise.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    T result = _ref.GetResult<T>();
-                    _ref.MaybeDispose();
-                    return result;
+                    return _ref.GetResult<T>(promise.Id);
                 }
 #if NET_LEGACY
-                _ref.Throw(state);
+                _ref.Throw(state, promise.Id);
 #else
-                _ref.GetExceptionDispatchInfo(state).Throw();
+                _ref.GetExceptionDispatchInfo(state, promise.Id).Throw();
 #endif
                 throw new Exception(); // This will never be reached, but the compiler needs help understanding that.
             }
@@ -645,7 +630,6 @@ namespace Proto.Promises
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
-            static partial void ValidateGetResult(Promise promise, int skipFrames);
             static partial void ValidateOperation(Promise promise, int skipFrames);
 #if PROMISE_DEBUG
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
@@ -653,14 +637,9 @@ namespace Proto.Promises
                 Internal.ValidateArgument(arg, argName, skipFrames + 1);
             }
 
-            static partial void ValidateGetResult(Promise promise, int skipFrames)
-            {
-                Internal.ValidateAwaiterOperation(promise, true, skipFrames + 1);
-            }
-
             static partial void ValidateOperation(Promise promise, int skipFrames)
             {
-                Internal.ValidateAwaiterOperation(promise, false, skipFrames + 1);
+                Internal.ValidateAwaiterOperation(promise, skipFrames + 1);
             }
 #endif
         } // struct PromiseAwaiter<T>

@@ -22,12 +22,12 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             if (promise1._target._ref == null | promise2._target._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, false);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 2, depth);
             return new Promise(promise, promise.Id, depth);
@@ -48,14 +48,14 @@ namespace Proto.Promises
             ValidateArgument(promise3, "promise3", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, false);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 3, depth);
             return new Promise(promise, promise.Id, depth);
@@ -77,16 +77,16 @@ namespace Proto.Promises
             ValidateArgument(promise4, "promise4", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, false);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3, Internal.PromiseFlags.WasAwaitedOrForgotten));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
 
             var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 4, depth);
             return new Promise(promise, promise.Id, depth);
@@ -122,7 +122,7 @@ namespace Proto.Promises
                 throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
             }
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ushort minDepth = ushort.MaxValue;
 
             int index = -1; // Index isn't necessary for Race, but might help with debugging.
@@ -130,14 +130,14 @@ namespace Proto.Promises
             {
                 var p = promises.Current;
                 ValidateElement(p, "promises", 1);
-                if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth, Internal.PromiseFlags.WasAwaitedOrForgotten))
+                if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth))
                 {
                     // Validate and release remaining elements.
                     while (promises.MoveNext())
                     {
                         p = promises.Current;
                         ValidateElement(p, "promises", 1);
-                        Internal.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten);
+                        Internal.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id, false);
                         minDepth = Math.Min(minDepth, p._target.Depth);
                     }
                     // Repool any created passthroughs.
@@ -204,12 +204,12 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             if (promise1._target._ref == null | promise2._target._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, true);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 2, depth);
             return new Promise(promise, promise.Id, depth);
@@ -230,14 +230,14 @@ namespace Proto.Promises
             ValidateArgument(promise3, "promise3", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, true);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 3, depth);
             return new Promise(promise, promise.Id, depth);
@@ -259,16 +259,16 @@ namespace Proto.Promises
             ValidateArgument(promise4, "promise4", 1);
             if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, true);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
 
             var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 4, depth);
             return new Promise(promise, promise.Id, depth);
@@ -304,7 +304,7 @@ namespace Proto.Promises
                 throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(1));
             }
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ushort minDepth = ushort.MaxValue;
 
             int index = -1; // Index isn't necessary for First, but might help with debugging.
@@ -312,14 +312,14 @@ namespace Proto.Promises
             {
                 var p = promises.Current;
                 ValidateElement(p, "promises", 1);
-                if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection))
+                if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth))
                 {
                     // Validate and release remaining elements.
                     while (promises.MoveNext())
                     {
                         p = promises.Current;
                         ValidateElement(p, "promises", 1);
-                        Internal.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id, Internal.PromiseFlags.WasAwaitedOrForgotten | Internal.PromiseFlags.SuppressRejection);
+                        Internal.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id, true);
                         minDepth = Math.Min(minDepth, p._target.Depth);
                     }
                     // Repool any created passthroughs.
@@ -455,7 +455,7 @@ namespace Proto.Promises
         public static Promise All(Promise promise1, Promise promise2)
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -480,7 +480,7 @@ namespace Proto.Promises
         public static Promise All(Promise promise1, Promise promise2, Promise promise3)
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -507,7 +507,7 @@ namespace Proto.Promises
         public static Promise All(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -555,7 +555,7 @@ namespace Proto.Promises
         {
             ValidateArgument(promises, "promises", 1);
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -626,7 +626,7 @@ namespace Proto.Promises
         {
             T1 value = default(T1);
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -667,7 +667,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -703,7 +703,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -742,7 +742,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2, T3>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -784,7 +784,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2, T3>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -828,7 +828,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2, T3, T4>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -875,7 +875,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2, T3, T4>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -924,7 +924,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -976,7 +976,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -1030,7 +1030,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -1087,7 +1087,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -1146,7 +1146,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6, T7>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;
@@ -1208,7 +1208,7 @@ namespace Proto.Promises
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6, T7>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
-            uint pendingCount = 0;
+            int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
             ushort maxDepth = 0;

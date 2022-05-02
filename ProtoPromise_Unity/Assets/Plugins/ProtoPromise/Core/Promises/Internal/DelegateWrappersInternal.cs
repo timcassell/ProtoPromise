@@ -308,12 +308,12 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
-                    owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                    owner.HandleSelf(ref handler, out nextHandler);
                 }
 
                 void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
                 {
-                    owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                    owner.HandleSelf(ref handler, out nextHandler);
                 }
             }
 
@@ -371,7 +371,7 @@ namespace Proto.Promises
                     owner.MaybeDisposePrevious(handler);
                     TResult result = Invoke(arg);
                     handler = owner;
-                    owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -391,11 +391,11 @@ namespace Proto.Promises
                         TResult result = Invoke(arg);
                         owner.MaybeDisposePrevious(handler);
                         handler = owner;
-                        owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleSelf(ref handler, out nextHandler);
                     }
                 }
 
@@ -410,7 +410,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleSelf(ref handler, out nextHandler);
                     }
                 }
             }
@@ -480,7 +480,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleSelf(ref handler, out nextHandler);
                     }
                 }
             }
@@ -564,7 +564,7 @@ namespace Proto.Promises
                     }
                     owner.MaybeDisposePrevious(handler);
                     handler = owner;
-                    owner.SetResultAndMaybeHandle(valueContainer, Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    owner.SetResultAndMaybeHandle(valueContainer, Promise.State.Resolved, out nextHandler);
                 }
             }
 
@@ -781,7 +781,7 @@ namespace Proto.Promises
                     owner.MaybeDisposePrevious(handler);
                     handler = owner;
                     TResult result = Invoke(arg);
-                    owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -801,11 +801,11 @@ namespace Proto.Promises
                         TResult result = Invoke(arg);
                         owner.MaybeDisposePrevious(handler);
                         handler = owner;
-                        owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                        owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleSelf(ref handler, out nextHandler);
                     }
                 }
 
@@ -820,7 +820,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleSelf(ref handler, out nextHandler);
                     }
                 }
             }
@@ -902,7 +902,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleSelf(ref handler, out nextHandler);
                     }
                 }
             }
@@ -992,7 +992,7 @@ namespace Proto.Promises
                     }
                     owner.MaybeDisposePrevious(handler);
                     handler = owner;
-                    owner.SetResultAndMaybeHandle(valueContainer, Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    owner.SetResultAndMaybeHandle(valueContainer, Promise.State.Resolved, out nextHandler);
                 }
             }
 

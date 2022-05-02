@@ -286,8 +286,7 @@ namespace Proto.Promises
                 // A promise cannot wait on itself.
                 if (other == this)
                 {
-                    other.MarkAwaited(other.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                    other.MaybeDispose();
+                    other.MaybeMarkAwaitedAndDispose(other.Id);
                     if (awaited)
                         throw new InvalidOperationException("A Promise cannot wait on itself.", string.Empty);
                     throw new InvalidReturnException("A Promise cannot wait on itself.", string.Empty);
@@ -304,8 +303,7 @@ namespace Proto.Promises
                 {
                     if (prev == this)
                     {
-                        other.MarkAwaited(other.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                        other.MaybeDispose();
+                        other.MaybeMarkAwaitedAndDispose(other.Id);
                         while (passThroughs.Count > 0)
                         {
                             passThroughs.Pop().Release();

@@ -499,15 +499,25 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                internal void HookupWaiter(PromiseRef waiter, short promiseId)
+                {
+                    ValidateAwait(waiter, promiseId);
+
+                    // TODO: detect if this is being called from another promise higher in the stack, and call AddWaiter and allow the stack to unwind instead of calling HookupNewWaiter.
+
+                    SetPreviousAndProgress(waiter, float.NaN, float.NaN);
+                    waiter.HookupExistingWaiter(promiseId, this);
+                }
+
+                [MethodImpl(InlineOption)]
                 internal void HookupWaiterWithProgress(PromiseRef waiter, short promiseId, ushort depth, float minProgress, float maxProgress)
                 {
                     ValidateAwait(waiter, promiseId);
-                    waiter.InterlockedRetainAndSetFlagsInternal(promiseId, PromiseFlags.None);
 
                     // TODO: detect if this is being called from another promise higher in the stack, and call AddWaiter and allow the stack to unwind instead of calling HookupNewWaiter.
 
                     SetPreviousAndProgress(waiter, minProgress, maxProgress);
-                    waiter.HookupNewWaiter(this);
+                    waiter.HookupExistingWaiter(promiseId, this);
                 }
             }
 
@@ -605,9 +615,9 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
                 {
-                    base.Dispose();
+                    Dispose();
                     if (_continuer != null)
                     {
                         _continuer.Dispose();
@@ -628,14 +638,7 @@ namespace Proto.Promises
                     bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                     if (isComplete)
                     {
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                        lock (this)
-#endif
-                        {
-                            Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                            nextHandler = Interlocked.Exchange(ref _waiter, null);
-                        }
-                        handler.MaybeDispose();
+                        nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel._instance, null);
                         handler = this;
                     }
                     else
@@ -669,9 +672,9 @@ namespace Proto.Promises
                         promise._stateMachine = stateMachine;
                     }
 
-                    protected override void Dispose()
+                    protected override void MaybeDispose()
                     {
-                        SuperDispose();
+                        Dispose();
                         _stateMachine = default(TStateMachine);
                         ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                     }
@@ -694,14 +697,7 @@ namespace Proto.Promises
                         bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                         if (isComplete)
                         {
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. I'm not sure why, but we need a lock here to pass multi-threaded tests.
-                            lock (this)
-#endif
-                            {
-                                Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
-                                nextHandler = Interlocked.Exchange(ref _waiter, null);
-                            }
-                            handler.MaybeDispose();
+                            nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel._instance, null);
                             handler = this;
                         }
                         else
@@ -725,18 +721,10 @@ namespace Proto.Promises
                     AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref);
                 }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
                 {
-                    base.Dispose();
+                    Dispose();
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
-                }
-
-                // Used for child to call base dispose without repooling for both types.
-                // This is necessary because C# doesn't allow `base.base.Dispose()`.
-                [MethodImpl(InlineOption)]
-                protected void SuperDispose()
-                {
-                    base.Dispose();
                 }
             }
 #endif // OPTIMIZED_ASYNC_MODE
