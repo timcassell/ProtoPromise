@@ -638,7 +638,7 @@ namespace Proto.Promises
                     bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                     if (isComplete)
                     {
-                        nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel._instance, null);
+                        nextHandler = TakeNextWaiter();
                         handler = this;
                     }
                     else
@@ -697,7 +697,7 @@ namespace Proto.Promises
                         bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                         if (isComplete)
                         {
-                            nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel._instance, null);
+                            nextHandler = TakeNextWaiter();
                             handler = this;
                         }
                         else

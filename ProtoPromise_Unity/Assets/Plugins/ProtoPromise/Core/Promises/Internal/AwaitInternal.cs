@@ -245,15 +245,29 @@ namespace Proto.Promises
         }
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
 
-#if PROMISE_DEBUG
         internal static void ValidateAwaiterOperation(Promise promise, int skipFrames)
         {
-            if (!promise.IsValid)
+            bool isValid = promise._target._ref == null
+                ? promise._target.Id == ValidIdFromApi
+                : promise._target.Id == promise._target._ref.Id;
+            if (!isValid)
             {
-                throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(skipFrames + 1));
+                throw new InvalidOperationException("Cannot await a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(skipFrames + 1));
             }
         }
-#endif
+
+        internal static bool GetIsCompleted(Promise promise, int skipFrames)
+        {
+            if (promise._target._ref == null)
+            {
+                if (promise._target.Id != ValidIdFromApi)
+                {
+                    throw new InvalidOperationException("Cannot await a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(skipFrames + 1));
+                }
+                return true;
+            }
+            return promise._target._ref.GetIsCompleted(promise._target.Id);
+        }
     }
 
     namespace Async.CompilerServices
@@ -295,7 +309,7 @@ namespace Proto.Promises
             public void GetResult()
             {
                 var promise = _awaiter._promise;
-                ValidateOperation(promise, 1);
+                Internal.ValidateAwaiterOperation(promise, 1);
                 var _ref = promise._ref;
                 if (_ref == null)
                 {
@@ -331,14 +345,6 @@ namespace Proto.Promises
             {
                 asyncPromiseRef.HookupWaiter(_awaiter._promise._ref, _awaiter._promise.Id);
             }
-
-            static partial void ValidateOperation(Promise promise, int skipFrames);
-#if PROMISE_DEBUG
-            static partial void ValidateOperation(Promise promise, int skipFrames)
-            {
-                Internal.ValidateAwaiterOperation(promise, skipFrames + 1);
-            }
-#endif
         } // struct PromiseAwaiterVoid
 
         /// <summary>
@@ -361,10 +367,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             internal PromiseAwaiter(Promise<T> promise)
             {
-                // Duplicate force gets a single use promise if it's a multi use promise.
-                // It also prevents the promise from being used again improperly if it's a single use promise.
-                // And it internally validates the promise.
-                _promise = promise.Duplicate();
+                _promise = promise;
                 CreateOverride();
             }
 
@@ -373,9 +376,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    var promise = _promise;
-                    ValidateOperation(promise, 1);
-                    return promise._ref == null || promise._ref.State != Promise.State.Pending;
+                    return Internal.GetIsCompleted(_promise, 1);
                 }
             }
 
@@ -383,7 +384,7 @@ namespace Proto.Promises
             public T GetResult()
             {
                 var promise = _promise;
-                ValidateOperation(promise, 1);
+                Internal.ValidateAwaiterOperation(promise, 1);
                 var _ref = promise._ref;
                 if (_ref == null)
                 {
@@ -407,7 +408,7 @@ namespace Proto.Promises
             {
                 ValidateArgument(continuation, "continuation", 1);
                 var promise = _promise;
-                ValidateOperation(promise, 1);
+                Internal.ValidateAwaiterOperation(promise, 1);
                 if (promise._ref == null)
                 {
                     continuation();
@@ -429,16 +430,10 @@ namespace Proto.Promises
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
-            static partial void ValidateOperation(Promise promise, int skipFrames);
 #if PROMISE_DEBUG
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
             {
                 Internal.ValidateArgument(arg, argName, skipFrames + 1);
-            }
-
-            static partial void ValidateOperation(Promise promise, int skipFrames)
-            {
-                Internal.ValidateAwaiterOperation(promise, skipFrames + 1);
             }
 #endif
         } // struct PromiseAwaiter<T>
@@ -486,7 +481,7 @@ namespace Proto.Promises
             public void GetResult()
             {
                 var promise = _awaiter._promise;
-                ValidateGetResult(promise, 1);
+                Internal.ValidateAwaiterOperation(promise, 1);
                 var _ref = promise._ref;
                 if (_ref == null)
                 {
@@ -522,14 +517,6 @@ namespace Proto.Promises
             {
                 asyncPromiseRef.HookupWaiterWithProgress(_awaiter._promise._ref, _awaiter._promise.Id, _awaiter._promise.Depth, _awaiter._minProgress, _awaiter._maxProgress);
             }
-
-            static partial void ValidateGetResult(Promise promise, int skipFrames);
-#if PROMISE_DEBUG
-            static partial void ValidateGetResult(Promise promise, int skipFrames)
-            {
-                Internal.ValidateAwaiterOperation(promise, skipFrames + 1);
-            }
-#endif
         } // struct PromiseAwaiterVoid
 
         /// <summary>
@@ -554,10 +541,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             internal PromiseProgressAwaiter(Promise<T> promise, float minProgress, float maxProgress)
             {
-                // Duplicate force gets a single use promise if it's a multi use promise.
-                // It also prevents the promise from being used again improperly if it's a single use promise.
-                // And it internally validates the promise.
-                _promise = promise.Duplicate();
+                _promise = promise;
                 _minProgress = minProgress;
                 _maxProgress = maxProgress;
                 CreateOverride();
@@ -574,9 +558,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    var promise = _promise;
-                    ValidateOperation(promise, 1);
-                    return promise._ref == null || promise._ref.State != Promise.State.Pending;
+                    return Internal.GetIsCompleted(_promise, 1);
                 }
             }
 
@@ -584,7 +566,7 @@ namespace Proto.Promises
             public T GetResult()
             {
                 var promise = _promise;
-                ValidateOperation(promise, 1);
+                Internal.ValidateAwaiterOperation(promise, 1);
                 var _ref = promise._ref;
                 if (_ref == null)
                 {
@@ -608,7 +590,7 @@ namespace Proto.Promises
             {
                 ValidateArgument(continuation, "continuation", 1);
                 var promise = _promise;
-                ValidateOperation(promise, 1);
+                Internal.ValidateAwaiterOperation(promise, 1);
                 if (promise._ref == null)
                 {
                     continuation();
@@ -630,16 +612,10 @@ namespace Proto.Promises
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
-            static partial void ValidateOperation(Promise promise, int skipFrames);
 #if PROMISE_DEBUG
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
             {
                 Internal.ValidateArgument(arg, argName, skipFrames + 1);
-            }
-
-            static partial void ValidateOperation(Promise promise, int skipFrames)
-            {
-                Internal.ValidateAwaiterOperation(promise, skipFrames + 1);
             }
 #endif
         } // struct PromiseAwaiter<T>

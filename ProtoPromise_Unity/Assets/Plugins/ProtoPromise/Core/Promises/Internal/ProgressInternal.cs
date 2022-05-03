@@ -195,6 +195,7 @@ namespace Proto.Promises
                 }
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             private void WaitWhileProgressReportingCore()
             {
                 var spinner = new SpinWait();
@@ -223,6 +224,30 @@ namespace Proto.Promises
                 }
 
                 Fixed32.ts_reportingPriority = wasReportingPriority;
+            }
+
+            partial class PromiseCompletionSentinel : HandleablePromiseBase
+            {
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                {
+                    return null;
+                }
+            }
+
+            internal sealed partial class PromiseForgetSentinel : HandleablePromiseBase
+            {
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                {
+                    return null;
+                }
+            }
+
+            internal sealed partial class InvalidAwaitSentinel : PromiseSingleAwait
+            {
+                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                {
+                    return null;
+                }
             }
 
             internal partial struct Fixed32
@@ -671,7 +696,7 @@ namespace Proto.Promises
                     }
 
                     State = state;
-                    nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel._instance, null);
+                    nextHandler = TakeNextWaiter();
                 }
 
                 void ICancelable.Cancel()

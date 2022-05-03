@@ -828,14 +828,25 @@ namespace Proto.Promises
                     promise._previous = _this._ref;
 #endif
                     var executionScheduler = new ExecutionScheduler(true);
-                    HandleablePromiseBase nextRef;
-                    _this._ref.AddWaiter(_this.Id, promise, out nextRef, ref executionScheduler);
+                    HandleablePromiseBase previousWaiter;
+                    PromiseSingleAwait promiseSingleAwait = _this._ref.AddWaiter(_this.Id, promise, out previousWaiter, ref executionScheduler);
+                    if (previousWaiter != null)
+                    {
+                        if (!PromiseSingleAwait.VerifyWaiter(promiseSingleAwait))
+                        {
+                            // We're throwing InvalidOperationException here, so we don't want the new object to also add exceptions from its finalizer.
+                            GC.SuppressFinalize(promise);
+                            throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(2));
+                        }
+                        PromiseRef handler = _this._ref;
+                        HandleablePromiseBase _;
+                        promise.Handle(ref handler, out _, ref executionScheduler);
+                    }
                     // If the progress is 0, progress in AddWaiter will not set, so we force the report here.
-                    if (_this._ref.State == Promise.State.Pending & (promise._smallFields._currentProgress.GetRawValue() == 0))
+                    else if (promise._smallFields._currentProgress.GetRawValue() == 0)
                     {
                         promise.MaybeReportProgress(ref executionScheduler);
                     }
-                    _this._ref.MaybeHandleNext(nextRef, ref executionScheduler);
                     executionScheduler.Execute();
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }

@@ -143,7 +143,7 @@ namespace Proto.Promises
                     // Repool any created passthroughs.
                     foreach (var passthrough in passThroughs)
                     {
-                        passthrough.Release();
+                        passthrough.Dispose();
                     }
                     return Internal.CreateResolved(minDepth);
                 }
@@ -325,7 +325,7 @@ namespace Proto.Promises
                     // Repool any created passthroughs.
                     foreach (var passthrough in passThroughs)
                     {
-                        passthrough.Release();
+                        passthrough.Dispose();
                     }
                     return Internal.CreateResolved(minDepth);
                 }

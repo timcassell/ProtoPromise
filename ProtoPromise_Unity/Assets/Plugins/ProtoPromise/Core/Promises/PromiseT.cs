@@ -39,7 +39,9 @@ namespace Proto.Promises
             get
             {
                 var _this = GetVoidCopy();
-                return _this.Id == (_this._ref == null ? Internal.ValidIdFromApi : _this._ref.Id);
+                return _this._ref == null
+                    ? _this.Id == Internal.ValidIdFromApi
+                    : _this._ref.GetIsValid(_this.Id);
             }
         }
 

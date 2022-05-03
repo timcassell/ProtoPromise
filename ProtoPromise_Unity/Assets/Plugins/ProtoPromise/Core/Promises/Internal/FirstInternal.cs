@@ -59,10 +59,9 @@ namespace Proto.Promises
                     {
                         var passThrough = promisePassThroughs.Pop();
 #if PROMISE_DEBUG
-                        passThrough.Retain();
-                        lock (promise._locker)
+                        lock (promise._previousPromises)
                         {
-                            promise._passThroughs.Push(passThrough);
+                            promise._previousPromises.Push(passThrough.Owner);
                         }
 #endif
                         passThrough.SetTargetAndAddToOwner(promise);
@@ -73,8 +72,9 @@ namespace Proto.Promises
                             while (promisePassThroughs.IsNotEmpty)
                             {
                                 var p = promisePassThroughs.Pop();
-                                p.Owner.MaybeDispose();
-                                p.Release();
+                                p.Owner.SuppressRejection = true;
+                                p.Owner.MaybeMarkAwaitedAndDispose(p.Id);
+                                p.Dispose();
                                 ++releaseCount;
                             }
                             if (releaseCount != 0 && InterlockedAddWithOverflowCheck(ref promise._retainCounter, -releaseCount, releaseCount - 1) == 0)
@@ -99,14 +99,14 @@ namespace Proto.Promises
                         if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
                             && Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
-                            SetResultAndMaybeHandle(valueContainer.Clone(), state, out nextHandler);
+                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler);
                         }
                     }
                     else // Resolved
                     {
                         if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
-                            SetResultAndMaybeHandle(valueContainer.Clone(), state, out nextHandler);
+                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler);
                         }
                         InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                     }

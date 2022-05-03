@@ -371,7 +371,7 @@ namespace Proto.Promises
                     owner.MaybeDisposePrevious(handler);
                     TResult result = Invoke(arg);
                     handler = owner;
-                    owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
+                    owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -391,7 +391,7 @@ namespace Proto.Promises
                         TResult result = Invoke(arg);
                         owner.MaybeDisposePrevious(handler);
                         handler = owner;
-                        owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
+                        owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
                     }
                     else
                     {
@@ -564,7 +564,7 @@ namespace Proto.Promises
                     }
                     owner.MaybeDisposePrevious(handler);
                     handler = owner;
-                    owner.SetResultAndMaybeHandle(valueContainer, Promise.State.Resolved, out nextHandler);
+                    owner.SetResultAndTakeNextWaiter(valueContainer, Promise.State.Resolved, out nextHandler);
                 }
             }
 
@@ -781,7 +781,7 @@ namespace Proto.Promises
                     owner.MaybeDisposePrevious(handler);
                     handler = owner;
                     TResult result = Invoke(arg);
-                    owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
+                    owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -801,7 +801,7 @@ namespace Proto.Promises
                         TResult result = Invoke(arg);
                         owner.MaybeDisposePrevious(handler);
                         handler = owner;
-                        owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
+                        owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler);
                     }
                     else
                     {
@@ -992,7 +992,7 @@ namespace Proto.Promises
                     }
                     owner.MaybeDisposePrevious(handler);
                     handler = owner;
-                    owner.SetResultAndMaybeHandle(valueContainer, Promise.State.Resolved, out nextHandler);
+                    owner.SetResultAndTakeNextWaiter(valueContainer, Promise.State.Resolved, out nextHandler);
                 }
             }
 

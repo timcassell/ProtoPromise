@@ -63,22 +63,9 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     SetResult(CancelContainerVoid.GetOrCreate(), Promise.State.Canceled);
-                    HandleablePromiseBase nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel._instance, null);
-                    if (nextHandler == null)
-                    {
-                        return;
-                    }
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (nextHandler == PromiseCompletionSentinel._instance)
-                    {
-                        throw new System.InvalidOperationException("waiter was PromiseCompletionSentinel");
-                    }
-#endif
-                    // Set the waiter to InvalidAwaitSentinel to break the chain.
-                    _waiter = InvalidAwaitSentinel._instance;
+                    HandleablePromiseBase nextHandler = TakeNextWaiter();
                     var executionScheduler = new ExecutionScheduler(true);
-                    // We already checked nextHandler for null, so we can call HandleNext instead of MaybeHandleNext.
-                    HandleNext(nextHandler, ref executionScheduler);
+                    MaybeHandleNext(nextHandler, ref executionScheduler);
                     executionScheduler.Execute();
                 }
             }
@@ -129,7 +116,6 @@ namespace Proto.Promises
                     }
                     else if (unregistered)
                     {
-                        handler.SuppressRejection = true;
                         _cancelationHelper.TryRelease();
                         HandleSelf(ref handler, out nextHandler);
                     }
@@ -186,7 +172,6 @@ namespace Proto.Promises
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        handler.SuppressRejection = true;
                         HandleSelf(ref handler, out nextHandler);
                         return;
                     }
@@ -202,7 +187,6 @@ namespace Proto.Promises
                     }
                     else if (unregistered)
                     {
-                        handler.SuppressRejection = true;
                         _cancelationHelper.TryRelease();
                         HandleSelf(ref handler, out nextHandler);
                     }
@@ -337,7 +321,6 @@ namespace Proto.Promises
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        handler.SuppressRejection = true;
                         HandleSelf(ref handler, out nextHandler);
                         return;
                     }
@@ -476,7 +459,6 @@ namespace Proto.Promises
                     if (_continuer.IsNull)
                     {
                         // The returned promise is handling this.
-                        handler.SuppressRejection = true;
                         HandleSelf(ref handler, out nextHandler);
                         return;
                     }
@@ -549,7 +531,6 @@ namespace Proto.Promises
                     }
                     else if (unregistered)
                     {
-                        handler.SuppressRejection = true;
                         _cancelationHelper.TryRelease();
                         HandleSelf(ref handler, out nextHandler);
                     }
@@ -606,7 +587,6 @@ namespace Proto.Promises
                     if (_canceler.IsNull)
                     {
                         // The returned promise is handling this.
-                        handler.SuppressRejection = true;
                         HandleSelf(ref handler, out nextHandler);
                         return;
                     }
@@ -622,7 +602,6 @@ namespace Proto.Promises
                     }
                     else if (unregistered)
                     {
-                        handler.SuppressRejection = true;
                         _cancelationHelper.TryRelease();
                         HandleSelf(ref handler, out nextHandler);
                     }

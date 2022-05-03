@@ -25,6 +25,7 @@
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -197,10 +198,10 @@ namespace Proto.Promises
 #endif
             volatile internal ValueContainer _valueContainer;
             private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
+            volatile protected HandleablePromiseBase _waiter; // _waiter is only used in PromiseSingleAwait, but it's moved into PromiseRef so that the MaybeHandleNext loop can assign InvalidAwaitSentinel.
 
             partial class PromiseSingleAwait : PromiseRef
             {
-                volatile protected HandleablePromiseBase _waiter;
             }
 
             partial class PromiseConfigured : PromiseSingleAwait
@@ -362,8 +363,8 @@ namespace Proto.Promises
                 protected int _retainCounter;
 
 #if PROMISE_DEBUG
-                protected readonly object _locker = new object();
-                protected ValueLinkedStack<PromisePassThrough> _passThroughs = new ValueLinkedStack<PromisePassThrough>();
+                // This is used for circular promise chain detection.
+                protected Stack<PromiseRef> _previousPromises = new Stack<PromiseRef>();
 #endif
             }
 
@@ -392,11 +393,13 @@ namespace Proto.Promises
                 private struct PassThroughSmallFields
                 {
                     internal int _index;
-                    internal int _retainCounter; // TODO: remove _retainCounter. Update ValidateAwait.
                     internal short _id;
 #if PROMISE_PROGRESS
                     internal ushort _depth;
                     internal Fixed32 _currentProgress;
+#endif
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    internal bool _disposed;
 #endif
                 }
 
@@ -406,7 +409,7 @@ namespace Proto.Promises
 
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
             }
-            #endregion
+#endregion
 
 #if PROMISE_PROGRESS
             partial struct Fixed32

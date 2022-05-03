@@ -295,6 +295,7 @@ namespace Proto.Promises
                 }
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             private void EnterCore()
             {
                 // Spin until we successfully get lock.

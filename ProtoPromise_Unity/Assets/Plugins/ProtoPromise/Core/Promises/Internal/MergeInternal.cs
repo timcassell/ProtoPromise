@@ -25,23 +25,6 @@ namespace Proto.Promises
     {
         partial class PromiseRef
         {
-            partial class MultiHandleablePromiseBase
-            {
-#if PROMISE_DEBUG
-                new protected void Dispose()
-                {
-                    base.Dispose();
-                    lock (_locker)
-                    {
-                        while (_passThroughs.IsNotEmpty)
-                        {
-                            _passThroughs.Pop().Release();
-                        }
-                    }
-                }
-#endif
-            }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
@@ -100,10 +83,9 @@ namespace Proto.Promises
                     {
                         var passThrough = promisePassThroughs.Pop();
 #if PROMISE_DEBUG
-                        passThrough.Retain();
-                        lock (_locker)
+                        lock (_previousPromises)
                         {
-                            _passThroughs.Push(passThrough);
+                            _previousPromises.Push(passThrough.Owner);
                         }
 #endif
                         passThrough.SetTargetAndAddToOwner(this);
@@ -113,8 +95,8 @@ namespace Proto.Promises
                             while (promisePassThroughs.IsNotEmpty)
                             {
                                 var p = promisePassThroughs.Pop();
-                                p.Owner.MaybeDispose();
-                                p.Release();
+                                p.Owner.MaybeMarkAwaitedAndDispose(p.Id);
+                                p.Dispose();
                                 MaybeDispose();
                             }
                         }
@@ -132,17 +114,18 @@ namespace Proto.Promises
                         if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
                             handler.SuppressRejection = true;
-                            SetResultAndMaybeHandle(valueContainer.Clone(), state, out nextHandler);
+                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler);
                         }
                         InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                     }
                     else // Resolved
                     {
+                        bool didResolve = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
+                            && Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null;
                         IncrementProgress(passThrough, ref executionScheduler);
-                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
-                            && Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
+                        if (didResolve)
                         {
-                            SetResultAndMaybeHandle(valueContainer.Clone(), state, out nextHandler);
+                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler);
                         }
                     }
                     MaybeDisposeNonVirt();
@@ -197,18 +180,23 @@ namespace Proto.Promises
                             if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                             {
                                 handler.SuppressRejection = true;
-                                SetResultAndMaybeHandle(valueContainer.Clone(), state, out nextHandler);
+                                SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler);
                             }
                             InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                         }
                         else // Resolved
                         {
+                            var resolveContainer = _resolveContainer;
+                            bool didResolve = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
+                                && Interlocked.CompareExchange(ref _valueContainer, resolveContainer, null) == null;
                             IncrementProgress(passThrough, ref executionScheduler);
-                            _onPromiseResolved.Invoke(valueContainer, _resolveContainer, passThrough.Index);
-                            if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
-                                && Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
+                            _onPromiseResolved.Invoke(valueContainer, resolveContainer, passThrough.Index);
+                            if (didResolve)
                             {
-                                SetResultAndMaybeHandle(valueContainer.Clone(), state, out nextHandler);
+                                // Only nullify if all promises resolved, otherwise we let MaybeDispose dispose it.
+                                _resolveContainer = null;
+                                State = state;
+                                nextHandler = TakeNextWaiter();
                             }
                         }
                         MaybeDispose();

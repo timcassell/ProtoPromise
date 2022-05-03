@@ -61,10 +61,9 @@ namespace Proto.Promises
                     {
                         var passThrough = promisePassThroughs.Pop();
 #if PROMISE_DEBUG
-                        passThrough.Retain();
-                        lock (promise._locker)
+                        lock (promise._previousPromises)
                         {
-                            promise._passThroughs.Push(passThrough);
+                            promise._previousPromises.Push(passThrough.Owner);
                         }
 #endif
                         passThrough.SetTargetAndAddToOwner(promise);
@@ -75,8 +74,8 @@ namespace Proto.Promises
                             while (promisePassThroughs.IsNotEmpty)
                             {
                                 var p = promisePassThroughs.Pop();
-                                p.Owner.MaybeDispose();
-                                p.Release();
+                                p.Owner.MaybeMarkAwaitedAndDispose(p.Id);
+                                p.Dispose();
                                 ++releaseCount;
                             }
                             if (releaseCount != 0 && InterlockedAddWithOverflowCheck(ref promise._retainCounter, -releaseCount, releaseCount - 1) == 0)
@@ -96,7 +95,7 @@ namespace Proto.Promises
                     if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                     {
                         handler.SuppressRejection = true;
-                        SetResultAndMaybeHandle(valueContainer.Clone(), handler.State, out nextHandler);
+                        SetResultAndTakeNextWaiter(valueContainer.Clone(), handler.State, out nextHandler);
                     }
                     else
                     {
