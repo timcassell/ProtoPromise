@@ -120,10 +120,18 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
+            protected void Reset()
+            {
+                _waiter = null;
+                _smallFields.Reset();
+                SetCreatedStacktrace(this, 3);
+            }
+
+            [MethodImpl(InlineOption)]
             protected void Reset(ushort depth)
             {
-                _smallFields.Reset(depth);
-                SetCreatedStacktrace(this, 3);
+                Reset();
+                _smallFields._depth = depth;
             }
 
             private void Dispose()
@@ -148,6 +156,9 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 newPromise._previous = this;
 #endif
+#if PROMISE_PROGRESS
+                newPromise._smallFields._currentProgress = _smallFields._currentProgress;
+#endif
                 HookupNewWaiter(promiseId, newPromise);
             }
 
@@ -160,7 +171,7 @@ namespace Proto.Promises
                 catch (InvalidOperationException)
                 {
                     // We're already throwing InvalidOperationException here, so we don't want the waiter object to also add exceptions from its finalizer.
-                    GC.SuppressFinalize(newWaiter);
+                    Discard(newWaiter);
                     throw;
                 }
             }
@@ -201,7 +212,6 @@ namespace Proto.Promises
             private void SetResult(ValueContainer valueContainer, Promise.State state)
             {
                 _valueContainer = valueContainer;
-                Thread.MemoryBarrier(); // Make sure state is written after value.
                 State = state;
             }
 
@@ -231,7 +241,7 @@ namespace Proto.Promises
                 PromiseRef handler = this;
                 while (nextHandler != null)
                 {
-                    // Set the waiter to InvalidAwaitSentinel to break the chain.
+                    // Set the waiter to InvalidAwaitSentinel to break the chain to stop progress reports.
                     handler._waiter = InvalidAwaitSentinel._instance;
                     handler.WaitWhileProgressReporting();
                     nextHandler.Handle(ref handler, out nextHandler, ref executionScheduler);
@@ -309,13 +319,6 @@ namespace Proto.Promises
                             return Interlocked.Exchange(ref location, value);
                         }
                     }
-                }
-
-                [MethodImpl(InlineOption)]
-                new protected void Reset(ushort depth)
-                {
-                    base.Reset(depth);
-                    _waiter = null;
                 }
 
                 protected sealed override void OnForget(short promiseId)
@@ -401,17 +404,7 @@ namespace Proto.Promises
                     }
                     ThrowIfInPool(this);
                     WasAwaitedOrForgotten = true;
-                    // TODO: move progress report to caller.
-                    InterlockedIncrementProgressReportingCount();
                     previousWaiter = CompareExchangeWaiter(waiter, null);
-                    if (previousWaiter == null)
-                    {
-                        ReportProgressFromAddWaiter(waiter, depth, ref executionScheduler);
-                    }
-                    else
-                    {
-                        InterlockedDecrementProgressReportingCount();
-                    }
                     return this;
                 }
 
@@ -545,6 +538,11 @@ namespace Proto.Promises
                             string message = "A preserved Promise's resources were garbage collected without it being forgotten. You must call Forget() on each preserved promise when you are finished with it.";
                             AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
                         }
+                        else if (_retainCounter != 0 & State != Promise.State.Pending)
+                        {
+                            string message = "A preserved Promise had an awaiter created without awaiter.GetResult() called.";
+                            AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                        }
                     }
                     catch (Exception e)
                     {
@@ -569,13 +567,28 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                private void Retain()
+                {
+                    checked
+                    {
+                        ++_retainCounter;
+                    }
+                }
+
                 protected override void MaybeDispose()
                 {
-                    if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
+                    lock (this)
                     {
-                        Dispose();
-                        ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                        checked
+                        {
+                            if (--_retainCounter != 0)
+                            {
+                                return;
+                            }
+                        }
                     }
+                    Dispose();
+                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
                 internal override bool GetIsCompleted(short promiseId)
@@ -589,7 +602,7 @@ namespace Proto.Promises
                         bool isCompleted = State != Promise.State.Pending;
                         if (isCompleted)
                         {
-                            InterlockedAddWithOverflowCheck(ref _retainCounter, 1, -1); // Retain since Awaiter.GetResult() will be called higher in the stack which will call MaybeDispose indiscriminately.
+                            Retain(); // Retain since Awaiter.GetResult() will be called higher in the stack which will call MaybeDispose indiscriminately.
                         }
                         return isCompleted;
                     }
@@ -617,8 +630,8 @@ namespace Proto.Promises
                             throw new InvalidOperationException("Cannot forget a promise more than once.", GetFormattedStacktrace(3));
                         }
                         WasAwaitedOrForgotten = true;
+                        MaybeDispose();
                     }
-                    MaybeDispose();
                 }
 
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId)
@@ -644,21 +657,15 @@ namespace Proto.Promises
                         }
                         ThrowIfInPool(this);
 
-                        // TODO: move progress report to caller.
-                        InterlockedIncrementProgressReportingCount();
                         if (State == Promise.State.Pending)
                         {
                             _nextBranches.Enqueue(waiter);
                             previousWaiter = null;
-                            goto ReportProgress;
+                            return null;
                         }
-                        InterlockedAddWithOverflowCheck(ref _retainCounter, 1, -1); // Retain since Handle will be called higher in the stack which will call MaybeDispose indiscriminately.
+                        Retain(); // Retain since Handle will be called higher in the stack which will call MaybeDispose indiscriminately.
                     }
                     previousWaiter = waiter;
-                    InterlockedDecrementProgressReportingCount();
-                    return null;
-                ReportProgress:
-                    ReportProgressFromAddWaiter(waiter, Depth, ref executionScheduler);
                     return null;
                 }
 
@@ -676,7 +683,7 @@ namespace Proto.Promises
                         var waiter = branches.Pop();
                         HandleablePromiseBase nextHandler;
                         PromiseRef handler = this;
-                        InterlockedAddWithOverflowCheck(ref _retainCounter, 1, -1); // Retain since Handle will call MaybeDispose indiscriminately.
+                        Retain(); // Retain since Handle will call MaybeDispose indiscriminately.
                         waiter.Handle(ref handler, out nextHandler, ref executionScheduler);
                         handler.MaybeHandleNext(nextHandler, ref executionScheduler);
                     }
@@ -807,14 +814,11 @@ namespace Proto.Promises
                     }
                     ThrowIfInPool(this);
                     WasAwaitedOrForgotten = true;
-                    // TODO: move progress report to caller.
-                    InterlockedIncrementProgressReportingCount();
                     var previous = CompareExchangeWaiter(waiter, null);
 
                     // We do the verification process here instead of in the caller, because we need to handle continuations on the synchronization context.
                     if (previous != null && CompareExchangeWaiter(waiter, PromiseCompletionSentinel._instance) != PromiseCompletionSentinel._instance)
                     {
-                        InterlockedDecrementProgressReportingCount();
                         previousWaiter = InvalidAwaitSentinel._instance;
                         return InvalidAwaitSentinel._instance;
                     }
@@ -825,7 +829,6 @@ namespace Proto.Promises
                         executionScheduler.ScheduleOnContext(_synchronizationContext, this);
                     }
 
-                    ReportProgressFromAddWaiter(waiter, Depth, ref executionScheduler);
                     previousWaiter = null;
                     return this; // It doesn't matter what we return since previousWaiter is set to null.
                 }
@@ -853,14 +856,17 @@ namespace Proto.Promises
                     }
 
                     SetSecondPrevious(_ref);
+                    _ref.InterlockedIncrementProgressReportingCount();
 
                     HandleablePromiseBase previousWaiter;
                     PromiseSingleAwait promiseSingleAwait = _ref.AddWaiter(other.Id, this, out previousWaiter, ref executionScheduler);
                     if (previousWaiter == null)
                     {
+                        _ref.ReportProgressFromAddWaiter(this, Depth, ref executionScheduler);
                         nextHandler = null;
                         return;
                     }
+                    _ref.InterlockedDecrementProgressReportingCount();
 
                     if (!VerifyWaiter(promiseSingleAwait))
                     {
@@ -888,11 +894,12 @@ namespace Proto.Promises
             internal abstract partial class AsyncPromiseBase : PromiseSingleAwait
             {
                 [MethodImpl(InlineOption)]
-                protected void Reset()
+                new protected void Reset()
                 {
-                    _smallFields.Reset();
-                    _waiter = null;
-                    SetCreatedStacktrace(this, 3);
+                    base.Reset();
+#if PROMISE_PROGRESS
+                    _smallFields._currentProgress = default(Fixed32);
+#endif
                 }
 
                 internal override PromiseSingleAwait AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter, ref ExecutionScheduler executionScheduler)
@@ -907,34 +914,6 @@ namespace Proto.Promises
                     var executionScheduler = new ExecutionScheduler(true);
                     MaybeHandleNext(nextHandler, ref executionScheduler);
                     executionScheduler.Execute();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void ResolveDirect<T>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    T value)
-                {
-                    ThrowIfInPool(this);
-                    HandleInternal(CreateResolveContainer(value), Promise.State.Resolved);
-                }
-
-                protected void RejectDirect<TReject>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TReject reason, int rejectSkipFrames)
-                {
-                    ThrowIfInPool(this);
-                    HandleInternal(CreateRejectContainer(reason, rejectSkipFrames + 1, this), Promise.State.Rejected);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void CancelDirect()
-                {
-                    ThrowIfInPool(this);
-                    HandleInternal(CancelContainerVoid.GetOrCreate(), Promise.State.Canceled);
                 }
             }
 
@@ -1472,29 +1451,35 @@ namespace Proto.Promises
                     }
                 }
 
-                // TODO: move _deferredId to an int field for direct Interlocked access. Measure its performance difference.
                 [MethodImpl(InlineOption)]
                 internal bool InterlockedTryIncrementDeferredId(short deferredId)
                 {
-                    Thread.MemoryBarrier();
                     // Hopefully in the future we can just use Interlocked.CompareExchange directly on _deferredId. https://github.com/dotnet/runtime/issues/64658
+                    Thread.MemoryBarrier();
+                    short incrementedId = (short) (deferredId + 1);
                     SmallFields initialValue = default(SmallFields);
                     SmallFields newValue = default(SmallFields);
-                    do
+                    while (true)
                     {
                         initialValue._idInterlocker = _idInterlocker;
-                        // Make sure id matches.
-                        if (initialValue._deferredId != deferredId)
+                        newValue._idInterlocker = initialValue._idInterlocker;
+                        short oldId = initialValue._deferredId;
+                        initialValue._deferredId = deferredId;
+                        unchecked // We want the id to wrap around.
+                        {
+                            newValue._deferredId = incrementedId;
+                        }
+                        // In the majority of cases, this will succeed on the first try.
+                        if (Interlocked.CompareExchange(ref _idInterlocker, newValue._idInterlocker, initialValue._idInterlocker) == initialValue._idInterlocker)
+                        {
+                            return true;
+                        }
+                        // Make sure id matches before trying again.
+                        if (deferredId != oldId)
                         {
                             return false;
                         }
-                        newValue._idInterlocker = initialValue._idInterlocker;
-                        unchecked // We want the id to wrap around.
-                        {
-                            ++newValue._deferredId;
-                        }
-                    } while (Interlocked.CompareExchange(ref _idInterlocker, newValue._idInterlocker, initialValue._idInterlocker) != initialValue._idInterlocker);
-                    return true;
+                    }
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1517,18 +1502,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void Reset()
                 {
-#if PROMISE_PROGRESS
-                    _currentProgress = default(Fixed32);
-#endif
                     _state = Promise.State.Pending;
                     _wasAwaitedorForgotten = false;
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void Reset(ushort depth)
-                {
-                    _depth = depth;
-                    Reset();
+                    _suppressRejection = false;
                 }
             } // SmallFields
 

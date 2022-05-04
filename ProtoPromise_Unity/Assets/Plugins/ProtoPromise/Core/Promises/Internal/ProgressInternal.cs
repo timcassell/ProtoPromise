@@ -715,14 +715,11 @@ namespace Proto.Promises
                     }
                     ThrowIfInPool(this);
                     WasAwaitedOrForgotten = true;
-                    // TODO: move progress report to caller.
-                    InterlockedIncrementProgressReportingCount();
                     var previous = CompareExchangeWaiter(waiter, null);
 
                     // We do the verification process here instead of in the caller, because we need to handle continuations on the synchronization context.
                     if (previous != null && CompareExchangeWaiter(waiter, PromiseCompletionSentinel._instance) != PromiseCompletionSentinel._instance)
                     {
-                        InterlockedDecrementProgressReportingCount();
                         previousWaiter = InvalidAwaitSentinel._instance;
                         return InvalidAwaitSentinel._instance;
                     }
@@ -734,7 +731,6 @@ namespace Proto.Promises
                         {
                             _waiter = InvalidAwaitSentinel._instance;
                             State = _previousState;
-                            InterlockedDecrementProgressReportingCount();
                             // Setting a non-null previousWaiter will make the caller handle the waiter.
                             previousWaiter = PromiseCompletionSentinel._instance;
                             // Returning null means the validation was successful.
@@ -753,7 +749,6 @@ namespace Proto.Promises
                         }
                     }
 
-                    ReportProgressFromAddWaiter(waiter, Depth, ref executionScheduler);
                     previousWaiter = null;
                     return this; // It doesn't matter what we return since previousWaiter is set to null.
                 }
@@ -839,15 +834,14 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (_smallFields._currentProgress.InterlockedTrySet(progress))
                     {
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
-                        bool isProgressScheduled = Interlocked.Exchange(ref _isProgressScheduled, 1) != 0;
-#else
-                        bool isProgressScheduled = Interlocked.CompareExchange(ref _isProgressScheduled, 1, 0) != 0;
-#endif
-                        if (!isProgressScheduled)
+                        lock (this)
                         {
-                            InterlockedAddWithOverflowCheck(ref _retainCounter, 1, -1); // Retain until IProgressInvokable.Invoke is complete.
-                            executionScheduler.ScheduleProgressSynchronous(this);
+                            if (!_isProgressScheduled)
+                            {
+                                _isProgressScheduled = true;
+                                Retain(); // Retain until IProgressInvokable.Invoke is complete.
+                                executionScheduler.ScheduleProgressSynchronous(this);
+                            }
                         }
                     }
                     return null;
@@ -858,7 +852,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
                     var progress = _smallFields._currentProgress;
-                    _isProgressScheduled = 0;
+                    _isProgressScheduled = false;
                     if (State == Promise.State.Pending)
                     {
                         InterlockedIncrementProgressReportingCount();

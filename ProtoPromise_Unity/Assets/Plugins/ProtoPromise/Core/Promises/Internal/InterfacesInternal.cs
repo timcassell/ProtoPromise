@@ -22,6 +22,9 @@ namespace Proto.Promises
     partial class Internal
     {
         // Abstract classes are used instead of interfaces, because virtual calls on interfaces are twice as slow as virtual calls on classes.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
         internal abstract partial class HandleablePromiseBase : ILinked<HandleablePromiseBase>
         {
             HandleablePromiseBase ILinked<HandleablePromiseBase>.Next
@@ -42,6 +45,9 @@ namespace Proto.Promises
 
         partial class PromiseRef
         {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
             internal abstract partial class MultiHandleablePromiseBase : PromiseSingleAwait
             {
                 internal abstract void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);

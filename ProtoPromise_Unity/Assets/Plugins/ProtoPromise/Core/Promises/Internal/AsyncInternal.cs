@@ -514,10 +514,29 @@ namespace Proto.Promises
                 {
                     ValidateAwait(waiter, promiseId);
 
-                    // TODO: detect if this is being called from another promise higher in the stack, and call AddWaiter and allow the stack to unwind instead of calling HookupNewWaiter.
+                    // TODO: detect if this is being called from another promise higher in the stack, allow the stack to unwind instead of calling Handle.
 
                     SetPreviousAndProgress(waiter, minProgress, maxProgress);
-                    waiter.HookupExistingWaiter(promiseId, this);
+
+                    var executionScheduler = new ExecutionScheduler(true);
+                    waiter.InterlockedIncrementProgressReportingCount();
+                    HandleablePromiseBase previousWaiter;
+                    PromiseSingleAwait promiseSingleAwait = waiter.AddWaiter(promiseId, this, out previousWaiter, ref executionScheduler);
+                    if (previousWaiter == null)
+                    {
+                        waiter.ReportProgressFromAddWaiter(this, Depth, ref executionScheduler);
+                    }
+                    else
+                    {
+                        waiter.InterlockedDecrementProgressReportingCount();
+                        if (!VerifyWaiter(promiseSingleAwait))
+                        {
+                            throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(2));
+                        }
+                        HandleablePromiseBase _;
+                        Handle(ref waiter, out _, ref executionScheduler);
+                    }
+                    executionScheduler.Execute();
                 }
             }
 

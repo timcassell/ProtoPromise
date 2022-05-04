@@ -158,7 +158,7 @@ namespace Proto.Promises
             private partial struct SmallFields
             {
                 [FieldOffset(0)]
-                internal Promise.State _state;
+                volatile internal Promise.State _state;
                 [FieldOffset(1)]
                 internal bool _suppressRejection;
                 [FieldOffset(2)]
@@ -217,7 +217,7 @@ namespace Proto.Promises
 
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-                volatile private int _isProgressScheduled; // int for Interlocked. 1 if scheduled, 0 if not.
+                private bool _isProgressScheduled;
 #endif
 
                 private int _retainCounter;

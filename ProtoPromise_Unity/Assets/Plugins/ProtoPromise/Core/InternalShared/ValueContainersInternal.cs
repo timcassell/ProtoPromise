@@ -8,14 +8,12 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0019 // Use pattern matching
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace Proto.Promises
 {

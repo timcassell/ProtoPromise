@@ -1970,17 +1970,15 @@ namespace ProtoPromiseTests.APIs
                 promise.Forget();
             }
 
-            // When a callback is canceled and the previous promise is rejected, the rejection is unhandled.
             private const string expectedRejection = "Reject";
             private Action<UnhandledException> previousRejectionHandler;
 
             private void SetupExpectedUncaughtRejections()
             {
+                // When a callback is canceled and the previous promise is rejected, the rejection is unhandled.
+                // So we need to suppress that here and make sure it's correct.
                 previousRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-                Promise.Config.UncaughtRejectionHandler = e =>
-                {
-                    Assert.AreEqual(expectedRejection, e.Value);
-                };
+                Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(expectedRejection, e.Value);
             }
 
             private void CleanupExpectedUncaughtRejections()

@@ -828,10 +828,18 @@ namespace Proto.Promises
                     promise._previous = _this._ref;
 #endif
                     var executionScheduler = new ExecutionScheduler(true);
+                    _this._ref.InterlockedIncrementProgressReportingCount();
                     HandleablePromiseBase previousWaiter;
+                    promise._smallFields._currentProgress = _this._ref._smallFields._currentProgress;
                     PromiseSingleAwait promiseSingleAwait = _this._ref.AddWaiter(_this.Id, promise, out previousWaiter, ref executionScheduler);
-                    if (previousWaiter != null)
+                    if (previousWaiter == null)
                     {
+                        promise.MaybeReportProgress(ref executionScheduler);
+                        _this._ref.InterlockedDecrementProgressReportingCount();
+                    }
+                    else
+                    {
+                        _this._ref.InterlockedDecrementProgressReportingCount();
                         if (!PromiseSingleAwait.VerifyWaiter(promiseSingleAwait))
                         {
                             // We're throwing InvalidOperationException here, so we don't want the new object to also add exceptions from its finalizer.
@@ -841,11 +849,6 @@ namespace Proto.Promises
                         PromiseRef handler = _this._ref;
                         HandleablePromiseBase _;
                         promise.Handle(ref handler, out _, ref executionScheduler);
-                    }
-                    // If the progress is 0, progress in AddWaiter will not set, so we force the report here.
-                    else if (promise._smallFields._currentProgress.GetRawValue() == 0)
-                    {
-                        promise.MaybeReportProgress(ref executionScheduler);
                     }
                     executionScheduler.Execute();
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);

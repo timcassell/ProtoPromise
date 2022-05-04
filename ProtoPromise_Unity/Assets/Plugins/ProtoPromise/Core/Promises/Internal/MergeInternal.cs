@@ -25,6 +25,17 @@ namespace Proto.Promises
     {
         partial class PromiseRef
         {
+            partial class MultiHandleablePromiseBase
+            {
+                new protected void Reset(ushort depth)
+                {
+                    base.Reset(depth);
+#if PROMISE_PROGRESS
+                    _smallFields._currentProgress = default(Fixed32);
+#endif
+                }
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
@@ -120,10 +131,9 @@ namespace Proto.Promises
                     }
                     else // Resolved
                     {
-                        bool didResolve = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
-                            && Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null;
                         IncrementProgress(passThrough, ref executionScheduler);
-                        if (didResolve)
+                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
+                            && Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
                             SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler);
                         }
@@ -186,12 +196,10 @@ namespace Proto.Promises
                         }
                         else // Resolved
                         {
-                            var resolveContainer = _resolveContainer;
-                            bool didResolve = InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
-                                && Interlocked.CompareExchange(ref _valueContainer, resolveContainer, null) == null;
                             IncrementProgress(passThrough, ref executionScheduler);
-                            _onPromiseResolved.Invoke(valueContainer, resolveContainer, passThrough.Index);
-                            if (didResolve)
+                            _onPromiseResolved.Invoke(valueContainer, _resolveContainer, passThrough.Index);
+                            if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
+                                && Interlocked.CompareExchange(ref _valueContainer, _resolveContainer, null) == null)
                             {
                                 // Only nullify if all promises resolved, otherwise we let MaybeDispose dispose it.
                                 _resolveContainer = null;
@@ -221,7 +229,7 @@ namespace Proto.Promises
                     uint dif = passThrough.GetProgressDifferenceToCompletion();
                     var progress = IncrementProgress(dif);
                     ReportProgress(progress, Depth, ref executionScheduler);
-                    
+
                     Fixed32.ts_reportingPriority = wasReportingPriority;
                 }
 
