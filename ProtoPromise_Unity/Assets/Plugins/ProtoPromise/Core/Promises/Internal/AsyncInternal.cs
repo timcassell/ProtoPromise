@@ -524,7 +524,7 @@ namespace Proto.Promises
                     PromiseSingleAwait promiseSingleAwait = waiter.AddWaiter(promiseId, this, out previousWaiter, ref executionScheduler);
                     if (previousWaiter == null)
                     {
-                        waiter.ReportProgressFromAddWaiter(this, Depth, ref executionScheduler);
+                        ReportProgressFromHookupWaiterWithProgress(waiter, depth, ref executionScheduler);
                     }
                     else
                     {
@@ -538,6 +538,8 @@ namespace Proto.Promises
                     }
                     executionScheduler.Execute();
                 }
+
+                partial void ReportProgressFromHookupWaiterWithProgress(PromiseRef other, ushort depth, ref ExecutionScheduler executionScheduler);
             }
 
 #if !OPTIMIZED_ASYNC_MODE
@@ -657,7 +659,7 @@ namespace Proto.Promises
                     bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                     if (isComplete)
                     {
-                        nextHandler = TakeNextWaiter();
+                        nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
                         handler = this;
                     }
                     else
@@ -716,7 +718,7 @@ namespace Proto.Promises
                         bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
                         if (isComplete)
                         {
-                            nextHandler = TakeNextWaiter();
+                            nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
                             handler = this;
                         }
                         else

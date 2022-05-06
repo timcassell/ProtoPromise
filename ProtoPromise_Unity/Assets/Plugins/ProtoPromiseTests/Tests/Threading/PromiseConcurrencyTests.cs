@@ -266,6 +266,7 @@ namespace ProtoPromiseTests.Threading
         }
 
         private static readonly TimeSpan progressConcurrencyTimeout = TimeSpan.FromSeconds(ThreadHelper.multiExecutionCount);
+        private const int numProgressReports = 10;
 
         [Test]
         public void PromiseProgressMayBeSubscribedWhilePromiseIsCompletedAndProgressIsReportedConcurrently_Pending_void(
@@ -277,14 +278,14 @@ namespace ProtoPromiseTests.Threading
             [Values(ProgressType.Interface)] ProgressType progressType,
             [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType synchronizationType)
         {
-            int expectedInvokes = completeType == CompleteType.Resolve ? 10 : 0;
+            int expectedInvokes = completeType == CompleteType.Resolve ? numProgressReports : 0;
             if (subscribePlace == ActionPlace.InSetup)
             {
-                expectedInvokes += 10;
+                expectedInvokes += numProgressReports;
                 if (reportPlace == ActionPlace.InSetup)
                 {
                     // Implementation detail: when progress is reported with the same value, the callback will not be invoked. This behavior is not guaranteed by the API.
-                    expectedInvokes += 10;
+                    expectedInvokes += numProgressReports;
                 }
             }
             else // parallel or teardown
@@ -293,7 +294,7 @@ namespace ProtoPromiseTests.Threading
                 // We only know there are extra invokes if complete (and report) come after subscribe.
                 if (completeType == CompleteType.Resolve && completePlace == ActionPlace.InTeardown)
                 {
-                    expectedInvokes += 10;
+                    expectedInvokes += numProgressReports;
                 }
             }
 
@@ -302,7 +303,7 @@ namespace ProtoPromiseTests.Threading
             var cancelationSource = default(CancelationSource);
             int invokedCount = 0;
 
-            ProgressHelper[] progressHelpers = new ProgressHelper[10];
+            ProgressHelper[] progressHelpers = new ProgressHelper[numProgressReports];
 
             Action AssertInvokes = completeType != CompleteType.Resolve && completePlace == ActionPlace.InSetup
                 // If the promise is rejected or canceled in the setup, we know that it should not be invoked more times than expected.
@@ -317,7 +318,7 @@ namespace ProtoPromiseTests.Threading
             int index = -1;
             var progressSubscriber = ParallelActionTestHelper.Create(
                 subscribePlace,
-                10,
+                numProgressReports,
                 () => promise
                     .SubscribeProgress(progressHelpers[Interlocked.Increment(ref index)])
                     .Catch((string error) => { Assert.AreEqual(rejectValue, error); })
@@ -327,7 +328,7 @@ namespace ProtoPromiseTests.Threading
 
             var progressReporter = ParallelActionTestHelper.Create(
                 reportPlace,
-                10,
+                numProgressReports,
                 () => deferred.TryReportProgress(0.5f)
             );
             progressReporter.MaybeAddParallelAction(parallelActions);
@@ -335,7 +336,7 @@ namespace ProtoPromiseTests.Threading
             var tryCompleter = TestHelper.GetTryCompleterVoid(completeType, rejectValue);
             var promiseCompleter = ParallelActionTestHelper.Create(
                 completePlace,
-                10,
+                numProgressReports,
                 () => tryCompleter(deferred, cancelationSource)
             );
             promiseCompleter.MaybeAddParallelAction(parallelActions);
@@ -430,14 +431,14 @@ namespace ProtoPromiseTests.Threading
             [Values(ProgressType.Interface)] ProgressType progressType,
             [Values(SynchronizationType.Synchronous, SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType synchronizationType)
         {
-            int expectedInvokes = completeType == CompleteType.Resolve ? 10 : 0;
+            int expectedInvokes = completeType == CompleteType.Resolve ? numProgressReports : 0;
             if (subscribePlace == ActionPlace.InSetup)
             {
-                expectedInvokes += 10;
+                expectedInvokes += numProgressReports;
                 if (reportPlace == ActionPlace.InSetup)
                 {
                     // Implementation detail: when progress is reported with the same value, the callback will not be invoked. This behavior is not guaranteed by the API.
-                    expectedInvokes += 10;
+                    expectedInvokes += numProgressReports;
                 }
             }
             else // parallel or teardown
@@ -446,7 +447,7 @@ namespace ProtoPromiseTests.Threading
                 // We only know there are extra invokes if complete (and report) come after subscribe.
                 if (completeType == CompleteType.Resolve && completePlace == ActionPlace.InTeardown)
                 {
-                    expectedInvokes += 10;
+                    expectedInvokes += numProgressReports;
                 }
             }
 
@@ -455,7 +456,7 @@ namespace ProtoPromiseTests.Threading
             var cancelationSource = default(CancelationSource);
             int invokedCount = 0;
 
-            ProgressHelper[] progressHelpers = new ProgressHelper[10];
+            ProgressHelper[] progressHelpers = new ProgressHelper[numProgressReports];
 
             Action AssertInvokes = completeType != CompleteType.Resolve && completePlace == ActionPlace.InSetup
                 // If the promise is rejected or canceled in the setup, we know that it should not be invoked more times than expected.
@@ -470,7 +471,7 @@ namespace ProtoPromiseTests.Threading
             int index = -1;
             var progressSubscriber = ParallelActionTestHelper.Create(
                 subscribePlace,
-                10,
+                numProgressReports,
                 () => promise
                     .SubscribeProgress(progressHelpers[Interlocked.Increment(ref index)])
                     .Catch((string error) => { Assert.AreEqual(rejectValue, error); })
@@ -480,7 +481,7 @@ namespace ProtoPromiseTests.Threading
 
             var progressReporter = ParallelActionTestHelper.Create(
                 reportPlace,
-                10,
+                numProgressReports,
                 () => deferred.TryReportProgress(0.5f)
             );
             progressReporter.MaybeAddParallelAction(parallelActions);
@@ -488,7 +489,7 @@ namespace ProtoPromiseTests.Threading
             var tryCompleter = TestHelper.GetTryCompleterT(completeType, 1, rejectValue);
             var promiseCompleter = ParallelActionTestHelper.Create(
                 completePlace,
-                10,
+                numProgressReports,
                 () => tryCompleter(deferred, cancelationSource)
             );
             promiseCompleter.MaybeAddParallelAction(parallelActions);

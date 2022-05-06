@@ -17,9 +17,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
-using System;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace Proto.Promises
 {
@@ -63,8 +61,8 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     SetResult(CancelContainerVoid.GetOrCreate(), Promise.State.Canceled);
-                    HandleablePromiseBase nextHandler = TakeNextWaiter();
                     var executionScheduler = new ExecutionScheduler(true);
+                    HandleablePromiseBase nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
                     MaybeHandleNext(nextHandler, ref executionScheduler);
                     executionScheduler.Execute();
                 }
@@ -117,7 +115,7 @@ namespace Proto.Promises
                     else if (unregistered)
                     {
                         _cancelationHelper.TryRelease();
-                        HandleSelf(ref handler, out nextHandler);
+                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
@@ -172,7 +170,7 @@ namespace Proto.Promises
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(ref handler, out nextHandler);
+                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                         return;
                     }
 
@@ -188,7 +186,7 @@ namespace Proto.Promises
                     else if (unregistered)
                     {
                         _cancelationHelper.TryRelease();
-                        HandleSelf(ref handler, out nextHandler);
+                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
@@ -268,7 +266,7 @@ namespace Proto.Promises
                     else
                     {
                         _cancelationHelper.TryRelease();
-                        HandleSelf(ref handler, out nextHandler);
+                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                     }
                 }
 
@@ -321,7 +319,7 @@ namespace Proto.Promises
                     if (_resolver.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(ref handler, out nextHandler);
+                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                         return;
                     }
 
@@ -352,7 +350,7 @@ namespace Proto.Promises
                     else
                     {
                         _cancelationHelper.TryRelease();
-                        HandleSelf(ref handler, out nextHandler);
+                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                     }
                 }
 
@@ -459,7 +457,7 @@ namespace Proto.Promises
                     if (_continuer.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(ref handler, out nextHandler);
+                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                         return;
                     }
 
@@ -532,7 +530,7 @@ namespace Proto.Promises
                     else if (unregistered)
                     {
                         _cancelationHelper.TryRelease();
-                        HandleSelf(ref handler, out nextHandler);
+                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
@@ -587,7 +585,7 @@ namespace Proto.Promises
                     if (_canceler.IsNull)
                     {
                         // The returned promise is handling this.
-                        HandleSelf(ref handler, out nextHandler);
+                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                         return;
                     }
 
@@ -603,7 +601,7 @@ namespace Proto.Promises
                     else if (unregistered)
                     {
                         _cancelationHelper.TryRelease();
-                        HandleSelf(ref handler, out nextHandler);
+                        HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {

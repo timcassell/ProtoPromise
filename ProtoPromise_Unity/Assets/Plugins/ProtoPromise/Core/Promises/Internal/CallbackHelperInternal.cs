@@ -827,10 +827,10 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                     promise._previous = _this._ref;
 #endif
+                    promise._smallFields._currentProgress = _this._ref._smallFields._currentProgress;
                     var executionScheduler = new ExecutionScheduler(true);
                     _this._ref.InterlockedIncrementProgressReportingCount();
                     HandleablePromiseBase previousWaiter;
-                    promise._smallFields._currentProgress = _this._ref._smallFields._currentProgress;
                     PromiseSingleAwait promiseSingleAwait = _this._ref.AddWaiter(_this.Id, promise, out previousWaiter, ref executionScheduler);
                     if (previousWaiter == null)
                     {
@@ -843,7 +843,7 @@ namespace Proto.Promises
                         if (!PromiseSingleAwait.VerifyWaiter(promiseSingleAwait))
                         {
                             // We're throwing InvalidOperationException here, so we don't want the new object to also add exceptions from its finalizer.
-                            GC.SuppressFinalize(promise);
+                            Discard(promise);
                             throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(2));
                         }
                         PromiseRef handler = _this._ref;

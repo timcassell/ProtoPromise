@@ -11,6 +11,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!--Set true to help debug internal promise code (allows the debugger to step into the code and includes internal stacktraces).-->
     <DeveloperMode>false</DeveloperMode>
+    <!--If true, the stack will unwind before invoking the next continuation. If false, stack traces will be longer, but it could cause a StackOverflowException if the promise chain is very long.
+        This value is ignored if DeveloperMode is false, and will default to true.-->
+    <AllowStackToUnwind>true</AllowStackToUnwind>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +29,13 @@
 
   <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
     <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(AllowStackToUnwind)'=='false'">
+    <DefineConstants>$(DefineConstants);PROTO_PROMISE_STACK_UNWIND_DISABLE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoProgress|AnyCPU'">

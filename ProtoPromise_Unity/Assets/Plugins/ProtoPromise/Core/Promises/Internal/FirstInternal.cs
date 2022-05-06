@@ -99,14 +99,14 @@ namespace Proto.Promises
                         if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
                             && Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
-                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler);
+                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler, ref executionScheduler);
                         }
                     }
                     else // Resolved
                     {
                         if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
-                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler);
+                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler, ref executionScheduler);
                         }
                         InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                     }

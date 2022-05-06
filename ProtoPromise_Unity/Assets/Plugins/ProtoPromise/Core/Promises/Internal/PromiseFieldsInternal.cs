@@ -207,7 +207,6 @@ namespace Proto.Promises
             partial class PromiseConfigured : PromiseSingleAwait
             {
                 private SynchronizationContext _synchronizationContext;
-                private int _mostRecentPotentialScheduleMethod; // ScheduleMethod for Interlocked. This is to make sure this is only scheduled once, even if multiple threads are racing.
                 volatile private Promise.State _previousState;
             }
 
@@ -429,7 +428,6 @@ namespace Proto.Promises
                 private SynchronizationContext _synchronizationContext;
                 private CancelationRegistration _cancelationRegistration;
 
-                private int _mostRecentPotentialScheduleMethod; // ScheduleMethod for Interlocked. This is to make sure the waiter is only scheduled once, even if multiple threads are racing.
                 volatile private int _isProgressScheduled; // int for Interlocked. 1 if scheduled, 0 if not.
                 private int _retainCounter;
                 volatile private bool _canceled;

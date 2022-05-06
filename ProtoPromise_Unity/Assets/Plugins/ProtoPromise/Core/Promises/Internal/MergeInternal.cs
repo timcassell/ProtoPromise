@@ -125,7 +125,7 @@ namespace Proto.Promises
                         if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
                             handler.SuppressRejection = true;
-                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler);
+                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler, ref executionScheduler);
                         }
                         InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                     }
@@ -135,7 +135,7 @@ namespace Proto.Promises
                         if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
                             && Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                         {
-                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler);
+                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler, ref executionScheduler);
                         }
                     }
                     MaybeDisposeNonVirt();
@@ -190,7 +190,7 @@ namespace Proto.Promises
                             if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                             {
                                 handler.SuppressRejection = true;
-                                SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler);
+                                SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler, ref executionScheduler);
                             }
                             InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                         }
@@ -204,7 +204,7 @@ namespace Proto.Promises
                                 // Only nullify if all promises resolved, otherwise we let MaybeDispose dispose it.
                                 _resolveContainer = null;
                                 State = state;
-                                nextHandler = TakeNextWaiter();
+                                nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
                             }
                         }
                         MaybeDispose();

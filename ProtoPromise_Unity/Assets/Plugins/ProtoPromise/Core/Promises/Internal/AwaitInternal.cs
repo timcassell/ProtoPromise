@@ -245,6 +245,7 @@ namespace Proto.Promises
         }
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
 
+        // TODO: only check null id in DEBUG mode. Remove duplicate id check for non-null.
         internal static void ValidateAwaiterOperation(Promise promise, int skipFrames)
         {
             bool isValid = promise._target._ref == null
@@ -367,6 +368,8 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             internal PromiseAwaiter(Promise<T> promise)
             {
+                // TODO: check for null and use a sentinel PromiseRef so the other calls don't need to check for null.
+                // It may be better to have the sentinel on the promise itself, rather than the awaiters, so none of the APIs need to check for null.
                 _promise = promise;
                 CreateOverride();
             }

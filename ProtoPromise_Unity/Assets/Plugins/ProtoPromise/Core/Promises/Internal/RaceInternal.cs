@@ -95,7 +95,7 @@ namespace Proto.Promises
                     if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                     {
                         handler.SuppressRejection = true;
-                        SetResultAndTakeNextWaiter(valueContainer.Clone(), handler.State, out nextHandler);
+                        SetResultAndTakeNextWaiter(valueContainer.Clone(), handler.State, out nextHandler, ref executionScheduler);
                     }
                     else
                     {

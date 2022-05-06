@@ -2515,8 +2515,8 @@ namespace ProtoPromiseTests
                     .CatchCancelation(() => { onCancel(); return convertValue; });
                 onAdoptCallbackAddedConvert(ref p4);
                 onCallbackAddedConvert(ref p4);
-
             }
+
             foreach (var p in GetTestablePromises(promise))
             {
                 Promise p5 = default(Promise);
@@ -2671,8 +2671,8 @@ namespace ProtoPromiseTests
                     .CatchCancelation(() => { onCancel(); return convertValue; });
                 onAdoptCallbackAddedConvert(ref p4);
                 onCallbackAddedConvert(ref p4);
-
             }
+
             foreach (var p in GetTestablePromises(promise))
             {
                 Promise p5 = default(Promise);
