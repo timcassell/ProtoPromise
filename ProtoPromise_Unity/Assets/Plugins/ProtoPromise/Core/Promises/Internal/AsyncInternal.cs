@@ -418,6 +418,7 @@ namespace Proto.Promises
 #endif
             internal partial class AsyncPromiseRef : AsyncPromiseBase
             {
+                // TODO: change to HandleablePromiseBase and use more liberally to remove branches.
                 [ThreadStatic]
                 private static AsyncPromiseRef _currentRunner;
 
@@ -514,7 +515,7 @@ namespace Proto.Promises
                 {
                     ValidateAwait(waiter, promiseId);
 
-                    // TODO: detect if this is being called from another promise higher in the stack, allow the stack to unwind instead of calling Handle.
+                    // TODO: detect if this is being called from another promise higher in the stack, allow the stack to unwind instead of calling waiter.HandleNext.
 
                     SetPreviousAndProgress(waiter, minProgress, maxProgress);
 
@@ -533,8 +534,7 @@ namespace Proto.Promises
                         {
                             throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(2));
                         }
-                        HandleablePromiseBase _;
-                        Handle(ref waiter, out _, ref executionScheduler);
+                        waiter.HandleNext(this, ref executionScheduler);
                     }
                     executionScheduler.Execute();
                 }

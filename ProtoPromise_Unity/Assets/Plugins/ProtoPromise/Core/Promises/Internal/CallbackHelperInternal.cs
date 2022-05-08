@@ -846,9 +846,7 @@ namespace Proto.Promises
                             Discard(promise);
                             throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(2));
                         }
-                        PromiseRef handler = _this._ref;
-                        HandleablePromiseBase _;
-                        promise.Handle(ref handler, out _, ref executionScheduler);
+                        _this._ref.HandleNext(promise, ref executionScheduler);
                     }
                     executionScheduler.Execute();
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);

@@ -226,34 +226,6 @@ namespace Proto.Promises
                 return temp;
             }
 
-            internal bool TryRemove(T item)
-            {
-                if (IsEmpty)
-                {
-                    return false;
-                }
-                if (item == _head)
-                {
-                    _head = _head.Next;
-                    MarkRemovedFromCollection(item);
-                    return true;
-                }
-                T node = _head;
-                T next = node.Next;
-                while (next != null)
-                {
-                    if (next == item)
-                    {
-                        node.Next = next.Next;
-                        MarkRemovedFromCollection(item);
-                        return true;
-                    }
-                    node = next;
-                    next = node.Next;
-                }
-                return false;
-            }
-
             [MethodImpl(InlineOption)]
             public Enumerator<T> GetEnumerator()
             {
@@ -388,6 +360,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 get { return _head == null; }
             }
+
             internal bool IsNotEmpty
             {
                 [MethodImpl(InlineOption)]
@@ -399,12 +372,6 @@ namespace Proto.Promises
             {
                 _head = head;
                 _tail = tail;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal T PeekTail()
-            {
-                return _tail;
             }
 
             internal void Enqueue(T item)
@@ -459,6 +426,7 @@ namespace Proto.Promises
         internal struct ValueWriteOnlyLinkedQueue<T> where T : class, ILinked<T>
 #endif
         {
+            // TODO: sentinel can be removed as a field and passed in as an argument to save 4/8 bytes of memory.
             private readonly ILinked<T> _sentinel;
             private ILinked<T> _tail;
 
@@ -583,16 +551,11 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 get { return _stack.IsEmpty; }
             }
+
             internal bool IsNotEmpty
             {
                 [MethodImpl(InlineOption)]
                 get { return _stack.IsNotEmpty; }
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void ClearWithoutRepoolUnsafe()
-            {
-                _stack = new ValueLinkedStack<Node>();
             }
 
             [MethodImpl(InlineOption)]

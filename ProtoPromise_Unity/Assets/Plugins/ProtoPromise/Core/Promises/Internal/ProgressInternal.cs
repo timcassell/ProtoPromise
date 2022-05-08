@@ -502,7 +502,6 @@ namespace Proto.Promises
                 internal abstract PromiseSingleAwait IncrementProgress(long increment, ref Fixed32 progress, ushort depth);
             }
 
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
