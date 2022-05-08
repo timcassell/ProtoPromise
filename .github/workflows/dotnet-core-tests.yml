@@ -1,0 +1,55 @@
+name: .Net Core Tests
+
+on: [pull_request]
+
+jobs:
+  dotnet-core-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Release, Release_NoProgress, Debug, Debug_NoProgress]
+        pooling: [POOL_ENABLE, POOL_DISABLE]
+        developerMode: [true, false]
+        exclude:
+            # DEBUG mode forces pooling disabled.
+          - config: Debug
+            pooling: POOL_ENABLE
+          - config: Debug_NoProgress
+            pooling: POOL_ENABLE
+            # We only need to test each config for developer mode, not all pool types.
+          - developerMode: true
+            pooling: POOL_ENABLE
+        include:
+          - developerMode: true
+            devString: devMode
+          - developerMode: false
+            devString: userMode
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: 5.0.x
+          
+      - name: Run Tests
+        timeout-minutes: 180
+        run: |
+          dotnet test -c ${{ matrix.config }} -f net5.0 --logger "trx;logfilename=dotnet-test-results-net5.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}.trx" -p:ExtraDefineConstants=PROTO_PROMISE_${{ matrix.pooling }} -p:DeveloperMode=${{ matrix.developerMode }} --results-directory "./TestResults"
+
+      - uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: dotnet-test-results-net5.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: dotnet-test-results-net5.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
+          path: TestResults
