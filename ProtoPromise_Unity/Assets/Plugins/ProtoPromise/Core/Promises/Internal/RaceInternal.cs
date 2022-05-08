@@ -29,62 +29,58 @@ namespace Proto.Promises
             {
                 private RacePromise() { }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
+                {
+                    if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
                 {
                     base.Dispose();
-#if PROMISE_DEBUG
-                    lock (_locker)
-                    {
-                        while (_passThroughs.IsNotEmpty)
-                        {
-                            _passThroughs.Pop().Release();
-                        }
-                    }
-#endif
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                internal static RacePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, uint pendingAwaits, ushort depth)
+                internal static RacePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<RacePromise>()
                         ?? new RacePromise();
 
-                    checked
-                    {
-                        // Extra retain for handle.
-                        ++pendingAwaits;
-                    }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE // _waitCount isn't actually used in Race, but can be useful for debugging.
+                    promise._waitCount = pendingAwaits;
+#endif
                     unchecked
                     {
-                        promise._waitCount = (int) pendingAwaits;
+                        promise._retainCounter = pendingAwaits + 1;
                     }
-                    promise.Reset(depth, 2);
+                    promise.Reset(depth);
 
                     while (promisePassThroughs.IsNotEmpty)
                     {
                         var passThrough = promisePassThroughs.Pop();
 #if PROMISE_DEBUG
-                        passThrough.Retain();
-                        lock (promise._locker)
+                        lock (promise._previousPromises)
                         {
-                            promise._passThroughs.Push(passThrough);
+                            promise._previousPromises.Push(passThrough.Owner);
                         }
 #endif
                         passThrough.SetTargetAndAddToOwner(promise);
                         if (promise._valueContainer != null)
                         {
                             // This was completed potentially before all passthroughs were hooked up. Release all remaining passthroughs.
-                            int addCount = 0;
+                            int releaseCount = 0;
                             while (promisePassThroughs.IsNotEmpty)
                             {
                                 var p = promisePassThroughs.Pop();
-                                p.Owner.MaybeDispose();
-                                p.Release();
-                                --addCount;
+                                p.Owner.MaybeMarkAwaitedAndDispose(p.Id);
+                                p.Dispose();
+                                ++releaseCount;
                             }
-                            if (addCount != 0 && InterlockedAddWithOverflowCheck(ref promise._waitCount, addCount, 0) == 0)
+                            if (releaseCount != 0 && InterlockedAddWithOverflowCheck(ref promise._retainCounter, -releaseCount, releaseCount - 1) == 0)
                             {
-                                promise.MaybeDispose();
+                                promise.Dispose();
                             }
                         }
                     }
@@ -92,26 +88,22 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal override void Handle(ref PromiseRef handler, ValueContainer valueContainer, PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
-                    // Retain while handling, then release when complete for thread safety.
-                    InterlockedRetainDisregardId();
-
+                    var handler = passThrough.Owner;
+                    var valueContainer = handler._valueContainer;
                     if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
                     {
                         handler.SuppressRejection = true;
-                        _valueContainer = valueContainer.Clone();
-                        Handle(ref _waitCount, ref handler, out nextHandler, ref executionScheduler);
+                        SetResultAndTakeNextWaiter(valueContainer.Clone(), handler.State, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
                         nextHandler = null;
                     }
-                    if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0)
-                    {
-                        _smallFields.InterlockedTryReleaseComplete();
-                    }
-
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE // _waitCount isn't actually used in Race, but can be useful for debugging.
+                    InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
+#endif
                     MaybeDispose();
                 }
             }

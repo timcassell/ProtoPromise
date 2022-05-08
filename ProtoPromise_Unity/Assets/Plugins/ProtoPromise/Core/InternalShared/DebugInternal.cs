@@ -286,8 +286,7 @@ namespace Proto.Promises
                 // A promise cannot wait on itself.
                 if (other == this)
                 {
-                    other.MarkAwaited(other.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                    other.MaybeDispose();
+                    other.MaybeMarkAwaitedAndDispose(other.Id);
                     if (awaited)
                         throw new InvalidOperationException("A Promise cannot wait on itself.", string.Empty);
                     throw new InvalidReturnException("A Promise cannot wait on itself.", string.Empty);
@@ -297,68 +296,65 @@ namespace Proto.Promises
                     return;
                 }
                 // This allows us to check Merge/All/Race/First Promises iteratively.
-                Stack<PromisePassThrough> passThroughs = PassthroughsForIterativeAlgorithm;
+                Stack<PromiseRef> previouses = PreviousesForIterativeAlgorithm;
                 PromiseRef prev = other._previous;
             Repeat:
                 for (; prev != null; prev = prev._previous)
                 {
                     if (prev == this)
                     {
-                        other.MarkAwaited(other.Id, PromiseFlags.WasAwaitedOrForgotten | PromiseFlags.SuppressRejection);
-                        other.MaybeDispose();
-                        while (passThroughs.Count > 0)
-                        {
-                            passThroughs.Pop().Release();
-                        }
+                        other.MaybeMarkAwaitedAndDispose(other.Id);
+                        previouses.Clear();
                         if (awaited)
                             throw new InvalidOperationException("Circular Promise chain detected.", GetFormattedStacktrace(other));
                         throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(other));
                     }
-                    prev.BorrowPassthroughs(passThroughs);
+                    prev.BorrowPassthroughs(previouses);
                 }
 
-                if (passThroughs.Count > 0)
+                if (previouses.Count > 0)
                 {
-                    var passThrough = passThroughs.Pop();
-                    prev = passThrough.Owner;
-                    passThrough.Release();
+                    prev = previouses.Pop();
                     goto Repeat;
                 }
             }
 
             [ThreadStatic]
-            private static Stack<PromisePassThrough> _passthroughsForIterativeAlgorithm;
-            private static Stack<PromisePassThrough> PassthroughsForIterativeAlgorithm
+            private static Stack<PromiseRef> _previousesForIterativeAlgorithm;
+            private static Stack<PromiseRef> PreviousesForIterativeAlgorithm
             {
                 get
                 {
-                    if (_passthroughsForIterativeAlgorithm == null)
+                    if (_previousesForIterativeAlgorithm == null)
                     {
-                        _passthroughsForIterativeAlgorithm = new Stack<PromisePassThrough>();
+                        _previousesForIterativeAlgorithm = new Stack<PromiseRef>();
                     }
-                    return _passthroughsForIterativeAlgorithm;
+                    return _previousesForIterativeAlgorithm;
                 }
             }
 
-            protected virtual void BorrowPassthroughs(Stack<PromisePassThrough> borrower) { }
-
-            private static void ExchangePassthroughs(ref ValueLinkedStack<PromisePassThrough> from, Stack<PromisePassThrough> to, object locker)
-            {
-                lock (locker)
-                {
-                    foreach (var passthrough in from)
-                    {
-                        passthrough.Retain();
-                        to.Push(passthrough);
-                    }
-                }
-            }
+            protected virtual void BorrowPassthroughs(Stack<PromiseRef> borrower) { }
 
             partial class MultiHandleablePromiseBase
             {
-                protected override void BorrowPassthroughs(Stack<PromisePassThrough> borrower)
+                protected override void BorrowPassthroughs(Stack<PromiseRef> borrower)
                 {
-                    ExchangePassthroughs(ref _passThroughs, borrower, _locker);
+                    lock (_previousPromises)
+                    {
+                        foreach (var promiseRef in _previousPromises)
+                        {
+                            borrower.Push(promiseRef);
+                        }
+                    }
+                }
+                
+                new protected void Dispose()
+                {
+                    base.Dispose();
+                    lock (_previousPromises)
+                    {
+                        _previousPromises.Clear();
+                    }
                 }
             }
 

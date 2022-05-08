@@ -226,34 +226,6 @@ namespace Proto.Promises
                 return temp;
             }
 
-            internal bool TryRemove(T item)
-            {
-                if (IsEmpty)
-                {
-                    return false;
-                }
-                if (item == _head)
-                {
-                    _head = _head.Next;
-                    MarkRemovedFromCollection(item);
-                    return true;
-                }
-                T node = _head;
-                T next = node.Next;
-                while (next != null)
-                {
-                    if (next == item)
-                    {
-                        node.Next = next.Next;
-                        MarkRemovedFromCollection(item);
-                        return true;
-                    }
-                    node = next;
-                    next = node.Next;
-                }
-                return false;
-            }
-
             [MethodImpl(InlineOption)]
             public Enumerator<T> GetEnumerator()
             {
@@ -295,6 +267,7 @@ namespace Proto.Promises
                 }
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             private void EnterCore()
             {
                 // Spin until we successfully get lock.
@@ -387,12 +360,14 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 get { return _head == null; }
             }
+
             internal bool IsNotEmpty
             {
                 [MethodImpl(InlineOption)]
                 get { return _head != null; }
             }
 
+            [MethodImpl(InlineOption)]
             internal ValueLinkedQueue(T head, T tail)
             {
                 _head = head;
@@ -412,69 +387,6 @@ namespace Proto.Promises
                     _tail.Next = item;
                     _tail = item;
                 }
-            }
-
-            internal void Push(T item)
-            {
-                AssertNotInCollection(item);
-
-                if (_head == null)
-                {
-                    _head = _tail = item;
-                }
-                else
-                {
-                    item.Next = _head;
-                    _head = item;
-                }
-            }
-
-            internal bool TryRemove(T item)
-            {
-                if (IsEmpty)
-                {
-                    return false;
-                }
-                if (item == _head)
-                {
-                    _head = _head.Next;
-                    if (item == _tail)
-                    {
-                        _tail = null;
-                    }
-                    MarkRemovedFromCollection(item);
-                    return true;
-                }
-                T node = _head;
-                T next = node.Next;
-                while (next != null)
-                {
-                    if (next == item)
-                    {
-                        node.Next = next.Next;
-                        if (item == _tail)
-                        {
-                            _tail = node;
-                        }
-                        MarkRemovedFromCollection(item);
-                        return true;
-                    }
-                    node = next;
-                    next = node.Next;
-                }
-                return false;
-            }
-
-            internal bool Contains(T item)
-            {
-                foreach (T node in this)
-                {
-                    if (item == node)
-                    {
-                        return true;
-                    }
-                }
-                return false;
             }
 
             internal ValueLinkedStack<T> MoveElementsToStack()
@@ -514,6 +426,7 @@ namespace Proto.Promises
         internal struct ValueWriteOnlyLinkedQueue<T> where T : class, ILinked<T>
 #endif
         {
+            // TODO: sentinel can be removed as a field and passed in as an argument to save 4/8 bytes of memory.
             private readonly ILinked<T> _sentinel;
             private ILinked<T> _tail;
 
@@ -638,16 +551,11 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 get { return _stack.IsEmpty; }
             }
+
             internal bool IsNotEmpty
             {
                 [MethodImpl(InlineOption)]
                 get { return _stack.IsNotEmpty; }
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void ClearWithoutRepoolUnsafe()
-            {
-                _stack = new ValueLinkedStack<Node>();
             }
 
             [MethodImpl(InlineOption)]

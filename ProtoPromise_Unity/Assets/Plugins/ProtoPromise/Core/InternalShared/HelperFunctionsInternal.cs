@@ -167,7 +167,11 @@ namespace Proto.Promises
             internal void ScheduleSynchronous(HandleablePromiseBase handleable)
             {
                 AssertNotExecutingProgress();
+#if PROTO_PROMISE_STACK_UNWIND_DISABLE && PROTO_PROMISE_DEVELOPER_MODE
+                handleable.Handle(ref this);
+#else
                 _handleStack.Push(handleable);
+#endif
             }
 
             internal void ScheduleOnContext(SynchronizationContext synchronizationContext, HandleablePromiseBase handleable)

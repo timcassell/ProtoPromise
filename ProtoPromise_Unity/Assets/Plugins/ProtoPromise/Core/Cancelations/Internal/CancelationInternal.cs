@@ -431,8 +431,7 @@ namespace Proto.Promises
 
             CancelationRef ILinked<CancelationRef>.Next { get; set; }
 
-            // TODO: replace lock(_registeredCallbacks) with Monitor.TryEnter() in abortable loop.
-            // TODO: create a custom SortedDictionary with pooled nodes instead.
+            // TODO: replace List with a double-linked list with the CancelationRegistration storing the node directly for O(1) find and removal.
             private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
             private ValueLinkedStackZeroGC<CancelationRegistration> _links = ValueLinkedStackZeroGC<CancelationRegistration>.Create();
             volatile private int _state; // State as int for Interlocked.

@@ -133,6 +133,17 @@ namespace Proto.Promises
 #endif
         }
 
+        internal static void Discard(object waste)
+        {
+            GC.SuppressFinalize(waste);
+#if PROMISE_DEBUG
+            lock (_pooledObjects)
+            {
+                _inUseObjects.Remove(waste);
+            }
+#endif
+        }
+
         static partial void ThrowIfInPool(object obj);
 #if PROMISE_DEBUG
         private static bool _trackObjectsForRelease = false;
@@ -174,7 +185,7 @@ namespace Proto.Promises
                 if (_inUseObjects.Count > 0)
                 {
                     System.Text.StringBuilder sb = new System.Text.StringBuilder();
-                    sb.AppendLine("Objects not released:");
+                    sb.AppendLine(_inUseObjects.Count + " objects not released:");
                     sb.AppendLine();
                     ITraceable traceable = null;
                     foreach (var obj in _inUseObjects)

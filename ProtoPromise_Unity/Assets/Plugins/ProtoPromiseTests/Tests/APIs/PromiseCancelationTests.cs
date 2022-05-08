@@ -1970,9 +1970,27 @@ namespace ProtoPromiseTests.APIs
                 promise.Forget();
             }
 
+            private const string expectedRejection = "Reject";
+            private Action<UnhandledException> previousRejectionHandler;
+
+            private void SetupExpectedUncaughtRejections()
+            {
+                // When a callback is canceled and the previous promise is rejected, the rejection is unhandled.
+                // So we need to suppress that here and make sure it's correct.
+                previousRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(expectedRejection, e.Value);
+            }
+
+            private void CleanupExpectedUncaughtRejections()
+            {
+                Promise.Config.UncaughtRejectionHandler = previousRejectionHandler;
+            }
+
             [Test]
             public void OnRejectedIsNotInvokedIfTokenIsCanceled_void()
             {
+                SetupExpectedUncaughtRejections();
+
                 CancelationSource cancelationSource = CancelationSource.New();
 
                 var deferred = Promise.NewDeferred();
@@ -1987,14 +2005,18 @@ namespace ProtoPromiseTests.APIs
                 );
 
                 cancelationSource.Cancel();
-                deferred.Reject("Reject");
+                deferred.Reject(expectedRejection);
 
                 cancelationSource.Dispose();
+
+                CleanupExpectedUncaughtRejections();
             }
 
             [Test]
             public void OnRejectedIsNotInvokedIfTokenIsCanceled_T()
             {
+                SetupExpectedUncaughtRejections();
+
                 CancelationSource cancelationSource = CancelationSource.New();
 
                 var deferred = Promise.NewDeferred<int>();
@@ -2009,14 +2031,18 @@ namespace ProtoPromiseTests.APIs
                 );
 
                 cancelationSource.Cancel();
-                deferred.Reject("Reject");
+                deferred.Reject(expectedRejection);
 
                 cancelationSource.Dispose();
+
+                CleanupExpectedUncaughtRejections();
             }
 
             [Test]
             public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_void0()
             {
+                SetupExpectedUncaughtRejections();
+
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
 
@@ -2031,14 +2057,18 @@ namespace ProtoPromiseTests.APIs
                     cancelationToken: cancelationSource.Token
                 );
 
-                deferred.Reject("Reject");
+                deferred.Reject(expectedRejection);
 
                 cancelationSource.Dispose();
+
+                CleanupExpectedUncaughtRejections();
             }
 
             [Test]
             public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_void1()
             {
+                SetupExpectedUncaughtRejections();
+
                 var deferred = Promise.NewDeferred();
 
                 TestHelper.AddCallbacksWithCancelation<float, object, string>(
@@ -2050,12 +2080,16 @@ namespace ProtoPromiseTests.APIs
                     cancelationToken: Proto.Promises.CancelationToken.Canceled()
                 );
 
-                deferred.Reject("Reject");
+                deferred.Reject(expectedRejection);
+
+                CleanupExpectedUncaughtRejections();
             }
 
             [Test]
             public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_T0()
             {
+                SetupExpectedUncaughtRejections();
+
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
 
@@ -2070,14 +2104,18 @@ namespace ProtoPromiseTests.APIs
                     cancelationToken: cancelationSource.Token
                 );
 
-                deferred.Reject("Reject");
+                deferred.Reject(expectedRejection);
 
                 cancelationSource.Dispose();
+
+                CleanupExpectedUncaughtRejections();
             }
 
             [Test]
             public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_T1()
             {
+                SetupExpectedUncaughtRejections();
+
                 var deferred = Promise.NewDeferred<int>();
 
                 TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
@@ -2089,7 +2127,9 @@ namespace ProtoPromiseTests.APIs
                     cancelationToken: Proto.Promises.CancelationToken.Canceled()
                 );
 
-                deferred.Reject("Reject");
+                deferred.Reject(expectedRejection);
+
+                CleanupExpectedUncaughtRejections();
             }
 
             [Test]

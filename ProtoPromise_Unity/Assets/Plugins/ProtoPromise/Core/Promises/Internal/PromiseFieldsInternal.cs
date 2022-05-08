@@ -25,6 +25,7 @@
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -144,20 +145,6 @@ namespace Proto.Promises
 
     partial class Internal
     {
-        [Flags]
-        internal enum PromiseFlags : byte
-        {
-            None = 0,
-
-            SuppressRejection = 1 << 0,
-            WasAwaitedOrForgotten = 1 << 1,
-            SecondPrevious = 1 << 2,
-            HadCallback = 1 << 3,
-            InProgressQueue = 1 << 4,
-
-            All = byte.MaxValue
-        }
-
         internal struct VoidResult { }
 
         partial class HandleablePromiseBase
@@ -170,22 +157,25 @@ namespace Proto.Promises
             [StructLayout(LayoutKind.Explicit)]
             private partial struct SmallFields
             {
-                // long value with [FieldOffset(0)] allows us to use Interlocked to set fields atomically without consuming more memory than necessary.
-                [FieldOffset(0)]
-                private long _longValue;
                 [FieldOffset(0)]
                 volatile internal Promise.State _state;
                 [FieldOffset(1)]
-                volatile private PromiseFlags _flags;
+                internal bool _suppressRejection;
                 [FieldOffset(2)]
-                private ushort _retains;
+                internal bool _wasAwaitedorForgotten;
+                [FieldOffset(3)]
+                internal bool _secondPrevious;
+                // Offset 4 so that we can use Interlocked to increment _deferredId.
+                // Hopefully this won't be necessary in the future when .Net adds Interlocked methods for byte/sbyte/ushort/short. https://github.com/dotnet/runtime/issues/64658
+                [FieldOffset(4)]
+                volatile internal int _idInterlocker;
                 [FieldOffset(4)]
                 internal short _promiseId;
+                // _depth shares bit space with _deferredId, because _depth is always 0 on deferred promises, and _deferredId is not used in non-deferred promises.
                 [FieldOffset(6)]
                 internal short _deferredId;
-                // _depth shares bit space with _deferredId, because it is always 0 on deferred promises, and _deferredId is not used in non-deferred promises.
                 [FieldOffset(6)]
-                volatile internal ushort _depth;
+                internal ushort _depth;
 #if PROMISE_PROGRESS
                 [FieldOffset(8)]
                 internal Fixed32 _currentProgress;
@@ -208,24 +198,15 @@ namespace Proto.Promises
 #endif
             volatile internal ValueContainer _valueContainer;
             private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
+            volatile protected HandleablePromiseBase _waiter; // _waiter is only used in PromiseSingleAwait, but it's moved into PromiseRef so that the MaybeHandleNext loop can assign InvalidAwaitSentinel.
 
             partial class PromiseSingleAwait : PromiseRef
             {
-                protected enum ScheduleMethod : int
-                {
-                    None,
-                    Handle,
-                    AddWaiter,
-                    OnForget
-                }
-
-                volatile protected HandleablePromiseBase _waiter;
             }
 
             partial class PromiseConfigured : PromiseSingleAwait
             {
                 private SynchronizationContext _synchronizationContext;
-                volatile private int _mostRecentPotentialScheduleMethod; // ScheduleMethod casted to int for Interlocked. This is to make sure this is only scheduled once, even if multiple threads are racing.
                 volatile private Promise.State _previousState;
             }
 
@@ -235,7 +216,10 @@ namespace Proto.Promises
 
 #if PROMISE_PROGRESS
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
+                private bool _isProgressScheduled;
 #endif
+
+                private int _retainCounter;
             }
 
             #region Non-cancelable Promises
@@ -302,6 +286,7 @@ namespace Proto.Promises
             partial struct CancelationHelper
             {
                 private CancelationRegistration _cancelationRegistration;
+                private int _retainCounter;
             }
 
             partial class DeferredPromiseCancel<T> : DeferredPromise<T>
@@ -373,16 +358,17 @@ namespace Proto.Promises
             #region Multi Promises
             partial class MultiHandleablePromiseBase : PromiseSingleAwait
             {
+                protected int _waitCount;
+                protected int _retainCounter;
+
 #if PROMISE_DEBUG
-                protected readonly object _locker = new object();
-                protected ValueLinkedStack<PromisePassThrough> _passThroughs = new ValueLinkedStack<PromisePassThrough>();
+                // This is used for circular promise chain detection.
+                protected Stack<PromiseRef> _previousPromises = new Stack<PromiseRef>();
 #endif
             }
 
             partial class MergePromise : MultiHandleablePromiseBase
             {
-                private int _waitCount;
-
 #if PROMISE_PROGRESS
                 // These are used to avoid rounding errors when normalizing the progress.
                 // Use 64 bits to allow combining many promises with very deep chains.
@@ -393,12 +379,10 @@ namespace Proto.Promises
 
             partial class RacePromise : MultiHandleablePromiseBase
             {
-                private int _waitCount;
             }
 
             partial class FirstPromise : MultiHandleablePromiseBase
             {
-                private int _waitCount;
             }
 
             partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>
@@ -408,10 +392,13 @@ namespace Proto.Promises
                 private struct PassThroughSmallFields
                 {
                     internal int _index;
-                    internal int _retainCounter;
+                    internal short _id;
 #if PROMISE_PROGRESS
-                    internal Fixed32 _currentProgress;
                     internal ushort _depth;
+                    internal Fixed32 _currentProgress;
+#endif
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    internal bool _disposed;
 #endif
                 }
 
@@ -421,7 +408,7 @@ namespace Proto.Promises
 
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
             }
-            #endregion
+#endregion
 
 #if PROMISE_PROGRESS
             partial struct Fixed32
@@ -437,20 +424,15 @@ namespace Proto.Promises
             partial class PromiseProgress<TProgress> : PromiseSingleAwait
                 where TProgress : IProgress<float>
             {
-                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
-                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
-                private struct ProgressSmallFields
-                {
-                    volatile internal bool _canceled;
-                    internal bool _isSynchronous;
-                    volatile internal Promise.State _previousState;
-                    volatile internal int _mostRecentPotentialScheduleMethod; // ScheduleMethod casted to int for Interlocked. This is to make sure the waiter is only scheduled once, even if multiple threads are racing.
-                }
-
-                private ProgressSmallFields _smallProgressFields;
-                private CancelationRegistration _cancelationRegistration;
                 private TProgress _progress;
                 private SynchronizationContext _synchronizationContext;
+                private CancelationRegistration _cancelationRegistration;
+
+                volatile private int _isProgressScheduled; // int for Interlocked. 1 if scheduled, 0 if not.
+                private int _retainCounter;
+                volatile private bool _canceled;
+                volatile private Promise.State _previousState;
+                private bool _isSynchronous;
 
                 IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
             }

@@ -101,6 +101,34 @@ namespace Proto.Promises
                     return _this != null && _this.TryReportProgress(deferredId, progress);
 #endif
                 }
+
+                [MethodImpl(InlineOption)]
+                internal void ResolveDirect<T>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    T value)
+                {
+                    ThrowIfInPool(this);
+                    HandleInternal(CreateResolveContainer(value), Promise.State.Resolved);
+                }
+
+                protected void RejectDirect<TReject>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TReject reason, int rejectSkipFrames)
+                {
+                    ThrowIfInPool(this);
+                    HandleInternal(CreateRejectContainer(reason, rejectSkipFrames + 1, this), Promise.State.Rejected);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void CancelDirect()
+                {
+                    ThrowIfInPool(this);
+                    HandleInternal(CancelContainerVoid.GetOrCreate(), Promise.State.Canceled);
+                }
             }
 
             // The only purpose of this is to cast the ref when converting a DeferredBase to a Deferred(<T>) to avoid extra checks.
@@ -112,18 +140,10 @@ namespace Proto.Promises
             {
                 protected DeferredPromise() { }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
                 {
-                    base.Dispose();
+                    Dispose();
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
-                }
-
-                // Used for child to call base dispose without repooling for both types.
-                // This is necessary because C# doesn't allow `base.base.Dispose()`.
-                [MethodImpl(InlineOption)]
-                protected void SuperDispose()
-                {
-                    base.Dispose();
                 }
 
                 internal static DeferredPromise<T> GetOrCreate()
@@ -157,9 +177,9 @@ namespace Proto.Promises
             {
                 private DeferredPromiseCancel() { }
 
-                protected override void Dispose()
+                protected override void MaybeDispose()
                 {
-                    SuperDispose();
+                    Dispose();
                     _cancelationRegistration = default(CancelationRegistration);
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }

@@ -16,15 +16,25 @@ namespace ProtoPromiseTests.Threading
 {
     public class ApiWithCancelationTokenConcurrencyTests
     {
+        const int rejectValue = 1;
+        Action<UnhandledException> currentHandler;
+
         [SetUp]
         public void Setup()
         {
             TestHelper.Setup();
+
+            // When a callback is canceled and the previous promise is rejected, the rejection is unhandled.
+            // So we need to suppress that here and make sure it's correct.
+            currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
         }
 
         [TearDown]
         public void Teardown()
         {
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
+
             TestHelper.Cleanup();
         }
 
@@ -105,8 +115,6 @@ namespace ProtoPromiseTests.Threading
         [Test]
         public void Catch_PromiseMayBeRejectedAndCallbackCanceledConcurrently_void()
         {
-            int rejection = 1;
-
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
             bool completed = false;
@@ -136,7 +144,7 @@ namespace ProtoPromiseTests.Threading
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => deferred.Reject(rejection)
+                    () => deferred.Reject(rejectValue)
                 );
             }
         }
@@ -144,8 +152,6 @@ namespace ProtoPromiseTests.Threading
         [Test]
         public void Catch_PromiseMayBeRejectedAndCallbackCanceledConcurrently_T()
         {
-            int rejection = 1;
-
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
             bool completed = false;
@@ -175,7 +181,7 @@ namespace ProtoPromiseTests.Threading
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => deferred.Reject(rejection)
+                    () => deferred.Reject(rejectValue)
                 );
             }
         }
@@ -380,8 +386,6 @@ namespace ProtoPromiseTests.Threading
         public void Catch_PromiseMayBeRejectedAndAwaitedAndCallbackCanceledConcurrently_void(
             [Values] ConfigureAwaitType configureAwaitType)
         {
-            int rejection = 1;
-
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
             var cancelationToken = default(CancelationToken);
@@ -422,7 +426,7 @@ namespace ProtoPromiseTests.Threading
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => deferred.Reject(rejection),
+                    () => deferred.Reject(rejectValue),
                     () => action(promise.ConfigureAwait(configureAwaitType), cancelationToken)
                         .Finally(() =>
                         {
@@ -441,8 +445,6 @@ namespace ProtoPromiseTests.Threading
         public void Catch_PromiseMayBeRejectedAndAwaitedAndCallbackCanceledConcurrently_T(
             [Values] ConfigureAwaitType configureAwaitType)
         {
-            int rejection = 1;
-
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
             var cancelationToken = default(CancelationToken);
@@ -483,7 +485,7 @@ namespace ProtoPromiseTests.Threading
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
-                    () => deferred.Reject(rejection),
+                    () => deferred.Reject(rejectValue),
                     () => action(promise.ConfigureAwait(configureAwaitType), cancelationToken)
                         .Finally(() =>
                         {

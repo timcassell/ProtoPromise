@@ -368,10 +368,10 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = handler.GetResult<TArg>();
-                    owner.MaybeDisposePrevious(handler);
+                    handler.MaybeDispose();
                     TResult result = Invoke(arg);
                     handler = owner;
-                    owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -389,9 +389,9 @@ namespace Proto.Promises
                     if (handler.TryGetRejectValue(out arg))
                     {
                         TResult result = Invoke(arg);
-                        owner.MaybeDisposePrevious(handler);
+                        handler.MaybeDispose();
                         handler = owner;
-                        owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                        owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
@@ -562,9 +562,9 @@ namespace Proto.Promises
                         }
                         valueContainer = CreateResolveContainer(result);
                     }
-                    owner.MaybeDisposePrevious(handler);
+                    handler.MaybeDispose();
                     handler = owner;
-                    owner.SetResultAndMaybeHandle(valueContainer, Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    owner.SetResultAndTakeNextWaiter(valueContainer, Promise.State.Resolved, out nextHandler, ref executionScheduler);
                 }
             }
 
@@ -778,10 +778,10 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = handler.GetResult<TArg>();
-                    owner.MaybeDisposePrevious(handler);
+                    handler.MaybeDispose();
                     handler = owner;
                     TResult result = Invoke(arg);
-                    owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -799,9 +799,9 @@ namespace Proto.Promises
                     if (handler.TryGetRejectValue(out arg))
                     {
                         TResult result = Invoke(arg);
-                        owner.MaybeDisposePrevious(handler);
+                        handler.MaybeDispose();
                         handler = owner;
-                        owner.SetResultAndMaybeHandle(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                        owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
@@ -990,9 +990,9 @@ namespace Proto.Promises
                         }
                         valueContainer = CreateResolveContainer(result);
                     }
-                    owner.MaybeDisposePrevious(handler);
+                    handler.MaybeDispose();
                     handler = owner;
-                    owner.SetResultAndMaybeHandle(valueContainer, Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    owner.SetResultAndTakeNextWaiter(valueContainer, Promise.State.Resolved, out nextHandler, ref executionScheduler);
                 }
             }
 
