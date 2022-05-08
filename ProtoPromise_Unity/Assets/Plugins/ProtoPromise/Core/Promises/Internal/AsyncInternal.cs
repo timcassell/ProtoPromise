@@ -418,16 +418,19 @@ namespace Proto.Promises
 #endif
             internal partial class AsyncPromiseRef : AsyncPromiseBase
             {
-                // TODO: change to HandleablePromiseBase and use more liberally to remove branches.
                 [ThreadStatic]
-                private static AsyncPromiseRef _currentRunner;
+                private static HandleablePromiseBase _currentRunner;
 
                 [MethodImpl(InlineOption)]
-                private AsyncPromiseRef ExchangeCurrentRunner(AsyncPromiseRef currentRunner)
+                private HandleablePromiseBase ExchangeCurrentRunner(HandleablePromiseBase currentRunner)
                 {
+#if PROTO_PROMISE_STACK_UNWIND_DISABLE && PROTO_PROMISE_DEVELOPER_MODE
+                    return null;
+#else
                     var previous = _currentRunner;
                     _currentRunner = currentRunner;
                     return previous;
+#endif
                 }
 
 #if !PROMISE_PROGRESS
@@ -489,19 +492,21 @@ namespace Proto.Promises
                 private void MaybeHandleCompletion(ValueContainer valueContainer, Promise.State state)
                 {
                     // If this is completed from another promise, just set the result so that the stack can unwind and the other promise will schedule the continuation.
-                    if (ExchangeCurrentRunner(null) == this)
+                    SetResult(valueContainer, state);
+                    var nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel._instance, null);
+                    if (ExchangeCurrentRunner(nextHandler) != this)
                     {
-                        SetResult(valueContainer, state);
-                    }
-                    else
-                    {
-                        HandleInternal(valueContainer, state);
+                        _currentRunner = null;
+                        var executionScheduler = new ExecutionScheduler(true);
+                        MaybeHandleNext(nextHandler, ref executionScheduler);
+                        executionScheduler.Execute();
                     }
                 }
 
                 [MethodImpl(InlineOption)]
                 internal void HookupWaiter(PromiseRef waiter, short promiseId)
                 {
+                    _currentRunner = null;
                     ValidateAwait(waiter, promiseId);
 
                     // TODO: detect if this is being called from another promise higher in the stack, and call AddWaiter and allow the stack to unwind instead of calling HookupNewWaiter.
@@ -513,6 +518,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void HookupWaiterWithProgress(PromiseRef waiter, short promiseId, ushort depth, float minProgress, float maxProgress)
                 {
+                    _currentRunner = null;
                     ValidateAwait(waiter, promiseId);
 
                     // TODO: detect if this is being called from another promise higher in the stack, allow the stack to unwind instead of calling waiter.HandleNext.
@@ -559,9 +565,11 @@ namespace Proto.Promises
                     public Action MoveNext
                     {
                         [MethodImpl(InlineOption)]
-                        get { return _moveNext; }
-                        [MethodImpl(InlineOption)]
-                        protected set { _moveNext = value; }
+                        get
+                        {
+                            _currentRunner = null;
+                            return _moveNext;
+                        }
                     }
 
                     private PromiseMethodContinuer() { }
@@ -652,20 +660,12 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     SetAwaitedComplete(handler, ref executionScheduler);
 
-                    AsyncPromiseRef previousRunner = ExchangeCurrentRunner(this);
+                    var previousRunner = ExchangeCurrentRunner(this);
 
                     MoveNext();
 
-                    bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
-                    if (isComplete)
-                    {
-                        nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
-                        handler = this;
-                    }
-                    else
-                    {
-                        nextHandler = null;
-                    }
+                    handler = this;
+                    nextHandler = ExchangeCurrentRunner(previousRunner);
                 }
             } // class AsyncPromiseRef
 
@@ -711,27 +711,23 @@ namespace Proto.Promises
                         ThrowIfInPool(this);
                         SetAwaitedComplete(handler, ref executionScheduler);
 
-                        AsyncPromiseRef previousRunner = ExchangeCurrentRunner(this);
+                        var previousRunner = ExchangeCurrentRunner(this);
 
                         ContinueMethod();
 
-                        bool isComplete = ExchangeCurrentRunner(previousRunner) == null;
-                        if (isComplete)
-                        {
-                            nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
-                            handler = this;
-                        }
-                        else
-                        {
-                            nextHandler = null;
-                        }
+                        handler = this;
+                        nextHandler = ExchangeCurrentRunner(previousRunner);
                     }
                 }
 
                 internal Action MoveNext
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _moveNext; }
+                    get
+                    {
+                        _currentRunner = null;
+                        return _moveNext;
+                    }
                 }
 
                 protected AsyncPromiseRef() { }
