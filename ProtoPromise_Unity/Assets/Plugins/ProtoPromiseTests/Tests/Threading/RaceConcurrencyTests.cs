@@ -33,7 +33,7 @@ namespace ProtoPromiseTests.Threading
         [TearDown]
         public void Teardown()
         {
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
+            TestHelper.WaitForAllThreadsAndReplaceRejectionHandler(currentHandler);
 
             TestHelper.Cleanup();
         }
