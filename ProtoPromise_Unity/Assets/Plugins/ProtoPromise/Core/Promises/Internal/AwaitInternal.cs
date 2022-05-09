@@ -29,7 +29,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal TResult GetResult<TResult>(short promiseId)
             {
-                // TODO: when _ref is changed to PromiseRef<T>, implement GetResult(short promiseId) for thread-safe verification.
+                ValidateId(promiseId, this, 2);
                 TResult result = GetResult<TResult>();
                 MaybeDispose();
                 return result;
@@ -39,7 +39,7 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal void Throw(Promise.State state, short promiseId)
             {
-                // TODO: verify promiseId in a thread-safe manner.
+                ValidateId(promiseId, this, 2);
                 if (state == Promise.State.Canceled)
                 {
                     MaybeDispose();
@@ -58,7 +58,7 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal System.Runtime.ExceptionServices.ExceptionDispatchInfo GetExceptionDispatchInfo(Promise.State state, short promiseId)
             {
-                // TODO: verify promiseId in a thread-safe manner.
+                ValidateId(promiseId, this, 2);
                 if (state == Promise.State.Canceled)
                 {
                     MaybeDispose();
@@ -245,15 +245,22 @@ namespace Proto.Promises
         }
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
 
-        // TODO: only check null id in DEBUG mode. Remove duplicate id check for non-null.
-        internal static void ValidateAwaiterOperation(Promise promise, int skipFrames)
+        [MethodImpl(InlineOption)]
+        internal static void ValidateNullId(short promiseId, int skipFrames)
         {
-            bool isValid = promise._target._ref == null
-                ? promise._target.Id == ValidIdFromApi
-                : promise._target.Id == promise._target._ref.Id;
-            if (!isValid)
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            if (promiseId != ValidIdFromApi)
             {
-                throw new InvalidOperationException("Cannot await a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(skipFrames + 1));
+                ThrowInvalidAwait(skipFrames + 1);
+            }
+#endif
+        }
+
+        internal static void ValidateId(short promiseId, PromiseRef _ref, int skipFrames)
+        {
+            if (promiseId != _ref.Id)
+            {
+                ThrowInvalidAwait(skipFrames + 1);
             }
         }
 
@@ -263,11 +270,16 @@ namespace Proto.Promises
             {
                 if (promise._target.Id != ValidIdFromApi)
                 {
-                    throw new InvalidOperationException("Cannot await a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(skipFrames + 1));
+                    ThrowInvalidAwait(skipFrames + 1);
                 }
                 return true;
             }
             return promise._target._ref.GetIsCompleted(promise._target.Id);
+        }
+
+        private static void ThrowInvalidAwait(int skipFrames)
+        {
+            throw new InvalidOperationException("Cannot await a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(skipFrames + 1));
         }
     }
 
@@ -310,10 +322,10 @@ namespace Proto.Promises
             public void GetResult()
             {
                 var promise = _awaiter._promise;
-                Internal.ValidateAwaiterOperation(promise, 1);
                 var _ref = promise._ref;
                 if (_ref == null)
                 {
+                    Internal.ValidateNullId(promise.Id, 1);
                     return;
                 }
                 var state = _ref.State;
@@ -387,10 +399,10 @@ namespace Proto.Promises
             public T GetResult()
             {
                 var promise = _promise;
-                Internal.ValidateAwaiterOperation(promise, 1);
                 var _ref = promise._ref;
                 if (_ref == null)
                 {
+                    Internal.ValidateNullId(promise.Id, 1);
                     return promise.Result;
                 }
                 var state = _ref.State;
@@ -411,9 +423,9 @@ namespace Proto.Promises
             {
                 ValidateArgument(continuation, "continuation", 1);
                 var promise = _promise;
-                Internal.ValidateAwaiterOperation(promise, 1);
                 if (promise._ref == null)
                 {
+                    Internal.ValidateNullId(promise.Id, 1);
                     continuation();
                     return;
                 }
@@ -484,10 +496,10 @@ namespace Proto.Promises
             public void GetResult()
             {
                 var promise = _awaiter._promise;
-                Internal.ValidateAwaiterOperation(promise, 1);
                 var _ref = promise._ref;
                 if (_ref == null)
                 {
+                    Internal.ValidateNullId(promise.Id, 1);
                     return;
                 }
                 var state = _ref.State;
@@ -569,10 +581,10 @@ namespace Proto.Promises
             public T GetResult()
             {
                 var promise = _promise;
-                Internal.ValidateAwaiterOperation(promise, 1);
                 var _ref = promise._ref;
                 if (_ref == null)
                 {
+                    Internal.ValidateNullId(promise.Id, 1);
                     return promise.Result;
                 }
                 var state = _ref.State;
@@ -593,9 +605,9 @@ namespace Proto.Promises
             {
                 ValidateArgument(continuation, "continuation", 1);
                 var promise = _promise;
-                Internal.ValidateAwaiterOperation(promise, 1);
                 if (promise._ref == null)
                 {
+                    Internal.ValidateNullId(promise.Id, 1);
                     continuation();
                     return;
                 }

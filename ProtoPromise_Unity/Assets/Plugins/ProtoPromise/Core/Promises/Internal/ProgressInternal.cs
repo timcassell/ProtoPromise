@@ -1021,6 +1021,9 @@ namespace Proto.Promises
                 private void SetAwaitedComplete(PromiseRef handler, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
+#if PROMISE_DEBUG
+                    _previous = null;
+#endif
                     // Don't report progress if it's 1 or NaN. 1 will be reported when the async promise is resolved.
                     // Also don't report if the awaited promise was rejected or canceled.
                     if (handler.State == Promise.State.Resolved & _maxProgress < 1f)
