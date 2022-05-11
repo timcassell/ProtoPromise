@@ -345,10 +345,17 @@ namespace Proto.Promises
                 where TStateMachine : IAsyncStateMachine
             {
                 SetStateMachine(ref stateMachine);
+#if NET5_0_OR_GREATER
+                if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
+                {
+                    ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
+                }
+#else
                 if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
                 {
                     AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
                 }
+#endif
                 else
                 {
                     awaiter.OnCompleted(((PromiseRefBase.AsyncPromiseRef<TResult>) _ref).MoveNext);
@@ -362,10 +369,17 @@ namespace Proto.Promises
                 where TStateMachine : IAsyncStateMachine
             {
                 SetStateMachine(ref stateMachine);
+#if NET5_0_OR_GREATER
+                if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
+                {
+                    ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
+                }
+#else
                 if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
                 {
                     AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
                 }
+#endif
                 else
                 {
                     awaiter.UnsafeOnCompleted(((PromiseRefBase.AsyncPromiseRef<TResult>) _ref).MoveNext);
@@ -420,7 +434,7 @@ namespace Proto.Promises
                 TResult result)
             {
                 ThrowIfInPool(this);
-                ((PromiseRef<TResult>) this).SetResult(result);
+                this.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
                 MaybeHandleCompletion();
             }
 
@@ -553,12 +567,19 @@ namespace Proto.Promises
                 where TAwaiter : INotifyCompletion
                 where TStateMachine : IAsyncStateMachine
             {
-                var _this = (AsyncPromiseRef<TResult>) this;
+                var _this = this.UnsafeAs<AsyncPromiseRef<TResult>>();
                 _this.SetStateMachine(ref stateMachine);
+#if NET5_0_OR_GREATER
+                if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
+                {
+                    ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_this);
+                }
+#else
                 if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
                 {
                     AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _this);
                 }
+#endif
                 else
                 {
                     awaiter.OnCompleted(_this.MoveNext);
@@ -570,12 +591,19 @@ namespace Proto.Promises
                 where TAwaiter : ICriticalNotifyCompletion
                 where TStateMachine : IAsyncStateMachine
             {
-                var _this = (AsyncPromiseRef<TResult>) this;
+                var _this = this.UnsafeAs<AsyncPromiseRef<TResult>>();
                 _this.SetStateMachine(ref stateMachine);
+#if NET5_0_OR_GREATER
+                if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
+                {
+                    ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_this);
+                }
+#else
                 if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
                 {
                     AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _this);
                 }
+#endif
                 else
                 {
                     awaiter.UnsafeOnCompleted(_this.MoveNext);

@@ -299,7 +299,7 @@ namespace Proto.Promises
                 {
                     return default(TResult);
                 }
-                return ((PromiseRef<TResult>) this)._result;
+                return this.UnsafeAs<PromiseRef<TResult>>()._result;
             }
 
             [MethodImpl(InlineOption)]
@@ -850,7 +850,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     // TODO: when cancelations are added, don't suppress rejection if this is canceled.
                     handler.SuppressRejection = true;
-                    _result = ((PromiseRef<TResult>) handler)._result;
+                    _result = handler.GetResult<TResult>();
                     _rejectContainer = handler._rejectContainer;
                     _previousState = handler.State;
                     handler.MaybeDispose();
@@ -1465,7 +1465,7 @@ namespace Proto.Promises
                         throw new InvalidOperationException("Passthrough was handled with a handler other than its owner.");
                     }
 #endif
-                    handler = (PromiseRefBase) _target;
+                    handler = _target.UnsafeAs<PromiseRefBase>();
                     _target.Handle(this, out nextHandler, ref executionScheduler);
                     _owner.MaybeDispose();
                     Dispose();

@@ -56,7 +56,7 @@ namespace Proto.Promises
 
             private static void ExecuteFromContext(object state)
             {
-                ((SynchronizationHandler) state).Execute();
+                state.UnsafeAs<SynchronizationHandler>().Execute();
             }
 
             internal void PostHandleable(HandleablePromiseBase handleable)
@@ -210,7 +210,7 @@ namespace Proto.Promises
                 try
                 {
                     var executionScheduler = new ExecutionScheduler(true);
-                    ((HandleablePromiseBase) state).Handle(ref executionScheduler);
+                    state.UnsafeAs<HandleablePromiseBase>().Handle(ref executionScheduler);
                     executionScheduler.Execute();
                 }
                 catch (Exception e)
@@ -382,6 +382,16 @@ namespace Proto.Promises
             {
                 return BuildHashCode(_ref, hashcode1, hashcode2) * 31 + hashcode3;
             }
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static T UnsafeAs<T>(this object o) where T : class
+        {
+#if NET5_0_OR_GREATER && !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE
+            return Unsafe.As<T>(o);
+#else
+            return (T) o;
+#endif
         }
     } // class Internal
 } // namespace Proto.Promises

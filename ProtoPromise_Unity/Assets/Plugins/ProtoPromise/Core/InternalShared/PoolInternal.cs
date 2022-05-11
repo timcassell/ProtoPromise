@@ -80,11 +80,11 @@ namespace Proto.Promises
                 if (_trackObjectsForRelease & obj == null)
                 {
                     // Create here via reflection so that the object can be tracked.
-                    obj = (TLinked) Activator.CreateInstance(typeof(T), true);
+                    obj = Activator.CreateInstance(typeof(T), true).UnsafeAs<TLinked>();
                 }
 #endif
                 MarkNotInPool(obj);
-                return (T) obj;
+                return obj.UnsafeAs<T>();
             }
 
             [MethodImpl(InlineOption)]

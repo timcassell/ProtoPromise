@@ -83,7 +83,7 @@ namespace Proto.Promises
             {
                 var rejection = CreateRejectContainer(Value, int.MinValue, traceable);
 #if PROMISE_DEBUG
-                ((IRejectValueContainer) rejection).SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
+                rejection.UnsafeAs<IRejectValueContainer>().SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
 #endif
                 return rejection;
             }

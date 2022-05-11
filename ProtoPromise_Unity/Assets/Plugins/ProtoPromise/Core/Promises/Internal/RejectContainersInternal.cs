@@ -63,7 +63,7 @@ namespace Proto.Promises
                     ? RejectionContainerException.Create(e)
                     // Only need to create one object pool for reference types.
                     : (RejectContainer) RejectionContainer.Create(reason);
-                SetCreatedAndRejectedStacktrace((IRejectValueContainer) valueContainer, rejectSkipFrames + 1, traceable);
+                SetCreatedAndRejectedStacktrace(valueContainer.UnsafeAs<IRejectValueContainer>(), rejectSkipFrames + 1, traceable);
                 return valueContainer;
             }
 

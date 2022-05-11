@@ -156,7 +156,7 @@ namespace Proto.Promises
                 try
                 {
                     var executionScheduler = new ExecutionScheduler(false);
-                    ((IProgressInvokable) state).Invoke(ref executionScheduler);
+                    state.UnsafeAs<IProgressInvokable>().Invoke(ref executionScheduler);
                     executionScheduler.ExecuteProgress();
                 }
                 catch (Exception e)
@@ -941,7 +941,7 @@ namespace Proto.Promises
                 internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     ThrowIfInPool(this);
-                    depth = ((PromiseRefBase) _target).Depth;
+                    depth = _target.UnsafeAs<PromiseRefBase>().Depth;
                     long dif = _smallFields._currentProgress.InterlockedSetAndGetDifference(progress);
                     return _target.IncrementProgress(dif, ref progress, _smallFields._depth);
                 }

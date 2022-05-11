@@ -48,7 +48,7 @@ namespace Proto.Promises
                 if (state == Promise.State.Rejected)
                 {
                     SuppressRejection = true;
-                    var exception = ((IRejectValueContainer) _rejectContainer).GetException();
+                    var exception = _rejectContainer.UnsafeAs<IRejectValueContainer>().GetException();
                     MaybeDispose();
                     throw exception;
                 }
@@ -67,7 +67,7 @@ namespace Proto.Promises
                 if (state == Promise.State.Rejected)
                 {
                     SuppressRejection = true;
-                    var exceptionDispatchInfo = ((IRejectValueContainer) _rejectContainer).GetExceptionDispatchInfo();
+                    var exceptionDispatchInfo = _rejectContainer.UnsafeAs<IRejectValueContainer>().GetExceptionDispatchInfo();
                     MaybeDispose();
                     return exceptionDispatchInfo;
                 }
@@ -155,6 +155,7 @@ namespace Proto.Promises
             void AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef);
         }
 
+#if !NET5_0_OR_GREATER
         // Override AwaitOnCompleted implementation to prevent boxing in Unity.
 #if UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER // C# 9 added in 2021.2. We can also use this in non-Unity library since CIL has supported function pointers forever.
         internal unsafe abstract class AwaitOverrider<T> where T : INotifyCompletion
@@ -243,6 +244,7 @@ namespace Proto.Promises
             }
         }
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
+#endif // !NET5_0_OR_GREATER
 
         [MethodImpl(InlineOption)]
         internal static void ValidateNullId(short promiseId, int skipFrames)
@@ -284,6 +286,7 @@ namespace Proto.Promises
 
     namespace Async.CompilerServices
     {
+#if !NET5_0_OR_GREATER
         partial struct PromiseAwaiterVoid
         {
             // Fix for IL2CPP not invoking the static constructor.
@@ -351,6 +354,7 @@ namespace Proto.Promises
             }
 #endif
         }
+#endif // !NET5_0_OR_GREATER
 
         /// <summary>
         /// Used to support the await keyword.

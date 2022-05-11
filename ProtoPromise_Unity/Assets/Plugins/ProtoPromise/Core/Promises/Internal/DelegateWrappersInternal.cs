@@ -321,7 +321,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        ((PromiseRef<TResult>) owner).HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.UnsafeAs<PromiseRef<TResult>>().HandleSelf(ref handler, out nextHandler, ref executionScheduler);
                     }
                 }
 
@@ -370,19 +370,19 @@ namespace Proto.Promises
                     {
                         if (isVoidArg)
                         {
-                            ((Action) _callback).Invoke();
+                            _callback.UnsafeAs<Action>().Invoke();
                         }
                         else
                         {
-                            ((Action<TArg>) _callback).Invoke(arg);
+                            _callback.UnsafeAs<Action<TArg>>().Invoke(arg);
                         }
                         return default(TResult);
                     }
                     if (isVoidArg)
                     {
-                        return ((Func<TResult>) _callback).Invoke();
+                        return _callback.UnsafeAs<Func<TResult>>().Invoke();
                     }
-                    return ((Func<TArg, TResult>) _callback).Invoke(arg);
+                    return _callback.UnsafeAs<Func<TArg, TResult>>().Invoke(arg);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -392,7 +392,7 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     TResult result = Invoke(arg);
                     handler = owner;
-                    ((PromiseRef<TResult>) owner).SetResult(result);
+                    owner.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
                     nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
                 }
 
@@ -402,7 +402,7 @@ namespace Proto.Promises
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     TResult result = Invoke(arg);
-                    ((PromiseRef<TResult>) owner).WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
                 }
 
                 void IDelegateReject.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
@@ -413,7 +413,7 @@ namespace Proto.Promises
                         TResult result = Invoke(arg);
                         handler.MaybeDispose();
                         handler = owner;
-                        ((PromiseRef<TResult>) owner).SetResult(result);
+                        owner.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
                         nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
                     }
                     else
@@ -429,7 +429,7 @@ namespace Proto.Promises
                     {
                         TResult result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        ((PromiseRef<TResult>) owner).WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
@@ -468,19 +468,19 @@ namespace Proto.Promises
                         Promise promise;
                         if (isVoidArg)
                         {
-                            promise = ((Func<Promise>) _callback).Invoke();
+                            promise = _callback.UnsafeAs<Func<Promise>>().Invoke();
                         }
                         else
                         {
-                            promise = ((Func<TArg, Promise>) _callback).Invoke(arg);
+                            promise = _callback.UnsafeAs<Func<TArg, Promise>>().Invoke(arg);
                         }
                         return new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
                     }
                     if (isVoidArg)
                     {
-                        return ((Func<Promise<TResult>>) _callback).Invoke();
+                        return _callback.UnsafeAs<Func<Promise<TResult>>>().Invoke();
                     }
-                    return ((Func<TArg, Promise<TResult>>) _callback).Invoke(arg);
+                    return _callback.UnsafeAs<Func<TArg, Promise<TResult>>>().Invoke(arg);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -489,7 +489,7 @@ namespace Proto.Promises
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     Promise<TResult> result = Invoke(arg);
-                    ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
@@ -499,7 +499,7 @@ namespace Proto.Promises
                     {
                         Promise<TResult> result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
@@ -538,19 +538,19 @@ namespace Proto.Promises
                     {
                         if (isVoidArg)
                         {
-                            ((Promise.ContinueAction) _callback).Invoke(new Promise.ResultContainer(null));
+                            _callback.UnsafeAs<Promise.ContinueAction>().Invoke(new Promise.ResultContainer(null));
                         }
                         else
                         {
-                            ((Promise<TArg>.ContinueAction) _callback).Invoke(new Promise<TArg>.ResultContainer(arg));
+                            _callback.UnsafeAs<Promise<TArg>.ContinueAction>().Invoke(new Promise<TArg>.ResultContainer(arg));
                         }
                         return default(TResult);
                     }
                     if (isVoidArg)
                     {
-                        return ((Promise.ContinueFunc<TResult>) _callback).Invoke(new Promise.ResultContainer(null));
+                        return _callback.UnsafeAs<Promise.ContinueFunc<TResult>>().Invoke(new Promise.ResultContainer(null));
                     }
-                    return ((Promise<TArg>.ContinueFunc<TResult>) _callback).Invoke(new Promise<TArg>.ResultContainer(arg));
+                    return _callback.UnsafeAs<Promise<TArg>.ContinueFunc<TResult>>().Invoke(new Promise<TArg>.ResultContainer(arg));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -563,11 +563,11 @@ namespace Proto.Promises
                     {
                         if (isVoidArg)
                         {
-                            ((Promise.ContinueAction) _callback).Invoke(new Promise.ResultContainer(handler));
+                            _callback.UnsafeAs<Promise.ContinueAction>().Invoke(new Promise.ResultContainer(handler));
                         }
                         else
                         {
-                            ((Promise<TArg>.ContinueAction) _callback).Invoke(new Promise<TArg>.ResultContainer(handler));
+                            _callback.UnsafeAs<Promise<TArg>.ContinueAction>().Invoke(new Promise<TArg>.ResultContainer(handler));
                         }
                         owner.State = Promise.State.Resolved;
                     }
@@ -576,13 +576,13 @@ namespace Proto.Promises
                         TResult result;
                         if (isVoidArg)
                         {
-                            result = ((Promise.ContinueFunc<TResult>) _callback).Invoke(new Promise.ResultContainer(handler));
+                            result = _callback.UnsafeAs<Promise.ContinueFunc<TResult>>().Invoke(new Promise.ResultContainer(handler));
                         }
                         else
                         {
-                            result = ((Promise<TArg>.ContinueFunc<TResult>) _callback).Invoke(new Promise<TArg>.ResultContainer(handler));
+                            result = _callback.UnsafeAs<Promise<TArg>.ContinueFunc<TResult>>().Invoke(new Promise<TArg>.ResultContainer(handler));
                         }
-                        ((PromiseRef<TResult>) owner).SetResult(result);
+                        owner.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
                     }
                     handler.MaybeDispose();
                     handler = owner;
@@ -620,19 +620,19 @@ namespace Proto.Promises
                         Promise promise;
                         if (isVoidArg)
                         {
-                            promise = ((Promise.ContinueFunc<Promise>) _callback).Invoke(new Promise.ResultContainer(null));
+                            promise = _callback.UnsafeAs<Promise.ContinueFunc<Promise>>().Invoke(new Promise.ResultContainer(null));
                         }
                         else
                         {
-                            promise = ((Promise<TArg>.ContinueFunc<Promise>) _callback).Invoke(new Promise<TArg>.ResultContainer(arg));
+                            promise = _callback.UnsafeAs<Promise<TArg>.ContinueFunc<Promise>>().Invoke(new Promise<TArg>.ResultContainer(arg));
                         }
                         return new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
                     }
                     if (isVoidArg)
                     {
-                        return ((Promise.ContinueFunc<Promise<TResult>>) _callback).Invoke(new Promise.ResultContainer(null));
+                        return _callback.UnsafeAs<Promise.ContinueFunc<Promise<TResult>>>().Invoke(new Promise.ResultContainer(null));
                     }
-                    return ((Promise<TArg>.ContinueFunc<Promise<TResult>>) _callback).Invoke(new Promise<TArg>.ResultContainer(arg));
+                    return _callback.UnsafeAs<Promise<TArg>.ContinueFunc<Promise<TResult>>>().Invoke(new Promise<TArg>.ResultContainer(arg));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -647,11 +647,11 @@ namespace Proto.Promises
                         Promise promise;
                         if (isVoidArg)
                         {
-                            promise = ((Promise.ContinueFunc<Promise>) _callback).Invoke(new Promise.ResultContainer(handler));
+                            promise = _callback.UnsafeAs<Promise.ContinueFunc<Promise>>().Invoke(new Promise.ResultContainer(handler));
                         }
                         else
                         {
-                            promise = ((Promise<TArg>.ContinueFunc<Promise>) _callback).Invoke(new Promise<TArg>.ResultContainer(handler));
+                            promise = _callback.UnsafeAs<Promise<TArg>.ContinueFunc<Promise>>().Invoke(new Promise<TArg>.ResultContainer(handler));
                         }
                         result = new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
                     }
@@ -659,15 +659,15 @@ namespace Proto.Promises
                     {
                         if (isVoidArg)
                         {
-                            result = ((Promise.ContinueFunc<Promise<TResult>>) _callback).Invoke(new Promise.ResultContainer(handler));
+                            result = _callback.UnsafeAs<Promise.ContinueFunc<Promise<TResult>>>().Invoke(new Promise.ResultContainer(handler));
                         }
                         else
                         {
-                            result = ((Promise<TArg>.ContinueFunc<Promise<TResult>>) _callback).Invoke(new Promise<TArg>.ResultContainer(handler));
+                            result = _callback.UnsafeAs<Promise<TArg>.ContinueFunc<Promise<TResult>>>().Invoke(new Promise<TArg>.ResultContainer(handler));
                         }
                     }
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                    ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                 }
             }
 
@@ -781,19 +781,19 @@ namespace Proto.Promises
                     {
                         if (isVoidArg)
                         {
-                            ((Action<TCapture>) _callback).Invoke(_capturedValue);
+                            _callback.UnsafeAs<Action<TCapture>>().Invoke(_capturedValue);
                         }
                         else
                         {
-                            ((Action<TCapture, TArg>) _callback).Invoke(_capturedValue, arg);
+                            _callback.UnsafeAs<Action<TCapture, TArg>>().Invoke(_capturedValue, arg);
                         }
                         return default(TResult);
                     }
                     if (isVoidArg)
                     {
-                        return ((Func<TCapture, TResult>) _callback).Invoke(_capturedValue);
+                        return _callback.UnsafeAs<Func<TCapture, TResult>>().Invoke(_capturedValue);
                     }
-                    return ((Func<TCapture, TArg, TResult>) _callback).Invoke(_capturedValue, arg);
+                    return _callback.UnsafeAs<Func<TCapture, TArg, TResult>>().Invoke(_capturedValue, arg);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -803,7 +803,7 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     handler = owner;
                     TResult result = Invoke(arg);
-                    ((PromiseRef<TResult>) owner).SetResult(result);
+                    owner.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
                     nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
                 }
 
@@ -813,7 +813,7 @@ namespace Proto.Promises
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     TResult result = Invoke(arg);
-                    ((PromiseRef<TResult>) owner).WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
                 }
 
                 void IDelegateReject.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
@@ -824,7 +824,7 @@ namespace Proto.Promises
                         TResult result = Invoke(arg);
                         handler.MaybeDispose();
                         handler = owner;
-                        ((PromiseRef<TResult>) owner).SetResult(result);
+                        owner.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
                         nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
                     }
                     else
@@ -840,7 +840,7 @@ namespace Proto.Promises
                     {
                         TResult result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        ((PromiseRef<TResult>) owner).WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
@@ -891,19 +891,19 @@ namespace Proto.Promises
                         Promise promise;
                         if (isVoidArg)
                         {
-                            promise = ((Func<TCapture, Promise>) _callback).Invoke(_capturedValue);
+                            promise = _callback.UnsafeAs<Func<TCapture, Promise>>().Invoke(_capturedValue);
                         }
                         else
                         {
-                            promise = ((Func<TCapture, TArg, Promise>) _callback).Invoke(_capturedValue, arg);
+                            promise = _callback.UnsafeAs<Func<TCapture, TArg, Promise>>().Invoke(_capturedValue, arg);
                         }
                         return new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
                     }
                     if (isVoidArg)
                     {
-                        return ((Func<TCapture, Promise<TResult>>) _callback).Invoke(_capturedValue);
+                        return _callback.UnsafeAs<Func<TCapture, Promise<TResult>>>().Invoke(_capturedValue);
                     }
-                    return ((Func<TCapture, TArg, Promise<TResult>>) _callback).Invoke(_capturedValue, arg);
+                    return _callback.UnsafeAs<Func<TCapture, TArg, Promise<TResult>>>().Invoke(_capturedValue, arg);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -912,7 +912,7 @@ namespace Proto.Promises
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     Promise<TResult> result = Invoke(arg);
-                    ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
@@ -922,7 +922,7 @@ namespace Proto.Promises
                     {
                         Promise<TResult> result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
@@ -967,19 +967,19 @@ namespace Proto.Promises
                     {
                         if (isVoidArg)
                         {
-                            ((Promise.ContinueAction<TCapture>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(null));
+                            _callback.UnsafeAs<Promise.ContinueAction<TCapture>>().Invoke(_capturedValue, new Promise.ResultContainer(null));
                         }
                         else
                         {
-                            ((Promise<TArg>.ContinueAction<TCapture>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
+                            _callback.UnsafeAs<Promise<TArg>.ContinueAction<TCapture>>().Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
                         }
                         return default(TResult);
                     }
                     if (isVoidArg)
                     {
-                        return ((Promise.ContinueFunc<TCapture, TResult>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(null));
+                        return _callback.UnsafeAs<Promise.ContinueFunc<TCapture, TResult>>().Invoke(_capturedValue, new Promise.ResultContainer(null));
                     }
-                    return ((Promise<TArg>.ContinueFunc<TCapture, TResult>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
+                    return _callback.UnsafeAs<Promise<TArg>.ContinueFunc<TCapture, TResult>>().Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -992,11 +992,11 @@ namespace Proto.Promises
                     {
                         if (isVoidArg)
                         {
-                            ((Promise.ContinueAction<TCapture>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(handler));
+                            _callback.UnsafeAs<Promise.ContinueAction<TCapture>>().Invoke(_capturedValue, new Promise.ResultContainer(handler));
                         }
                         else
                         {
-                            ((Promise<TArg>.ContinueAction<TCapture>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(handler));
+                            _callback.UnsafeAs<Promise<TArg>.ContinueAction<TCapture>>().Invoke(_capturedValue, new Promise<TArg>.ResultContainer(handler));
                         }
                         owner.State = Promise.State.Resolved;
                     }
@@ -1005,13 +1005,13 @@ namespace Proto.Promises
                         TResult result;
                         if (isVoidArg)
                         {
-                            result = ((Promise.ContinueFunc<TCapture, TResult>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(handler));
+                            result = _callback.UnsafeAs<Promise.ContinueFunc<TCapture, TResult>>().Invoke(_capturedValue, new Promise.ResultContainer(handler));
                         }
                         else
                         {
-                            result = ((Promise<TArg>.ContinueFunc<TCapture, TResult>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(handler));
+                            result = _callback.UnsafeAs<Promise<TArg>.ContinueFunc<TCapture, TResult>>().Invoke(_capturedValue, new Promise<TArg>.ResultContainer(handler));
                         }
-                        ((PromiseRef<TResult>) owner).SetResult(result);
+                        owner.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
                     }
                     handler.MaybeDispose();
                     handler = owner;
@@ -1055,19 +1055,19 @@ namespace Proto.Promises
                         Promise promise;
                         if (isVoidArg)
                         {
-                            promise = ((Promise.ContinueFunc<TCapture, Promise>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(null));
+                            promise = _callback.UnsafeAs<Promise.ContinueFunc<TCapture, Promise>>().Invoke(_capturedValue, new Promise.ResultContainer(null));
                         }
                         else
                         {
-                            promise = ((Promise<TArg>.ContinueFunc<TCapture, Promise>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
+                            promise = _callback.UnsafeAs<Promise<TArg>.ContinueFunc<TCapture, Promise>>().Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
                         }
                         return new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
                     }
                     if (isVoidArg)
                     {
-                        return ((Promise.ContinueFunc<TCapture, Promise<TResult>>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(null));
+                        return _callback.UnsafeAs<Promise.ContinueFunc<TCapture, Promise<TResult>>>().Invoke(_capturedValue, new Promise.ResultContainer(null));
                     }
-                    return ((Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
+                    return _callback.UnsafeAs<Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>>>().Invoke(_capturedValue, new Promise<TArg>.ResultContainer(arg));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1082,11 +1082,11 @@ namespace Proto.Promises
                         Promise promise;
                         if (isVoidArg)
                         {
-                            promise = ((Promise.ContinueFunc<TCapture, Promise>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(handler));
+                            promise = _callback.UnsafeAs<Promise.ContinueFunc<TCapture, Promise>>().Invoke(_capturedValue, new Promise.ResultContainer(handler));
                         }
                         else
                         {
-                            promise = ((Promise<TArg>.ContinueFunc<TCapture, Promise>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(handler));
+                            promise = _callback.UnsafeAs<Promise<TArg>.ContinueFunc<TCapture, Promise>>().Invoke(_capturedValue, new Promise<TArg>.ResultContainer(handler));
                         }
                         result = new Promise<TResult>(promise._target._ref, promise._target.Id, promise._target.Depth);
                     }
@@ -1094,15 +1094,15 @@ namespace Proto.Promises
                     {
                         if (isVoidArg)
                         {
-                            result = ((Promise.ContinueFunc<TCapture, Promise<TResult>>) _callback).Invoke(_capturedValue, new Promise.ResultContainer(handler));
+                            result = _callback.UnsafeAs<Promise.ContinueFunc<TCapture, Promise<TResult>>>().Invoke(_capturedValue, new Promise.ResultContainer(handler));
                         }
                         else
                         {
-                            result = ((Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(handler));
+                            result = _callback.UnsafeAs<Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>>>().Invoke(_capturedValue, new Promise<TArg>.ResultContainer(handler));
                         }
                     }
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                    ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                 }
             }
 
