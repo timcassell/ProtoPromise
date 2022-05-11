@@ -24,7 +24,7 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        partial class PromiseRef
+        partial class PromiseRefBase
         {
             [MethodImpl(InlineOption)]
             internal TResult GetResult<TResult>(short promiseId)
@@ -48,7 +48,7 @@ namespace Proto.Promises
                 if (state == Promise.State.Rejected)
                 {
                     SuppressRejection = true;
-                    var exception = ((IRejectValueContainer) _valueContainer).GetException();
+                    var exception = ((IRejectValueContainer) _rejectContainer).GetException();
                     MaybeDispose();
                     throw exception;
                 }
@@ -67,7 +67,7 @@ namespace Proto.Promises
                 if (state == Promise.State.Rejected)
                 {
                     SuppressRejection = true;
-                    var exceptionDispatchInfo = ((IRejectValueContainer) _valueContainer).GetExceptionDispatchInfo();
+                    var exceptionDispatchInfo = ((IRejectValueContainer) _rejectContainer).GetExceptionDispatchInfo();
                     MaybeDispose();
                     return exceptionDispatchInfo;
                 }
@@ -135,14 +135,14 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     nextHandler = null;
                     Invoke();
                 }
 
 #if PROMISE_PROGRESS
-                internal override PromiseSingleAwait SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
                 {
                     return null;
                 }
@@ -152,16 +152,15 @@ namespace Proto.Promises
 
         internal interface IPromiseAwaiter
         {
-            void AwaitOnCompletedInternal(PromiseRef.AsyncPromiseRef asyncPromiseRef);
+            void AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef);
         }
 
-        // TODO: Remove AwaitOverrider in .Net 5+ for a direct call instead.
         // Override AwaitOnCompleted implementation to prevent boxing in Unity.
 #if UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER // C# 9 added in 2021.2. We can also use this in non-Unity library since CIL has supported function pointers forever.
         internal unsafe abstract class AwaitOverrider<T> where T : INotifyCompletion
         {
 #pragma warning disable IDE0044 // Add readonly modifier
-            private static delegate*<ref T, PromiseRef.AsyncPromiseRef, void> _awaitOverrider;
+            private static delegate*<ref T, PromiseRefBase, void> _awaitOverrider;
 #pragma warning restore IDE0044 // Add readonly modifier
 
             [MethodImpl(InlineOption)]
@@ -177,7 +176,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRefBase asyncPromiseRef)
             {
                 _awaitOverrider(ref awaiter, asyncPromiseRef);
             }
@@ -192,7 +191,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRef.AsyncPromiseRef asyncPromiseRef)
+                private static void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef)
                 {
                     awaiter.AwaitOnCompletedInternal(asyncPromiseRef);
                 }
@@ -216,12 +215,12 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRefBase asyncPromiseRef)
             {
                 _awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef);
             }
 
-            protected abstract void AwaitOnCompletedVirt(ref T awaiter, PromiseRef.AsyncPromiseRef asyncPromiseRef);
+            protected abstract void AwaitOnCompletedVirt(ref T awaiter, PromiseRefBase asyncPromiseRef);
 
             private sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
             {
@@ -237,7 +236,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                protected override void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRef.AsyncPromiseRef asyncPromiseRef)
+                protected override void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef)
                 {
                     awaiter.AwaitOnCompletedInternal(asyncPromiseRef);
                 }
@@ -256,7 +255,7 @@ namespace Proto.Promises
 #endif
         }
 
-        internal static void ValidateId(short promiseId, PromiseRef _ref, int skipFrames)
+        internal static void ValidateId(short promiseId, PromiseRefBase _ref, int skipFrames)
         {
             if (promiseId != _ref.Id)
             {
@@ -285,6 +284,74 @@ namespace Proto.Promises
 
     namespace Async.CompilerServices
     {
+        partial struct PromiseAwaiterVoid
+        {
+            // Fix for IL2CPP not invoking the static constructor.
+#if ENABLE_IL2CPP
+            [MethodImpl(Internal.InlineOption)]
+            static partial void CreateOverride()
+            {
+                Internal.AwaitOverrider<PromiseAwaiterVoid>.Create<PromiseAwaiterVoid>();
+            }
+#else
+            static PromiseAwaiterVoid()
+            {
+                Internal.AwaitOverrider<PromiseAwaiterVoid>.Create<PromiseAwaiterVoid>();
+            }
+#endif
+        }
+
+        partial struct PromiseAwaiter<T>
+        {
+            // Fix for IL2CPP not invoking the static constructor.
+#if ENABLE_IL2CPP
+            [MethodImpl(Internal.InlineOption)]
+            static partial void CreateOverride()
+            {
+                Internal.AwaitOverrider<PromiseAwaiter<T>>.Create<PromiseAwaiter<T>>();
+            }
+#else
+            static PromiseAwaiter()
+            {
+                Internal.AwaitOverrider<PromiseAwaiter<T>>.Create<PromiseAwaiter<T>>();
+            }
+#endif
+        }
+
+        partial struct PromiseProgressAwaiterVoid
+        {
+            // Fix for IL2CPP not invoking the static constructor.
+#if ENABLE_IL2CPP
+            [MethodImpl(Internal.InlineOption)]
+            static partial void CreateOverride()
+            {
+                Internal.AwaitOverrider<PromiseProgressAwaiterVoid>.Create<PromiseProgressAwaiterVoid>();
+            }
+#else
+            static PromiseProgressAwaiterVoid()
+            {
+                Internal.AwaitOverrider<PromiseProgressAwaiterVoid>.Create<PromiseProgressAwaiterVoid>();
+            }
+#endif
+        }
+
+        partial struct PromiseProgressAwaiter<T>
+        {
+            // Fix for IL2CPP not invoking the static constructor.
+#if ENABLE_IL2CPP
+            [MethodImpl(Internal.InlineOption)]
+            static partial void CreateOverride()
+            {
+                Internal.AwaitOverrider<PromiseProgressAwaiter<T>>.Create<PromiseProgressAwaiter<T>>();
+            }
+#else
+            static PromiseProgressAwaiter()
+            {
+                Internal.AwaitOverrider<PromiseProgressAwaiter<T>>.Create<PromiseProgressAwaiter<T>>();
+            }
+#endif
+        }
+
         /// <summary>
         /// Used to support the await keyword.
         /// </summary>
@@ -308,6 +375,8 @@ namespace Proto.Promises
                 _awaiter = new PromiseAwaiter<Internal.VoidResult>(promise._target);
                 CreateOverride();
             }
+
+            static partial void CreateOverride();
 
             public bool IsCompleted
             {
@@ -354,9 +423,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupWaiter(_awaiter._promise._ref, _awaiter._promise.Id);
+                asyncPromiseRef.HookupAwaiter(_awaiter._promise._ref, _awaiter._promise.Id);
             }
         } // struct PromiseAwaiterVoid
 
@@ -385,6 +454,8 @@ namespace Proto.Promises
                 _promise = promise;
                 CreateOverride();
             }
+
+            static partial void CreateOverride();
 
             public bool IsCompleted
             {
@@ -439,9 +510,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupWaiter(_promise._ref, _promise.Id);
+                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise.Id);
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -476,6 +547,8 @@ namespace Proto.Promises
                 _awaiter = new PromiseProgressAwaiter<Internal.VoidResult>(promise._target, minProgress, maxProgress);
                 CreateOverride();
             }
+
+            static partial void CreateOverride();
 
             [MethodImpl(Internal.InlineOption)]
             public PromiseProgressAwaiterVoid GetAwaiter()
@@ -528,9 +601,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupWaiterWithProgress(_awaiter._promise._ref, _awaiter._promise.Id, _awaiter._promise.Depth, _awaiter._minProgress, _awaiter._maxProgress);
+                asyncPromiseRef.HookupAwaiterWithProgress(_awaiter._promise._ref, _awaiter._promise.Id, _awaiter._promise.Depth, _awaiter._minProgress, _awaiter._maxProgress);
             }
         } // struct PromiseAwaiterVoid
 
@@ -561,6 +634,8 @@ namespace Proto.Promises
                 _maxProgress = maxProgress;
                 CreateOverride();
             }
+
+            static partial void CreateOverride();
 
             [MethodImpl(Internal.InlineOption)]
             public PromiseProgressAwaiter<T> GetAwaiter()
@@ -621,9 +696,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRef.AsyncPromiseRef asyncPromiseRef)
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupWaiterWithProgress(_promise._ref, _promise.Id, _promise.Depth, _minProgress, _maxProgress);
+                asyncPromiseRef.HookupAwaiterWithProgress(_promise._ref, _promise.Id, _promise.Depth, _minProgress, _maxProgress);
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -634,81 +709,6 @@ namespace Proto.Promises
             }
 #endif
         } // struct PromiseAwaiter<T>
-
-        partial struct PromiseAwaiterVoid
-        {
-            // Fix for IL2CPP not invoking the static constructor.
-            static partial void CreateOverride();
-#if ENABLE_IL2CPP
-            [MethodImpl(Internal.InlineOption)]
-            static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseAwaiterVoid>.Create<PromiseAwaiterVoid>();
-            }
-#else
-            static PromiseAwaiterVoid()
-            {
-                Internal.AwaitOverrider<PromiseAwaiterVoid>.Create<PromiseAwaiterVoid>();
-            }
-#endif
-        }
-
-        partial struct PromiseAwaiter<T>
-        {
-            // Fix for IL2CPP not invoking the static constructor.
-            static partial void CreateOverride();
-#if ENABLE_IL2CPP
-            [MethodImpl(Internal.InlineOption)]
-            static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseAwaiter<T>>.Create<PromiseAwaiter<T>>();
-            }
-#else
-
-            static PromiseAwaiter()
-            {
-                Internal.AwaitOverrider<PromiseAwaiter<T>>.Create<PromiseAwaiter<T>>();
-            }
-#endif
-        }
-
-        partial struct PromiseProgressAwaiterVoid
-        {
-            // Fix for IL2CPP not invoking the static constructor.
-            static partial void CreateOverride();
-#if ENABLE_IL2CPP
-            [MethodImpl(Internal.InlineOption)]
-            static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseProgressAwaiterVoid>.Create<PromiseProgressAwaiterVoid>();
-            }
-#else
-
-            static PromiseProgressAwaiterVoid()
-            {
-                Internal.AwaitOverrider<PromiseProgressAwaiterVoid>.Create<PromiseProgressAwaiterVoid>();
-            }
-#endif
-        }
-
-        partial struct PromiseProgressAwaiter<T>
-        {
-            // Fix for IL2CPP not invoking the static constructor.
-            static partial void CreateOverride();
-#if ENABLE_IL2CPP
-            [MethodImpl(Internal.InlineOption)]
-            static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseProgressAwaiter<T>>.Create<PromiseProgressAwaiter<T>>();
-            }
-#else
-
-            static PromiseProgressAwaiter()
-            {
-                Internal.AwaitOverrider<PromiseProgressAwaiter<T>>.Create<PromiseProgressAwaiter<T>>();
-            }
-#endif
-        }
     } // namespace Async.CompilerServices
 
     partial struct Promise

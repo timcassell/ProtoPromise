@@ -20,12 +20,12 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        partial class PromiseRef
+        partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class RacePromise : MultiHandleablePromiseBase
+            internal sealed partial class RacePromise<TResult> : MultiHandleablePromiseBase<TResult>
             {
                 private RacePromise() { }
 
@@ -43,10 +43,10 @@ namespace Proto.Promises
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                internal static RacePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                internal static RacePromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<RacePromise>()
-                        ?? new RacePromise();
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<RacePromise<TResult>>()
+                        ?? new RacePromise<TResult>();
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE // _waitCount isn't actually used in Race, but can be useful for debugging.
                     promise._waitCount = pendingAwaits;
@@ -67,7 +67,7 @@ namespace Proto.Promises
                         }
 #endif
                         passThrough.SetTargetAndAddToOwner(promise);
-                        if (promise._valueContainer != null)
+                        if (promise._rejectContainer != null)
                         {
                             // This was completed potentially before all passthroughs were hooked up. Release all remaining passthroughs.
                             int releaseCount = 0;
@@ -88,14 +88,24 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     var handler = passThrough.Owner;
-                    var valueContainer = handler._valueContainer;
-                    if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
+                    if (Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
                     {
                         handler.SuppressRejection = true;
-                        SetResultAndTakeNextWaiter(valueContainer.Clone(), handler.State, out nextHandler, ref executionScheduler);
+                        if (handler.State == Promise.State.Resolved)
+                        {
+                            _result = handler.GetResult<TResult>();
+                        }
+                        else
+                        {
+                            _rejectContainer = handler._rejectContainer;
+                        }
+                        // Very important, write State must come after write _result or _valueContainer. This is a volatile write, so we don't need a full memory barrier.
+                        // State is checked for completion, and if it is read not pending on another thread, _result and _valueContainer must have already been written so the other thread can read them.
+                        State = handler.State;
+                        nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
                     }
                     else
                     {
@@ -109,9 +119,9 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class RacePromise
+            partial class RacePromise<TResult>
             {
-                internal override PromiseSingleAwait IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
+                public override PromiseRefBase IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
 

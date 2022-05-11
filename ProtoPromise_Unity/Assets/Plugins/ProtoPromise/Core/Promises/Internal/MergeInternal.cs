@@ -16,17 +16,22 @@
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
-using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
 {
     partial class Internal
     {
-        partial class PromiseRef
+        partial class PromiseRefBase
         {
-            partial class MultiHandleablePromiseBase
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [System.Diagnostics.DebuggerNonUserCode]
+#endif
+            internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>, IMultiHandleablePromise
             {
+                public abstract void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);
+                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
+
                 new protected void Reset(ushort depth)
                 {
                     base.Reset(depth);
@@ -39,7 +44,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal partial class MergePromise : MultiHandleablePromiseBase
+            internal partial class MergePromise<TResult> : MultiHandleablePromiseBase<TResult>
             {
                 private MergePromise() { }
 
@@ -57,25 +62,25 @@ namespace Proto.Promises
                     }
                 }
 
-                internal static MergePromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ulong totalProgress, ushort depth)
+                internal static MergePromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ulong totalProgress, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<MergePromise>()
-                        ?? new MergePromise();
+                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<MergePromise<TResult>>()
+                        ?? new MergePromise<TResult>();
                     promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, totalProgress, depth);
                     return promise;
                 }
 
-                internal static MergePromise GetOrCreate<T>(
+                internal static MergePromise<TResult> GetOrCreate(
                     ValueLinkedStack<PromisePassThrough> promisePassThroughs,
 
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
-                    T value,
-                    Action<ValueContainer, ResolveContainer<T>, int> onPromiseResolved,
+                    TResult value,
+                    PromiseResolvedDelegate<TResult> onPromiseResolved,
                     int pendingAwaits, ulong completedProgress, ulong totalProgress, ushort depth)
                 {
-                    var promise = MergePromiseT<T>.GetOrCreate(value, onPromiseResolved);
+                    var promise = MergePromiseT.GetOrCreate(value, onPromiseResolved);
                     promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, totalProgress, depth);
                     return promise;
                 }
@@ -100,7 +105,7 @@ namespace Proto.Promises
                         }
 #endif
                         passThrough.SetTargetAndAddToOwner(this);
-                        if (_valueContainer != null)
+                        if (_rejectContainer != null)
                         {
                             // This was rejected or canceled potentially before all passthroughs were hooked up. Release all remaining passthroughs.
                             while (promisePassThroughs.IsNotEmpty)
@@ -114,18 +119,18 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                 {
                     var handler = passThrough.Owner;
-                    var valueContainer = handler._valueContainer;
                     nextHandler = null;
                     var state = handler.State;
                     if (state != Promise.State.Resolved) // Rejected/Canceled
                     {
-                        if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
+                        if (Interlocked.CompareExchange(ref _rejectContainer, handler._rejectContainer, null) == null)
                         {
                             handler.SuppressRejection = true;
-                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler, ref executionScheduler);
+                            State = state;
+                            nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
                         }
                         InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                     }
@@ -133,9 +138,10 @@ namespace Proto.Promises
                     {
                         IncrementProgress(passThrough, ref executionScheduler);
                         if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
-                            && Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
+                            && Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
                         {
-                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler, ref executionScheduler);
+                            State = state;
+                            nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
                         }
                     }
                     MaybeDisposeNonVirt();
@@ -144,11 +150,8 @@ namespace Proto.Promises
                 partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
                 partial void SetupProgress(ulong completedProgress, ulong totalProgress);
 
-                private sealed class MergePromiseT<T> : MergePromise
+                private sealed partial class MergePromiseT : MergePromise<TResult>
                 {
-                    private Action<ValueContainer, ResolveContainer<T>, int> _onPromiseResolved;
-                    private ResolveContainer<T> _resolveContainer;
-
                     private MergePromiseT() { }
 
                     protected override void MaybeDispose()
@@ -157,52 +160,45 @@ namespace Proto.Promises
                         {
                             Dispose();
                             _onPromiseResolved = null;
-                            if (_resolveContainer != null)
-                            {
-                                _resolveContainer.DisposeAndMaybeAddToUnhandledStack(false);
-                                _resolveContainer = null;
-                            }
                             ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                         }
                     }
 
-                    internal static MergePromiseT<T> GetOrCreate(
+                    internal static MergePromiseT GetOrCreate(
 #if CSHARP_7_3_OR_NEWER
                         in
 #endif
-                        T value, Action<ValueContainer, ResolveContainer<T>, int> onPromiseResolved)
+                        TResult value, PromiseResolvedDelegate<TResult> onPromiseResolved)
                     {
-                        var promise = ObjectPool<HandleablePromiseBase>.TryTake<MergePromiseT<T>>()
-                            ?? new MergePromiseT<T>();
+                        var promise = ObjectPool<HandleablePromiseBase>.TryTake<MergePromiseT>()
+                            ?? new MergePromiseT();
                         promise._onPromiseResolved = onPromiseResolved;
-                        promise._resolveContainer = ResolveContainer<T>.GetOrCreate(value);
+                        promise._result = value;
                         return promise;
                     }
 
-                    internal override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                    public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
                     {
                         var handler = passThrough.Owner;
-                        var valueContainer = handler._valueContainer;
                         nextHandler = null;
                         var state = handler.State;
                         if (state != Promise.State.Resolved) // Rejected/Canceled
                         {
-                            if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
+                            if (Interlocked.CompareExchange(ref _rejectContainer, handler._rejectContainer, null) == null)
                             {
                                 handler.SuppressRejection = true;
-                                SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler, ref executionScheduler);
+                                State = state;
+                                nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
                             }
                             InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                         }
                         else // Resolved
                         {
                             IncrementProgress(passThrough, ref executionScheduler);
-                            _onPromiseResolved.Invoke(valueContainer, _resolveContainer, passThrough.Index);
+                            _onPromiseResolved.Invoke(handler, ref _result, passThrough.Index);
                             if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
-                                && Interlocked.CompareExchange(ref _valueContainer, _resolveContainer, null) == null)
+                                && Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
                             {
-                                // Only nullify if all promises resolved, otherwise we let MaybeDispose dispose it.
-                                _resolveContainer = null;
                                 State = state;
                                 nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
                             }
@@ -213,7 +209,7 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class MergePromise
+            partial class MergePromise<TResult>
             {
                 partial void SetupProgress(ulong completedProgress, ulong totalProgress)
                 {
@@ -241,7 +237,7 @@ namespace Proto.Promises
                     return scaledProgress;
                 }
 
-                internal override PromiseSingleAwait IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
+                public override PromiseRefBase IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
                     // This essentially acts as a pass-through to normalize the progress.

@@ -221,23 +221,13 @@ namespace Proto.Promises
             }
         }
 
-        [MethodImpl(InlineOption)]
-        internal static ValueContainer CreateResolveContainer<TValue>(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TValue value)
-        {
-            return ValueContainer.CreateResolve(value);
-        }
-
-        internal static ValueContainer CreateRejectContainer<TReject>(
+        internal static RejectContainer CreateRejectContainer<TReject>(
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
                 TReject reason, int rejectSkipFrames, ITraceable traceable)
         {
-            return ValueContainer.CreateReject(reason, rejectSkipFrames, traceable);
+            return RejectContainer.Create(reason, rejectSkipFrames, traceable);
         }
 
         // Handle uncaught errors. These must not be readonly.

@@ -58,7 +58,7 @@ namespace Proto.Promises
         public static partial class Config
         {
             [Obsolete("Use ProgressPrecision to get the precision of progress reports.")]
-            public static readonly int ProgressDecimalBits = Internal.PromiseRef.Fixed32.DecimalBits;
+            public static readonly int ProgressDecimalBits = Internal.PromiseRefBase.Fixed32.DecimalBits;
 
             /// <summary>
             /// The maximum precision of progress reports.
@@ -66,7 +66,7 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
             [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
-            public static readonly float ProgressPrecision = (float) (1d / Math.Pow(2d, Internal.PromiseRef.Fixed32.DecimalBits));
+            public static readonly float ProgressPrecision = (float) (1d / Math.Pow(2d, Internal.PromiseRefBase.Fixed32.DecimalBits));
 
             [Obsolete("Use ObjectPoolingEnabled instead.")]
             public static PoolType ObjectPooling 

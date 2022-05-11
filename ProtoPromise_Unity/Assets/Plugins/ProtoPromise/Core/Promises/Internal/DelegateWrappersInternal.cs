@@ -14,7 +14,7 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        partial class PromiseRef
+        partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
@@ -24,9 +24,9 @@ namespace Proto.Promises
                 // These static functions help with the implementation so we don't need to type the generics in every method.
 
                 [MethodImpl(InlineOption)]
-                public static DelegateResolvePassthrough CreatePassthrough()
+                public static DelegateResolvePassthrough<TResult> CreatePassthrough<TResult>()
                 {
-                    return new DelegateResolvePassthrough(true);
+                    return new DelegateResolvePassthrough<TResult>(true);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -289,7 +289,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal struct DelegateResolvePassthrough : IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise
+            internal struct DelegateResolvePassthrough<TResult> : IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise
             {
                 private readonly bool _isActive;
 
@@ -305,15 +305,36 @@ namespace Proto.Promises
                     _isActive = isActive;
                 }
 
-                [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                private void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
-                    owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                    // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
+                    if (null != default(TResult) && typeof(TResult) == typeof(VoidResult))
+                    {
+                        handler.SuppressRejection = true;
+                        owner._rejectContainer = handler._rejectContainer;
+                        // Very important, write State must come after write _result and _valueContainer. This is a volatile write, so we don't need a full memory barrier.
+                        // State is checked for completion, and if it is read not pending on another thread, _result and _valueContainer must have already been written so the other thread can read them.
+                        owner.State = handler.State;
+                        handler.MaybeDispose();
+                        handler = owner;
+                        nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
+                    }
+                    else
+                    {
+                        ((PromiseRef<TResult>) owner).HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                    }
                 }
 
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                [MethodImpl(InlineOption)]
+                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
-                    owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                    Handle(ref handler, out nextHandler, owner, ref executionScheduler);
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                {
+                    Handle(ref handler, out nextHandler, owner, ref executionScheduler);
                 }
             }
 
@@ -365,25 +386,26 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     handler.MaybeDispose();
                     TResult result = Invoke(arg);
                     handler = owner;
-                    owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    ((PromiseRef<TResult>) owner).SetResult(result);
+                    nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     TResult result = Invoke(arg);
-                    owner.WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                    ((PromiseRef<TResult>) owner).WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
                 }
 
-                void IDelegateReject.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateReject.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
@@ -391,26 +413,27 @@ namespace Proto.Promises
                         TResult result = Invoke(arg);
                         handler.MaybeDispose();
                         handler = owner;
-                        owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                        ((PromiseRef<TResult>) owner).SetResult(result);
+                        nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
                         TResult result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        owner.WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                        ((PromiseRef<TResult>) owner).WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
                     }
                 }
             }
@@ -461,26 +484,26 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     Promise<TResult> result = Invoke(arg);
-                    owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
                         Promise<TResult> result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                        ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
                     }
                 }
             }
@@ -531,12 +554,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
                     bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
-                    ValueContainer valueContainer;
                     if (isVoidResult)
                     {
                         if (isVoidArg)
@@ -547,7 +569,7 @@ namespace Proto.Promises
                         {
                             ((Promise<TArg>.ContinueAction) _callback).Invoke(new Promise<TArg>.ResultContainer(handler));
                         }
-                        valueContainer = ResolveContainerVoid.GetOrCreate();
+                        owner.State = Promise.State.Resolved;
                     }
                     else
                     {
@@ -560,11 +582,11 @@ namespace Proto.Promises
                         {
                             result = ((Promise<TArg>.ContinueFunc<TResult>) _callback).Invoke(new Promise<TArg>.ResultContainer(handler));
                         }
-                        valueContainer = CreateResolveContainer(result);
+                        ((PromiseRef<TResult>) owner).SetResult(result);
                     }
                     handler.MaybeDispose();
                     handler = owner;
-                    owner.SetResultAndTakeNextWaiter(valueContainer, Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
                 }
             }
 
@@ -614,7 +636,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
@@ -645,7 +667,7 @@ namespace Proto.Promises
                         }
                     }
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                    owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                 }
             }
 
@@ -775,25 +797,26 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     handler.MaybeDispose();
                     handler = owner;
                     TResult result = Invoke(arg);
-                    owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    ((PromiseRef<TResult>) owner).SetResult(result);
+                    nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     TResult result = Invoke(arg);
-                    owner.WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                    ((PromiseRef<TResult>) owner).WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
                 }
 
-                void IDelegateReject.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateReject.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
@@ -801,26 +824,27 @@ namespace Proto.Promises
                         TResult result = Invoke(arg);
                         handler.MaybeDispose();
                         handler = owner;
-                        owner.SetResultAndTakeNextWaiter(CreateResolveContainer(result), Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                        ((PromiseRef<TResult>) owner).SetResult(result);
+                        nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
                         TResult result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        owner.WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                        ((PromiseRef<TResult>) owner).WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
                     }
                 }
             }
@@ -883,26 +907,26 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     Promise<TResult> result = Invoke(arg);
-                    owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
                         Promise<TResult> result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                        ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                     }
                     else
                     {
-                        owner.HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
                     }
                 }
             }
@@ -959,12 +983,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
                     bool isVoidResult = null != default(TResult) && typeof(TResult) == typeof(VoidResult);
-                    ValueContainer valueContainer;
                     if (isVoidResult)
                     {
                         if (isVoidArg)
@@ -975,7 +998,7 @@ namespace Proto.Promises
                         {
                             ((Promise<TArg>.ContinueAction<TCapture>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(handler));
                         }
-                        valueContainer = ResolveContainerVoid.GetOrCreate();
+                        owner.State = Promise.State.Resolved;
                     }
                     else
                     {
@@ -988,11 +1011,11 @@ namespace Proto.Promises
                         {
                             result = ((Promise<TArg>.ContinueFunc<TCapture, TResult>) _callback).Invoke(_capturedValue, new Promise<TArg>.ResultContainer(handler));
                         }
-                        valueContainer = CreateResolveContainer(result);
+                        ((PromiseRef<TResult>) owner).SetResult(result);
                     }
                     handler.MaybeDispose();
                     handler = owner;
-                    owner.SetResultAndTakeNextWaiter(valueContainer, Promise.State.Resolved, out nextHandler, ref executionScheduler);
+                    nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
                 }
             }
 
@@ -1048,7 +1071,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
@@ -1079,7 +1102,7 @@ namespace Proto.Promises
                         }
                     }
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                    owner.WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    ((PromiseRef<TResult>) owner).WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
                 }
             }
 

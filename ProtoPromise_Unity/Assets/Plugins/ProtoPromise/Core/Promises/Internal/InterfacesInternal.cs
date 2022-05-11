@@ -8,6 +8,7 @@
 #undef PROMISE_PROGRESS
 #endif
 
+using System;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
@@ -35,54 +36,53 @@ namespace Proto.Promises
                 set { _next = value; }
             }
 
-            internal abstract void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);
+            internal abstract void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);
             // This is overridden in PromiseMultiAwait and PromiseProgress and PromiseConfigured.
             internal virtual void Handle(ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
 #if PROMISE_PROGRESS
-            internal abstract PromiseRef.PromiseSingleAwait SetProgress(ref PromiseRef.Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler);
+            internal abstract PromiseRefBase SetProgress(ref PromiseRefBase.Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler);
 #endif
         }
 
-        partial class PromiseRef
+        partial class PromiseRefBase
         {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal abstract partial class MultiHandleablePromiseBase : PromiseSingleAwait
+            internal interface IMultiHandleablePromise : ITraceable
             {
-                internal abstract void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
+                void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);
+#if PROMISE_PROGRESS
+                PromiseRefBase IncrementProgress(long increment, ref Fixed32 progress, ushort depth);
+#endif
             }
 
             internal interface IDelegateResolveOrCancel
             {
-                void InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
+                void InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegateResolveOrCancelPromise
             {
-                void InvokeResolver(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler);
+                void InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler);
                 bool IsNull { get; }
             }
 
             internal interface IDelegateReject
             {
-                void InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
+                void InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegateRejectPromise
             {
-                void InvokeRejecter(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler);
+                void InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegateContinue
             {
-                void Invoke(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseSingleAwait owner, ref ExecutionScheduler executionScheduler);
+                void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler);
             }
 
             internal interface IDelegateContinuePromise
             {
-                void Invoke(ref PromiseRef handler, out HandleablePromiseBase nextHandler, PromiseWaitPromise owner, ref ExecutionScheduler executionScheduler);
+                void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler);
                 bool IsNull { get; }
             }
         }

@@ -53,12 +53,12 @@ namespace Proto.Promises
         }
 
         // Calls to these get compiled away in RELEASE mode
-        partial class PromiseRef
+        partial class PromiseRefBase
         {
             partial void ValidateReturn(Promise other);
-            partial void ValidateAwait(PromiseRef other, short promiseId);
+            partial void ValidateAwait(PromiseRefBase other, short promiseId);
 
-            partial class DeferredPromiseBase
+            partial class DeferredPromiseBase<TResult>
             {
                 static partial void ValidateProgress(float progress, int skipFrames);
             }
@@ -261,19 +261,19 @@ namespace Proto.Promises
             }
         }
 
-        partial class PromiseRef
+        partial class PromiseRefBase
         {
             partial void ValidateReturn(Promise other)
             {
                 ValidateAwait(other._target._ref, other._target.Id, false);
             }
 
-            partial void ValidateAwait(PromiseRef other, short promiseId)
+            partial void ValidateAwait(PromiseRefBase other, short promiseId)
             {
                 ValidateAwait(other, promiseId, true);
             }
 
-            private void ValidateAwait(PromiseRef other, short promiseId, bool awaited)
+            private void ValidateAwait(PromiseRefBase other, short promiseId, bool awaited)
             {
                 if (new Promise(other, promiseId, 0).IsValid == false)
                 {
@@ -296,8 +296,8 @@ namespace Proto.Promises
                     return;
                 }
                 // This allows us to check Merge/All/Race/First Promises iteratively.
-                Stack<PromiseRef> previouses = PreviousesForIterativeAlgorithm;
-                PromiseRef prev = other._previous;
+                Stack<PromiseRefBase> previouses = PreviousesForIterativeAlgorithm;
+                PromiseRefBase prev = other._previous;
             Repeat:
                 for (; prev != null; prev = prev._previous)
                 {
@@ -320,24 +320,24 @@ namespace Proto.Promises
             }
 
             [ThreadStatic]
-            private static Stack<PromiseRef> _previousesForIterativeAlgorithm;
-            private static Stack<PromiseRef> PreviousesForIterativeAlgorithm
+            private static Stack<PromiseRefBase> _previousesForIterativeAlgorithm;
+            private static Stack<PromiseRefBase> PreviousesForIterativeAlgorithm
             {
                 get
                 {
                     if (_previousesForIterativeAlgorithm == null)
                     {
-                        _previousesForIterativeAlgorithm = new Stack<PromiseRef>();
+                        _previousesForIterativeAlgorithm = new Stack<PromiseRefBase>();
                     }
                     return _previousesForIterativeAlgorithm;
                 }
             }
 
-            protected virtual void BorrowPassthroughs(Stack<PromiseRef> borrower) { }
+            protected virtual void BorrowPassthroughs(Stack<PromiseRefBase> borrower) { }
 
-            partial class MultiHandleablePromiseBase
+            partial class MultiHandleablePromiseBase<TResult>
             {
-                protected override void BorrowPassthroughs(Stack<PromiseRef> borrower)
+                protected override void BorrowPassthroughs(Stack<PromiseRefBase> borrower)
                 {
                     lock (_previousPromises)
                     {
@@ -355,14 +355,6 @@ namespace Proto.Promises
                     {
                         _previousPromises.Clear();
                     }
-                }
-            }
-
-            partial class DeferredPromiseBase
-            {
-                static partial void ValidateProgress(float progress, int skipFrames)
-                {
-                    ValidateProgressValue(progress, "progress", skipFrames + 1);
                 }
             }
         }

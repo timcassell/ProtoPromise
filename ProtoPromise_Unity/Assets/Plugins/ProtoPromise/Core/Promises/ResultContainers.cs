@@ -24,7 +24,7 @@ namespace Proto.Promises
 #endif
         partial struct ReasonContainer
     {
-        private readonly Internal.ValueContainer _valueContainer;
+        private readonly Internal.RejectContainer _valueContainer;
 #if PROMISE_DEBUG
         private readonly long _id;
 #endif
@@ -32,7 +32,7 @@ namespace Proto.Promises
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal ReasonContainer(Internal.ValueContainer valueContainer, long id)
+        internal ReasonContainer(Internal.RejectContainer valueContainer, long id)
         {
             _valueContainer = valueContainer;
 #if PROMISE_DEBUG
@@ -41,21 +41,19 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Get the type of the value, or null if there is no value.
+        /// Get the type of the value.
         /// </summary>
-        /// <value>The type of the value.</value>
         public Type ValueType
         {
             get
             {
                 Validate();
-                return _valueContainer.ValueType;
+                return _valueContainer.Value.GetType();
             }
         }
 
         /// <summary>
         /// Get the value.
-        /// <para/>NOTE: Use <see cref="TryGetValueAs{T}(out T)"/> if you want to prevent value type boxing.
         /// </summary>
         public object Value
         {
@@ -111,7 +109,7 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.PromiseRef target)
+            internal ResultContainer(Internal.PromiseRefBase target)
             {
                 _target = new Promise<Internal.VoidResult>.ResultContainer(target);
             }
@@ -191,7 +189,7 @@ namespace Proto.Promises
             /// <summary>
             /// FOR INTERNAL USE ONLY!
             /// </summary>
-            internal readonly Internal.PromiseRef _target;
+            internal readonly Internal.PromiseRefBase _target;
             private readonly T _result;
 #if PROMISE_DEBUG
             private readonly long _id;
@@ -229,7 +227,7 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.PromiseRef target)
+            internal ResultContainer(Internal.PromiseRefBase target)
             {
                 _target = target;
                 _result = default(T);
@@ -239,7 +237,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            private ResultContainer(Internal.PromiseRef target, long id, T result = default(T))
+            private ResultContainer(Internal.PromiseRefBase target, long id, T result = default(T))
             {
                 _target = target;
                 _result = result;
@@ -307,7 +305,7 @@ namespace Proto.Promises
                 {
                     ValidateCall();
                     ValidateRejected();
-                    return new ReasonContainer(_target._valueContainer, Id);
+                    return new ReasonContainer(_target._rejectContainer, Id);
                 }
             }
 

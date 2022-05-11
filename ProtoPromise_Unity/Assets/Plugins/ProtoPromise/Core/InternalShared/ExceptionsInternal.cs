@@ -25,9 +25,9 @@ namespace Proto.Promises
                 AddUnhandledException(this);
             }
 
-            ValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+            RejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
             {
-                return RethrownRejectionContainer.GetOrCreate(this);
+                return RethrownRejectionContainer.Create(this);
             }
         }
 
@@ -79,7 +79,7 @@ namespace Proto.Promises
                 Value = value;
             }
 
-            public ValueContainer ToContainer(ITraceable traceable)
+            public RejectContainer ToContainer(ITraceable traceable)
             {
                 var rejection = CreateRejectContainer(Value, int.MinValue, traceable);
 #if PROMISE_DEBUG

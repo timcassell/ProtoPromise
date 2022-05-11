@@ -27,7 +27,7 @@ namespace Proto.Promises
 #endif
             struct DeferredBase : ICancelable, IProgress<float>, IEquatable<DeferredBase>
         {
-            private readonly Internal.PromiseRef.DeferredPromiseBase _ref;
+            private readonly Internal.IDeferredPromise _ref;
             private readonly short _promiseId;
             private readonly short _deferredId;
 
@@ -44,7 +44,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return new Promise(_ref, _promiseId, 0);
+                    return new Promise((Internal.PromiseRefBase) _ref, _promiseId, 0);
                 }
             }
 
@@ -66,7 +66,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return Internal.PromiseRef.DeferredPromiseBase.GetIsValidAndPending(_ref, _deferredId);
+                    return Internal.DeferredPromiseHelper.GetIsValidAndPending(_ref, _deferredId);
                 }
             }
 
@@ -74,7 +74,7 @@ namespace Proto.Promises
             /// Internal use for implicit cast operator.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal DeferredBase(Internal.PromiseRef.DeferredPromiseBase promise, short promiseId, short deferredId)
+            internal DeferredBase(Internal.IDeferredPromise promise, short promiseId, short deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;
@@ -89,7 +89,7 @@ namespace Proto.Promises
             public Deferred ToDeferred()
             {
                 return new Deferred(
-                    (Internal.PromiseRef.DeferredPromise<Internal.VoidResult>) _ref,
+                    (Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>) _ref,
                     _promiseId,
                     _deferredId);
             }
@@ -101,7 +101,7 @@ namespace Proto.Promises
             public Deferred AsDeferred()
             {
                 // If the cast fails, the new _promiseId must not == Internal.ValidIdFromApi, or Deferred.Promise will return a valid, resolved promise.
-                var deferred = _ref as Internal.PromiseRef.DeferredPromise<Internal.VoidResult>;
+                var deferred = _ref as Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>;
                 return new Deferred(
                     deferred,
                     deferred != null ? _promiseId : (short) 0,
@@ -116,7 +116,7 @@ namespace Proto.Promises
             public Promise<T>.Deferred ToDeferred<T>()
             {
                 return new Promise<T>.Deferred(
-                    (Internal.PromiseRef.DeferredPromise<T>) _ref,
+                    (Internal.PromiseRefBase.DeferredPromise<T>) _ref,
                     _promiseId,
                     _deferredId);
             }
@@ -128,7 +128,7 @@ namespace Proto.Promises
             public Promise<T>.Deferred AsDeferred<T>()
             {
                 // If the cast fails, the new _promiseId must not == Internal.ValidIdFromApi, or Deferred.Promise will return a valid, resolved promise.
-                var deferred = _ref as Internal.PromiseRef.DeferredPromise<T>;
+                var deferred = _ref as Internal.PromiseRefBase.DeferredPromise<T>;
                 return new Promise<T>.Deferred(
                     deferred,
                     deferred != null ? _promiseId : (short) 0,
@@ -155,12 +155,18 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool TryReject<TReject>(TReject reason)
             {
-                return Internal.PromiseRef.DeferredPromiseBase.TryReject(_ref, _deferredId, reason, 1);
+                var _this = _ref;
+                if (Internal.DeferredPromiseHelper.TryIncrementDeferredIdAndUnregisterCancelation(_this, _deferredId))
+                {
+                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
+                    return true;
+                }
+                return false;
             }
 
             /// <summary>
             /// Cancel the linked <see cref="Promise"/>.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="NewDeferred(CancelationToken)"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             [MethodImpl(Internal.InlineOption)]
@@ -175,12 +181,18 @@ namespace Proto.Promises
             /// <summary>
             /// Try to cancel the linked <see cref="Promise"/>.
             /// <para/> Returns true if successful, false otherwise.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
+            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="NewDeferred(CancelationToken)"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public bool TryCancel()
             {
-                return Internal.PromiseRef.DeferredPromiseBase.TryCancel(_ref, _deferredId);
+                var _this = _ref;
+                if (Internal.DeferredPromiseHelper.TryIncrementDeferredIdAndUnregisterCancelation(_this, _deferredId))
+                {
+                    _this.CancelDirect();
+                    return true;
+                }
+                return false;
             }
 
             /// <summary>
@@ -211,7 +223,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool TryReportProgress(float progress)
             {
-                return Internal.PromiseRef.DeferredPromiseBase.TryReportProgress(_ref, _deferredId, progress);
+                return Internal.DeferredPromiseHelper.TryReportProgress(_ref, _deferredId, progress);
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -346,7 +358,7 @@ namespace Proto.Promises
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal Deferred(Internal.PromiseRef.DeferredPromise<Internal.VoidResult> promise, short promiseId, short deferredId)
+            internal Deferred(Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> promise, short promiseId, short deferredId)
             {
                 _target = new Promise<Internal.VoidResult>.Deferred(promise, promiseId, deferredId);
             }
@@ -551,7 +563,7 @@ namespace Proto.Promises
 #endif
             struct Deferred : ICancelable, IProgress<float>, IEquatable<Deferred>
         {
-            internal readonly Internal.PromiseRef.DeferredPromise<T> _ref;
+            internal readonly Internal.PromiseRefBase.DeferredPromise<T> _ref;
             internal readonly short _promiseId;
             internal readonly short _deferredId;
 
@@ -590,7 +602,8 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return Internal.PromiseRef.DeferredPromiseBase.GetIsValidAndPending(_ref, _deferredId);
+                    var _this = _ref;
+                    return _this != null && _this.DeferredId == _deferredId;
                 }
             }
 
@@ -598,7 +611,7 @@ namespace Proto.Promises
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal Deferred(Internal.PromiseRef.DeferredPromise<T> promise, short promiseId, short deferredId)
+            internal Deferred(Internal.PromiseRefBase.DeferredPromise<T> promise, short promiseId, short deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;
@@ -611,9 +624,9 @@ namespace Proto.Promises
             /// </summary>
             public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
             {
-                Internal.PromiseRef.DeferredPromise<T> promise = cancelationToken.CanBeCanceled
-                    ? Internal.PromiseRef.DeferredPromiseCancel<T>.GetOrCreate(cancelationToken)
-                    : Internal.PromiseRef.DeferredPromise<T>.GetOrCreate();
+                Internal.PromiseRefBase.DeferredPromise<T> promise = cancelationToken.CanBeCanceled
+                    ? Internal.PromiseRefBase.DeferredPromiseCancel<T>.GetOrCreate(cancelationToken)
+                    : Internal.PromiseRefBase.DeferredPromise<T>.GetOrCreate();
                 return new Deferred(promise, promise.Id, promise.DeferredId);
             }
 
@@ -637,7 +650,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool TryResolve(T value)
             {
-                return Internal.PromiseRef.DeferredPromise<T>.TryResolve(_ref, _deferredId, value);
+                return Internal.PromiseRefBase.DeferredPromise<T>.TryResolve(_ref, _deferredId, value);
             }
 
             /// <summary>
@@ -660,7 +673,13 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool TryReject<TReject>(TReject reason)
             {
-                return Internal.PromiseRef.DeferredPromiseBase.TryReject(_ref, _deferredId, reason, 1);
+                var _this = _ref;
+                if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                {
+                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
+                    return true;
+                }
+                return false;
             }
 
             /// <summary>
@@ -685,7 +704,13 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool TryCancel()
             {
-                return Internal.PromiseRef.DeferredPromiseBase.TryCancel(_ref, _deferredId);
+                var _this = _ref;
+                if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                {
+                    _this.CancelDirect();
+                    return true;
+                }
+                return false;
             }
 
             /// <summary>
@@ -716,7 +741,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool TryReportProgress(float progress)
             {
-                return Internal.PromiseRef.DeferredPromiseBase.TryReportProgress(_ref, _deferredId, progress);
+                return Internal.DeferredPromiseHelper.TryReportProgress(_ref, _deferredId, progress);
             }
 
             /// <summary>

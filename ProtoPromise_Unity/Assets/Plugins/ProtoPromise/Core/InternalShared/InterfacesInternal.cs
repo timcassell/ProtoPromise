@@ -22,7 +22,7 @@ namespace Proto.Promises
 
         internal interface IRejectionToContainer
         {
-            ValueContainer ToContainer(ITraceable traceable);
+            RejectContainer ToContainer(ITraceable traceable);
         }
 
         internal interface ICantHandleException

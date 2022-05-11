@@ -188,10 +188,15 @@ namespace Proto.Promises
                     sb.AppendLine(_inUseObjects.Count + " objects not released:");
                     sb.AppendLine();
                     ITraceable traceable = null;
+                    int counter = 0;
                     foreach (var obj in _inUseObjects)
                     {
-                        traceable = traceable ?? obj as ITraceable;
-                        sb.AppendLine(obj.ToString());
+                        // Only capture up to 100 objects to prevent overloading the test error output.
+                        if (++counter <= 100)
+                        {
+                            traceable = traceable ?? obj as ITraceable;
+                            sb.AppendLine(obj.ToString());
+                        }
                         GC.SuppressFinalize(obj); // SuppressFinalize to not spoil the results of subsequent unit tests.
                     }
                     _inUseObjects.Clear();

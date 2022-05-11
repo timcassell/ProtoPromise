@@ -240,7 +240,7 @@ namespace Proto.Promises
 #endif
         }
 
-        Internal.ValueContainer Internal.IRejectionToContainer.ToContainer(Internal.ITraceable traceable)
+        Internal.RejectContainer Internal.IRejectionToContainer.ToContainer(Internal.ITraceable traceable)
         {
 #if PROMISE_DEBUG
             string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(this, true) });
@@ -248,7 +248,7 @@ namespace Proto.Promises
             string stacktrace = new StackTrace(this, true).ToString();
 #endif
             Exception exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-            return Internal.RejectionContainerException.GetOrCreate(exception);
+            return Internal.RejectionContainerException.Create(exception);
         }
     }
 

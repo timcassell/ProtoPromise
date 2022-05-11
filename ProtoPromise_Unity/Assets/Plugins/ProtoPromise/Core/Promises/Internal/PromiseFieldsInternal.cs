@@ -43,7 +43,7 @@ namespace Proto.Promises
         /// Internal use.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRef promiseRef, short id, ushort depth)
+        internal Promise(Internal.PromiseRefBase promiseRef, short id, ushort depth)
         {
             _target = new Promise<Internal.VoidResult>(promiseRef, id, depth);
         }
@@ -94,7 +94,7 @@ namespace Proto.Promises
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal readonly Internal.PromiseRef _ref;
+        internal readonly Internal.PromiseRefBase _ref;
         private readonly SmallFields _smallFields;
 
         /// <summary>
@@ -132,11 +132,11 @@ namespace Proto.Promises
         /// Internal use.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRef promiseRef, short id, ushort depth,
+        internal Promise(Internal.PromiseRefBase promiseRef, short id, ushort depth,
 #if CSHARP_7_3_OR_NEWER
-                in
+            in
 #endif
-                T value = default(T))
+            T value = default(T))
         {
             _ref = promiseRef;
             _smallFields = new SmallFields(id, depth, value);
@@ -152,7 +152,7 @@ namespace Proto.Promises
             private HandleablePromiseBase _next;
         }
 
-        partial class PromiseRef : HandleablePromiseBase
+        partial class PromiseRefBase : HandleablePromiseBase
         {
             [StructLayout(LayoutKind.Explicit)]
             private partial struct SmallFields
@@ -194,23 +194,28 @@ namespace Proto.Promises
 
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
-            internal PromiseRef _previous; // Used to detect circular awaits.
+            internal PromiseRefBase _previous; // Used to detect circular awaits.
 #endif
-            volatile internal ValueContainer _valueContainer;
+            volatile internal RejectContainer _rejectContainer;
             private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
             volatile protected HandleablePromiseBase _waiter; // _waiter is only used in PromiseSingleAwait, but it's moved into PromiseRef so that the MaybeHandleNext loop can assign InvalidAwaitSentinel.
 
-            partial class PromiseSingleAwait : PromiseRef
+            partial class PromiseRef<TResult> : PromiseRefBase
+            {
+                internal TResult _result;
+            }
+
+            partial class PromiseSingleAwait<TResult> : PromiseRef<TResult>
             {
             }
 
-            partial class PromiseConfigured : PromiseSingleAwait
+            partial class PromiseConfigured<TResult> : PromiseSingleAwait<TResult>
             {
                 private SynchronizationContext _synchronizationContext;
                 volatile private Promise.State _previousState;
             }
 
-            partial class PromiseMultiAwait : PromiseRef
+            partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
             {
                 private ValueLinkedQueue<HandleablePromiseBase> _nextBranches = new ValueLinkedQueue<HandleablePromiseBase>();
 
@@ -223,19 +228,19 @@ namespace Proto.Promises
             }
 
             #region Non-cancelable Promises
-            partial class PromiseResolve<TResolver> : PromiseSingleAwait
+            partial class PromiseResolve<TResult, TResolver> : PromiseSingleAwait<TResult>
                 where TResolver : IDelegateResolveOrCancel
             {
                 private TResolver _resolver;
             }
 
-            partial class PromiseResolvePromise<TResolver> : PromiseWaitPromise
+            partial class PromiseResolvePromise<TResult, TResolver> : PromiseWaitPromise<TResult>
                 where TResolver : IDelegateResolveOrCancelPromise
             {
                 private TResolver _resolver;
             }
 
-            partial class PromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait
+            partial class PromiseResolveReject<TResult, TResolver, TRejecter> : PromiseSingleAwait<TResult>
                 where TResolver : IDelegateResolveOrCancel
                 where TRejecter : IDelegateReject
             {
@@ -243,7 +248,7 @@ namespace Proto.Promises
                 private TRejecter _rejecter;
             }
 
-            partial class PromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
+            partial class PromiseResolveRejectPromise<TResult, TResolver, TRejecter> : PromiseWaitPromise<TResult>
                 where TResolver : IDelegateResolveOrCancelPromise
                 where TRejecter : IDelegateRejectPromise
             {
@@ -251,31 +256,31 @@ namespace Proto.Promises
                 private TRejecter _rejecter;
             }
 
-            partial class PromiseContinue<TContinuer> : PromiseSingleAwait
+            partial class PromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>
                 where TContinuer : IDelegateContinue
             {
                 private TContinuer _continuer;
             }
 
-            partial class PromiseContinuePromise<TContinuer> : PromiseWaitPromise
+            partial class PromiseContinuePromise<TResult, TContinuer> : PromiseWaitPromise<TResult>
                 where TContinuer : IDelegateContinuePromise
             {
                 private TContinuer _continuer;
             }
 
-            partial class PromiseFinally<TFinalizer> : PromiseSingleAwait
+            partial class PromiseFinally<TResult, TFinalizer> : PromiseSingleAwait<TResult>
                 where TFinalizer : IDelegateSimple
             {
                 private TFinalizer _finalizer;
             }
 
-            partial class PromiseCancel<TCanceler> : PromiseSingleAwait
+            partial class PromiseCancel<TResult, TCanceler> : PromiseSingleAwait<TResult>
                 where TCanceler : IDelegateResolveOrCancel
             {
                 private TCanceler _canceler;
             }
 
-            partial class PromiseCancelPromise<TCanceler> : PromiseWaitPromise
+            partial class PromiseCancelPromise<TResult, TCanceler> : PromiseWaitPromise<TResult>
                 where TCanceler : IDelegateResolveOrCancelPromise
             {
                 private TCanceler _canceler;
@@ -289,26 +294,26 @@ namespace Proto.Promises
                 private int _retainCounter;
             }
 
-            partial class DeferredPromiseCancel<T> : DeferredPromise<T>
+            partial class DeferredPromiseCancel<TResult> : DeferredPromise<TResult>
             {
                 private CancelationRegistration _cancelationRegistration;
             }
 
-            partial class CancelablePromiseResolve<TResolver> : PromiseSingleAwait
+            partial class CancelablePromiseResolve<TResult, TResolver> : PromiseSingleAwait<TResult>
                 where TResolver : IDelegateResolveOrCancel
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
             }
 
-            partial class CancelablePromiseResolvePromise<TResolver> : PromiseWaitPromise
+            partial class CancelablePromiseResolvePromise<TResult, TResolver> : PromiseWaitPromise<TResult>
                 where TResolver : IDelegateResolveOrCancelPromise
             {
                 private CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
             }
 
-            partial class CancelablePromiseResolveReject<TResolver, TRejecter> : PromiseSingleAwait
+            partial class CancelablePromiseResolveReject<TResult, TResolver, TRejecter> : PromiseSingleAwait<TResult>
                 where TResolver : IDelegateResolveOrCancel
                 where TRejecter : IDelegateReject
             {
@@ -317,7 +322,7 @@ namespace Proto.Promises
                 private TRejecter _rejecter;
             }
 
-            partial class CancelablePromiseResolveRejectPromise<TResolver, TRejecter> : PromiseWaitPromise
+            partial class CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter> : PromiseWaitPromise<TResult>
                 where TResolver : IDelegateResolveOrCancelPromise
                 where TRejecter : IDelegateRejectPromise
             {
@@ -326,28 +331,28 @@ namespace Proto.Promises
                 private TRejecter _rejecter;
             }
 
-            partial class CancelablePromiseContinue<TContinuer> : PromiseSingleAwait
+            partial class CancelablePromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>
                 where TContinuer : IDelegateContinue
             {
                 private CancelationHelper _cancelationHelper;
                 private TContinuer _continuer;
             }
 
-            partial class CancelablePromiseContinuePromise<TContinuer> : PromiseWaitPromise
+            partial class CancelablePromiseContinuePromise<TResult, TContinuer> : PromiseWaitPromise<TResult>
                 where TContinuer : IDelegateContinuePromise
             {
                 private CancelationHelper _cancelationHelper;
                 private TContinuer _continuer;
             }
 
-            partial class CancelablePromiseCancel<TCanceler> : PromiseSingleAwait
+            partial class CancelablePromiseCancel<TResult, TCanceler> : PromiseSingleAwait<TResult>
                 where TCanceler : IDelegateResolveOrCancel
             {
                 private CancelationHelper _cancelationHelper;
                 private TCanceler _canceler;
             }
 
-            partial class CancelablePromiseCancelPromise<TCanceler> : PromiseWaitPromise
+            partial class CancelablePromiseCancelPromise<TResult, TCanceler> : PromiseWaitPromise<TResult>
                 where TCanceler : IDelegateResolveOrCancelPromise
             {
                 private CancelationHelper _cancelationHelper;
@@ -356,18 +361,20 @@ namespace Proto.Promises
             #endregion
 
             #region Multi Promises
-            partial class MultiHandleablePromiseBase : PromiseSingleAwait
+            partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
                 protected int _waitCount;
                 protected int _retainCounter;
 
 #if PROMISE_DEBUG
                 // This is used for circular promise chain detection.
-                protected Stack<PromiseRef> _previousPromises = new Stack<PromiseRef>();
+                protected Stack<PromiseRefBase> _previousPromises = new Stack<PromiseRefBase>();
 #endif
             }
 
-            partial class MergePromise : MultiHandleablePromiseBase
+            internal delegate void PromiseResolvedDelegate<TResult>(PromiseRefBase handler, ref TResult result, int index);
+
+            partial class MergePromise<TResult> : MultiHandleablePromiseBase<TResult>
             {
 #if PROMISE_PROGRESS
                 // These are used to avoid rounding errors when normalizing the progress.
@@ -375,13 +382,17 @@ namespace Proto.Promises
                 private double _progressScaler;
                 private UnsignedFixed64 _unscaledProgress;
 #endif
+                partial class MergePromiseT : MergePromise<TResult>
+                {
+                    private PromiseResolvedDelegate<TResult> _onPromiseResolved;
+                }
             }
 
-            partial class RacePromise : MultiHandleablePromiseBase
+            partial class RacePromise<TResult> : MultiHandleablePromiseBase<TResult>
             {
             }
 
-            partial class FirstPromise : MultiHandleablePromiseBase
+            partial class FirstPromise<TResult> : MultiHandleablePromiseBase<TResult>
             {
             }
 
@@ -402,8 +413,8 @@ namespace Proto.Promises
 #endif
                 }
 
-                volatile private PromiseRef _owner;
-                volatile private MultiHandleablePromiseBase _target;
+                volatile private PromiseRefBase _owner;
+                volatile private IMultiHandleablePromise _target;
                 private PassThroughSmallFields _smallFields;
 
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
@@ -421,7 +432,7 @@ namespace Proto.Promises
                 private long _value; // long for Interlocked.
             }
 
-            partial class PromiseProgress<TProgress> : PromiseSingleAwait
+            partial class PromiseProgress<TResult, TProgress> : PromiseSingleAwait<TResult>
                 where TProgress : IProgress<float>
             {
                 private TProgress _progress;
@@ -438,7 +449,7 @@ namespace Proto.Promises
             }
 #endif
 
-            partial class AsyncPromiseRef : AsyncPromiseBase
+            partial class AsyncPromiseRef<TResult> : AsyncPromiseBase<TResult>
             {
 #if PROMISE_PROGRESS
                 private float _minProgress;
@@ -465,7 +476,7 @@ namespace Proto.Promises
                 // Cache the delegate to prevent new allocations.
                 private Action _moveNext;
 
-                partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
+                partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef<TResult> where TStateMachine : IAsyncStateMachine
                 {
                     // Using a promiseref object as its own continuer saves 16 bytes of object overhead (x64). 24 bytes if we include the `ILinked<T>.Next` field for object pooling purposes.
                     private TStateMachine _stateMachine;
@@ -474,10 +485,10 @@ namespace Proto.Promises
             } // AsyncPromiseRef
         } // PromiseRef
 
-        partial struct PromiseMethodBuilderInternal<T>
+        partial struct PromiseMethodBuilderInternal<TResult>
         {
 #if !OPTIMIZED_ASYNC_MODE
-            private readonly PromiseRef.AsyncPromiseRef _ref;
+            private readonly PromiseRefBase _ref;
 #else
             // This is used so that _result will be packed efficiently and not padded with extra bytes (only relevant for small, non-primitive struct T types).
             // Otherwise, if all fields are on the same level as _ref, because it is a class type, it will pad T up to IntPtr.Size if T is not primitive, causing the Promise<T> struct to be larger than necessary.
@@ -486,10 +497,10 @@ namespace Proto.Promises
             private struct SmallFields
             {
                 internal short _id;
-                internal T _result;
+                internal TResult _result;
             }
 
-            private PromiseRef.AsyncPromiseRef _ref;
+            private PromiseRefBase _ref;
             private SmallFields _smallFields;
 #endif // !OPTIMIZED_ASYNC_MODE
         }

@@ -14,7 +14,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1.Depth, promise2.Depth);
 
@@ -32,10 +32,10 @@ namespace Proto.Promises
                 T value = promise2.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
 
-            var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 2, depth);
+            var promise = Internal.PromiseRefBase.RacePromise<T>.GetOrCreate(passThroughs, 2, depth);
             return new Promise<T>(promise, promise.Id, depth);
         }
 
@@ -45,7 +45,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, promise3.Depth));
 
@@ -73,11 +73,11 @@ namespace Proto.Promises
                 T value = promise3.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
 
-            var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 3, depth);
+            var promise = Internal.PromiseRefBase.RacePromise<T>.GetOrCreate(passThroughs, 3, depth);
             return new Promise<T>(promise, promise.Id, depth);
         }
 
@@ -87,7 +87,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, Math.Min(promise3.Depth, promise4.Depth)));
 
@@ -127,12 +127,12 @@ namespace Proto.Promises
                 T value = promise4.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
 
-            var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 4, depth);
+            var promise = Internal.PromiseRefBase.RacePromise<T>.GetOrCreate(passThroughs, 4, depth);
             return new Promise<T>(promise, promise.Id, depth);
         }
 
@@ -165,7 +165,7 @@ namespace Proto.Promises
             {
                 throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
             }
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             T value = default(T);
             int pendingCount = 0;
             ushort minDepth = ushort.MaxValue;
@@ -195,7 +195,7 @@ namespace Proto.Promises
                 ++pendingCount;
             } while (promises.MoveNext());
 
-            var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, pendingCount, minDepth);
+            var promise = Internal.PromiseRefBase.RacePromise<T>.GetOrCreate(passThroughs, pendingCount, minDepth);
             return new Promise<T>(promise, promise.Id, minDepth);
         }
 
@@ -205,7 +205,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1.Depth, promise2.Depth);
 
@@ -223,10 +223,10 @@ namespace Proto.Promises
                 T value = promise2.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
 
-            var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 2, depth);
+            var promise = Internal.PromiseRefBase.FirstPromise<T>.GetOrCreate(passThroughs, 2, depth);
             return new Promise<T>(promise, promise.Id, depth);
         }
 
@@ -236,7 +236,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, promise3.Depth));
 
@@ -264,11 +264,11 @@ namespace Proto.Promises
                 T value = promise3.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
 
-            var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 3, depth);
+            var promise = Internal.PromiseRefBase.FirstPromise<T>.GetOrCreate(passThroughs, 3, depth);
             return new Promise<T>(promise, promise.Id, depth);
         }
 
@@ -278,7 +278,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, Math.Min(promise3.Depth, promise4.Depth)));
 
@@ -318,12 +318,12 @@ namespace Proto.Promises
                 T value = promise4.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
 
-            var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 4, depth);
+            var promise = Internal.PromiseRefBase.FirstPromise<T>.GetOrCreate(passThroughs, 4, depth);
             return new Promise<T>(promise, promise.Id, depth);
         }
 
@@ -356,7 +356,7 @@ namespace Proto.Promises
             {
                 throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(1));
             }
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             T value = default(T);
             int pendingCount = 0;
             ushort minDepth = ushort.MaxValue;
@@ -386,7 +386,7 @@ namespace Proto.Promises
                 ++pendingCount;
             } while (promises.MoveNext());
 
-            var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, pendingCount, minDepth);
+            var promise = Internal.PromiseRefBase.FirstPromise<T>.GetOrCreate(passThroughs, pendingCount, minDepth);
             return new Promise<T>(promise, promise.Id, minDepth);
         }
 
@@ -397,7 +397,7 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -435,10 +435,9 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            // Force to object for reference type value container.
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, (object) valueContainer, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
             {
-                ((IList<T>) target.value)[index] = feed.GetValue<T>();
+                target[index] = feed.GetResult<T>();
             }, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
@@ -450,7 +449,7 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -492,10 +491,9 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            // Force to object for reference type value container.
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, (object) valueContainer, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
             {
-                ((IList<T>) target.value)[index] = feed.GetValue<T>();
+                target[index] = feed.GetResult<T>();
             }, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
@@ -507,7 +505,7 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -553,10 +551,9 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            // Force to object for reference type value container.
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, (object) valueContainer, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
             {
-                ((IList<T>) target.value)[index] = feed.GetValue<T>();
+                target[index] = feed.GetResult<T>();
             }, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
@@ -598,7 +595,7 @@ namespace Proto.Promises
         public static Promise<IList<T>> All<TEnumerator>(TEnumerator promises, IList<T> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
         {
             ValidateArgument(promises, "promises", 1);
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -640,10 +637,9 @@ namespace Proto.Promises
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
 
-            // Force to object for reference type value container.
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, (object) valueContainer, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
             {
-                ((IList<T>) target.value)[index] = feed.GetValue<T>();
+                target[index] = feed.GetResult<T>();
             }, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
