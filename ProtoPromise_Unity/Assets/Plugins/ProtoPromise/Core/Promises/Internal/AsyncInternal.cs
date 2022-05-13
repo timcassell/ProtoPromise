@@ -458,9 +458,7 @@ namespace Proto.Promises
                 if (ExchangeCurrentRunner(nextHandler) != this)
                 {
                     ts_currentRunner = null;
-                    var executionScheduler = new ExecutionScheduler(true);
-                    MaybeHandleNext(nextHandler, ref executionScheduler);
-                    executionScheduler.Execute();
+                    MaybeHandleNext(nextHandler);
                 }
             }
 
@@ -470,9 +468,9 @@ namespace Proto.Promises
                 ts_currentRunner = null;
                 ValidateAwait(awaiter, promiseId);
 
-                // TODO: detect if this is being called from another promise higher in the stack, and call AddWaiter and allow the stack to unwind instead of calling HookupNewWaiter.
-
                 SetPrevious(awaiter);
+
+                // TODO: detect if this is being called from another promise higher in the stack, and call AddWaiter and allow the stack to unwind instead of calling HookupExistingWaiter.
                 awaiter.HookupExistingWaiter(promiseId, this);
             }
 
@@ -518,17 +516,14 @@ namespace Proto.Promises
                     ts_currentRunner = null;
                     ValidateAwait(awaiter, promiseId);
 
-                    // TODO: detect if this is being called from another promise higher in the stack, allow the stack to unwind instead of calling waiter.HandleNext.
-
                     SetPreviousAndProgress(awaiter, minProgress, maxProgress);
 
-                    var executionScheduler = new ExecutionScheduler(true);
                     awaiter.InterlockedIncrementProgressReportingCount();
                     HandleablePromiseBase previousWaiter;
-                    PromiseRefBase promiseSingleAwait = awaiter.AddWaiter(promiseId, this, out previousWaiter, ref executionScheduler);
+                    PromiseRefBase promiseSingleAwait = awaiter.AddWaiter(promiseId, this, out previousWaiter);
                     if (previousWaiter == null)
                     {
-                        ReportProgressFromHookupWaiterWithProgress(awaiter, depth, ref executionScheduler);
+                        ReportProgressFromHookupWaiterWithProgress(awaiter, depth);
                     }
                     else
                     {
@@ -537,15 +532,16 @@ namespace Proto.Promises
                         {
                             throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(2));
                         }
-                        awaiter.HandleNext(this, ref executionScheduler);
+
+                        // TODO: detect if this is being called from another promise higher in the stack, allow the stack to unwind instead of calling HandleNext.
+                        awaiter.HandleNext(this);
                     }
-                    executionScheduler.Execute();
                 }
 #endif
 
-                partial void ReportProgressFromHookupWaiterWithProgress(PromiseRefBase other, ushort depth, ref ExecutionScheduler executionScheduler);
+                partial void ReportProgressFromHookupWaiterWithProgress(PromiseRefBase other, ushort depth);
                 partial void SetPreviousAndProgress(PromiseRefBase awaiter, float minProgress, float maxProgress);
-                partial void SetAwaitedComplete(PromiseRefBase handler, ref ExecutionScheduler executionScheduler);
+                partial void SetAwaitedComplete(PromiseRefBase handler);
 #if !PROMISE_PROGRESS && PROMISE_DEBUG
                 [MethodImpl(InlineOption)]
                 partial void SetPreviousAndProgress(PromiseRefBase other, float minProgress, float maxProgress)
@@ -554,7 +550,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                partial void SetAwaitedComplete(PromiseRefBase handler, ref ExecutionScheduler executionScheduler)
+                partial void SetAwaitedComplete(PromiseRefBase handler)
                 {
                     _previous = null;
                 }
@@ -716,10 +712,10 @@ namespace Proto.Promises
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
 
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
                 {
                     ThrowIfInPool(this);
-                    SetAwaitedComplete(handler, ref executionScheduler);
+                    SetAwaitedComplete(handler);
 
                     var previousRunner = ExchangeCurrentRunner(this);
 
@@ -767,10 +763,10 @@ namespace Proto.Promises
                         _stateMachine.MoveNext();
                     }
 
-                    internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                    internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
                     {
                         ThrowIfInPool(this);
-                        SetAwaitedComplete(handler, ref executionScheduler);
+                        SetAwaitedComplete(handler);
 
                         var previousRunner = ExchangeCurrentRunner(this);
 

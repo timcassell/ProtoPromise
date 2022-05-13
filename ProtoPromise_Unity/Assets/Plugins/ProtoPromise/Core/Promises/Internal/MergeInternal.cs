@@ -29,8 +29,8 @@ namespace Proto.Promises
 #endif
             internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>, IMultiHandleablePromise
             {
-                public abstract void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler);
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler) { throw new System.InvalidOperationException(); }
+                public abstract void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler);
+                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler) { throw new System.InvalidOperationException(); }
 
                 new protected void Reset(ushort depth)
                 {
@@ -119,7 +119,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
                 {
                     var handler = passThrough.Owner;
                     nextHandler = null;
@@ -130,24 +130,24 @@ namespace Proto.Promises
                         {
                             handler.SuppressRejection = true;
                             State = state;
-                            nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
+                            nextHandler = TakeOrHandleNextWaiter();
                         }
                         InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                     }
                     else // Resolved
                     {
-                        IncrementProgress(passThrough, ref executionScheduler);
+                        IncrementProgress(passThrough);
                         if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
                             && Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
                         {
                             State = state;
-                            nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
+                            nextHandler = TakeOrHandleNextWaiter();
                         }
                     }
                     MaybeDisposeNonVirt();
                 }
 
-                partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler);
+                partial void IncrementProgress(PromisePassThrough passThrough);
                 partial void SetupProgress(ulong completedProgress, ulong totalProgress);
 
                 private sealed partial class MergePromiseT : MergePromise<TResult>
@@ -177,7 +177,7 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                    public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
                     {
                         var handler = passThrough.Owner;
                         nextHandler = null;
@@ -188,19 +188,19 @@ namespace Proto.Promises
                             {
                                 handler.SuppressRejection = true;
                                 State = state;
-                                nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
+                                nextHandler = TakeOrHandleNextWaiter();
                             }
                             InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                         }
                         else // Resolved
                         {
-                            IncrementProgress(passThrough, ref executionScheduler);
+                            IncrementProgress(passThrough);
                             _onPromiseResolved.Invoke(handler, ref _result, passThrough.Index);
                             if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
                                 && Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
                             {
                                 State = state;
-                                nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
+                                nextHandler = TakeOrHandleNextWaiter();
                             }
                         }
                         MaybeDispose();
@@ -217,14 +217,14 @@ namespace Proto.Promises
                     _progressScaler = (double) (Depth + 1u) / (double) totalProgress;
                 }
 
-                partial void IncrementProgress(PromisePassThrough passThrough, ref ExecutionScheduler executionScheduler)
+                partial void IncrementProgress(PromisePassThrough passThrough)
                 {
                     var wasReportingPriority = Fixed32.ts_reportingPriority;
                     Fixed32.ts_reportingPriority = true;
 
                     uint dif = passThrough.GetProgressDifferenceToCompletion();
                     var progress = IncrementProgress(dif);
-                    ReportProgress(progress, Depth, ref executionScheduler);
+                    ReportProgress(progress, Depth);
 
                     Fixed32.ts_reportingPriority = wasReportingPriority;
                 }

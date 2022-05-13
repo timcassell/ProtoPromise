@@ -140,7 +140,6 @@ namespace Proto.Promises
                 set
                 {
                     _foregroundContext = value;
-                    Internal._foregroundSynchronizationHandler = new Internal.SynchronizationHandler(value);
                 }
             }
             volatile private static SynchronizationContext _foregroundContext;

@@ -18,6 +18,7 @@
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -36,135 +37,69 @@ namespace Proto.Promises
 #endif
 
 #else // !PROMISE_PROGRESS
-        partial class SynchronizationHandler : ILinked<IProgressInvokable>
+
+        private static readonly SendOrPostCallback s_synchronizationContextProgressCallback = ProgressFromContext;
+        private static readonly WaitCallback s_threadPoolProgressCallback = ProgressFromContext;
+
+        private static void ScheduleForProgress(HandleablePromiseBase progressable, SynchronizationContext context)
         {
-            IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
-
-            // This must not be readonly.
-            private ValueWriteOnlyLinkedQueue<IProgressInvokable> _progressQueue;
-
-            partial void InitProgress()
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            if (context == null)
             {
-                _progressQueue = new ValueWriteOnlyLinkedQueue<IProgressInvokable>(this);
+                throw new InvalidOperationException("context cannot be null");
             }
-
-            internal void PostProgress(IProgressInvokable progressInvokable)
+#endif
+            if (context == BackgroundSynchronizationContextSentinel.s_instance)
             {
-                _locker.Enter();
-                bool wasScheduled = _isScheduled;
-                _isScheduled = true;
-                _progressQueue.Enqueue(progressInvokable);
-                _locker.Exit();
-
-                if (!wasScheduled)
-                {
-                    _context.Post(_synchronizationContextCallback, this);
-                }
+                ThreadPool.QueueUserWorkItem(s_threadPoolProgressCallback, progressable);
             }
-
-            partial void TakeProgress(ref ValueLinkedQueue<IProgressInvokable> progressStack)
+            else
             {
-                progressStack = _progressQueue.MoveElementsToQueue();
+                context.Post(s_synchronizationContextProgressCallback, progressable);
             }
         }
 
-        partial struct ExecutionScheduler
+        private static void ProgressFromContext(object state)
         {
-            private static readonly WaitCallback _progressThreadPoolCallback = ExecuteProgressFromContext;
-            private static readonly SendOrPostCallback _progressSynchronizationContextCallback = ExecuteProgressFromContext;
-
-            partial void ExecuteProgressPartial()
+            // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
+            try
             {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                _isExecutingProgress = true; // This is only used on the CPU stack, so we never need to set this back to false.
-#endif
-
-                // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
-                IProgressInvokable lastExecuted = null;
-                try
-                {
-                    while (_progressQueue.IsNotEmpty)
-                    {
-                        ValueLinkedStack<IProgressInvokable> executionStack = _progressQueue.MoveElementsToStack();
-                        do
-                        {
-                            lastExecuted = executionStack.Pop();
-                            lastExecuted.Invoke(ref this);
-                        } while (executionStack.IsNotEmpty);
-                    }
-                }
-                catch (Exception e)
-                {
-                    // This should never happen.
-                    ReportRejection(e, lastExecuted as ITraceable);
-                }
+                state.UnsafeAs<HandleablePromiseBase>().InvokeProgressFromContext();
             }
-
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            partial void AssertNotExecutingProgress()
+            catch (Exception e)
             {
-                if (_isExecutingProgress)
-                {
-                    throw new System.InvalidOperationException("Cannot schedule handleable while executing progress.");
-                }
+                // This should never happen.
+                ReportRejection(e, state as ITraceable);
             }
-#endif
+        }
 
-            internal void ExecuteProgress()
-            {
-                ExecuteProgressPartial();
-            }
+        partial struct StackUnwindHelper
+        {
+            [ThreadStatic]
+            private static Queue<HandleablePromiseBase> ts_progressors;
 
             [MethodImpl(InlineOption)]
-            internal void ScheduleProgressSynchronous(IProgressInvokable progress)
+            internal static void AddProgressor(HandleablePromiseBase progressor)
             {
-#if PROTO_PROMISE_STACK_UNWIND_DISABLE && PROTO_PROMISE_DEVELOPER_MODE
-                progress.Invoke(ref this);
-#else
-                _progressQueue.Enqueue(progress);
-#endif
+                if (ts_progressors == null)
+                {
+                    ts_progressors = new Queue<HandleablePromiseBase>();
+                }
+                ts_progressors.Enqueue(progressor);
             }
 
-            internal void ScheduleProgressOnContext(SynchronizationContext synchronizationContext, IProgressInvokable progress)
+            internal static void InvokeProgressors()
             {
-                if (_synchronizationHandler != null && _synchronizationHandler._context == synchronizationContext)
+                if (ts_progressors != null)
                 {
-                    // We're scheduling to the context that is currently executing, just place it on the queue instead of going through the context.
-                    ScheduleProgressSynchronous(progress);
-                    return;
-                }
-                if (synchronizationContext == null)
-                {
-                    // If there is no context, send it to the ThreadPool.
-                    ThreadPool.QueueUserWorkItem(_progressThreadPoolCallback, progress);
-                    return;
-                }
-                SynchronizationHandler foregroundHandler = _foregroundSynchronizationHandler;
-                if (foregroundHandler != null && foregroundHandler._context == synchronizationContext)
-                {
-                    // Schedule on the optimized foregroundHandler instead of going through the context.
-                    foregroundHandler.PostProgress(progress);
-                    return;
-                }
-                synchronizationContext.Post(_progressSynchronizationContextCallback, progress);
-            }
-
-            private static void ExecuteProgressFromContext(object state)
-            {
-                // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
-                try
-                {
-                    var executionScheduler = new ExecutionScheduler(false);
-                    state.UnsafeAs<IProgressInvokable>().Invoke(ref executionScheduler);
-                    executionScheduler.ExecuteProgress();
-                }
-                catch (Exception e)
-                {
-                    // This should never happen.
-                    ReportRejection(e, state as ITraceable);
+                    while (ts_progressors.Count > 0)
+                    {
+                        ts_progressors.Dequeue().InvokeProgressFromContext();
+                    }
                 }
             }
         }
+
 #endif // !PROMISE_PROGRESS
 
         partial class PromiseRefBase
@@ -209,7 +144,7 @@ namespace Proto.Promises
 
             partial class PromiseCompletionSentinel : HandleablePromiseBase
             {
-                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
                 {
                     return null;
                 }
@@ -217,7 +152,7 @@ namespace Proto.Promises
 
             partial class PromiseForgetSentinel : HandleablePromiseBase
             {
-                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
                 {
                     return null;
                 }
@@ -225,7 +160,7 @@ namespace Proto.Promises
 
             partial class InvalidAwaitSentinel : PromiseRefBase
             {
-                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
                 {
                     return null;
                 }
@@ -502,7 +437,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class PromiseProgress<TResult, TProgress> : PromiseSingleAwait<TResult>, IProgressInvokable, ICancelable
+            internal sealed partial class PromiseProgress<TResult, TProgress> : PromiseSingleAwait<TResult>, ICancelable
                 where TProgress : IProgress<float>
             {
                 private static readonly WaitCallback _threadPoolCallback = ExecuteFromContext;
@@ -535,6 +470,12 @@ namespace Proto.Promises
 
                 internal static PromiseProgress<TResult, TProgress> GetOrCreate(TProgress progress, CancelationToken cancelationToken, ushort depth, bool isSynchronous, SynchronizationContext synchronizationContext)
                 {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    if (!isSynchronous && synchronizationContext == null)
+                    {
+                        throw new InvalidOperationException("synchronizationContext cannot be null");
+                    }
+#endif
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseProgress<TResult, TProgress>>()
                         ?? new PromiseProgress<TResult, TProgress>();
                     promise.Reset(depth);
@@ -549,6 +490,12 @@ namespace Proto.Promises
 
                 internal static PromiseProgress<TResult, TProgress> GetOrCreateFromNull(TProgress progress, CancelationToken cancelationToken, ushort depth, SynchronizationContext synchronizationContext, TResult result)
                 {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    if (synchronizationContext == null)
+                    {
+                        throw new InvalidOperationException("synchronizationContext cannot be null");
+                    }
+#endif
                     var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseProgress<TResult, TProgress>>()
                         ?? new PromiseProgress<TResult, TProgress>();
                     promise.Reset(depth);
@@ -573,9 +520,12 @@ namespace Proto.Promises
                     }
                 }
 
-                void IProgressInvokable.Invoke(ref ExecutionScheduler executionScheduler)
+                internal override void InvokeProgressFromContext()
                 {
                     ThrowIfInPool(this);
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
+
                     Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
                     var progress = _smallFields._currentProgress;
                     _isProgressScheduled = 0;
@@ -588,50 +538,56 @@ namespace Proto.Promises
                         CallbackHelper.InvokeAndCatchProgress(_progress, value, this);
                     }
                     MaybeDispose();
+
+                    ts_currentContext = currentContext;
                 }
 
-                internal void MaybeReportProgress(ref ExecutionScheduler executionScheduler)
+                internal void MaybeScheduleProgress()
                 {
 #if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
                     bool isProgressScheduled = Interlocked.CompareExchange(ref _isProgressScheduled, 1, 0) != 0;
 #else
                     bool isProgressScheduled = Interlocked.Exchange(ref _isProgressScheduled, 1) != 0;
 #endif
-                    if (!isProgressScheduled)
+                    if (isProgressScheduled)
                     {
-                        InterlockedAddWithOverflowCheck(ref _retainCounter, 1, -1);
-                        if (_isSynchronous)
-                        {
-                            executionScheduler.ScheduleProgressSynchronous(this);
-                        }
-                        else
-                        {
-                            executionScheduler.ScheduleProgressOnContext(_synchronizationContext, this);
-                        }
+                        return;
                     }
+                    InterlockedAddWithOverflowCheck(ref _retainCounter, 1, -1);
+                    // Even though it's scheduled synchronous, we still have to let the stack unwind to prevent a deadlock in case user code tries to complete the promise.
+                    if (_isSynchronous | _synchronizationContext == ts_currentContext)
+                    {
+                        StackUnwindHelper.AddProgressor(this);
+                        return;
+                    }
+                    ScheduleForProgress(this, _synchronizationContext);
                 }
 
-                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
                 {
                     ThrowIfInPool(this);
                     if (_smallFields._currentProgress.InterlockedTrySet(progress) & !IsCanceled)
                     {
-                        MaybeReportProgress(ref executionScheduler);
+                        MaybeScheduleProgress();
                         return this;
                     }
                     return null;
                 }
 
-                internal override void Handle(ref ExecutionScheduler executionScheduler)
+                internal override void HandleFromContext()
                 {
                     ThrowIfInPool(this);
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
 
                     HandleablePromiseBase nextHandler;
-                    Invoke1(_previousState, out nextHandler, ref executionScheduler);
-                    MaybeHandleNext(nextHandler, ref executionScheduler);
+                    Invoke1(_previousState, out nextHandler);
+                    MaybeHandleNext(nextHandler);
+
+                    ts_currentContext = currentContext;
                 }
 
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
                 {
                     ThrowIfInPool(this);
                     handler.SuppressRejection = true;
@@ -641,18 +597,18 @@ namespace Proto.Promises
                     var state = handler.State;
                     _previousState = state;
 
-                    if (_isSynchronous)
+                    if (_isSynchronous | _synchronizationContext == ts_currentContext)
                     {
                         handler = this;
-                        Invoke1(state, out nextHandler, ref executionScheduler);
+                        Invoke1(state, out nextHandler);
                         return;
                     }
 
                     nextHandler = null;
-                    executionScheduler.ScheduleOnContext(_synchronizationContext, this);
+                    ScheduleForHandle(this, _synchronizationContext);
                 }
 
-                private void Invoke1(Promise.State state, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                private void Invoke1(Promise.State state, out HandleablePromiseBase nextHandler)
                 {
                     if (TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !IsCanceled)
                     {
@@ -665,7 +621,7 @@ namespace Proto.Promises
                     }
 
                     State = state;
-                    nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
+                    nextHandler = TakeOrHandleNextWaiter();
                 }
 
                 void ICancelable.Cancel()
@@ -675,11 +631,11 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
-                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter, ref ExecutionScheduler executionScheduler)
+                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
                 {
                     if (_isSynchronous)
                     {
-                        return AddWaiterImpl(promiseId, waiter, out previousWaiter, Depth, ref executionScheduler);
+                        return AddWaiterImpl(promiseId, waiter, out previousWaiter, Depth);
                     }
 
                     if (promiseId != Id)
@@ -721,15 +677,12 @@ namespace Proto.Promises
                     try
                     {
                         // This handles the waiter that was added after this was already complete.
-                        var _this = (PromiseProgress<TResult, TProgress>) state;
+                        var _this = state.UnsafeAs<PromiseProgress<TResult, TProgress>>();
                         ThrowIfInPool(_this);
-                        var _state = _this._previousState;
-                        _this.State = _state;
-                        var executionScheduler = new ExecutionScheduler(true);
+                        _this.State = _this._previousState;
                         // We don't need to synchronize access here because this is only called when the waiter is added after Invoke1 has completed, so there are no race conditions.
                         // _this._waiter is guaranteed to be non-null here, so we can call HandleNext instead of MaybeHandleNext.
-                        _this.HandleNext(_this._waiter, ref executionScheduler);
-                        executionScheduler.Execute();
+                        _this.HandleNext(_this._next);
                     }
                     catch (Exception e)
                     {
@@ -752,23 +705,23 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void ReportProgress(Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+            internal void ReportProgress(Fixed32 progress, ushort depth)
             {
                 InterlockedIncrementProgressReportingCount();
-                ReportProgressAlreadyIncremented(progress, depth, ref executionScheduler);
+                ReportProgressAlreadyIncremented(progress, depth);
             }
 
-            internal void ReportProgressAlreadyIncremented(Fixed32 progress, ushort depth, ref ExecutionScheduler executionScheduler)
+            internal void ReportProgressAlreadyIncremented(Fixed32 progress, ushort depth)
             {
                 PromiseRefBase current = this;
                 while (true)
                 {
-                    var progressListener = current._waiter;
+                    var progressListener = current._next;
                     if (progressListener == null)
                     {
                         break;
                     }
-                    var next = progressListener.SetProgress(ref progress, ref depth, ref executionScheduler);
+                    var next = progressListener.SetProgress(ref progress, ref depth);
                     if (next == null)
                     {
                         break;
@@ -778,19 +731,25 @@ namespace Proto.Promises
                     current = next;
                 }
                 current.InterlockedDecrementProgressReportingCount();
+
+                StackUnwindHelper.InvokeProgressors();
             }
 
             partial class PromiseSingleAwait<TResult>
             {
-                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
                 {
                     return _smallFields._currentProgress.InterlockedTrySet(progress) ? this : null;
                 }
             } // PromiseSingleAwait
 
-            partial class PromiseMultiAwait<TResult> : IProgressInvokable
+            // Used to increase concurrency when invoking progress in PromiseMultiAwait. The cost is slower single-threaded invoke.
+            [ThreadStatic]
+            private static List<ValueTuple<PromiseRefBase, Fixed32, ushort>> ts_progressListenersForMultiAwait;
+
+            partial class PromiseMultiAwait<TResult>
             {
-                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
                 {
                     lock (this)
                     {
@@ -800,36 +759,59 @@ namespace Proto.Promises
                             if (!_isProgressScheduled)
                             {
                                 _isProgressScheduled = true;
-                                Retain(); // Retain until IProgressInvokable.Invoke is complete.
-                                executionScheduler.ScheduleProgressSynchronous(this);
+                                Retain(); // Retain until InvokeProgressFromContext is complete.
+                                StackUnwindHelper.AddProgressor(this);
                             }
                         }
                         return null;
                     }
                 }
 
-                void IProgressInvokable.Invoke(ref ExecutionScheduler executionScheduler)
+                internal override void InvokeProgressFromContext()
                 {
                     ThrowIfInPool(this);
                     InterlockedIncrementProgressReportingCount();
                     Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
                     var progress = _smallFields._currentProgress;
                     _isProgressScheduled = false;
-                    if (State == Promise.State.Pending)
+                    // cache _nextBranches in a local because another thread can nullify it in Handle.
+                    var branches = _nextBranches;
+                    if (State != Promise.State.Pending | branches.Count == 0)
                     {
-                        foreach (var progressListener in _nextBranches)
+                        InterlockedDecrementProgressReportingCount();
+                        MaybeDispose();
+                        return;
+                    }
+
+                    var nextListeners = ts_progressListenersForMultiAwait;
+                    if (nextListeners == null)
+                    {
+                        nextListeners = new List<ValueTuple<PromiseRefBase, Fixed32, ushort>>(branches.Count);
+                        ts_progressListenersForMultiAwait = nextListeners;
+                    }
+
+                    // New waiters could be added on another thread while this is looping. That is fine.
+                    // This will only iterate over the items that were captured for the snapshot in the branches local copy.
+                    // Items will not be removed until all threads invoking progress are complete.
+                    for (int i = 0, max = branches.Count; i < max; ++i)
+                    {
+                        var progressListener = branches[i];
+                        Fixed32 progressCopy = progress;
+                        ushort depth = Depth;
+                        PromiseRefBase nextRef = progressListener.SetProgress(ref progressCopy, ref depth);
+                        if (nextRef != null)
                         {
-                            Fixed32 progressCopy = progress;
-                            var depth = Depth;
-                            PromiseRefBase nextRef = progressListener.SetProgress(ref progressCopy, ref depth, ref executionScheduler);
-                            if (nextRef != null)
-                            {
-                                nextRef.ReportProgress(progressCopy, depth, ref executionScheduler);
-                            }
+                            nextListeners.Add(ValueTuple.Create(nextRef, progressCopy, depth));
                         }
                     }
                     InterlockedDecrementProgressReportingCount();
                     MaybeDispose();
+
+                    foreach (var tuple in nextListeners)
+                    {
+                        tuple.Item1.ReportProgress(tuple.Item2, tuple.Item3);
+                    }
+                    nextListeners.Clear();
                 }
             } // PromiseMultiAwait
 
@@ -854,9 +836,7 @@ namespace Proto.Promises
                         var wasReportingPriority = Fixed32.ts_reportingPriority;
                         Fixed32.ts_reportingPriority = true;
 
-                        var executionScheduler = new ExecutionScheduler(false);
-                        ReportProgressAlreadyIncremented(newProgress, 0, ref executionScheduler);
-                        executionScheduler.ExecuteProgress();
+                        ReportProgressAlreadyIncremented(newProgress, 0);
 
                         Fixed32.ts_reportingPriority = wasReportingPriority;
                     }
@@ -877,7 +857,7 @@ namespace Proto.Promises
                 _smallFields._secondPrevious = true;
             }
 
-            partial void ReportProgressFromWaitFor(PromiseRefBase other, ushort depth, ref ExecutionScheduler executionScheduler)
+            partial void ReportProgressFromWaitFor(PromiseRefBase other, ushort depth)
             {
                 var wasReportingPriority = Fixed32.ts_reportingPriority;
                 Fixed32.ts_reportingPriority = false;
@@ -887,7 +867,7 @@ namespace Proto.Promises
                 {
                     InterlockedIncrementProgressReportingCount();
                     other.InterlockedDecrementProgressReportingCount();
-                    ReportProgressAlreadyIncremented(progress, Depth, ref executionScheduler);
+                    ReportProgressAlreadyIncremented(progress, Depth);
                 }
                 else
                 {
@@ -923,7 +903,7 @@ namespace Proto.Promises
                     other._ref.HookupNewWaiter(other.Id, this);
                 }
 
-                internal override sealed PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override sealed PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
                 {
                     // This acts as a pass-through to normalize the progress.
                     ThrowIfInPool(this);
@@ -937,7 +917,7 @@ namespace Proto.Promises
 
             partial class PromisePassThrough
             {
-                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
                 {
                     ThrowIfInPool(this);
                     depth = _target.UnsafeAs<PromiseRefBase>().Depth;
@@ -999,7 +979,7 @@ namespace Proto.Promises
                     return newValue;
                 }
 
-                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
                 {
                     if (float.IsNaN(_minProgress))
                     {
@@ -1016,7 +996,7 @@ namespace Proto.Promises
                     return _smallFields._currentProgress.TrySetNewDecimalPartFromAsync(lerpedProgress, out progress);
                 }
 
-                partial void SetAwaitedComplete(PromiseRefBase handler, ref ExecutionScheduler executionScheduler)
+                partial void SetAwaitedComplete(PromiseRefBase handler)
                 {
                     ThrowIfInPool(this);
 #if PROMISE_DEBUG
@@ -1028,7 +1008,7 @@ namespace Proto.Promises
                     {
                         var progress = Fixed32.FromDecimalForResolve(_maxProgress);
                         _smallFields._currentProgress = progress;
-                        ReportProgress(progress, 0, ref executionScheduler);
+                        ReportProgress(progress, 0);
                     }
                     _minProgress = _maxProgress = float.NaN;
                 }
@@ -1043,7 +1023,7 @@ namespace Proto.Promises
                     _maxProgress = maxProgress;
                 }
 
-                partial void ReportProgressFromHookupWaiterWithProgress(PromiseRefBase other, ushort depth, ref ExecutionScheduler executionScheduler)
+                partial void ReportProgressFromHookupWaiterWithProgress(PromiseRefBase other, ushort depth)
                 {
                     var wasReportingPriority = Fixed32.ts_reportingPriority;
                     Fixed32.ts_reportingPriority = false;
@@ -1053,7 +1033,7 @@ namespace Proto.Promises
                     {
                         InterlockedIncrementProgressReportingCount();
                         other.InterlockedDecrementProgressReportingCount();
-                        ReportProgressAlreadyIncremented(progress, 0, ref executionScheduler);
+                        ReportProgressAlreadyIncremented(progress, 0);
                     }
                     else
                     {

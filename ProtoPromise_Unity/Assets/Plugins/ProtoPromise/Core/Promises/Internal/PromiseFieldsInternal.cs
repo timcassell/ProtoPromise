@@ -149,7 +149,7 @@ namespace Proto.Promises
 
         partial class HandleablePromiseBase
         {
-            private HandleablePromiseBase _next;
+            volatile protected HandleablePromiseBase _next;
         }
 
         partial class PromiseRefBase : HandleablePromiseBase
@@ -198,7 +198,6 @@ namespace Proto.Promises
 #endif
             volatile internal RejectContainer _rejectContainer;
             private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
-            volatile protected HandleablePromiseBase _waiter; // _waiter is only used in PromiseSingleAwait, but it's moved into PromiseRef so that the MaybeHandleNext loop can assign InvalidAwaitSentinel.
 
             partial class PromiseRef<TResult> : PromiseRefBase
             {
@@ -217,14 +216,12 @@ namespace Proto.Promises
 
             partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
             {
-                private ValueLinkedQueue<HandleablePromiseBase> _nextBranches = new ValueLinkedQueue<HandleablePromiseBase>();
+                private ValueList<HandleablePromiseBase> _nextBranches = new ValueList<HandleablePromiseBase>(8);
+                private int _retainCounter;
 
 #if PROMISE_PROGRESS
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
                 private bool _isProgressScheduled;
 #endif
-
-                private int _retainCounter;
             }
 
             #region Non-cancelable Promises
@@ -444,8 +441,6 @@ namespace Proto.Promises
                 volatile private bool _canceled;
                 volatile private Promise.State _previousState;
                 private bool _isSynchronous;
-
-                IProgressInvokable ILinked<IProgressInvokable>.Next { get; set; }
             }
 #endif
 

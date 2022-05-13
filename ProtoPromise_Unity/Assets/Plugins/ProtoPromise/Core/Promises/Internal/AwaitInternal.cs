@@ -135,14 +135,14 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
                 {
                     nextHandler = null;
                     Invoke();
                 }
 
 #if PROMISE_PROGRESS
-                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth, ref ExecutionScheduler executionScheduler)
+                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
                 {
                     return null;
                 }

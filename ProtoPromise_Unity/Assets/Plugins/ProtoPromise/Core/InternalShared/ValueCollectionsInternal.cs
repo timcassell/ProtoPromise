@@ -41,8 +41,8 @@ namespace Proto.Promises
         // Make collections class instead of struct, and inherit TraceableCollection for debugging purposes.
         partial class ValueLinkedStack<T> : TraceableCollection
         {
-            internal ValueLinkedStack() : base() { }
-            
+            internal ValueLinkedStack() { }
+
             private void AssertNotInCollection(T item)
             {
                 CollectionChecker<T>.AssertNotInCollection(item, this);
@@ -51,8 +51,6 @@ namespace Proto.Promises
 
         partial class ValueLinkedStackSafe<T> : TraceableCollection
         {
-            internal ValueLinkedStackSafe() : base() { }
-
             private void AssertNotInCollection(T item)
             {
                 CollectionChecker<T>.AssertNotInCollection(item, this);
@@ -61,7 +59,7 @@ namespace Proto.Promises
 
         partial class ValueLinkedQueue<T> : TraceableCollection
         {
-            internal ValueLinkedQueue() : base() { }
+            internal ValueLinkedQueue() { }
 
             private void AssertNotInCollection(T item)
             {
@@ -69,10 +67,8 @@ namespace Proto.Promises
             }
         }
 
-        partial class ValueWriteOnlyLinkedQueue<T> : TraceableCollection
+        partial class ValueList<T> : TraceableCollection
         {
-            internal ValueWriteOnlyLinkedQueue() : base() { }
-
             private void AssertNotInCollection(T item)
             {
                 CollectionChecker<T>.AssertNotInCollection(item, this);
@@ -421,49 +417,55 @@ namespace Proto.Promises
         [DebuggerNonUserCode]
 #endif
 #if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
-        internal partial class ValueWriteOnlyLinkedQueue<T> where T : class, ILinked<T>
+        internal partial class ValueList<T> where T : class, ILinked<T>
 #else
-        internal struct ValueWriteOnlyLinkedQueue<T> where T : class, ILinked<T>
+        internal struct ValueList<T> where T : class, ILinked<T>
 #endif
         {
-            // TODO: sentinel can be removed as a field and passed in as an argument to save 4/8 bytes of memory.
-            private readonly ILinked<T> _sentinel;
-            private ILinked<T> _tail;
+            // This structure is a specialized version of List<T> without the extra object overhead and unused methods.
+            // Individual elements cannot be removed or modified, only all elements can be cleared at once.
+            // This specialization is made use of in PromiseMultiAwait for increasing concurrency while invoking progress,
+            // so threads may iterate over the data while new data is being added.
 
-            internal bool IsEmpty
+            private T[] _storage;
+            private int _count;
+
+            internal int Count
             {
                 [MethodImpl(InlineOption)]
-                get { return _sentinel.Next == null; }
+                // _storage will be null if this is default.
+                get { return _storage == null ? 0 : _count; }
+            }
+
+            internal T this[int index]
+            {
+                [MethodImpl(InlineOption)]
+                get { return _storage[index]; }
             }
 
             [MethodImpl(InlineOption)]
-            internal ValueWriteOnlyLinkedQueue(ILinked<T> sentinel)
+            internal ValueList(int capacity)
             {
-                _tail = _sentinel = sentinel;
+                _storage = new T[Math.Max(capacity, 8)];
+                _count = 0;
             }
 
-            internal void Enqueue(T item)
+            [MethodImpl(InlineOption)]
+            internal void Add(T item)
             {
-                AssertNotInCollection(item);
-
-                _tail.Next = item;
-                _tail = item;
+                if (_storage.Length <= _count)
+                {
+                    Array.Resize(ref _storage, _count * 2);
+                }
+                _storage[_count] = item;
+                ++_count;
             }
 
-            internal ValueLinkedStack<T> MoveElementsToStack()
+            [MethodImpl(InlineOption)]
+            internal void Clear()
             {
-                ValueLinkedStack<T> newStack = new ValueLinkedStack<T>(_sentinel.Next);
-                _sentinel.Next = null;
-                _tail = _sentinel;
-                return newStack;
-            }
-
-            internal ValueLinkedQueue<T> MoveElementsToQueue()
-            {
-                ValueLinkedQueue<T> newQueue = new ValueLinkedQueue<T>(_sentinel.Next, _tail as T);
-                _sentinel.Next = null;
-                _tail = _sentinel;
-                return newQueue;
+                _count = 0;
+                Array.Clear(_storage, 0, _storage.Length);
             }
         }
 
@@ -543,7 +545,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal static ValueLinkedStackZeroGC<T> Create()
             {
-                return new ValueLinkedStackZeroGC<T>(new ValueLinkedStack<Node>());
+                return new ValueLinkedStackZeroGC<T>(new ValueLinkedStack<Node>(null));
             }
 
             internal bool IsEmpty

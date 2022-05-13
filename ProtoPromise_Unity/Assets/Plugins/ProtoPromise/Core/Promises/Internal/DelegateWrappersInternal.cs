@@ -305,7 +305,7 @@ namespace Proto.Promises
                     _isActive = isActive;
                 }
 
-                private void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                private void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
                     if (null != default(TResult) && typeof(TResult) == typeof(VoidResult))
@@ -317,24 +317,24 @@ namespace Proto.Promises
                         owner.State = handler.State;
                         handler.MaybeDispose();
                         handler = owner;
-                        nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
+                        nextHandler = owner.TakeOrHandleNextWaiter();
                     }
                     else
                     {
-                        owner.UnsafeAs<PromiseRef<TResult>>().HandleSelf(ref handler, out nextHandler, ref executionScheduler);
+                        owner.UnsafeAs<PromiseRef<TResult>>().HandleSelf(ref handler, out nextHandler);
                     }
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
-                    Handle(ref handler, out nextHandler, owner, ref executionScheduler);
+                    Handle(ref handler, out nextHandler, owner);
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
-                    Handle(ref handler, out nextHandler, owner, ref executionScheduler);
+                    Handle(ref handler, out nextHandler, owner);
                 }
             }
 
@@ -386,26 +386,26 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     handler.MaybeDispose();
                     TResult result = Invoke(arg);
                     handler = owner;
                     owner.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
-                    nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
+                    nextHandler = owner.TakeOrHandleNextWaiter();
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     TResult result = Invoke(arg);
-                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler);
                 }
 
-                void IDelegateReject.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateReject.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
@@ -414,26 +414,26 @@ namespace Proto.Promises
                         handler.MaybeDispose();
                         handler = owner;
                         owner.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
-                        nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
+                        nextHandler = owner.TakeOrHandleNextWaiter();
                     }
                     else
                     {
-                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler);
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
                         TResult result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler);
                     }
                     else
                     {
-                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler);
                     }
                 }
             }
@@ -484,26 +484,26 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     Promise<TResult> result = Invoke(arg);
-                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler);
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
                         Promise<TResult> result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler);
                     }
                     else
                     {
-                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler);
                     }
                 }
             }
@@ -554,7 +554,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
@@ -586,7 +586,7 @@ namespace Proto.Promises
                     }
                     handler.MaybeDispose();
                     handler = owner;
-                    nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
+                    nextHandler = owner.TakeOrHandleNextWaiter();
                 }
             }
 
@@ -636,7 +636,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
@@ -667,7 +667,7 @@ namespace Proto.Promises
                         }
                     }
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler);
                 }
             }
 
@@ -797,26 +797,26 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancel.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     handler.MaybeDispose();
                     handler = owner;
                     TResult result = Invoke(arg);
                     owner.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
-                    nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
+                    nextHandler = owner.TakeOrHandleNextWaiter();
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     TResult result = Invoke(arg);
-                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler);
                 }
 
-                void IDelegateReject.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateReject.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
@@ -825,26 +825,26 @@ namespace Proto.Promises
                         handler.MaybeDispose();
                         handler = owner;
                         owner.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
-                        nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
+                        nextHandler = owner.TakeOrHandleNextWaiter();
                     }
                     else
                     {
-                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler);
                     }
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
                         TResult result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler, ref executionScheduler);
+                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(CreateResolved(result, 0), ref handler, out nextHandler);
                     }
                     else
                     {
-                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler);
                     }
                 }
             }
@@ -907,26 +907,26 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateResolveOrCancelPromise.InvokeResolver(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
                     Promise<TResult> result = Invoke(arg);
-                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler);
                 }
 
-                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                void IDelegateRejectPromise.InvokeRejecter(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
                         Promise<TResult> result = Invoke(arg);
                         owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                        owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler);
                     }
                     else
                     {
-                        owner.HandleIncompatibleRejection(ref handler, out nextHandler, ref executionScheduler);
+                        owner.HandleIncompatibleRejection(ref handler, out nextHandler);
                     }
                 }
             }
@@ -983,7 +983,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
@@ -1015,7 +1015,7 @@ namespace Proto.Promises
                     }
                     handler.MaybeDispose();
                     handler = owner;
-                    nextHandler = owner.TakeOrHandleNextWaiter(ref executionScheduler);
+                    nextHandler = owner.TakeOrHandleNextWaiter();
                 }
             }
 
@@ -1071,7 +1071,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner, ref ExecutionScheduler executionScheduler)
+                public void Invoke(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, PromiseRefBase owner)
                 {
                     // JIT constant-optimizes these checks away.
                     bool isVoidArg = null != default(TArg) && typeof(TArg) == typeof(VoidResult);
@@ -1102,7 +1102,7 @@ namespace Proto.Promises
                         }
                     }
                     owner.MaybeDisposePreviousBeforeSecondWait(handler);
-                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler, ref executionScheduler);
+                    owner.UnsafeAs<PromiseRef<TResult>>().WaitFor(result, ref handler, out nextHandler);
                 }
             }
 

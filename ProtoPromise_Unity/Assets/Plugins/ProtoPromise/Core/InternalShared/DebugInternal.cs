@@ -75,7 +75,7 @@ namespace Proto.Promises
             StackTrace stackTrace = Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
                 ? GetStackTrace(skipFrames + 1)
                 : null;
-            traceable.Trace = new CausalityTrace(stackTrace, _currentTrace);
+            traceable.Trace = new CausalityTrace(stackTrace, ts_currentTrace);
         }
 
         static partial void SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable)
@@ -89,35 +89,35 @@ namespace Proto.Promises
 #if !CSHARP_7_3_OR_NEWER
         // This is only needed in older language versions that don't support ref structs.
         [ThreadStatic]
-        private static long _invokeId;
-        internal static long InvokeId { get { return _invokeId; } }
+        private static long ts_invokeId;
+        internal static long InvokeId { get { return ts_invokeId; } }
 
         static partial void IncrementInvokeId()
         {
-            ++_invokeId;
+            ++ts_invokeId;
         }
 #else
         internal static long InvokeId { get { return ValidIdFromApi; } }
 #endif // !CSHARP_7_3_OR_NEWER
 
         [ThreadStatic]
-        private static CausalityTrace _currentTrace;
+        private static CausalityTrace ts_currentTrace;
         [ThreadStatic]
-        private static Stack<CausalityTrace> _traces;
+        private static Stack<CausalityTrace> ts_traces;
 
         static partial void SetCurrentInvoker(ITraceable current)
         {
-            if (_traces == null)
+            if (ts_traces == null)
             {
-                _traces = new Stack<CausalityTrace>();
+                ts_traces = new Stack<CausalityTrace>();
             }
-            _traces.Push(_currentTrace);
-            _currentTrace = current.Trace;
+            ts_traces.Push(ts_currentTrace);
+            ts_currentTrace = current.Trace;
         }
 
         static partial void ClearCurrentInvoker()
         {
-            _currentTrace = _traces.Pop();
+            ts_currentTrace = ts_traces.Pop();
             IncrementInvokeId();
         }
 

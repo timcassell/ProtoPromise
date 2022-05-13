@@ -88,7 +88,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
                 {
                     var handler = passThrough.Owner;
                     if (Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
@@ -105,7 +105,7 @@ namespace Proto.Promises
                         // Very important, write State must come after write _result or _valueContainer. This is a volatile write, so we don't need a full memory barrier.
                         // State is checked for completion, and if it is read not pending on another thread, _result and _valueContainer must have already been written so the other thread can read them.
                         State = handler.State;
-                        nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
+                        nextHandler = TakeOrHandleNextWaiter();
                     }
                     else
                     {

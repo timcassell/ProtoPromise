@@ -271,7 +271,7 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext;
+                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
@@ -808,15 +808,19 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext;
+                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
                         {
                             if (_this._ref == null)
                             {
+                                if (synchronizationContext == ts_currentContext)
+                                {
+                                    goto case SynchronizationOption.Synchronous;
+                                }
                                 promise = PromiseProgress<TResult, TProgress>.GetOrCreateFromNull(progress, cancelationToken, _this.Depth, synchronizationContext, _this.Result);
-                                ExecutionScheduler.ScheduleOnContextStatic(synchronizationContext, promise);
+                                ScheduleForHandle(promise, synchronizationContext);
                                 return new Promise<TResult>(promise, promise.Id, _this.Depth);
                             }
                             break;
@@ -828,14 +832,14 @@ namespace Proto.Promises
                     promise._previous = _this._ref;
 #endif
                     promise._smallFields._currentProgress = _this._ref._smallFields._currentProgress;
-                    var executionScheduler = new ExecutionScheduler(true);
                     _this._ref.InterlockedIncrementProgressReportingCount();
                     HandleablePromiseBase previousWaiter;
-                    PromiseRefBase promiseSingleAwait = _this._ref.AddWaiter(_this.Id, promise, out previousWaiter, ref executionScheduler);
+                    PromiseRefBase promiseSingleAwait = _this._ref.AddWaiter(_this.Id, promise, out previousWaiter);
                     if (previousWaiter == null)
                     {
-                        promise.MaybeReportProgress(ref executionScheduler);
+                        promise.MaybeScheduleProgress();
                         _this._ref.InterlockedDecrementProgressReportingCount();
+                        StackUnwindHelper.InvokeProgressors();
                     }
                     else
                     {
@@ -846,9 +850,8 @@ namespace Proto.Promises
                             Discard(promise);
                             throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(2));
                         }
-                        _this._ref.HandleNext(promise, ref executionScheduler);
+                        _this._ref.HandleNext(promise);
                     }
-                    executionScheduler.Execute();
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
                 }
 #endif

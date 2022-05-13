@@ -87,7 +87,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
                 {
                     var handler = passThrough.Owner;
                     nextHandler = null;
@@ -99,7 +99,7 @@ namespace Proto.Promises
                             && Interlocked.CompareExchange(ref _rejectContainer, handler._rejectContainer, null) == null)
                         {
                             State = state;
-                            nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
+                            nextHandler = TakeOrHandleNextWaiter();
                         }
                     }
                     else // Resolved
@@ -107,7 +107,7 @@ namespace Proto.Promises
                         if (Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
                         {
                             SetResult(handler.GetResult<TResult>());
-                            nextHandler = TakeOrHandleNextWaiter(ref executionScheduler);
+                            nextHandler = TakeOrHandleNextWaiter();
                         }
                         InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                     }
