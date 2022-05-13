@@ -22,7 +22,7 @@ namespace Proto.Promises
 
             void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
             {
-                AddUnhandledException(this);
+                ReportUnhandledException(this);
             }
 
             RejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
@@ -90,7 +90,7 @@ namespace Proto.Promises
 
             public void AddToUnhandledStack(ITraceable traceable)
             {
-                AddRejectionToUnhandledStack(Value, traceable);
+                ReportRejection(Value, traceable);
             }
         }
 

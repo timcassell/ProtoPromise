@@ -111,7 +111,7 @@ namespace ProtoPromiseTests
 
         public static void Cleanup()
         {
-            WaitForAllThreadsToCompleteAndReportUnhandledRejections();
+            WaitForAllThreadsToCompleteAndGcCollect();
 
             Exception[] exceptions;
             lock (_uncaughtExceptions)
@@ -138,11 +138,11 @@ namespace ProtoPromiseTests
         public static void WaitForAllThreadsAndReplaceRejectionHandler(Action<UnhandledException> oldhandler)
         {
             // Force wait for all threads to complete and report unhandled rejections before replacing the original rejection handler.
-            WaitForAllThreadsToCompleteAndReportUnhandledRejections();
+            WaitForAllThreadsToCompleteAndGcCollect();
             Promise.Config.UncaughtRejectionHandler = oldhandler;
         }
 
-        private static void WaitForAllThreadsToCompleteAndReportUnhandledRejections()
+        private static void WaitForAllThreadsToCompleteAndGcCollect()
         {
             _backgroundContext.WaitForAllThreadsToComplete();
 
@@ -150,8 +150,6 @@ namespace ProtoPromiseTests
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
-
-            Internal.MaybeReportUnhandledRejections();
 
         }
 

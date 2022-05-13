@@ -753,7 +753,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        AddRejectionToUnhandledStack(e, traceable);
+                        ReportRejection(e, traceable);
                     }
                     ClearCurrentInvoker();
                 }

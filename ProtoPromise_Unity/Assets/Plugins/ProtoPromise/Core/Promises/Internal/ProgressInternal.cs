@@ -96,7 +96,7 @@ namespace Proto.Promises
                 catch (Exception e)
                 {
                     // This should never happen.
-                    AddRejectionToUnhandledStack(e, lastExecuted as ITraceable);
+                    ReportRejection(e, lastExecuted as ITraceable);
                 }
             }
 
@@ -113,7 +113,6 @@ namespace Proto.Promises
             internal void ExecuteProgress()
             {
                 ExecuteProgressPartial();
-                MaybeReportUnhandledRejections();
             }
 
             [MethodImpl(InlineOption)]
@@ -162,7 +161,7 @@ namespace Proto.Promises
                 catch (Exception e)
                 {
                     // This should never happen.
-                    AddRejectionToUnhandledStack(e, state as ITraceable);
+                    ReportRejection(e, state as ITraceable);
                 }
             }
         }
@@ -735,7 +734,7 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         // This should never happen.
-                        AddRejectionToUnhandledStack(e, state as ITraceable);
+                        ReportRejection(e, state as ITraceable);
                     }
                 }
             } // PromiseProgress<TProgress>

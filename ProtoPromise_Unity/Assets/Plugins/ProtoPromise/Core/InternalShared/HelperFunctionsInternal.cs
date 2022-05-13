@@ -154,10 +154,9 @@ namespace Proto.Promises
                 catch (Exception e)
                 {
                     // This should never happen.
-                    AddRejectionToUnhandledStack(e, lastExecuted as ITraceable);
+                    ReportRejection(e, lastExecuted as ITraceable);
                 }
                 ExecuteProgressPartial();
-                MaybeReportUnhandledRejections();
             }
 
             partial void ExecuteProgressPartial();
@@ -216,7 +215,7 @@ namespace Proto.Promises
                 catch (Exception e)
                 {
                     // This should never happen.
-                    AddRejectionToUnhandledStack(e, state as ITraceable);
+                    ReportRejection(e, state as ITraceable);
                 }
             }
         }
@@ -230,21 +229,7 @@ namespace Proto.Promises
             return RejectContainer.Create(reason, rejectSkipFrames, traceable);
         }
 
-        // Handle uncaught errors. These must not be readonly.
-        private static ValueLinkedStack<UnhandledException> _unhandledExceptions = new ValueLinkedStack<UnhandledException>();
-        private static SpinLocker _unhandledExceptionsLocker;
-
-        internal static void AddUnhandledException(UnhandledException exception)
-        {
-#if PROTO_PROMISE_DEVELOPER_MODE
-            exception = new UnhandledExceptionInternal(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new StackTrace(1, true).ToString(), exception);
-#endif
-            _unhandledExceptionsLocker.Enter();
-            _unhandledExceptions.Push(exception);
-            _unhandledExceptionsLocker.Exit();
-        }
-
-        internal static void AddRejectionToUnhandledStack(object unhandledValue, ITraceable traceable)
+        internal static void ReportRejection(object unhandledValue, ITraceable traceable)
         {
             ICantHandleException ex = unhandledValue as ICantHandleException;
             if (ex != null)
@@ -263,54 +248,31 @@ namespace Proto.Promises
             Exception innerException = unhandledValue as Exception;
             string message = innerException != null ? "An exception was not handled." : "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
 
-            AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
+            ReportUnhandledException(new UnhandledExceptionInternal(unhandledValue, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
         }
 
-        internal static void MaybeReportUnhandledRejections()
+        internal static void ReportUnhandledException(UnhandledException exception)
         {
-            // Quick check to see if there are any unhandled rejections without entering the lock.
-            if (_unhandledExceptions.IsEmpty)
-            {
-                return;
-            }
-
-            _unhandledExceptionsLocker.Enter();
-            var unhandledExceptions = _unhandledExceptions;
-            _unhandledExceptions = new ValueLinkedStack<UnhandledException>();
-            _unhandledExceptionsLocker.Exit();
-
-            if (unhandledExceptions.IsEmpty)
-            {
-                return;
-            }
-
-            // If the handler exists, send each UnhandledException to it individually.
+#if PROTO_PROMISE_DEVELOPER_MODE
+            exception = new UnhandledExceptionInternal(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new StackTrace(1, true).ToString(), exception);
+#endif
+            // Send to the handler if it exists.
             Action<UnhandledException> handler = Promise.Config.UncaughtRejectionHandler;
             if (handler != null)
             {
-                do
-                {
-                    handler.Invoke(unhandledExceptions.Pop());
-                } while (unhandledExceptions.IsNotEmpty);
+                handler.Invoke(exception);
                 return;
             }
 
-            // Otherwise, throw an AggregateException in the ForegroundContext if it exists, or background if it doesn't.
-            List<Exception> exceptions = new List<Exception>();
-            do
-            {
-                exceptions.Add(unhandledExceptions.Pop());
-            } while (unhandledExceptions.IsNotEmpty);
-
-            AggregateException aggregateException = new AggregateException("Promise.Config.UncaughtRejectionHandler was null.", exceptions);
+            // Otherwise, throw it in the ForegroundContext if it exists, or background if it doesn't.
             SynchronizationContext synchronizationContext = Promise.Config.ForegroundContext ?? Promise.Config.BackgroundContext;
             if (synchronizationContext != null)
             {
-                synchronizationContext.Post(e => { throw (AggregateException) e; }, aggregateException);
+                synchronizationContext.Post(e => { throw (UnhandledException) e; }, exception);
             }
             else
             {
-                ThreadPool.QueueUserWorkItem(e => { throw (AggregateException) e; }, aggregateException);
+                ThreadPool.QueueUserWorkItem(e => { throw (UnhandledException) e; }, exception);
             }
         }
 

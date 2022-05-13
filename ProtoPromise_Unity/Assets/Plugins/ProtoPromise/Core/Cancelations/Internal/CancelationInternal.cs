@@ -105,13 +105,13 @@ namespace Proto.Promises
                         {
                             // For debugging. This should never happen.
                             string message = "A " + GetType() + " was garbage collected without it being disposed.";
-                            AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                            ReportRejection(new UnreleasedObjectException(message), this);
                         }
                     }
                     catch (Exception e)
                     {
                         // This should never happen.
-                        AddRejectionToUnhandledStack(e, this);
+                        ReportRejection(e, this);
                     }
                 }
 #endif
@@ -414,18 +414,18 @@ namespace Proto.Promises
                     {
                         // CancelationToken wasn't released.
                         string message = "A CancelationToken's resources were garbage collected without being released. You must release all IRetainable objects that you have retained.";
-                        AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                        ReportRejection(new UnreleasedObjectException(message), this);
                     }
                     if (_state != (int) State.Disposed)
                     {
                         // CancelationSource wasn't disposed.
-                        AddRejectionToUnhandledStack(new UnreleasedObjectException("CancelationSource's resources were garbage collected without being disposed."), this);
+                        ReportRejection(new UnreleasedObjectException("CancelationSource's resources were garbage collected without being disposed."), this);
                     }
                 }
                 catch (Exception e)
                 {
                     // This should never happen.
-                    AddRejectionToUnhandledStack(e, this);
+                    ReportRejection(e, this);
                 }
             }
 

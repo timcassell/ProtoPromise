@@ -69,13 +69,13 @@ namespace Proto.Promises
                         if (State == Promise.State.Pending)
                         {
                             // Deferred wasn't handled.
-                            AddRejectionToUnhandledStack(UnhandledDeferredException.instance, this);
+                            ReportRejection(UnhandledDeferredException.instance, this);
                         }
                     }
                     catch (Exception e)
                     {
                         // This should never happen.
-                        AddRejectionToUnhandledStack(e, this);
+                        ReportRejection(e, this);
                     }
                 }
 

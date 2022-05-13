@@ -185,7 +185,7 @@ namespace Proto.Promises
                     {
                         // Promise was not awaited or forgotten.
                         string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
-                        AddRejectionToUnhandledStack(new UnobservedPromiseException(message), this);
+                        ReportRejection(new UnobservedPromiseException(message), this);
                     }
                     if (_rejectContainer != null & State == Promise.State.Rejected & !SuppressRejection)
                     {
@@ -196,14 +196,13 @@ namespace Proto.Promises
                 catch (Exception e)
                 {
                     // This should never happen.
-                    AddRejectionToUnhandledStack(e, this);
+                    ReportRejection(e, this);
                 }
             }
 
             internal void Forget(short promiseId)
             {
                 OnForget(promiseId);
-                MaybeReportUnhandledRejections();
             }
 
             [MethodImpl(InlineOption)]
@@ -601,18 +600,18 @@ namespace Proto.Promises
                         {
                             WasAwaitedOrForgotten = true; // Stop base finalizer from adding an extra exception.
                             string message = "A preserved Promise's resources were garbage collected without it being forgotten. You must call Forget() on each preserved promise when you are finished with it.";
-                            AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                            ReportRejection(new UnreleasedObjectException(message), this);
                         }
                         else if (_retainCounter != 0 & State != Promise.State.Pending)
                         {
                             string message = "A preserved Promise had an awaiter created without awaiter.GetResult() called.";
-                            AddRejectionToUnhandledStack(new UnreleasedObjectException(message), this);
+                            ReportRejection(new UnreleasedObjectException(message), this);
                         }
                     }
                     catch (Exception e)
                     {
                         // This should never happen.
-                        AddRejectionToUnhandledStack(e, this);
+                        ReportRejection(e, this);
                     }
                 }
 
@@ -1419,13 +1418,13 @@ namespace Proto.Promises
                                 + ", _depth: " + _smallFields._depth + ", _currentProgress: " + _smallFields._currentProgress.ToDouble()
 #endif
                                 ;
-                            AddRejectionToUnhandledStack(new UnreleasedObjectException(message), _target);
+                            ReportRejection(new UnreleasedObjectException(message), _target);
                         }
                     }
                     catch (Exception e)
                     {
                         // This should never happen.
-                        AddRejectionToUnhandledStack(e, _target);
+                        ReportRejection(e, _target);
                     }
                 }
 #endif

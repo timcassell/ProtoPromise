@@ -5,7 +5,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable 0618 // Type or member is obsolete
 
 using System;
 using System.Runtime.CompilerServices;
@@ -23,7 +23,7 @@ namespace Proto.Promises
 #endif
         public
 #if CSHARP_7_3_OR_NEWER
-            readonly
+            readonly // Deferreds behave more like write-only, but this prevents the compiler from emitting defensive copies when passing to a function with the `in` keyword.
 #endif
             struct DeferredBase : ICancelable, IProgress<float>, IEquatable<DeferredBase>
         {

@@ -127,7 +127,7 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
-                        AddRejectionToUnhandledStack(e, this);
+                        ReportRejection(e, this);
                     }
 #if PROMISE_DEBUG
                     ClearCurrentInvoker();

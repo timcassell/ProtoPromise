@@ -22,7 +22,7 @@
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
+#pragma warning disable 0649 // Field is never assigned to, and will always have its default value
 
 using System;
 using System.Collections.Generic;

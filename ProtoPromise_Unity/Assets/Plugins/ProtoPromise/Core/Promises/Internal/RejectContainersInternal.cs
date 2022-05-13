@@ -116,7 +116,7 @@ namespace Proto.Promises
 
             internal override void AddToUnhandledStack()
             {
-                AddUnhandledException(ToException());
+                ReportUnhandledException(ToException());
             }
 
             private UnhandledException ToException()
@@ -160,7 +160,7 @@ namespace Proto.Promises
             void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
             {
                 ThrowIfInPool(this);
-                AddUnhandledException(ToException());
+                ReportUnhandledException(ToException());
             }
         }
 
@@ -216,7 +216,7 @@ namespace Proto.Promises
 
             internal override void AddToUnhandledStack()
             {
-                AddUnhandledException(ToException());
+                ReportUnhandledException(ToException());
             }
 
             private UnhandledException ToException()
@@ -252,7 +252,7 @@ namespace Proto.Promises
             void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
             {
                 ThrowIfInPool(this);
-                AddUnhandledException(ToException());
+                ReportUnhandledException(ToException());
             }
         }
 
@@ -283,7 +283,7 @@ namespace Proto.Promises
 
             internal override void AddToUnhandledStack()
             {
-                AddUnhandledException(ToException());
+                ReportUnhandledException(ToException());
             }
 
             private UnhandledException ToException()
@@ -315,7 +315,7 @@ namespace Proto.Promises
             void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
             {
                 ThrowIfInPool(this);
-                AddUnhandledException(ToException());
+                ReportUnhandledException(ToException());
             }
         }
     }
