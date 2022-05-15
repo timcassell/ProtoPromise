@@ -166,6 +166,11 @@ namespace Proto.Promises
                 }
             }
 
+            partial class ResolvedSentinel : PromiseRefBase
+            {
+                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth) { throw new System.InvalidOperationException(); }
+            }
+
             internal partial struct Fixed32
             {
                 // Necessary to fix a race condition when hooking up a promise and the promise's deferred reports progress. Deferred report takes precedence.
@@ -488,7 +493,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal static PromiseProgress<TResult, TProgress> GetOrCreateFromNull(TProgress progress, CancelationToken cancelationToken, ushort depth, SynchronizationContext synchronizationContext, TResult result)
+                internal static PromiseProgress<TResult, TProgress> GetOrCreateFromResolved(TProgress progress, CancelationToken cancelationToken, ushort depth, SynchronizationContext synchronizationContext, TResult result)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (synchronizationContext == null)
@@ -640,8 +645,8 @@ namespace Proto.Promises
 
                     if (promiseId != Id)
                     {
-                        previousWaiter = InvalidAwaitSentinel._instance;
-                        return InvalidAwaitSentinel._instance;
+                        previousWaiter = InvalidAwaitSentinel.s_instance;
+                        return InvalidAwaitSentinel.s_instance;
                     }
                     ThrowIfInPool(this);
                     WasAwaitedOrForgotten = true;
@@ -650,10 +655,10 @@ namespace Proto.Promises
                     if (previous != null)
                     {
                         // We do the verification process here instead of in the caller, because we need to handle continuations on the synchronization context.
-                        if (CompareExchangeWaiter(waiter, PromiseCompletionSentinel._instance) != PromiseCompletionSentinel._instance)
+                        if (CompareExchangeWaiter(waiter, PromiseCompletionSentinel.s_instance) != PromiseCompletionSentinel.s_instance)
                         {
-                            previousWaiter = InvalidAwaitSentinel._instance;
-                            return InvalidAwaitSentinel._instance;
+                            previousWaiter = InvalidAwaitSentinel.s_instance;
+                            return InvalidAwaitSentinel.s_instance;
                         }
 
                         // If this was configured to execute progress on a SynchronizationContext or the ThreadPool, force the waiter to execute on the same context for consistency.
@@ -1044,6 +1049,6 @@ namespace Proto.Promises
                 }
             } // AsyncPromiseRef
 #endif // PROMISE_PROGRESS
-        } // PromiseRef
+        } // PromiseRefBase
     } // Internal
 }

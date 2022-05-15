@@ -29,15 +29,6 @@ namespace Proto.Promises
 #endif
     internal static partial class Internal
     {
-        internal class BackgroundSynchronizationContextSentinel : SynchronizationContext
-        {
-            internal static readonly BackgroundSynchronizationContextSentinel s_instance = new BackgroundSynchronizationContextSentinel();
-
-            public override void Post(SendOrPostCallback d, object state) { throw new System.InvalidOperationException(); }
-            public override void Send(SendOrPostCallback d, object state) { throw new System.InvalidOperationException(); }
-            public override SynchronizationContext CreateCopy() { throw new System.InvalidOperationException(); }
-        }
-
         // This is used to detect if we're currently executing on the context we're going to schedule to, so we can just invoke synchronously instead.
         [ThreadStatic]
         private static SynchronizationContext ts_currentContext;

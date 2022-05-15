@@ -265,19 +265,6 @@ namespace Proto.Promises
             }
         }
 
-        internal static bool GetIsCompleted(Promise promise, int skipFrames)
-        {
-            if (promise._target._ref == null)
-            {
-                if (promise._target.Id != ValidIdFromApi)
-                {
-                    ThrowInvalidAwait(skipFrames + 1);
-                }
-                return true;
-            }
-            return promise._target._ref.GetIsCompleted(promise._target.Id);
-        }
-
         private static void ThrowInvalidAwait(int skipFrames)
         {
             throw new InvalidOperationException("Cannot await a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(skipFrames + 1));
@@ -396,11 +383,6 @@ namespace Proto.Promises
             {
                 var promise = _awaiter._promise;
                 var _ref = promise._ref;
-                if (_ref == null)
-                {
-                    Internal.ValidateNullId(promise.Id, 1);
-                    return;
-                }
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
@@ -466,29 +448,26 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return Internal.GetIsCompleted(_promise, 1);
+                    return _promise._ref.GetIsCompleted(_promise.Id);
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
             public T GetResult()
             {
-                var promise = _promise;
-                var _ref = promise._ref;
-                if (_ref == null)
+                if (_promise._ref == Internal.PromiseResolvedSentinel)
                 {
-                    Internal.ValidateNullId(promise.Id, 1);
-                    return promise.Result;
+                    return _promise.Result;
                 }
-                var state = _ref.State;
+                var state = _promise._ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    return _ref.GetResult<T>(promise.Id);
+                    return _promise._ref.GetResult<T>(_promise.Id);
                 }
 #if NET_LEGACY
-                _ref.Throw(state, promise.Id);
+                _promise._ref.Throw(state, _promise.Id);
 #else
-                _ref.GetExceptionDispatchInfo(state, promise.Id).Throw();
+                _promise._ref.GetExceptionDispatchInfo(state, _promise.Id).Throw();
 #endif
                 throw new Exception(); // This will never be reached, but the compiler needs help understanding that.
             }
@@ -497,14 +476,7 @@ namespace Proto.Promises
             public void OnCompleted(Action continuation)
             {
                 ValidateArgument(continuation, "continuation", 1);
-                var promise = _promise;
-                if (promise._ref == null)
-                {
-                    Internal.ValidateNullId(promise.Id, 1);
-                    continuation();
-                    return;
-                }
-                promise._ref.OnCompleted(continuation, promise.Id);
+                _promise._ref.OnCompleted(continuation, _promise.Id);
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -574,11 +546,6 @@ namespace Proto.Promises
             {
                 var promise = _awaiter._promise;
                 var _ref = promise._ref;
-                if (_ref == null)
-                {
-                    Internal.ValidateNullId(promise.Id, 1);
-                    return;
-                }
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
@@ -652,29 +619,26 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return Internal.GetIsCompleted(_promise, 1);
+                    return _promise._ref.GetIsCompleted(_promise.Id);
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
             public T GetResult()
             {
-                var promise = _promise;
-                var _ref = promise._ref;
-                if (_ref == null)
+                if (_promise._ref == Internal.PromiseResolvedSentinel)
                 {
-                    Internal.ValidateNullId(promise.Id, 1);
-                    return promise.Result;
+                    return _promise.Result;
                 }
-                var state = _ref.State;
+                var state = _promise._ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    return _ref.GetResult<T>(promise.Id);
+                    return _promise._ref.GetResult<T>(_promise.Id);
                 }
 #if NET_LEGACY
-                _ref.Throw(state, promise.Id);
+                _promise._ref.Throw(state, _promise.Id);
 #else
-                _ref.GetExceptionDispatchInfo(state, promise.Id).Throw();
+                _promise._ref.GetExceptionDispatchInfo(state, _promise.Id).Throw();
 #endif
                 throw new Exception(); // This will never be reached, but the compiler needs help understanding that.
             }
@@ -683,14 +647,7 @@ namespace Proto.Promises
             public void OnCompleted(Action continuation)
             {
                 ValidateArgument(continuation, "continuation", 1);
-                var promise = _promise;
-                if (promise._ref == null)
-                {
-                    Internal.ValidateNullId(promise.Id, 1);
-                    continuation();
-                    return;
-                }
-                promise._ref.OnCompleted(continuation, promise.Id);
+                _promise._ref.OnCompleted(continuation, _promise.Id);
             }
 
             [MethodImpl(Internal.InlineOption)]

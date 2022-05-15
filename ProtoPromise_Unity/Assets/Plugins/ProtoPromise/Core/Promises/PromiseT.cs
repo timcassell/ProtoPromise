@@ -39,9 +39,7 @@ namespace Proto.Promises
             get
             {
                 var _this = GetVoidCopy();
-                return _this._ref == null
-                    ? _this.Id == Internal.ValidIdFromApi
-                    : _this._ref.GetIsValid(_this.Id);
+                return _this._ref != null && _this._ref.GetIsValid(_this.Id);
             }
         }
 
@@ -65,10 +63,9 @@ namespace Proto.Promises
         public override string ToString()
         {
             var _this = GetVoidCopy();
-            string state =
-                !_this.IsValid ? "Invalid"
-                : _this._ref != null ? _this._ref.State.ToString()
-                : Promise.State.Resolved.ToString();
+            string state = _this.IsValid
+                ? _this._ref.State.ToString()
+                : "Invalid";
             return string.Format("Type: Promise<{0}>, State: {1}", typeof(T), state);
         }
 
@@ -80,13 +77,9 @@ namespace Proto.Promises
         public Promise<T> Preserve()
         {
             ValidateOperation(1);
-            var _this = GetVoidCopy();
-            if (_this._ref != null)
-            {
-                var newPromise = _this._ref.GetPreserved(_this.Id, _this.Depth);
-                return new Promise<T>(newPromise, newPromise.Id, _this.Depth);
-            }
-            return this;
+            var _this = this;
+            var newPromise = _this._ref.GetPreserved(_this.Id, _this.Depth);
+            return new Promise<T>(newPromise, newPromise.Id, _this.Depth, _this.Result);
         }
 
         /// <summary>
@@ -96,11 +89,7 @@ namespace Proto.Promises
         public void Forget()
         {
             ValidateOperation(1);
-            var _this = GetVoidCopy();
-            if (_this._ref != null)
-            {
-                _this._ref.Forget(_this.Id);
-            }
+            _ref.Forget(Id);
         }
 
 

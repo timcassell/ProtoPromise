@@ -478,7 +478,7 @@ namespace Proto.Promises
                 }
 #endif // !OPTIMIZED_ASYNC_MODE
             } // AsyncPromiseRef
-        } // PromiseRef
+        } // PromiseRefBase
 
         partial struct PromiseMethodBuilderInternal<TResult>
         {

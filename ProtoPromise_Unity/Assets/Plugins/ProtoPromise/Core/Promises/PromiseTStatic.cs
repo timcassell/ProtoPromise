@@ -20,13 +20,13 @@ namespace Proto.Promises
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._ref == null)
+            if (promise1._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, false);
                 T value = promise1.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise2._ref == null)
+            if (promise2._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, false);
                 T value = promise2.Result;
@@ -52,21 +52,21 @@ namespace Proto.Promises
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._ref == null)
+            if (promise1._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, false);
                 Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3.Id, false);
                 T value = promise1.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise2._ref == null)
+            if (promise2._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, false);
                 Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3.Id, false);
                 T value = promise2.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise3._ref == null)
+            if (promise3._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, false);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, false);
@@ -95,7 +95,7 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._ref == null)
+            if (promise1._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, false);
                 Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3.Id, false);
@@ -103,7 +103,7 @@ namespace Proto.Promises
                 T value = promise1.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise2._ref == null)
+            if (promise2._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, false);
                 Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3.Id, false);
@@ -111,7 +111,7 @@ namespace Proto.Promises
                 T value = promise2.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise3._ref == null)
+            if (promise3._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, false);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, false);
@@ -119,7 +119,7 @@ namespace Proto.Promises
                 T value = promise3.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise4._ref == null)
+            if (promise4._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, false);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, false);
@@ -211,13 +211,13 @@ namespace Proto.Promises
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._ref == null)
+            if (promise1._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, true);
                 T value = promise1.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise2._ref == null)
+            if (promise2._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, true);
                 T value = promise2.Result;
@@ -243,21 +243,21 @@ namespace Proto.Promises
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._ref == null)
+            if (promise1._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, true);
                 Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3.Id, true);
                 T value = promise1.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise2._ref == null)
+            if (promise2._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, true);
                 Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3.Id, true);
                 T value = promise2.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise3._ref == null)
+            if (promise3._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, true);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, true);
@@ -286,7 +286,7 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._ref == null)
+            if (promise1._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, true);
                 Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3.Id, true);
@@ -294,7 +294,7 @@ namespace Proto.Promises
                 T value = promise1.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise2._ref == null)
+            if (promise2._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, true);
                 Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3.Id, true);
@@ -302,7 +302,7 @@ namespace Proto.Promises
                 T value = promise2.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise3._ref == null)
+            if (promise3._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, true);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, true);
@@ -310,7 +310,7 @@ namespace Proto.Promises
                 T value = promise3.Result;
                 return Internal.CreateResolved(value, depth);
             }
-            if (promise4._ref == null)
+            if (promise4._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1.Id, true);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2.Id, true);

@@ -99,7 +99,7 @@ namespace Proto.Promises
                     MaybeDisposePreviousAfterSecondWait(handler);
 
                     var _ref = other._ref;
-                    if (_ref == null)
+                    if (_ref == ResolvedSentinel.s_instance)
                     {
                         handler = this;
                         SetResult(other.Result);
@@ -312,7 +312,7 @@ namespace Proto.Promises
                 PromiseRefBase handler = this;
                 WaitWhileProgressReporting();
                 // Set the waiter to InvalidAwaitSentinel to break the chain to stop progress reports.
-                _next = InvalidAwaitSentinel._instance;
+                _next = InvalidAwaitSentinel.s_instance;
                 nextHandler.Handle(ref handler, out nextHandler);
                 handler.MaybeHandleNext(nextHandler);
             }
@@ -323,7 +323,7 @@ namespace Proto.Promises
                 while (nextHandler != null)
                 {
                     // Set the waiter to InvalidAwaitSentinel to break the chain to stop progress reports.
-                    handler._next = InvalidAwaitSentinel._instance;
+                    handler._next = InvalidAwaitSentinel.s_instance;
                     handler.WaitWhileProgressReporting();
                     nextHandler.Handle(ref handler, out nextHandler);
                 }
@@ -334,7 +334,7 @@ namespace Proto.Promises
                 // If the existing waiter is anything except completion sentinel, it's an invalid await.
                 // We place another instance in its place to make sure future checks are caught.
                 // Promise may be null if it was verified internally, or InvalidAwaitSentinel if it's an invalid await.
-                return promise == null || promise.CompareExchangeWaiter(InvalidAwaitSentinel._instance, PromiseCompletionSentinel._instance) == PromiseCompletionSentinel._instance;
+                return promise == null || promise.CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance;
             }
 
             [MethodImpl(InlineOption)]
@@ -347,9 +347,9 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal HandleablePromiseBase TakeOrHandleNextWaiter()
             {
-                var nextWaiter = CompareExchangeWaiter(PromiseCompletionSentinel._instance, null);
+                var nextWaiter = CompareExchangeWaiter(PromiseCompletionSentinel.s_instance, null);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                if (nextWaiter == PromiseCompletionSentinel._instance)
+                if (nextWaiter == PromiseCompletionSentinel.s_instance)
                 {
                     throw new System.InvalidOperationException("Cannot complete a promise more than once!");
                 }
@@ -382,74 +382,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class PromiseCompletionSentinel : HandleablePromiseBase
-            {
-                // A singleton instance used to mark the promise as completed.
-                internal static readonly PromiseCompletionSentinel _instance = new PromiseCompletionSentinel();
-
-                private PromiseCompletionSentinel() { }
-
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
-                {
-                    throw new System.InvalidOperationException("PromiseCompletionSentinel handled from " + handler);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal sealed partial class PromiseForgetSentinel : HandleablePromiseBase
-            {
-                // A singleton instance used to cap off the promise and prevent further awaits.
-                internal static readonly PromiseForgetSentinel _instance = new PromiseForgetSentinel();
-
-                private PromiseForgetSentinel() { }
-
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
-                {
-                    nextHandler = null;
-                    handler.MaybeDispose();
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
-            internal sealed partial class InvalidAwaitSentinel : PromiseRefBase
-            {
-                // A singleton instance used to indicate that an await was invalid (after the PromiseMultiAwait was forgotten or PromiseSingleAwait awaited).
-                internal static readonly InvalidAwaitSentinel _instance = new InvalidAwaitSentinel();
-
-                private InvalidAwaitSentinel()
-                {
-                    _next = this; // Set _waiter to this so that CompareExchangeWaiter will always fail.
-                    _smallFields = new SmallFields(-5); // Set an id that is unlikely to match (though this should never be used in a Promise struct).
-                }
-
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
-                {
-                    throw new System.InvalidOperationException("InvalidAwaitSentinel handled from " + handler);
-                }
-
-                protected override void MaybeDispose() { throw new System.InvalidOperationException(); }
-                protected override void OnForget(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
-                internal override bool GetIsCompleted(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override bool GetIsValid(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetPreserved(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
-                internal override void MaybeMarkAwaitedAndDispose(short promiseId) { throw new System.InvalidOperationException(); }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
-#endif
             internal abstract partial class PromiseSingleAwait<TResult> : PromiseRef<TResult>
             {
                 protected sealed override void OnForget(short promiseId)
                 {
-                    HookupExistingWaiter(promiseId, PromiseForgetSentinel._instance);
+                    HookupExistingWaiter(promiseId, PromiseForgetSentinel.s_instance);
                 }
 
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId)
@@ -460,7 +397,7 @@ namespace Proto.Promises
                 internal override bool GetIsCompleted(short promiseId)
                 {
                     var waiter = _next;
-                    bool isValid = promiseId == Id & (waiter == null | waiter == PromiseCompletionSentinel._instance);
+                    bool isValid = promiseId == Id & (waiter == null | waiter == PromiseCompletionSentinel.s_instance);
                     if (!isValid)
                     {
                         throw new InvalidOperationException("Cannot await a non-preserved promise more than once.", GetFormattedStacktrace(3));
@@ -489,15 +426,15 @@ namespace Proto.Promises
                 internal override sealed bool GetIsValid(short promiseId)
                 {
                     var waiter = _next;
-                    return promiseId == Id & (waiter == null | waiter == PromiseCompletionSentinel._instance);
+                    return promiseId == Id & (waiter == null | waiter == PromiseCompletionSentinel.s_instance);
                 }
 
                 protected PromiseRefBase AddWaiterImpl(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter, ushort depth)
                 {
                     if (promiseId != Id)
                     {
-                        previousWaiter = InvalidAwaitSentinel._instance;
-                        return InvalidAwaitSentinel._instance;
+                        previousWaiter = InvalidAwaitSentinel.s_instance;
+                        return InvalidAwaitSentinel.s_instance;
                     }
                     ThrowIfInPool(this);
                     WasAwaitedOrForgotten = true;
@@ -713,8 +650,8 @@ namespace Proto.Promises
                     {
                         if (promiseId != Id | WasAwaitedOrForgotten)
                         {
-                            previousWaiter = InvalidAwaitSentinel._instance;
-                            return InvalidAwaitSentinel._instance;
+                            previousWaiter = InvalidAwaitSentinel.s_instance;
+                            return InvalidAwaitSentinel.s_instance;
                         }
                         ThrowIfInPool(this);
 
@@ -849,7 +786,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseConfigured<TResult> GetOrCreateFromNull(SynchronizationContext synchronizationContext,
+                internal static PromiseConfigured<TResult> GetOrCreateFromResolved(SynchronizationContext synchronizationContext,
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -858,7 +795,7 @@ namespace Proto.Promises
                     var promise = GetOrCreate(synchronizationContext, depth);
                     promise._result = result;
                     promise._previousState = Promise.State.Resolved;
-                    promise._next = PromiseCompletionSentinel._instance;
+                    promise._next = PromiseCompletionSentinel.s_instance;
                     return promise;
                 }
 
@@ -888,7 +825,7 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     nextHandler = null;
                     // Leave pending until this is awaited.
-                    if (CompareExchangeWaiter(PromiseCompletionSentinel._instance, null) != null)
+                    if (CompareExchangeWaiter(PromiseCompletionSentinel.s_instance, null) != null)
                     {
                         if (_synchronizationContext == ts_currentContext)
                         {
@@ -917,8 +854,8 @@ namespace Proto.Promises
                 {
                     if (promiseId != Id)
                     {
-                        previousWaiter = InvalidAwaitSentinel._instance;
-                        return InvalidAwaitSentinel._instance;
+                        previousWaiter = InvalidAwaitSentinel.s_instance;
+                        return InvalidAwaitSentinel.s_instance;
                     }
                     ThrowIfInPool(this);
                     WasAwaitedOrForgotten = true;
@@ -927,10 +864,10 @@ namespace Proto.Promises
                     if (previous != null)
                     {
                         // We do the verification process here instead of in the caller, because we need to handle continuations on the synchronization context.
-                        if (CompareExchangeWaiter(waiter, PromiseCompletionSentinel._instance) != PromiseCompletionSentinel._instance)
+                        if (CompareExchangeWaiter(waiter, PromiseCompletionSentinel.s_instance) != PromiseCompletionSentinel.s_instance)
                         {
-                            previousWaiter = InvalidAwaitSentinel._instance;
-                            return InvalidAwaitSentinel._instance;
+                            previousWaiter = InvalidAwaitSentinel.s_instance;
+                            return InvalidAwaitSentinel.s_instance;
                         }
 
                         if (_synchronizationContext == ts_currentContext)
@@ -1481,7 +1418,6 @@ namespace Proto.Promises
 
                 internal static PromisePassThrough GetOrCreate(Promise owner, int index)
                 {
-                    // owner._ref is checked for nullity before passing into this.
                     var passThrough = ObjectPool<HandleablePromiseBase>.TryTake<PromisePassThrough>()
                         ?? new PromisePassThrough();
                     passThrough._owner = owner._target._ref;
@@ -1608,7 +1544,7 @@ namespace Proto.Promises
                     promise.SuppressRejection = suppressRejection;
                 }
             }
-        } // PromiseRef
+        } // PromiseRefBase
 
         [MethodImpl(InlineOption)]
         internal static void MaybeMarkAwaitedAndDispose(PromiseRefBase promise, short id, bool suppressRejection)
@@ -1629,7 +1565,7 @@ namespace Proto.Promises
             unchecked
             {
                 uint expectedProgress = promise.Depth + 1u;
-                if (promise._ref == null)
+                if (promise._ref == PromiseRefBase.ResolvedSentinel.s_instance)
                 {
                     completedProgress += expectedProgress;
                     value = promise.Result;
@@ -1655,7 +1591,8 @@ namespace Proto.Promises
 
         internal static bool TryPrepareForRace<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs, int index, ref ushort minDepth)
         {
-            bool isPending = promise._ref != null;
+            // TODO: check for state, then check sentinel for the result.
+            bool isPending = promise._ref != PromiseRefBase.ResolvedSentinel.s_instance;
             if (!isPending)
             {
                 value = promise.Result;
@@ -1671,13 +1608,7 @@ namespace Proto.Promises
         [MethodImpl(InlineOption)]
         internal static Promise CreateResolved(ushort depth)
         {
-#if PROMISE_DEBUG
-            // Make a promise on the heap to capture causality trace and help with debugging.
-            return CreateResolved(new VoidResult(), depth);
-#else
-            // Make a promise on the stack for efficiency.
-            return new Promise(null, ValidIdFromApi, depth);
-#endif
+            return new Promise(CreateResolved(new VoidResult(), depth));
         }
 
         [MethodImpl(InlineOption)]
@@ -1693,8 +1624,8 @@ namespace Proto.Promises
             promise.ResolveDirect(value);
             return new Promise<T>(promise, promise.Id, depth);
 #else
-            // Make a promise on the stack for efficiency.
-            return new Promise<T>(null, ValidIdFromApi, depth, value);
+            // Make a promise with the resolved sentinel for efficiency.
+            return new Promise<T>(PromiseRefBase.ResolvedSentinel.s_instance, ValidIdFromApi, depth, value);
 #endif
         }
     } // Internal

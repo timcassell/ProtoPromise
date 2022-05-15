@@ -48,10 +48,9 @@ namespace Proto.Promises
         public override string ToString()
         {
             var target = _target;
-            string state =
-                !target.IsValid ? "Invalid"
-                : target._ref != null ? target._ref.State.ToString()
-                : State.Resolved.ToString();
+            string state = target.IsValid
+                ? target._ref.State.ToString()
+                : "Invalid";
             return string.Format("Type: Promise, State: {0}", state);
         }
 

@@ -1900,7 +1900,6 @@ namespace ProtoPromiseTests
                     .CatchCancelation(() => { onCancel(); return TValue; });
                 onDirectCallbackAddedT(ref p18);
                 onCallbackAddedT(ref p18);
-
             }
             foreach (var p in GetTestablePromises(promise))
             {

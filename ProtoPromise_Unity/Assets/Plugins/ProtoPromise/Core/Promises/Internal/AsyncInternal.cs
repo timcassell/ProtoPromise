@@ -330,6 +330,7 @@ namespace Proto.Promises
             {
                 if (_ref == null)
                 {
+                    _ref = PromiseResolvedSentinel;
                     _smallFields._result = result;
                     _smallFields._id = ValidIdFromApi;
                 }
@@ -454,7 +455,7 @@ namespace Proto.Promises
             private void MaybeHandleCompletion()
             {
                 // If this is completed from another promise, let the stack can unwind so the other promise will schedule the continuation.
-                var nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel._instance, null);
+                var nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel.s_instance, null);
                 if (ExchangeCurrentRunner(nextHandler) != this)
                 {
                     ts_currentRunner = null;

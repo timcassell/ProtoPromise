@@ -112,7 +112,10 @@ namespace Proto.Promises
                 ts_traces = new Stack<CausalityTrace>();
             }
             ts_traces.Push(ts_currentTrace);
-            ts_currentTrace = current.Trace;
+            if (current != null)
+            {
+                ts_currentTrace = current.Trace;
+            }
         }
 
         static partial void ClearCurrentInvoker()

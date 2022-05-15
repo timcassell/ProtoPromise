@@ -610,6 +610,6 @@ namespace Proto.Promises
                     HandleFromCancelation();
                 }
             }
-        } // PromiseRef
+        } // PromiseRefBase
     } // Internal
 }

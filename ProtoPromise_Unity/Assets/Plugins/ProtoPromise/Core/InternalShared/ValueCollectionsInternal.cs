@@ -387,7 +387,7 @@ namespace Proto.Promises
 
             internal ValueLinkedStack<T> MoveElementsToStack()
             {
-                ValueLinkedStack<T> newStack = new ValueLinkedStack<T>(_head);
+                var newStack = new ValueLinkedStack<T>(_head);
                 _head = null;
                 _tail = null;
                 return newStack;
