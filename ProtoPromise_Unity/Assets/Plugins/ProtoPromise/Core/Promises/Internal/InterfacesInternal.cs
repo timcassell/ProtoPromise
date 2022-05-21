@@ -47,13 +47,11 @@ namespace Proto.Promises
 
         partial class PromiseRefBase
         {
-            internal interface IMultiHandleablePromise : ITraceable
-            {
-                void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler);
+            // For Merge/Race/First promises
+            protected virtual void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler) { throw new System.InvalidOperationException(); }
 #if PROMISE_PROGRESS
-                PromiseRefBase IncrementProgress(long increment, ref Fixed32 progress, ushort depth);
+            protected virtual PromiseRefBase IncrementProgress(long increment, ref Fixed32 progress, ushort depth) { throw new System.InvalidOperationException(); }
 #endif
-            }
 
             internal interface IDelegateResolveOrCancel
             {

@@ -88,7 +88,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
+                protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
                 {
                     var handler = passThrough.Owner;
                     if (Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
@@ -121,7 +121,7 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class RacePromise<TResult>
             {
-                public override PromiseRefBase IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
+                protected override PromiseRefBase IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
 

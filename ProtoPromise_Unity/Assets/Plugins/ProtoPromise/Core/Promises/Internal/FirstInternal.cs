@@ -87,7 +87,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
+                protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
                 {
                     var handler = passThrough.Owner;
                     nextHandler = null;
@@ -118,7 +118,7 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
             partial class FirstPromise<TResult>
             {
-                public override PromiseRefBase IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
+                protected override PromiseRefBase IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
 

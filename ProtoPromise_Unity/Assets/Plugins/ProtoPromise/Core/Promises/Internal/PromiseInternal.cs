@@ -1365,7 +1365,7 @@ namespace Proto.Promises
                     get
                     {
                         ThrowIfInPool(this);
-                        return _owner;
+                        return _ownerOrTarget;
                     }
                 }
 
@@ -1400,18 +1400,18 @@ namespace Proto.Promises
                         {
                             // For debugging. This should never happen.
                             string message = "A PromisePassThrough was garbage collected without it being released."
-                                + " _id: " + _smallFields._id + ", _index: " + _smallFields._index + ", _target: " + _target + ", _owner: " + _owner
+                                + " _id: " + _smallFields._id + ", _index: " + _smallFields._index + ", Owner: " + Owner
 #if PROMISE_PROGRESS
                                 + ", _depth: " + _smallFields._depth + ", _currentProgress: " + _smallFields._currentProgress.ToDouble()
 #endif
                                 ;
-                            ReportRejection(new UnreleasedObjectException(message), _target);
+                            ReportRejection(new UnreleasedObjectException(message), Owner);
                         }
                     }
                     catch (Exception e)
                     {
                         // This should never happen.
-                        ReportRejection(e, _target);
+                        ReportRejection(e, Owner);
                     }
                 }
 #endif
@@ -1420,7 +1420,7 @@ namespace Proto.Promises
                 {
                     var passThrough = ObjectPool<HandleablePromiseBase>.TryTake<PromisePassThrough>()
                         ?? new PromisePassThrough();
-                    passThrough._owner = owner._target._ref;
+                    passThrough._ownerOrTarget = owner._target._ref;
                     passThrough._smallFields._id = owner._target.Id;
                     passThrough._smallFields._index = index;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -1431,28 +1431,25 @@ namespace Proto.Promises
                 }
 
                 partial void SetDepth(ushort depth);
-                partial void SetInitialProgress();
+                partial void SetInitialProgress(PromiseRefBase owner, PromiseRefBase target);
 
-                internal void SetTargetAndAddToOwner(IMultiHandleablePromise target)
+                internal void SetTargetAndAddToOwner(PromiseRefBase target)
                 {
                     ThrowIfInPool(this);
-                    _target = target;
-                    SetInitialProgress();
-                    _owner.HookupNewWaiter(_smallFields._id, this);
+                    var owner = _ownerOrTarget;
+                    _ownerOrTarget = target;
+                    SetInitialProgress(owner, target);
+                    owner.HookupNewWaiter(_smallFields._id, this);
                 }
 
                 internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
                 {
                     ThrowIfInPool(this);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (handler != _owner)
-                    {
-                        throw new InvalidOperationException("Passthrough was handled with a handler other than its owner.");
-                    }
-#endif
-                    handler = _target.UnsafeAs<PromiseRefBase>();
-                    _target.Handle(this, out nextHandler);
-                    _owner.MaybeDispose();
+                    var target = _ownerOrTarget;
+                    _ownerOrTarget = handler;
+                    handler = target;
+                    target.Handle(this, out nextHandler);
+                    _ownerOrTarget.MaybeDispose();
                     Dispose();
                 }
 
@@ -1462,8 +1459,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     _smallFields._disposed = true;
 #endif
-                    _owner = null;
-                    _target = null;
+                    _ownerOrTarget = null;
                     ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
                 }
             } // PromisePassThrough

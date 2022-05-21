@@ -410,8 +410,7 @@ namespace Proto.Promises
 #endif
                 }
 
-                volatile private PromiseRefBase _owner;
-                volatile private IMultiHandleablePromise _target;
+                private PromiseRefBase _ownerOrTarget;
                 private PassThroughSmallFields _smallFields;
 
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }

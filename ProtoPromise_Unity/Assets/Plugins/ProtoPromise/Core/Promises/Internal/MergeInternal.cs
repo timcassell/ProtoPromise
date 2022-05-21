@@ -27,9 +27,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>, IMultiHandleablePromise
+            internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
-                public abstract void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler);
                 internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler) { throw new System.InvalidOperationException(); }
 
                 new protected void Reset(ushort depth)
@@ -119,7 +118,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
+                protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
                 {
                     var handler = passThrough.Owner;
                     nextHandler = null;
@@ -177,7 +176,7 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    public override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
+                    protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
                     {
                         var handler = passThrough.Owner;
                         nextHandler = null;
@@ -237,7 +236,7 @@ namespace Proto.Promises
                     return scaledProgress;
                 }
 
-                public override PromiseRefBase IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
+                protected override PromiseRefBase IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
                     // This essentially acts as a pass-through to normalize the progress.

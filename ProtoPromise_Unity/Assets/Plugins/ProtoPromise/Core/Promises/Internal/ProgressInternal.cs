@@ -434,11 +434,6 @@ namespace Proto.Promises
                 }
             }
 
-            partial class MultiHandleablePromiseBase<TResult>
-            {
-                public abstract PromiseRefBase IncrementProgress(long increment, ref Fixed32 progress, ushort depth);
-            }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
@@ -925,9 +920,9 @@ namespace Proto.Promises
                 internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
                 {
                     ThrowIfInPool(this);
-                    depth = _target.UnsafeAs<PromiseRefBase>().Depth;
+                    depth = _ownerOrTarget.Depth;
                     long dif = _smallFields._currentProgress.InterlockedSetAndGetDifference(progress);
-                    return _target.IncrementProgress(dif, ref progress, _smallFields._depth);
+                    return _ownerOrTarget.IncrementProgress(dif, ref progress, _smallFields._depth);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -944,12 +939,12 @@ namespace Proto.Promises
                     _smallFields._depth = depth;
                 }
 
-                partial void SetInitialProgress()
+                partial void SetInitialProgress(PromiseRefBase owner, PromiseRefBase target)
                 {
-                    var progress = _owner._smallFields._currentProgress;
+                    var progress = owner._smallFields._currentProgress;
                     _smallFields._currentProgress = progress;
                     uint increment = progress.GetRawValue();
-                    _target.IncrementProgress(increment, ref progress, _smallFields._depth);
+                    target.IncrementProgress(increment, ref progress, _smallFields._depth);
                 }
             } // PromisePassThrough
 
