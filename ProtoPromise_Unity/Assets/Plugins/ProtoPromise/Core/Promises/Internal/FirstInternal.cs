@@ -40,12 +40,12 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 internal static FirstPromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<FirstPromise<TResult>>()
+                    var promise = ObjectPool.TryTake<FirstPromise<TResult>>()
                         ?? new FirstPromise<TResult>();
 
                     promise._waitCount = pendingAwaits;

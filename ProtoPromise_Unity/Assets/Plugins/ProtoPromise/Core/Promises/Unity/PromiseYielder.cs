@@ -66,7 +66,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
-        private class Routine : IEnumerator, Internal.ILinked<Routine>
+        private class Routine : Internal.HandleablePromiseBase, IEnumerator, Internal.ILinked<Routine>
         {
             private MonoBehaviour _currentRunner;
             private Promise.Deferred _deferred;
@@ -79,7 +79,7 @@ namespace Proto.Promises
 
             public static void WaitForInstruction(Promise.Deferred deferred, object yieldInstruction, MonoBehaviour runner)
             {
-                var routine = Internal.ObjectPool<Routine>.TryTake<Routine>()
+                var routine = Internal.ObjectPool.TryTake<Routine>()
                     ?? new Routine();
                 bool sameRunner = routine._currentRunner == runner & runner != null;
                 routine._currentRunner = runner != null ? runner : Instance;
@@ -112,7 +112,7 @@ namespace Proto.Promises
                 _deferred = default(Promise.Deferred);
                 Current = null;
                 // Place this back in the pool before invoking in case the invocation will re-use this.
-                Internal.ObjectPool<Routine>.MaybeRepool(this);
+                Internal.ObjectPool.MaybeRepool(this);
                 try
                 {
                     deferred.Resolve();

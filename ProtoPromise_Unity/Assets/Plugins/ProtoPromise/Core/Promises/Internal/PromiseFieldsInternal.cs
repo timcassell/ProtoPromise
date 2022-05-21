@@ -149,7 +149,7 @@ namespace Proto.Promises
 
         partial class HandleablePromiseBase
         {
-            volatile protected HandleablePromiseBase _next;
+            volatile internal HandleablePromiseBase _next;
         }
 
         partial class PromiseRefBase : HandleablePromiseBase
@@ -451,7 +451,7 @@ namespace Proto.Promises
 #endif
 
 #if !OPTIMIZED_ASYNC_MODE
-                partial class PromiseMethodContinuer
+                partial class PromiseMethodContinuer : HandleablePromiseBase
                 {
 #if PROMISE_DEBUG
                     protected ITraceable _owner;
@@ -460,9 +460,8 @@ namespace Proto.Promises
                     private Action _moveNext;
 
                     // Generic class to reference the state machine without boxing it.
-                    partial class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
+                    partial class Continuer<TStateMachine> : PromiseMethodContinuer where TStateMachine : IAsyncStateMachine
                     {
-                        Continuer<TStateMachine> ILinked<Continuer<TStateMachine>>.Next { get; set; }
                         private TStateMachine _stateMachine;
                     }
                 }

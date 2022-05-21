@@ -74,7 +74,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolve<TResult, TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolve<TResult, TResolver>>()
+                    var promise = ObjectPool.TryTake<CancelablePromiseResolve<TResult, TResolver>>()
                         ?? new CancelablePromiseResolve<TResult, TResolver>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
@@ -95,7 +95,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _resolver = default(TResolver);
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -136,7 +136,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolvePromise<TResult, TResolver> GetOrCreate(TResolver resolver, CancelationToken cancelationToken, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolvePromise<TResult, TResolver>>()
+                    var promise = ObjectPool.TryTake<CancelablePromiseResolvePromise<TResult, TResolver>>()
                         ?? new CancelablePromiseResolvePromise<TResult, TResolver>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
@@ -157,7 +157,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _resolver = default(TResolver);
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -208,7 +208,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolveReject<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolveReject<TResult, TResolver, TRejecter>>()
+                    var promise = ObjectPool.TryTake<CancelablePromiseResolveReject<TResult, TResolver, TRejecter>>()
                         ?? new CancelablePromiseResolveReject<TResult, TResolver, TRejecter>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
@@ -231,7 +231,7 @@ namespace Proto.Promises
                     _cancelationHelper = default(CancelationHelper);
                     _resolver = default(TResolver);
                     _rejecter = default(TRejecter);
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -283,7 +283,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, CancelationToken cancelationToken, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter>>()
+                    var promise = ObjectPool.TryTake<CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter>>()
                         ?? new CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
@@ -306,7 +306,7 @@ namespace Proto.Promises
                     _cancelationHelper = default(CancelationHelper);
                     _resolver = default(TResolver);
                     _rejecter = default(TRejecter);
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -366,7 +366,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseContinue<TResult, TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseContinue<TResult, TContinuer>>()
+                    var promise = ObjectPool.TryTake<CancelablePromiseContinue<TResult, TContinuer>>()
                         ?? new CancelablePromiseContinue<TResult, TContinuer>();
                     promise.Reset(depth);
                     promise._continuer = continuer;
@@ -387,7 +387,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _continuer = default(TContinuer);
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -423,7 +423,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseContinuePromise<TResult, TContinuer> GetOrCreate(TContinuer continuer, CancelationToken cancelationToken, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseContinuePromise<TResult, TContinuer>>()
+                    var promise = ObjectPool.TryTake<CancelablePromiseContinuePromise<TResult, TContinuer>>()
                         ?? new CancelablePromiseContinuePromise<TResult, TContinuer>();
                     promise.Reset(depth);
                     promise._continuer = continuer;
@@ -444,7 +444,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _continuer = default(TContinuer);
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -489,7 +489,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseCancel<TResult, TCanceler> GetOrCreate(TCanceler canceler, CancelationToken cancelationToken, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseCancel<TResult, TCanceler>>()
+                    var promise = ObjectPool.TryTake<CancelablePromiseCancel<TResult, TCanceler>>()
                         ?? new CancelablePromiseCancel<TResult, TCanceler>();
                     promise.Reset(depth);
                     promise._canceler = canceler;
@@ -510,7 +510,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _canceler = default(TCanceler);
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -551,7 +551,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static CancelablePromiseCancelPromise<TResult, TCanceler> GetOrCreate(TCanceler canceler, CancelationToken cancelationToken, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<CancelablePromiseCancelPromise<TResult, TCanceler>>()
+                    var promise = ObjectPool.TryTake<CancelablePromiseCancelPromise<TResult, TCanceler>>()
                         ?? new CancelablePromiseCancelPromise<TResult, TCanceler>();
                     promise.Reset(depth);
                     promise._canceler = canceler;
@@ -572,7 +572,7 @@ namespace Proto.Promises
                     base.Dispose();
                     _cancelationHelper = default(CancelationHelper);
                     _canceler = default(TCanceler);
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)

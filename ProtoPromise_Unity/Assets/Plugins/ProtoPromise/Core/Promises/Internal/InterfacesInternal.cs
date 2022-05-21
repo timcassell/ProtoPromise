@@ -36,11 +36,11 @@ namespace Proto.Promises
                 set { _next = value; }
             }
 
-            internal abstract void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler);
+            internal virtual void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler) { throw new System.InvalidOperationException(); }
             // This is overridden in PromiseMultiAwait and PromiseProgress and PromiseConfigured.
             internal virtual void HandleFromContext() { throw new System.InvalidOperationException(); }
 #if PROMISE_PROGRESS
-            internal abstract PromiseRefBase SetProgress(ref PromiseRefBase.Fixed32 progress, ref ushort depth);
+            internal virtual PromiseRefBase SetProgress(ref PromiseRefBase.Fixed32 progress, ref ushort depth) { throw new System.InvalidOperationException(); }
             internal virtual void InvokeProgressFromContext() { throw new System.InvalidOperationException(); }
 #endif
         }

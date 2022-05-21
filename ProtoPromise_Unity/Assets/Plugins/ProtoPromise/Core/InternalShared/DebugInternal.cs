@@ -323,16 +323,16 @@ namespace Proto.Promises
             }
 
             [ThreadStatic]
-            private static Stack<PromiseRefBase> _previousesForIterativeAlgorithm;
+            private static Stack<PromiseRefBase> ts_previousesForIterativeAlgorithm;
             private static Stack<PromiseRefBase> PreviousesForIterativeAlgorithm
             {
                 get
                 {
-                    if (_previousesForIterativeAlgorithm == null)
+                    if (ts_previousesForIterativeAlgorithm == null)
                     {
-                        _previousesForIterativeAlgorithm = new Stack<PromiseRefBase>();
+                        ts_previousesForIterativeAlgorithm = new Stack<PromiseRefBase>();
                     }
-                    return _previousesForIterativeAlgorithm;
+                    return ts_previousesForIterativeAlgorithm;
                 }
             }
 

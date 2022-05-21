@@ -97,7 +97,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static AwaiterRef GetOrCreate(Action continuation)
                 {
-                    var awaiter = ObjectPool<HandleablePromiseBase>.TryTake<AwaiterRef>()
+                    var awaiter = ObjectPool.TryTake<AwaiterRef>()
                         ?? new AwaiterRef();
                     awaiter._continuation = continuation;
                     SetCreatedStacktrace(awaiter, 3);
@@ -108,7 +108,7 @@ namespace Proto.Promises
                 private void Dispose()
                 {
                     _continuation = null;
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 private void Invoke()
@@ -161,13 +161,13 @@ namespace Proto.Promises
         internal unsafe abstract class AwaitOverrider<T> where T : INotifyCompletion
         {
 #pragma warning disable IDE0044 // Add readonly modifier
-            private static delegate*<ref T, PromiseRefBase, void> _awaitOverrider;
+            private static delegate*<ref T, PromiseRefBase, void> s_awaitOverrider;
 #pragma warning restore IDE0044 // Add readonly modifier
 
             [MethodImpl(InlineOption)]
             internal static bool IsOverridden()
             {
-                return _awaitOverrider != null;
+                return s_awaitOverrider != null;
             }
 
             [MethodImpl(InlineOption)]
@@ -179,7 +179,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRefBase asyncPromiseRef)
             {
-                _awaitOverrider(ref awaiter, asyncPromiseRef);
+                s_awaitOverrider(ref awaiter, asyncPromiseRef);
             }
 
             private sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
@@ -188,7 +188,7 @@ namespace Proto.Promises
                 internal static void Create()
                 {
                     // This is called multiple times in IL2CPP, but we don't need a null check since the function pointer doesn't allocate.
-                    _awaitOverrider = &AwaitOnCompletedVirt;
+                    s_awaitOverrider = &AwaitOnCompletedVirt;
                 }
 
                 [MethodImpl(InlineOption)]
@@ -201,12 +201,12 @@ namespace Proto.Promises
 #else // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
         internal abstract class AwaitOverrider<T> where T : INotifyCompletion
         {
-            private static AwaitOverrider<T> _awaitOverrider;
+            private static AwaitOverrider<T> s_awaitOverrider;
 
             [MethodImpl(InlineOption)]
             internal static bool IsOverridden()
             {
-                return _awaitOverrider != null;
+                return s_awaitOverrider != null;
             }
 
             [MethodImpl(InlineOption)]
@@ -218,7 +218,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRefBase asyncPromiseRef)
             {
-                _awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef);
+                s_awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef);
             }
 
             protected abstract void AwaitOnCompletedVirt(ref T awaiter, PromiseRefBase asyncPromiseRef);
@@ -229,10 +229,10 @@ namespace Proto.Promises
                 internal static void Create()
                 {
 #if ENABLE_IL2CPP // This is called multiple times in IL2CPP, so check for null.
-                    if (_awaitOverrider == null)
+                    if (s_awaitOverrider == null)
 #endif
                     {
-                        _awaitOverrider = new AwaitOverriderImpl<TAwaiter>();
+                        s_awaitOverrider = new AwaitOverriderImpl<TAwaiter>();
                     }
                 }
 

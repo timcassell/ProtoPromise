@@ -40,12 +40,12 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 internal static RacePromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<RacePromise<TResult>>()
+                    var promise = ObjectPool.TryTake<RacePromise<TResult>>()
                         ?? new RacePromise<TResult>();
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE // _waitCount isn't actually used in Race, but can be useful for debugging.

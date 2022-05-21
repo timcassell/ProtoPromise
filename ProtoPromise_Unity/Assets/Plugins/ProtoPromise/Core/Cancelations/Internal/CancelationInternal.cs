@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
@@ -22,7 +23,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal abstract class CancelableBase
+        internal abstract class CancelableBase : HandleablePromiseBase
         {
             internal abstract void Invoke();
             internal abstract void Dispose();
@@ -59,9 +60,9 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal CancelDelegateToken(
 #if CSHARP_7_3_OR_NEWER
-                    in
+                in
 #endif
-                    TCapture capturedValue, Action<TCapture> callback)
+                TCapture capturedValue, Action<TCapture> callback)
             {
                 _capturedValue = capturedValue;
                 _callback = callback;
@@ -77,27 +78,26 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal sealed class CancelationRef : CancelableBase, ILinked<CancelationRef>, ITraceable
+        internal sealed class CancelationRef : CancelableBase, ITraceable
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
 #endif
-            private sealed class CancelableWrappe<TCancelable> : CancelableBase, ITraceable, ILinked<CancelableWrappe<TCancelable>>
+            private sealed class CancelableWrapper<TCancelable> : CancelableBase, ITraceable
                 where TCancelable : ICancelable
             {
 #if PROMISE_DEBUG
                 CausalityTrace ITraceable.Trace { get; set; }
 #endif
-                CancelableWrappe<TCancelable> ILinked<CancelableWrappe<TCancelable>>.Next { get; set; }
 
                 private TCancelable _cancelable;
 
-                private CancelableWrappe() { }
+                private CancelableWrapper() { }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 volatile private bool _disposed;
 
-                ~CancelableWrappe()
+                ~CancelableWrapper()
                 {
                     try
                     {
@@ -117,10 +117,10 @@ namespace Proto.Promises
 #endif
 
                 [MethodImpl(InlineOption)]
-                internal static CancelableWrappe<TCancelable> GetOrCreate(TCancelable cancelable)
+                internal static CancelableWrapper<TCancelable> GetOrCreate(TCancelable cancelable)
                 {
-                    var del = ObjectPool<CancelableWrappe<TCancelable>>.TryTake<CancelableWrappe<TCancelable>>()
-                        ?? new CancelableWrappe<TCancelable>();
+                    var del = ObjectPool.TryTake<CancelableWrapper<TCancelable>>()
+                        ?? new CancelableWrapper<TCancelable>();
                     del._cancelable = cancelable;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     del._disposed = false;
@@ -158,7 +158,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
 #endif
-                    ObjectPool<CancelableWrappe<TCancelable>>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
             }
 
@@ -429,8 +429,6 @@ namespace Proto.Promises
                 }
             }
 
-            CancelationRef ILinked<CancelationRef>.Next { get; set; }
-
             // TODO: replace List with a double-linked list with the CancelationRegistration storing the node directly for O(1) find and removal.
             private readonly List<RegisteredDelegate> _registeredCallbacks = new List<RegisteredDelegate>();
             private ValueLinkedStackZeroGC<CancelationRegistration> _links = ValueLinkedStackZeroGC<CancelationRegistration>.Create();
@@ -451,7 +449,7 @@ namespace Proto.Promises
 
             internal static CancelationRef GetOrCreate()
             {
-                var cancelRef = ObjectPool<CancelationRef>.TryTake<CancelationRef>()
+                var cancelRef = ObjectPool.TryTake<CancelationRef>()
                     ?? new CancelationRef();
                 cancelRef._idsAndRetains.SetInternalRetain(1); // 1 retain for Dispose.
                 cancelRef._state = (int) State.Pending;
@@ -612,7 +610,7 @@ namespace Proto.Promises
                         registration = default(CancelationRegistration);
                         return false;
                     }
-                    return TryRegister(CancelableWrappe<TCancelable>.GetOrCreate(cancelable), out registration);
+                    return TryRegister(CancelableWrapper<TCancelable>.GetOrCreate(cancelable), out registration);
                 }
                 finally
                 {
@@ -916,7 +914,7 @@ namespace Proto.Promises
                 }
 #endif
                 _state = (int) State.Disposed;
-                ObjectPool<CancelationRef>.MaybeRepool(this);
+                ObjectPool.MaybeRepool(this);
             }
 
             internal override void Invoke()

@@ -57,13 +57,13 @@ namespace Proto.Promises
                     if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
                     {
                         Dispose();
-                        ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                        ObjectPool.MaybeRepool(this);
                     }
                 }
 
                 internal static MergePromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ulong totalProgress, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<MergePromise<TResult>>()
+                    var promise = ObjectPool.TryTake<MergePromise<TResult>>()
                         ?? new MergePromise<TResult>();
                     promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, totalProgress, depth);
                     return promise;
@@ -159,7 +159,7 @@ namespace Proto.Promises
                         {
                             Dispose();
                             _onPromiseResolved = null;
-                            ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                            ObjectPool.MaybeRepool(this);
                         }
                     }
 
@@ -169,7 +169,7 @@ namespace Proto.Promises
 #endif
                         TResult value, PromiseResolvedDelegate<TResult> onPromiseResolved)
                     {
-                        var promise = ObjectPool<HandleablePromiseBase>.TryTake<MergePromiseT>()
+                        var promise = ObjectPool.TryTake<MergePromiseT>()
                             ?? new MergePromiseT();
                         promise._onPromiseResolved = onPromiseResolved;
                         promise._result = value;

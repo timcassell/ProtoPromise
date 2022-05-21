@@ -224,7 +224,7 @@ namespace Proto.Promises
     public class RethrowException : Exception, Internal.IRejectionToContainer
     {
 #if !PROMISE_DEBUG
-        private static readonly RethrowException _instance = new RethrowException();
+        private static readonly RethrowException s_instance = new RethrowException();
 #endif
 
         protected RethrowException() { }
@@ -234,7 +234,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             return new RethrowException(); // Don't re-use instance in DEBUG mode so that we can read its stacktrace on any thread.
 #else
-            return _instance;
+            return s_instance;
 #endif
         }
 

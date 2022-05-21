@@ -13,10 +13,8 @@ namespace Proto.Promises.Threading
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        private sealed class SyncCallback : Internal.ILinked<SyncCallback>
+        private sealed class SyncCallback : Internal.HandleablePromiseBase
         {
-            SyncCallback Internal.ILinked<SyncCallback>.Next { get; set; }
-
             private SendOrPostCallback _callback;
             private object _state;
             private bool _needsPulse;
@@ -25,7 +23,7 @@ namespace Proto.Promises.Threading
 
             internal static SyncCallback GetOrCreate(SendOrPostCallback callback, object state, bool needsPulse)
             {
-                var sc = Internal.ObjectPool<SyncCallback>.TryTake<SyncCallback>()
+                var sc = Internal.ObjectPool.TryTake<SyncCallback>()
                     ?? new SyncCallback();
                 sc._callback = callback;
                 sc._state = state;
@@ -66,13 +64,13 @@ namespace Proto.Promises.Threading
             {
                 _callback = null;
                 _state = null;
-                Internal.ObjectPool<SyncCallback>.MaybeRepool(this);
+                Internal.ObjectPool.MaybeRepool(this);
             }
         }
 
         private readonly Thread _thread;
         // These must not be readonly.
-        private Internal.ValueLinkedQueue<SyncCallback> _syncQueue = new Internal.ValueLinkedQueue<SyncCallback>();
+        private Internal.ValueLinkedQueue<Internal.HandleablePromiseBase> _syncQueue = new Internal.ValueLinkedQueue<Internal.HandleablePromiseBase>();
         private Internal.SpinLocker _syncLocker;
 
         public PromiseSynchronizationContext()
@@ -146,7 +144,7 @@ namespace Proto.Promises.Threading
                 {
                     try
                     {
-                        syncStack.Pop().Invoke();
+                        syncStack.Pop().UnsafeAs<SyncCallback>().Invoke();
                     }
                     catch (Exception e)
                     {

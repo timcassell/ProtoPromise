@@ -440,8 +440,8 @@ namespace Proto.Promises
             internal sealed partial class PromiseProgress<TResult, TProgress> : PromiseSingleAwait<TResult>, ICancelable
                 where TProgress : IProgress<float>
             {
-                private static readonly WaitCallback _threadPoolCallback = ExecuteFromContext;
-                private static readonly SendOrPostCallback _synchronizationContextCallback = ExecuteFromContext;
+                private static readonly WaitCallback s_threadPoolCallback = ExecuteFromContext;
+                private static readonly SendOrPostCallback s_synchronizationContextCallback = ExecuteFromContext;
 
                 internal bool IsInvoking1
                 {
@@ -476,7 +476,7 @@ namespace Proto.Promises
                         throw new InvalidOperationException("synchronizationContext cannot be null");
                     }
 #endif
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseProgress<TResult, TProgress>>()
+                    var promise = ObjectPool.TryTake<PromiseProgress<TResult, TProgress>>()
                         ?? new PromiseProgress<TResult, TProgress>();
                     promise.Reset(depth);
                     promise._progress = progress;
@@ -496,7 +496,7 @@ namespace Proto.Promises
                         throw new InvalidOperationException("synchronizationContext cannot be null");
                     }
 #endif
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseProgress<TResult, TProgress>>()
+                    var promise = ObjectPool.TryTake<PromiseProgress<TResult, TProgress>>()
                         ?? new PromiseProgress<TResult, TProgress>();
                     promise.Reset(depth);
                     promise._progress = progress;
@@ -516,7 +516,7 @@ namespace Proto.Promises
                         Dispose();
                         _cancelationRegistration = default(CancelationRegistration);
                         _progress = default(TProgress);
-                        ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                        ObjectPool.MaybeRepool(this);
                     }
                 }
 
@@ -660,11 +660,11 @@ namespace Proto.Promises
                         if (_synchronizationContext == null)
                         {
                             // If there is no context, send it to the ThreadPool.
-                            ThreadPool.QueueUserWorkItem(_threadPoolCallback, this);
+                            ThreadPool.QueueUserWorkItem(s_threadPoolCallback, this);
                         }
                         else
                         {
-                            _synchronizationContext.Post(_synchronizationContextCallback, this);
+                            _synchronizationContext.Post(s_synchronizationContextCallback, this);
                         }
                     }
                     previousWaiter = null;

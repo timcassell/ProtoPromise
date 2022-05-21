@@ -37,7 +37,7 @@ namespace Proto.Promises
         internal sealed class CanceledExceptionInternal : CanceledException
         {
 #if !PROMISE_DEBUG
-            private static readonly CanceledExceptionInternal _instance = new CanceledExceptionInternal("Operation was canceled.");
+            private static readonly CanceledExceptionInternal s_instance = new CanceledExceptionInternal("Operation was canceled.");
 #endif
 
             internal static CanceledExceptionInternal GetOrCreate()
@@ -45,7 +45,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 return new CanceledExceptionInternal("Operation was canceled."); // Don't re-use instance in DEBUG mode so users can read its stacktrace on any thread.
 #else
-                return _instance;
+                return s_instance;
 #endif
             }
 
@@ -100,7 +100,7 @@ namespace Proto.Promises
         internal sealed class ForcedRethrowException : RethrowException
         {
 #if !PROMISE_DEBUG
-            private static readonly ForcedRethrowException _instance = new ForcedRethrowException();
+            private static readonly ForcedRethrowException s_instance = new ForcedRethrowException();
 #endif
 
             private ForcedRethrowException() { }
@@ -110,7 +110,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 return new ForcedRethrowException(); // Don't re-use instance in DEBUG mode so that we can read its stacktrace on any thread.
 #else
-                return _instance;
+                return s_instance;
 #endif
             }
         }

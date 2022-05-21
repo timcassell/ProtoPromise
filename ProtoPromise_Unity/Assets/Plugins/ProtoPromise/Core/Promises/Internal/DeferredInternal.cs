@@ -115,12 +115,12 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 internal static DeferredPromise<TResult> GetOrCreate()
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<DeferredPromise<TResult>>()
+                    var promise = ObjectPool.TryTake<DeferredPromise<TResult>>()
                         ?? new DeferredPromise<TResult>();
                     promise.Reset();
                     return promise;
@@ -164,12 +164,12 @@ namespace Proto.Promises
                 {
                     Dispose();
                     _cancelationRegistration = default(CancelationRegistration);
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 internal static DeferredPromiseCancel<TResult> GetOrCreate(CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<DeferredPromiseCancel<TResult>>()
+                    var promise = ObjectPool.TryTake<DeferredPromiseCancel<TResult>>()
                         ?? new DeferredPromiseCancel<TResult>();
                     promise.Reset();
                     cancelationToken.TryRegister(promise, out promise._cancelationRegistration);

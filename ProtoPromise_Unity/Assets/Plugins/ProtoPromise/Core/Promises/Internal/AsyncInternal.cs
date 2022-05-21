@@ -300,14 +300,14 @@ namespace Proto.Promises
 #endif
         internal partial struct PromiseMethodBuilderInternal<TResult>
         {
-            public Promise<TResult> Task
+            internal Promise<TResult> Task
             {
                 [MethodImpl(InlineOption)]
                 get { return new Promise<TResult>(_ref, _smallFields._id, 0, _smallFields._result); }
             }
 
             [MethodImpl(InlineOption)]
-            public static PromiseMethodBuilderInternal<TResult> Create()
+            internal static PromiseMethodBuilderInternal<TResult> Create()
             {
                 return new PromiseMethodBuilderInternal<TResult>();
             }
@@ -359,7 +359,7 @@ namespace Proto.Promises
 #endif
                 else
                 {
-                    awaiter.OnCompleted(((PromiseRefBase.AsyncPromiseRef<TResult>) _ref).MoveNext);
+                    awaiter.OnCompleted(_ref.UnsafeAs<PromiseRefBase.AsyncPromiseRef<TResult>>().MoveNext);
                 }
             }
 
@@ -383,7 +383,7 @@ namespace Proto.Promises
 #endif
                 else
                 {
-                    awaiter.UnsafeOnCompleted(((PromiseRefBase.AsyncPromiseRef<TResult>) _ref).MoveNext);
+                    awaiter.UnsafeOnCompleted(_ref.UnsafeAs<PromiseRefBase.AsyncPromiseRef<TResult>>().MoveNext);
                 }
             }
 
@@ -410,7 +410,7 @@ namespace Proto.Promises
         }
 #endif // DEBUG or IL2CPP
 
-            partial class PromiseRefBase
+        partial class PromiseRefBase
         {
             [ThreadStatic]
             private static HandleablePromiseBase ts_currentRunner;
@@ -505,7 +505,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public static AsyncPromiseRef<TResult> GetOrCreate()
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<AsyncPromiseRef<TResult>>()
+                    var promise = ObjectPool.TryTake<AsyncPromiseRef<TResult>>()
                         ?? new AsyncPromiseRef<TResult>();
                     promise.Reset();
                     return promise;
@@ -618,7 +618,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode]
 #endif
-                private abstract partial class PromiseMethodContinuer : IDisposable
+                private abstract partial class PromiseMethodContinuer : HandleablePromiseBase, IDisposable
                 {
                     public Action MoveNext
                     {
@@ -647,7 +647,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
                     [DebuggerNonUserCode]
 #endif
-                    private sealed partial class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
+                    private sealed partial class Continuer<TStateMachine> : PromiseMethodContinuer where TStateMachine : IAsyncStateMachine
                     {
                         private Continuer()
                         {
@@ -657,7 +657,7 @@ namespace Proto.Promises
                         [MethodImpl(InlineOption)]
                         public static Continuer<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
                         {
-                            var continuer = ObjectPool<Continuer<TStateMachine>>.TryTake<Continuer<TStateMachine>>()
+                            var continuer = ObjectPool.TryTake<Continuer<TStateMachine>>()
                                 ?? new Continuer<TStateMachine>();
                             continuer._stateMachine = stateMachine;
                             return continuer;
@@ -669,7 +669,7 @@ namespace Proto.Promises
                             _owner = null;
 #endif
                             _stateMachine = default(TStateMachine);
-                            ObjectPool<Continuer<TStateMachine>>.MaybeRepool(this);
+                            ObjectPool.MaybeRepool(this);
                         }
 
                         private void ContinueMethod()
@@ -710,7 +710,7 @@ namespace Proto.Promises
                         _continuer.Dispose();
                         _continuer = null;
                     }
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
@@ -743,7 +743,7 @@ namespace Proto.Promises
 
                     internal static void SetStateMachine(ref TStateMachine stateMachine, ref PromiseRefBase _ref)
                     {
-                        var promise = ObjectPool<HandleablePromiseBase>.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
+                        var promise = ObjectPool.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
                             ?? new AsyncPromiseRefMachine<TStateMachine>();
                         promise.Reset();
                         // ORDER VERY IMPORTANT, ref must be set before copying stateMachine.
@@ -755,7 +755,7 @@ namespace Proto.Promises
                     {
                         Dispose();
                         _stateMachine = default(TStateMachine);
-                        ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                        ObjectPool.MaybeRepool(this);
                     }
 
                     [MethodImpl(InlineOption)]
@@ -799,7 +799,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
             }
 #endif // OPTIMIZED_ASYNC_MODE

@@ -185,6 +185,10 @@ namespace Proto.Promises
 #endif
         internal sealed class YieldInstruction<T> : PromiseYieldInstruction<T>, ILinked<YieldInstruction<T>>
         {
+            // These must not be readonly.
+            private static ValueLinkedStack<YieldInstruction<T>> s_pool;
+            private static SpinLocker s_spinLocker;
+
             private int _disposeChecker; // To detect if Dispose is called from multiple threads.
 
             YieldInstruction<T> ILinked<YieldInstruction<T>>.Next { get; set; }
@@ -193,8 +197,13 @@ namespace Proto.Promises
 
             public static YieldInstruction<T> GetOrCreate(Promise<T> promise)
             {
-                var yieldInstruction = ObjectPool<YieldInstruction<T>>.TryTake<YieldInstruction<T>>()
-                    ?? new YieldInstruction<T>();
+                YieldInstruction<T> yieldInstruction;
+                s_spinLocker.Enter();
+                yieldInstruction = s_pool.IsNotEmpty
+                    ? s_pool.Pop()
+                    : new YieldInstruction<T>();
+                s_spinLocker.Exit();
+
                 yieldInstruction._disposeChecker = 0;
                 yieldInstruction._state = Promise.State.Pending;
                 yieldInstruction._retainCounter = 2; // 1 retain for complete, 1 for dispose.
@@ -236,7 +245,9 @@ namespace Proto.Promises
                 {
                     _rejectContainer = null;
 #if !PROMISE_DEBUG // Don't repool in DEBUG mode.
-                    ObjectPool<YieldInstruction<T>>.MaybeRepool(this);
+                    s_spinLocker.Enter();
+                    s_pool.Push(this);
+                    s_spinLocker.Exit();
 #endif
                 }
             }

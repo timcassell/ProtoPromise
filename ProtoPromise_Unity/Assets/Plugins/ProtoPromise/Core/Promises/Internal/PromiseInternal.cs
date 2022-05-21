@@ -13,13 +13,13 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0016 // Use 'throw' expression
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -447,7 +447,7 @@ namespace Proto.Promises
                     return AddWaiterImpl(promiseId, waiter, out previousWaiter, Depth);
                 }
 
-                internal void MaybeDisposePreviousFromCatch(PromiseRefBase previous, bool dispose)
+                internal static void MaybeDisposePreviousFromCatch(PromiseRefBase previous, bool dispose)
                 {
                     if (dispose)
                     {
@@ -559,7 +559,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseMultiAwait<TResult> GetOrCreate(ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseMultiAwait<TResult>>()
+                    var promise = ObjectPool.TryTake<PromiseMultiAwait<TResult>>()
                         ?? new PromiseMultiAwait<TResult>();
                     promise.Reset(depth);
                     return promise;
@@ -586,7 +586,7 @@ namespace Proto.Promises
 #endif
                         Dispose();
                     }
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 internal override bool GetIsCompleted(short promiseId)
@@ -737,13 +737,13 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static PromiseDuplicate<TResult> GetOrCreate(ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseDuplicate<TResult>>()
+                    var promise = ObjectPool.TryTake<PromiseDuplicate<TResult>>()
                         ?? new PromiseDuplicate<TResult>();
                     promise.Reset(depth);
                     return promise;
@@ -767,7 +767,7 @@ namespace Proto.Promises
                 {
                     // TODO: handle properly when Promise.WaitAsync(CancelationToken) is added.
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 internal static PromiseConfigured<TResult> GetOrCreate(SynchronizationContext synchronizationContext, ushort depth)
@@ -778,7 +778,7 @@ namespace Proto.Promises
                         throw new InvalidOperationException("synchronizationContext cannot be null");
                     }
 #endif
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseConfigured<TResult>>()
+                    var promise = ObjectPool.TryTake<PromiseConfigured<TResult>>()
                         ?? new PromiseConfigured<TResult>();
                     promise.Reset(depth);
                     promise._synchronizationContext = synchronizationContext;
@@ -890,7 +890,7 @@ namespace Proto.Promises
 #endif
 
             [MethodImpl(InlineOption)]
-            internal void MaybeDisposePreviousBeforeSecondWait(PromiseRefBase previous)
+            internal static void MaybeDisposePreviousBeforeSecondWait(PromiseRefBase previous)
             {
 #if !PROMISE_DEBUG // Don't dispose before the callback if we're in debug mode so that if a circular promise chain is detected, it will be disposed properly.
                 previous.MaybeDispose();
@@ -898,7 +898,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void MaybeDisposePreviousAfterSecondWait(PromiseRefBase previous)
+            internal static void MaybeDisposePreviousAfterSecondWait(PromiseRefBase previous)
             {
 #if PROMISE_DEBUG // Dispose after the callback if we're in debug mode so that if a circular promise chain is detected, it will be disposed properly.
                 previous.MaybeDispose();
@@ -961,7 +961,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseResolve<TResult, TResolver> GetOrCreate(TResolver resolver, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolve<TResult, TResolver>>()
+                    var promise = ObjectPool.TryTake<PromiseResolve<TResult, TResolver>>()
                         ?? new PromiseResolve<TResult, TResolver>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
@@ -971,7 +971,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -1000,7 +1000,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseResolvePromise<TResult, TResolver> GetOrCreate(TResolver resolver, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolvePromise<TResult, TResolver>>()
+                    var promise = ObjectPool.TryTake<PromiseResolvePromise<TResult, TResolver>>()
                         ?? new PromiseResolvePromise<TResult, TResolver>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
@@ -1010,7 +1010,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -1048,7 +1048,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseResolveReject<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolveReject<TResult, TResolver, TRejecter>>()
+                    var promise = ObjectPool.TryTake<PromiseResolveReject<TResult, TResolver, TRejecter>>()
                         ?? new PromiseResolveReject<TResult, TResolver, TRejecter>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
@@ -1059,7 +1059,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -1099,7 +1099,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseResolveRejectPromise<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseResolveRejectPromise<TResult, TResolver, TRejecter>>()
+                    var promise = ObjectPool.TryTake<PromiseResolveRejectPromise<TResult, TResolver, TRejecter>>()
                         ?? new PromiseResolveRejectPromise<TResult, TResolver, TRejecter>();
                     promise.Reset(depth);
                     promise._resolver = resolver;
@@ -1110,7 +1110,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -1157,7 +1157,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseContinue<TResult, TContinuer> GetOrCreate(TContinuer continuer, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseContinue<TResult, TContinuer>>()
+                    var promise = ObjectPool.TryTake<PromiseContinue<TResult, TContinuer>>()
                         ?? new PromiseContinue<TResult, TContinuer>();
                     promise.Reset(depth);
                     promise._continuer = continuer;
@@ -1167,7 +1167,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -1191,7 +1191,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseContinuePromise<TResult, TContinuer> GetOrCreate(TContinuer continuer, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseContinuePromise<TResult, TContinuer>>()
+                    var promise = ObjectPool.TryTake<PromiseContinuePromise<TResult, TContinuer>>()
                         ?? new PromiseContinuePromise<TResult, TContinuer>();
                     promise.Reset(depth);
                     promise._continuer = continuer;
@@ -1201,7 +1201,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -1232,7 +1232,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseFinally<TResult, TFinalizer> GetOrCreate(TFinalizer finalizer, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseFinally<TResult, TFinalizer>>()
+                    var promise = ObjectPool.TryTake<PromiseFinally<TResult, TFinalizer>>()
                         ?? new PromiseFinally<TResult, TFinalizer>();
                     promise.Reset(depth);
                     promise._finalizer = finalizer;
@@ -1242,7 +1242,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -1279,7 +1279,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseCancel<TResult, TCanceler> GetOrCreate(TCanceler canceler, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseCancel<TResult, TCanceler>>()
+                    var promise = ObjectPool.TryTake<PromiseCancel<TResult, TCanceler>>()
                         ?? new PromiseCancel<TResult, TCanceler>();
                     promise.Reset(depth);
                     promise._canceler = canceler;
@@ -1289,7 +1289,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -1318,7 +1318,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static PromiseCancelPromise<TResult, TCanceler> GetOrCreate(TCanceler resolver, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<PromiseCancelPromise<TResult, TCanceler>>()
+                    var promise = ObjectPool.TryTake<PromiseCancelPromise<TResult, TCanceler>>()
                         ?? new PromiseCancelPromise<TResult, TCanceler>();
                     promise.Reset(depth);
                     promise._canceler = resolver;
@@ -1328,7 +1328,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 protected override void Execute(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
@@ -1418,7 +1418,7 @@ namespace Proto.Promises
 
                 internal static PromisePassThrough GetOrCreate(Promise owner, int index)
                 {
-                    var passThrough = ObjectPool<HandleablePromiseBase>.TryTake<PromisePassThrough>()
+                    var passThrough = ObjectPool.TryTake<PromisePassThrough>()
                         ?? new PromisePassThrough();
                     passThrough._ownerOrTarget = owner._target._ref;
                     passThrough._smallFields._id = owner._target.Id;
@@ -1460,7 +1460,7 @@ namespace Proto.Promises
                     _smallFields._disposed = true;
 #endif
                     _ownerOrTarget = null;
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
             } // PromisePassThrough
 

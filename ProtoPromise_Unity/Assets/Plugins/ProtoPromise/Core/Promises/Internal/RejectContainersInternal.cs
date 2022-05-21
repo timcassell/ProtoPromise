@@ -171,7 +171,7 @@ namespace Proto.Promises
         {
 #if PROMISE_DEBUG && !NET_LEGACY
             // This is used to reconstruct the rejection causality trace when the original exception is rethrown from await in an async function, and this container is lost.
-            private static readonly ConditionalWeakTable<object, RejectionException> _rejectExceptionsForTrace = new ConditionalWeakTable<object, RejectionException>();
+            private static readonly ConditionalWeakTable<object, RejectionException> s_rejectExceptionsForTrace = new ConditionalWeakTable<object, RejectionException>();
 #endif
 
 #if !NET_LEGACY
@@ -192,7 +192,7 @@ namespace Proto.Promises
                 {
                     _rejectException = new RejectionException("This exception contains the stacktrace of the Deferred.Reject for the uncaught exception.", FormatStackTrace(new StackTrace[1] { rejectedStacktrace }), (Exception) Value);
 #if !NET_LEGACY
-                    _rejectExceptionsForTrace.Add(Value, _rejectException);
+                    s_rejectExceptionsForTrace.Add(Value, _rejectException);
 #endif
                 }
             }
@@ -207,7 +207,7 @@ namespace Proto.Promises
 #if !NET_LEGACY
                 container._capturedInfo = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(value);
 #if PROMISE_DEBUG
-                _rejectExceptionsForTrace.TryGetValue(value, out container._rejectException);
+                s_rejectExceptionsForTrace.TryGetValue(value, out container._rejectException);
 #endif
 #endif
                 SetCreatedStacktrace(container, 2);
