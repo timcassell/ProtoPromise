@@ -1,9 +1,15 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0019 // Use pattern matching
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable 0618 // Type or member is obsolete
 
@@ -102,10 +108,9 @@ namespace Proto.Promises
             {
                 // If the cast fails, the new _promiseId must not == Internal.ValidIdFromApi, or Deferred.Promise will return a valid, resolved promise.
                 var deferred = _ref as Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>;
-                return new Deferred(
-                    deferred,
-                    deferred != null ? _promiseId : (short) 0,
-                    _deferredId);
+                return deferred != null
+                    ? new Deferred(deferred, _promiseId, _deferredId)
+                    : default(Deferred);
             }
 
             /// <summary>
@@ -142,10 +147,12 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void Reject<TReject>(TReject reason)
             {
-                if (!TryReject(reason))
+                var _this = _ref;
+                if (_this == null || !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
                     throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
                 }
+                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
             }
 
             /// <summary>
@@ -172,10 +179,16 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void Cancel()
             {
-                if (!TryCancel())
+                var _this = _ref;
+                if (
+#if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
+                    _this == null ||
+#endif
+                    !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid.", Internal.GetFormattedStacktrace(1));
                 }
+                _this.CancelDirect();
             }
 
             /// <summary>
@@ -637,10 +650,16 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void Resolve(T value)
             {
-                if (!TryResolve(value))
+                var _this = _ref;
+                if (
+#if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
+                    _this == null ||
+#endif
+                    !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
                     throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", Internal.GetFormattedStacktrace(1));
                 }
+                _this.ResolveDirect(value);
             }
 
             /// <summary>
@@ -660,10 +679,12 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void Reject<TReject>(TReject reason)
             {
-                if (!TryReject(reason))
+                var _this = _ref;
+                if (_this == null || !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
                     throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
                 }
+                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
             }
 
             /// <summary>
@@ -690,10 +711,16 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void Cancel()
             {
-                if (!TryCancel())
+                var _this = _ref;
+                if (
+#if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
+                    _this == null ||
+#endif
+                    !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid.", Internal.GetFormattedStacktrace(1));
                 }
+                _this.CancelDirect();
             }
 
             /// <summary>
