@@ -29,12 +29,12 @@ jobs:
       - uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: dotnet-test-results-net5.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
+          name: dotnet-test-results-net472-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
           path: TestResults/*.trx
           reporter: dotnet-trx
 
       - uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: dotnet-test-results-net5.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
+          name: dotnet-test-results-net472-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
           path: TestResults

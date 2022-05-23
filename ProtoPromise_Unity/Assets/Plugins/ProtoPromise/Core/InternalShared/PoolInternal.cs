@@ -58,7 +58,7 @@ namespace Proto.Promises
 
                 private static void Clear()
                 {
-                    s_pool.Clear();
+                    s_pool.ClearUnsafe();
                 }
 
                 [MethodImpl(InlineOption)]

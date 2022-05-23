@@ -245,9 +245,12 @@ namespace Proto.Promises
                 {
                     _rejectContainer = null;
 #if !PROMISE_DEBUG // Don't repool in DEBUG mode.
-                    s_spinLocker.Enter();
-                    s_pool.Push(this);
-                    s_spinLocker.Exit();
+                    if (Promise.Config.ObjectPoolingEnabled)
+                    {
+                        s_spinLocker.Enter();
+                        s_pool.Push(this);
+                        s_spinLocker.Exit();
+                    }
 #endif
                 }
             }

@@ -302,18 +302,23 @@ namespace Proto.Promises
         internal struct ValueLinkedStackSafe<T> where T : HandleablePromiseBase
 #endif
         {
+            // TODO: figure out why Interlocked.CompareExchange without SpinLocker is breaking concurrency tests
             volatile private HandleablePromiseBase _head;
+            private SpinLocker _spinner;
 
             [MethodImpl(InlineOption)]
             internal ValueLinkedStackSafe(HandleablePromiseBase tailSentinel)
             {
                 // Sentinel is PromiseRefBase.InvalidAwaitSentinel.s_instance
                 _head = tailSentinel;
+                _spinner = new SpinLocker();
             }
 
             [MethodImpl(InlineOption)]
-            internal void Clear()
+            internal void ClearUnsafe()
             {
+                // Worst case scenario, ClearUnsafe() is called concurrently with Push() and/or TryPop() and the objects are re-pooled.
+                // Very low probability, probably not a big deal, not worth adding an extra lock.
                 _head = PromiseRefBase.InvalidAwaitSentinel.s_instance;
             }
 
@@ -322,54 +327,25 @@ namespace Proto.Promises
             {
                 AssertNotInCollection((HandleablePromiseBase) item);
 
-                HandleablePromiseBase head = _head;
-                item._next = head;
-                if (Interlocked.CompareExchange(ref _head, item, head) != head)
-                {
-                    PushCore(item);
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            private void PushCore(T item)
-            {
-                var spinner = new SpinWait();
-                HandleablePromiseBase head;
-                do
-                {
-                    spinner.SpinOnce();
-                    head = _head;
-                    item._next = head;
-                } while (Interlocked.CompareExchange(ref _head, item, head) != head);
+                _spinner.Enter();
+                item._next = _head;
+                _head = item;
+                _spinner.Exit();
             }
 
             [MethodImpl(InlineOption)]
             internal T TryPop()
             {
-                HandleablePromiseBase obj = _head;
-                if (Interlocked.CompareExchange(ref _head, obj._next, obj) != obj)
-                {
-                    obj = TryPopCore();
-                }
-                if (obj == PromiseRefBase.InvalidAwaitSentinel.s_instance)
+                _spinner.Enter();
+                HandleablePromiseBase head = _head;
+                _head = head._next;
+                _spinner.Exit();
+                if (head == PromiseRefBase.InvalidAwaitSentinel.s_instance)
                 {
                     return null;
                 }
-                MarkRemovedFromCollection(obj);
-                return obj.UnsafeAs<T>();
-            }
-
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            private HandleablePromiseBase TryPopCore()
-            {
-                var spinner = new SpinWait();
-                HandleablePromiseBase obj;
-                do
-                {
-                    spinner.SpinOnce();
-                    obj = _head;
-                } while (Interlocked.CompareExchange(ref _head, obj._next, obj) != obj);
-                return obj;
+                MarkRemovedFromCollection(head);
+                return head.UnsafeAs<T>();
             }
 
             [MethodImpl(InlineOption)]
