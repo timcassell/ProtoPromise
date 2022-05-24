@@ -38,7 +38,7 @@ namespace Proto.Promises
 #endif
     public abstract class PromiseYieldInstruction : CustomYieldInstruction, IDisposable
     {
-        volatile protected object _value;
+        volatile protected object _rejectContainer;
         volatile protected Promise.State _state;
         volatile protected int _retainCounter;
 
@@ -92,10 +92,10 @@ namespace Proto.Promises
                 case Promise.State.Rejected:
                 {
 #if !NET_LEGACY
-                    ((Internal.IRejectValueContainer) _value).GetExceptionDispatchInfo().Throw();
+                    ((Internal.IRejectValueContainer) _rejectContainer).GetExceptionDispatchInfo().Throw();
                     throw new Exception(); // This point will never be reached, but the C# compiler thinks it might.
 #else
-                    throw ((Internal.IRejectValueContainer) _value).GetException();
+                    throw ((Internal.IRejectValueContainer) _rejectContainer).GetException();
 #endif
                 }
                 default:
@@ -164,10 +164,10 @@ namespace Proto.Promises
                 case Promise.State.Rejected:
                 {
 #if !NET_LEGACY
-                    ((Internal.IRejectValueContainer) _value).GetExceptionDispatchInfo().Throw();
+                    ((Internal.IRejectValueContainer) _rejectContainer).GetExceptionDispatchInfo().Throw();
                     throw new Exception(); // This point will never be reached, but the C# compiler thinks it might.
 #else
-                    throw ((Internal.IRejectValueContainer) _value).GetException();
+                    throw ((Internal.IRejectValueContainer) _rejectContainer).GetException();
 #endif
                 }
                 default:
@@ -185,6 +185,10 @@ namespace Proto.Promises
 #endif
         internal sealed class YieldInstruction<T> : PromiseYieldInstruction<T>, ILinked<YieldInstruction<T>>
         {
+            // These must not be readonly.
+            private static ValueLinkedStack<YieldInstruction<T>> s_pool;
+            private static SpinLocker s_spinLocker;
+
             private int _disposeChecker; // To detect if Dispose is called from multiple threads.
 
             YieldInstruction<T> ILinked<YieldInstruction<T>>.Next { get; set; }
@@ -193,32 +197,42 @@ namespace Proto.Promises
 
             public static YieldInstruction<T> GetOrCreate(Promise<T> promise)
             {
-                var yieldInstruction = ObjectPool<YieldInstruction<T>>.TryTake<YieldInstruction<T>>()
-                    ?? new YieldInstruction<T>();
+                YieldInstruction<T> yieldInstruction;
+                s_spinLocker.Enter();
+                yieldInstruction = s_pool.IsNotEmpty
+                    ? s_pool.Pop()
+                    : new YieldInstruction<T>();
+                s_spinLocker.Exit();
+
                 yieldInstruction._disposeChecker = 0;
                 yieldInstruction._state = Promise.State.Pending;
                 yieldInstruction._retainCounter = 2; // 1 retain for complete, 1 for dispose.
-                promise.ContinueWith(yieldInstruction, (yi, resultContainer) =>
-                {
-                    yi._state = resultContainer.State;
-                    if (yi._state == Promise.State.Resolved)
+                promise
+                    .ContinueWith(yieldInstruction, (yi, resultContainer) =>
                     {
-                        yi._result = resultContainer.Result;
-                    }
-                    else
-                    {
-                        yi._value = resultContainer._target._valueContainer.Clone();
-                    }
-                    
-                    yi.MaybeDispose();
-                })
+                        var state = resultContainer.State;
+                        if (state == Promise.State.Resolved)
+                        {
+                            yi._result = resultContainer.Result;
+                        }
+                        else
+                        {
+                            yi._rejectContainer = resultContainer._target._rejectContainer;
+                        }
+                        yi._state = state;
+                        yi.MaybeDispose();
+                    })
                     .Forget();
                 return yieldInstruction;
             }
 
             public override void Dispose()
             {
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
+                if (Interlocked.CompareExchange(ref _disposeChecker, 1, 0) == 1)
+#else
                 if (Interlocked.Exchange(ref _disposeChecker, 1) == 1)
+#endif
                 {
                     throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", GetFormattedStacktrace(1));
                 }
@@ -229,14 +243,14 @@ namespace Proto.Promises
             {
                 if (Interlocked.Decrement(ref _retainCounter) == 0)
                 {
-                    var container = _value;
-                    _value = null;
-                    if (container != null)
-                    {
-                        ((ValueContainer) container).DisposeAndMaybeAddToUnhandledStack(false);
-                    }
+                    _rejectContainer = null;
 #if !PROMISE_DEBUG // Don't repool in DEBUG mode.
-                    ObjectPool<YieldInstruction<T>>.MaybeRepool(this);
+                    if (Promise.Config.ObjectPoolingEnabled)
+                    {
+                        s_spinLocker.Enter();
+                        s_pool.Push(this);
+                        s_spinLocker.Exit();
+                    }
 #endif
                 }
             }

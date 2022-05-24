@@ -20,12 +20,12 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        partial class PromiseRef
+        partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal sealed partial class FirstPromise : MultiHandleablePromiseBase
+            internal sealed partial class FirstPromise<TResult> : MultiHandleablePromiseBase<TResult>
             {
                 private FirstPromise() { }
 
@@ -40,13 +40,13 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
-                internal static FirstPromise GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                internal static FirstPromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<FirstPromise>()
-                        ?? new FirstPromise();
+                    var promise = ObjectPool.TryTake<FirstPromise<TResult>>()
+                        ?? new FirstPromise<TResult>();
 
                     promise._waitCount = pendingAwaits;
                     unchecked
@@ -65,7 +65,7 @@ namespace Proto.Promises
                         }
 #endif
                         passThrough.SetTargetAndAddToOwner(promise);
-                        if (promise._valueContainer != null)
+                        if (promise._rejectContainer != null)
                         {
                             // This was completed potentially before all passthroughs were hooked up. Release all remaining passthroughs.
                             int releaseCount = 0;
@@ -87,26 +87,27 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
                 {
                     var handler = passThrough.Owner;
-                    var valueContainer = handler._valueContainer;
                     nextHandler = null;
                     var state = handler.State;
                     if (state != Promise.State.Resolved) // Rejected/Canceled
                     {
                         handler.SuppressRejection = true;
                         if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
-                            && Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
+                            && Interlocked.CompareExchange(ref _rejectContainer, handler._rejectContainer, null) == null)
                         {
-                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler, ref executionScheduler);
+                            State = state;
+                            nextHandler = TakeOrHandleNextWaiter();
                         }
                     }
                     else // Resolved
                     {
-                        if (Interlocked.CompareExchange(ref _valueContainer, valueContainer, null) == null)
+                        if (Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
                         {
-                            SetResultAndTakeNextWaiter(valueContainer.Clone(), state, out nextHandler, ref executionScheduler);
+                            SetResult(handler.GetResult<TResult>());
+                            nextHandler = TakeOrHandleNextWaiter();
                         }
                         InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                     }
@@ -115,9 +116,9 @@ namespace Proto.Promises
             }
 
 #if PROMISE_PROGRESS
-            partial class FirstPromise
+            partial class FirstPromise<TResult>
             {
-                internal override PromiseSingleAwait IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
+                protected override PromiseRefBase IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
                 {
                     ThrowIfInPool(this);
 

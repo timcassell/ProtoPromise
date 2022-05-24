@@ -53,12 +53,12 @@ namespace Proto.Promises
         }
 
         // Calls to these get compiled away in RELEASE mode
-        partial class PromiseRef
+        partial class PromiseRefBase
         {
             partial void ValidateReturn(Promise other);
-            partial void ValidateAwait(PromiseRef other, short promiseId);
+            partial void ValidateAwait(PromiseRefBase other, short promiseId);
 
-            partial class DeferredPromiseBase
+            partial class DeferredPromiseBase<TResult>
             {
                 static partial void ValidateProgress(float progress, int skipFrames);
             }
@@ -75,7 +75,7 @@ namespace Proto.Promises
             StackTrace stackTrace = Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
                 ? GetStackTrace(skipFrames + 1)
                 : null;
-            traceable.Trace = new CausalityTrace(stackTrace, _currentTrace);
+            traceable.Trace = new CausalityTrace(stackTrace, ts_currentTrace);
         }
 
         static partial void SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable)
@@ -89,35 +89,38 @@ namespace Proto.Promises
 #if !CSHARP_7_3_OR_NEWER
         // This is only needed in older language versions that don't support ref structs.
         [ThreadStatic]
-        private static long _invokeId;
-        internal static long InvokeId { get { return _invokeId; } }
+        private static long ts_invokeId;
+        internal static long InvokeId { get { return ts_invokeId; } }
 
         static partial void IncrementInvokeId()
         {
-            ++_invokeId;
+            ++ts_invokeId;
         }
 #else
         internal static long InvokeId { get { return ValidIdFromApi; } }
 #endif // !CSHARP_7_3_OR_NEWER
 
         [ThreadStatic]
-        private static CausalityTrace _currentTrace;
+        private static CausalityTrace ts_currentTrace;
         [ThreadStatic]
-        private static Stack<CausalityTrace> _traces;
+        private static Stack<CausalityTrace> ts_traces;
 
         static partial void SetCurrentInvoker(ITraceable current)
         {
-            if (_traces == null)
+            if (ts_traces == null)
             {
-                _traces = new Stack<CausalityTrace>();
+                ts_traces = new Stack<CausalityTrace>();
             }
-            _traces.Push(_currentTrace);
-            _currentTrace = current.Trace;
+            ts_traces.Push(ts_currentTrace);
+            if (current != null)
+            {
+                ts_currentTrace = current.Trace;
+            }
         }
 
         static partial void ClearCurrentInvoker()
         {
-            _currentTrace = _traces.Pop();
+            ts_currentTrace = ts_traces.Pop();
             IncrementInvokeId();
         }
 
@@ -261,19 +264,19 @@ namespace Proto.Promises
             }
         }
 
-        partial class PromiseRef
+        partial class PromiseRefBase
         {
             partial void ValidateReturn(Promise other)
             {
                 ValidateAwait(other._target._ref, other._target.Id, false);
             }
 
-            partial void ValidateAwait(PromiseRef other, short promiseId)
+            partial void ValidateAwait(PromiseRefBase other, short promiseId)
             {
                 ValidateAwait(other, promiseId, true);
             }
 
-            private void ValidateAwait(PromiseRef other, short promiseId, bool awaited)
+            private void ValidateAwait(PromiseRefBase other, short promiseId, bool awaited)
             {
                 if (new Promise(other, promiseId, 0).IsValid == false)
                 {
@@ -296,8 +299,8 @@ namespace Proto.Promises
                     return;
                 }
                 // This allows us to check Merge/All/Race/First Promises iteratively.
-                Stack<PromiseRef> previouses = PreviousesForIterativeAlgorithm;
-                PromiseRef prev = other._previous;
+                Stack<PromiseRefBase> previouses = PreviousesForIterativeAlgorithm;
+                PromiseRefBase prev = other._previous;
             Repeat:
                 for (; prev != null; prev = prev._previous)
                 {
@@ -320,24 +323,24 @@ namespace Proto.Promises
             }
 
             [ThreadStatic]
-            private static Stack<PromiseRef> _previousesForIterativeAlgorithm;
-            private static Stack<PromiseRef> PreviousesForIterativeAlgorithm
+            private static Stack<PromiseRefBase> ts_previousesForIterativeAlgorithm;
+            private static Stack<PromiseRefBase> PreviousesForIterativeAlgorithm
             {
                 get
                 {
-                    if (_previousesForIterativeAlgorithm == null)
+                    if (ts_previousesForIterativeAlgorithm == null)
                     {
-                        _previousesForIterativeAlgorithm = new Stack<PromiseRef>();
+                        ts_previousesForIterativeAlgorithm = new Stack<PromiseRefBase>();
                     }
-                    return _previousesForIterativeAlgorithm;
+                    return ts_previousesForIterativeAlgorithm;
                 }
             }
 
-            protected virtual void BorrowPassthroughs(Stack<PromiseRef> borrower) { }
+            protected virtual void BorrowPassthroughs(Stack<PromiseRefBase> borrower) { }
 
-            partial class MultiHandleablePromiseBase
+            partial class MultiHandleablePromiseBase<TResult>
             {
-                protected override void BorrowPassthroughs(Stack<PromiseRef> borrower)
+                protected override void BorrowPassthroughs(Stack<PromiseRefBase> borrower)
                 {
                     lock (_previousPromises)
                     {
@@ -355,14 +358,6 @@ namespace Proto.Promises
                     {
                         _previousPromises.Clear();
                     }
-                }
-            }
-
-            partial class DeferredPromiseBase
-            {
-                static partial void ValidateProgress(float progress, int skipFrames)
-                {
-                    ValidateProgressValue(progress, "progress", skipFrames + 1);
                 }
             }
         }

@@ -149,10 +149,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
 #endif
-    public abstract class UnhandledException : Exception, Internal.ILinked<UnhandledException>
+    public abstract class UnhandledException : Exception
     {
-        UnhandledException Internal.ILinked<UnhandledException>.Next { get; set; }
-
         private readonly object _value;
         private readonly string _stackTrace;
 
@@ -226,7 +224,7 @@ namespace Proto.Promises
     public class RethrowException : Exception, Internal.IRejectionToContainer
     {
 #if !PROMISE_DEBUG
-        private static readonly RethrowException _instance = new RethrowException();
+        private static readonly RethrowException s_instance = new RethrowException();
 #endif
 
         protected RethrowException() { }
@@ -236,11 +234,11 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             return new RethrowException(); // Don't re-use instance in DEBUG mode so that we can read its stacktrace on any thread.
 #else
-            return _instance;
+            return s_instance;
 #endif
         }
 
-        Internal.ValueContainer Internal.IRejectionToContainer.ToContainer(Internal.ITraceable traceable)
+        Internal.RejectContainer Internal.IRejectionToContainer.ToContainer(Internal.ITraceable traceable)
         {
 #if PROMISE_DEBUG
             string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(this, true) });
@@ -248,7 +246,7 @@ namespace Proto.Promises
             string stacktrace = new StackTrace(this, true).ToString();
 #endif
             Exception exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-            return Internal.RejectionContainerException.GetOrCreate(exception);
+            return Internal.RejectionContainerException.Create(exception);
         }
     }
 

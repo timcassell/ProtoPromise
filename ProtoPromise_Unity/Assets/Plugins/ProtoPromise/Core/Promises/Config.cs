@@ -58,7 +58,7 @@ namespace Proto.Promises
         public static partial class Config
         {
             [Obsolete("Use ProgressPrecision to get the precision of progress reports.")]
-            public static readonly int ProgressDecimalBits = Internal.PromiseRef.Fixed32.DecimalBits;
+            public static readonly int ProgressDecimalBits = Internal.PromiseRefBase.Fixed32.DecimalBits;
 
             /// <summary>
             /// The maximum precision of progress reports.
@@ -66,7 +66,7 @@ namespace Proto.Promises
 #if !PROMISE_PROGRESS
             [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
-            public static readonly float ProgressPrecision = (float) (1d / Math.Pow(2d, Internal.PromiseRef.Fixed32.DecimalBits));
+            public static readonly float ProgressPrecision = (float) (1d / Math.Pow(2d, Internal.PromiseRefBase.Fixed32.DecimalBits));
 
             [Obsolete("Use ObjectPoolingEnabled instead.")]
             public static PoolType ObjectPooling 
@@ -85,13 +85,13 @@ namespace Proto.Promises
                 set { }
             }
 #else
-            volatile private static bool _objectPoolingEnabled = true; // Enabled by default.
+            volatile private static bool s_objectPoolingEnabled = true; // Enabled by default.
             public static bool ObjectPoolingEnabled
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _objectPoolingEnabled; } 
+                get { return s_objectPoolingEnabled; } 
                 [MethodImpl(Internal.InlineOption)]
-                set { _objectPoolingEnabled = value; } 
+                set { s_objectPoolingEnabled = value; } 
             }
 #endif
 
@@ -102,11 +102,11 @@ namespace Proto.Promises
             public static TraceLevel DebugCausalityTracer
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _debugCausalityTracer; }
+                get { return s_debugCausalityTracer; }
                 [MethodImpl(Internal.InlineOption)]
-                set { _debugCausalityTracer = value; }
+                set { s_debugCausalityTracer = value; }
             }
-            volatile private static TraceLevel _debugCausalityTracer = TraceLevel.Rejections;
+            volatile private static TraceLevel s_debugCausalityTracer = TraceLevel.Rejections;
 #else
             public static TraceLevel DebugCausalityTracer
             {
@@ -124,11 +124,11 @@ namespace Proto.Promises
             public static Action<UnhandledException> UncaughtRejectionHandler
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _uncaughtRejectionHandler; }
+                get { return s_uncaughtRejectionHandler; }
                 [MethodImpl(Internal.InlineOption)]
-                set { _uncaughtRejectionHandler = value; }
+                set { s_uncaughtRejectionHandler = value; }
             }
-            volatile private static Action<UnhandledException> _uncaughtRejectionHandler;
+            volatile private static Action<UnhandledException> s_uncaughtRejectionHandler;
 
             /// <summary>
             /// The <see cref="SynchronizationContext"/> used to marshal work to the UI thread.
@@ -136,14 +136,13 @@ namespace Proto.Promises
             public static SynchronizationContext ForegroundContext
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _foregroundContext; }
+                get { return s_foregroundContext; }
                 set
                 {
-                    _foregroundContext = value;
-                    Internal._foregroundSynchronizationHandler = new Internal.SynchronizationHandler(value);
+                    s_foregroundContext = value;
                 }
             }
-            volatile private static SynchronizationContext _foregroundContext;
+            volatile private static SynchronizationContext s_foregroundContext;
 
             /// <summary>
             /// The <see cref="SynchronizationContext"/> used to marshal work to a background thread. If this is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> is used.
@@ -151,12 +150,13 @@ namespace Proto.Promises
             public static SynchronizationContext BackgroundContext
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _backgroundContext; }
+                get { return s_backgroundContext; }
                 [MethodImpl(Internal.InlineOption)]
-                set { _backgroundContext = value; }
+                set { s_backgroundContext = value; }
             }
-            volatile private static SynchronizationContext _backgroundContext;
+            volatile private static SynchronizationContext s_backgroundContext;
 
+            // TODO: add EditorBrowsable(EditorBrowsableState.Never) to all obsolete APIs.
             [Obsolete]
             public static Action<string> WarningHandler { get; set; }
         }

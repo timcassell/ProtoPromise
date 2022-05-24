@@ -1,6 +1,7 @@
 ﻿using Proto.Promises.Threading;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
@@ -72,9 +73,8 @@ namespace Proto.Promises
             private static PromiseBehaviour _instance;
 
             private readonly PromiseSynchronizationContext _syncContext = new PromiseSynchronizationContext();
-            // These must not be readonly.
-            private Internal.ValueLinkedStack<UnhandledException> _unhandledExceptions = new Internal.ValueLinkedStack<UnhandledException>();
-            private Internal.SpinLocker _unhandledExceptionsLocker;
+            private Queue<UnhandledException> _currentlyReportingExceptions = new Queue<UnhandledException>();
+            private Queue<UnhandledException> _unhandledExceptions = new Queue<UnhandledException>();
 
             [MethodImpl(Internal.InlineOption)]
             internal static void Init()
@@ -134,9 +134,10 @@ namespace Proto.Promises
 
             private void HandleRejection(UnhandledException exception)
             {
-                _unhandledExceptionsLocker.Enter();
-                _unhandledExceptions.Push(exception);
-                _unhandledExceptionsLocker.Exit();
+                lock (_unhandledExceptions)
+                {
+                    _unhandledExceptions.Enqueue(exception);
+                }
             }
 
             // Execute SynchronizationContext callback in Coroutine rather than in Update.
@@ -161,16 +162,19 @@ namespace Proto.Promises
             private void Update()
             {
                 // Pop and pass to UnityEngine.Debug here so Unity won't add extra stackframes that we don't care about.
-                _unhandledExceptionsLocker.Enter();
-                var unhandledExceptions = _unhandledExceptions;
-                _unhandledExceptions = new Internal.ValueLinkedStack<UnhandledException>();
-                _unhandledExceptionsLocker.Exit();
+                object locker = _unhandledExceptions;
+                lock (locker)
+                {
+                    var temp = _unhandledExceptions;
+                    _unhandledExceptions = _currentlyReportingExceptions;
+                    _currentlyReportingExceptions = temp;
+                }
 
-                while (unhandledExceptions.IsNotEmpty)
+                while (_currentlyReportingExceptions.Count > 0)
                 {
                     // Unfortunately, Unity does not provide a means to completely eliminate the stack trace at the point of calling `Debug.Log`, so the log will always have at least 1 extra stack frame.
                     // This implementation minimizes it to 1 extra stack frame always (because `Update()` is called from Unity's side, and they do not include their own internal stack traces).
-                    Debug.LogException(unhandledExceptions.Pop());
+                    Debug.LogException(_currentlyReportingExceptions.Dequeue());
                 }
             }
         }

@@ -41,8 +41,8 @@ namespace Proto.Promises
         // Make collections class instead of struct, and inherit TraceableCollection for debugging purposes.
         partial class ValueLinkedStack<T> : TraceableCollection
         {
-            internal ValueLinkedStack() : base() { }
-            
+            internal ValueLinkedStack() { }
+
             private void AssertNotInCollection(T item)
             {
                 CollectionChecker<T>.AssertNotInCollection(item, this);
@@ -51,17 +51,17 @@ namespace Proto.Promises
 
         partial class ValueLinkedStackSafe<T> : TraceableCollection
         {
-            internal ValueLinkedStackSafe() : base() { }
+            internal ValueLinkedStackSafe() { }
 
-            private void AssertNotInCollection(T item)
+            private void AssertNotInCollection(HandleablePromiseBase item)
             {
-                CollectionChecker<T>.AssertNotInCollection(item, this);
+                CollectionChecker<HandleablePromiseBase>.AssertNotInCollection(item, this);
             }
         }
 
         partial class ValueLinkedQueue<T> : TraceableCollection
         {
-            internal ValueLinkedQueue() : base() { }
+            internal ValueLinkedQueue() { }
 
             private void AssertNotInCollection(T item)
             {
@@ -69,9 +69,9 @@ namespace Proto.Promises
             }
         }
 
-        partial class ValueWriteOnlyLinkedQueue<T> : TraceableCollection
+        partial class ValueList<T> : TraceableCollection
         {
-            internal ValueWriteOnlyLinkedQueue() : base() { }
+            internal ValueList() { }
 
             private void AssertNotInCollection(T item)
             {
@@ -87,16 +87,16 @@ namespace Proto.Promises
 
         private static class CollectionChecker<T> where T : class, ILinked<T>
         {
-            private static readonly Dictionary<T, TraceableCollection> _itemsInACollection = new Dictionary<T, TraceableCollection>();
+            private static readonly Dictionary<T, TraceableCollection> s_itemsInACollection = new Dictionary<T, TraceableCollection>();
 
             internal static void AssertNotInCollection(T item, TraceableCollection newCollection)
             {
                 TraceableCollection currentCollection;
-                lock (_itemsInACollection)
+                lock (s_itemsInACollection)
                 {
-                    if (!_itemsInACollection.TryGetValue(item, out currentCollection) && item.Next == null)
+                    if (!s_itemsInACollection.TryGetValue(item, out currentCollection) && item.Next == null)
                     {
-                        _itemsInACollection.Add(item, newCollection);
+                        s_itemsInACollection.Add(item, newCollection);
                         return;
                     }
                 }
@@ -110,9 +110,9 @@ namespace Proto.Promises
 
             internal static void Remove(T item)
             {
-                lock (_itemsInACollection)
+                lock (s_itemsInACollection)
                 {
-                    _itemsInACollection.Remove(item);
+                    s_itemsInACollection.Remove(item);
                 }
             }
         }
@@ -297,46 +297,64 @@ namespace Proto.Promises
         [DebuggerNonUserCode]
 #endif
 #if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
-        internal partial class ValueLinkedStackSafe<T> where T : class, ILinked<T>
+        internal partial class ValueLinkedStackSafe<T> where T : HandleablePromiseBase
 #else
-        internal struct ValueLinkedStackSafe<T> where T : class, ILinked<T>
+        internal struct ValueLinkedStackSafe<T> where T : HandleablePromiseBase
 #endif
         {
-            volatile private T _head;
+            // TODO: figure out why Interlocked.CompareExchange without SpinLocker is breaking concurrency tests
+            volatile private HandleablePromiseBase _head;
+            private SpinLocker _spinner;
+
+            [MethodImpl(InlineOption)]
+            internal ValueLinkedStackSafe(HandleablePromiseBase tailSentinel)
+            {
+                // Sentinel is PromiseRefBase.InvalidAwaitSentinel.s_instance
+                _head = tailSentinel;
+                _spinner = new SpinLocker();
+            }
 
             [MethodImpl(InlineOption)]
             internal void ClearUnsafe()
             {
                 // Worst case scenario, ClearUnsafe() is called concurrently with Push() and/or TryPop() and the objects are re-pooled.
                 // Very low probability, probably not a big deal, not worth adding an extra lock.
-                _head = null;
+                _head = PromiseRefBase.InvalidAwaitSentinel.s_instance;
             }
 
             [MethodImpl(InlineOption)]
-            internal void Push(T item, ref SpinLocker locker)
+            internal void Push(T item)
             {
-                AssertNotInCollection(item);
+                AssertNotInCollection((HandleablePromiseBase) item);
 
-                locker.Enter();
-                item.Next = _head;
+                _spinner.Enter();
+                item._next = _head;
                 _head = item;
-                locker.Exit();
+                _spinner.Exit();
             }
 
             [MethodImpl(InlineOption)]
-            internal T TryPop(ref SpinLocker locker)
+            internal T TryPop()
             {
-                locker.Enter();
-                T obj = _head;
-                if (obj == null)
+                _spinner.Enter();
+                HandleablePromiseBase head = _head;
+                _head = head._next;
+                _spinner.Exit();
+                if (head == PromiseRefBase.InvalidAwaitSentinel.s_instance)
                 {
-                    locker.Exit();
                     return null;
                 }
-                _head = obj.Next;
-                locker.Exit();
-                MarkRemovedFromCollection(obj);
-                return obj;
+                MarkRemovedFromCollection(head);
+                return head.UnsafeAs<T>();
+            }
+
+            [MethodImpl(InlineOption)]
+            static private void MarkRemovedFromCollection(HandleablePromiseBase item)
+            {
+                item._next = null;
+#if PROMISE_DEBUG
+                CollectionChecker<HandleablePromiseBase>.Remove(item);
+#endif
             }
         }
 
@@ -391,7 +409,7 @@ namespace Proto.Promises
 
             internal ValueLinkedStack<T> MoveElementsToStack()
             {
-                ValueLinkedStack<T> newStack = new ValueLinkedStack<T>(_head);
+                var newStack = new ValueLinkedStack<T>(_head);
                 _head = null;
                 _tail = null;
                 return newStack;
@@ -421,49 +439,55 @@ namespace Proto.Promises
         [DebuggerNonUserCode]
 #endif
 #if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
-        internal partial class ValueWriteOnlyLinkedQueue<T> where T : class, ILinked<T>
+        internal partial class ValueList<T> where T : class, ILinked<T>
 #else
-        internal struct ValueWriteOnlyLinkedQueue<T> where T : class, ILinked<T>
+        internal struct ValueList<T> where T : class, ILinked<T>
 #endif
         {
-            // TODO: sentinel can be removed as a field and passed in as an argument to save 4/8 bytes of memory.
-            private readonly ILinked<T> _sentinel;
-            private ILinked<T> _tail;
+            // This structure is a specialized version of List<T> without the extra object overhead and unused methods.
+            // Individual elements cannot be removed or modified, only all elements can be cleared at once.
+            // This specialization is made use of in PromiseMultiAwait for increasing concurrency while invoking progress,
+            // so threads may iterate over the data while new data is being added.
 
-            internal bool IsEmpty
+            private T[] _storage;
+            private int _count;
+
+            internal int Count
             {
                 [MethodImpl(InlineOption)]
-                get { return _sentinel.Next == null; }
+                // _storage will be null if this is default.
+                get { return _storage == null ? 0 : _count; }
+            }
+
+            internal T this[int index]
+            {
+                [MethodImpl(InlineOption)]
+                get { return _storage[index]; }
             }
 
             [MethodImpl(InlineOption)]
-            internal ValueWriteOnlyLinkedQueue(ILinked<T> sentinel)
+            internal ValueList(int capacity)
             {
-                _tail = _sentinel = sentinel;
+                _storage = new T[Math.Max(capacity, 8)];
+                _count = 0;
             }
 
-            internal void Enqueue(T item)
+            [MethodImpl(InlineOption)]
+            internal void Add(T item)
             {
-                AssertNotInCollection(item);
-
-                _tail.Next = item;
-                _tail = item;
+                if (_storage.Length <= _count)
+                {
+                    Array.Resize(ref _storage, _count * 2);
+                }
+                _storage[_count] = item;
+                ++_count;
             }
 
-            internal ValueLinkedStack<T> MoveElementsToStack()
+            [MethodImpl(InlineOption)]
+            internal void Clear()
             {
-                ValueLinkedStack<T> newStack = new ValueLinkedStack<T>(_sentinel.Next);
-                _sentinel.Next = null;
-                _tail = _sentinel;
-                return newStack;
-            }
-
-            internal ValueLinkedQueue<T> MoveElementsToQueue()
-            {
-                ValueLinkedQueue<T> newQueue = new ValueLinkedQueue<T>(_sentinel.Next, _tail as T);
-                _sentinel.Next = null;
-                _tail = _sentinel;
-                return newQueue;
+                _count = 0;
+                Array.Clear(_storage, 0, _storage.Length);
             }
         }
 
@@ -475,16 +499,20 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
 #endif
-            private sealed class Node : ILinked<Node>
+            private sealed class Node : HandleablePromiseBase, ILinked<Node>
             {
-                Node ILinked<Node>.Next { get; set; }
+                Node ILinked<Node>.Next
+                {
+                    get { return _next.UnsafeAs<Node>(); }
+                    set { _next = value; }
+                }
 
                 internal T _value;
 
                 [MethodImpl(InlineOption)]
                 internal static Node GetOrCreate(T value)
                 {
-                    var node = ObjectPool<Node>.TryTake<Node>()
+                    var node = ObjectPool.TryTake<Node>()
                         ?? new Node();
                     node._value = value;
                     return node;
@@ -494,7 +522,7 @@ namespace Proto.Promises
                 internal void Dispose()
                 {
                     _value = default(T);
-                    ObjectPool<Node>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
             }
 

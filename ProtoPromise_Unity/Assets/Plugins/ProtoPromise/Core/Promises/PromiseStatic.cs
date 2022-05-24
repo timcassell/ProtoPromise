@@ -14,22 +14,22 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1._target.Depth, promise2._target.Depth);
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._target._ref == null | promise2._target._ref == null)
+            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, false);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, false);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
 
-            var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 2, depth);
+            var promise = Internal.PromiseRefBase.RacePromise<Internal.VoidResult>.GetOrCreate(passThroughs, 2, depth);
             return new Promise(promise, promise.Id, depth);
         }
 
@@ -39,25 +39,25 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1._target.Depth, Math.Min(promise2._target.Depth, promise3._target.Depth));
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
+            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel | promise3._target._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, false);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, false);
                 Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, false);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
 
-            var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 3, depth);
+            var promise = Internal.PromiseRefBase.RacePromise<Internal.VoidResult>.GetOrCreate(passThroughs, 3, depth);
             return new Promise(promise, promise.Id, depth);
         }
 
@@ -67,7 +67,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1._target.Depth, Math.Min(promise2._target.Depth, Math.Min(promise3._target.Depth, promise4._target.Depth)));
 
@@ -75,7 +75,7 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
+            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel | promise3._target._ref == Internal.PromiseResolvedSentinel | promise4._target._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, false);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, false);
@@ -83,12 +83,12 @@ namespace Proto.Promises
                 Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, false);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
 
-            var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, 4, depth);
+            var promise = Internal.PromiseRefBase.RacePromise<Internal.VoidResult>.GetOrCreate(passThroughs, 4, depth);
             return new Promise(promise, promise.Id, depth);
         }
 
@@ -121,7 +121,7 @@ namespace Proto.Promises
             {
                 throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
             }
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ushort minDepth = ushort.MaxValue;
 
@@ -150,7 +150,7 @@ namespace Proto.Promises
                 ++pendingCount;
             } while (promises.MoveNext());
 
-            var promise = Internal.PromiseRef.RacePromise.GetOrCreate(passThroughs, pendingCount, minDepth);
+            var promise = Internal.PromiseRefBase.RacePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, minDepth);
             return new Promise(promise, promise.Id, minDepth);
         }
 
@@ -196,22 +196,22 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1._target.Depth, promise2._target.Depth);
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._target._ref == null | promise2._target._ref == null)
+            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, true);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, true);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
 
-            var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 2, depth);
+            var promise = Internal.PromiseRefBase.FirstPromise<Internal.VoidResult>.GetOrCreate(passThroughs, 2, depth);
             return new Promise(promise, promise.Id, depth);
         }
 
@@ -221,25 +221,25 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1._target.Depth, Math.Min(promise2._target.Depth, promise3._target.Depth));
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null)
+            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel | promise3._target._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, true);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, true);
                 Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, true);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
 
-            var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 3, depth);
+            var promise = Internal.PromiseRefBase.FirstPromise<Internal.VoidResult>.GetOrCreate(passThroughs, 3, depth);
             return new Promise(promise, promise.Id, depth);
         }
 
@@ -249,7 +249,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ushort depth = Math.Min(promise1._target.Depth, Math.Min(promise2._target.Depth, Math.Min(promise3._target.Depth, promise4._target.Depth)));
 
@@ -257,7 +257,7 @@ namespace Proto.Promises
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._target._ref == null | promise2._target._ref == null | promise3._target._ref == null | promise4._target._ref == null)
+            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel | promise3._target._ref == Internal.PromiseResolvedSentinel | promise4._target._ref == Internal.PromiseResolvedSentinel)
             {
                 Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, true);
                 Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, true);
@@ -265,12 +265,12 @@ namespace Proto.Promises
                 Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, true);
                 return Internal.CreateResolved(depth);
             }
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRef.PromisePassThrough.GetOrCreate(promise4, 3));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
 
-            var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, 4, depth);
+            var promise = Internal.PromiseRefBase.FirstPromise<Internal.VoidResult>.GetOrCreate(passThroughs, 4, depth);
             return new Promise(promise, promise.Id, depth);
         }
 
@@ -303,7 +303,7 @@ namespace Proto.Promises
             {
                 throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(1));
             }
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ushort minDepth = ushort.MaxValue;
 
@@ -332,7 +332,7 @@ namespace Proto.Promises
                 ++pendingCount;
             } while (promises.MoveNext());
 
-            var promise = Internal.PromiseRef.FirstPromise.GetOrCreate(passThroughs, pendingCount, minDepth);
+            var promise = Internal.PromiseRefBase.FirstPromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, minDepth);
             return new Promise(promise, promise.Id, minDepth);
         }
 
@@ -440,7 +440,7 @@ namespace Proto.Promises
             }
 
             // Invoke funcs and normalize the progress.
-            Promise promise = new Promise(null, Internal.ValidIdFromApi, Internal.NegativeOneDepth);
+            var promise = new Promise(Internal.PromiseResolvedSentinel, Internal.ValidIdFromApi, Internal.NegativeOneDepth);
             do
             {
                 promise = promise.Then(promiseFuncs.Current, cancelationToken);
@@ -454,7 +454,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -469,7 +469,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, completedProgress, totalProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.MergePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise(promise, promise.Id, maxDepth);
         }
 
@@ -479,7 +479,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -496,7 +496,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, completedProgress, totalProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.MergePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise(promise, promise.Id, maxDepth);
         }
 
@@ -506,7 +506,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -525,7 +525,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, completedProgress, totalProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.MergePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise(promise, promise.Id, maxDepth);
         }
 
@@ -554,7 +554,7 @@ namespace Proto.Promises
         public static Promise All<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, "promises", 1);
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -572,7 +572,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, pendingCount, completedProgress, totalProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.MergePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise(promise, promise.Id, maxDepth);
         }
 
@@ -625,7 +625,7 @@ namespace Proto.Promises
         public static Promise<T1> Merge<T1>(Promise<T1> promise1, Promise promise2)
         {
             T1 value = default(T1);
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -640,22 +640,13 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            // Check for reference type to not create new object pools for every T1 type.
-            var promise = null == default(T1) && !typeof(T1).IsValueType
-                ? Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, (object) value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<T1>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref T1 target, int index) =>
+            {
+                if (index == 0)
                 {
-                    if (index == 0)
-                    {
-                        target.value = feed.GetValue<object>();
-                    }
-                }, pendingCount, completedProgress, totalProgress, maxDepth)
-                : Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
-                {
-                    if (index == 0)
-                    {
-                        target.value = feed.GetValue<T1>();
-                    }
-                }, pendingCount, completedProgress, totalProgress, maxDepth);
+                    target = feed.GetResult<T1>();
+                }
+            }, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise<T1>(promise, promise.Id, maxDepth);
         }
 
@@ -666,7 +657,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2>> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
         {
             var value = new ValueTuple<T1, T2>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -681,15 +672,15 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2> target, int index) =>
             {
                 if (index == 0)
                 {
-                    target.value.Item1 = feed.GetValue<T1>();
+                    target.Item1 = feed.GetResult<T1>();
                 }
                 else
                 {
-                    target.value.Item2 = feed.GetValue<T2>();
+                    target.Item2 = feed.GetResult<T2>();
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, maxDepth);
@@ -702,7 +693,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2>> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
         {
             var value = new ValueTuple<T1, T2>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -719,15 +710,15 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2> target, int index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = feed.GetValue<T1>();
+                        target.Item1 = feed.GetResult<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = feed.GetValue<T2>();
+                        target.Item2 = feed.GetResult<T2>();
                         break;
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);
@@ -741,7 +732,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3>> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
         {
             var value = new ValueTuple<T1, T2, T3>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -758,18 +749,18 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3> target, int index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = feed.GetValue<T1>();
+                        target.Item1 = feed.GetResult<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = feed.GetValue<T2>();
+                        target.Item2 = feed.GetResult<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = feed.GetValue<T3>();
+                        target.Item3 = feed.GetResult<T3>();
                         break;
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);
@@ -783,7 +774,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3>> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
         {
             var value = new ValueTuple<T1, T2, T3>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -802,18 +793,18 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3> target, int index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = feed.GetValue<T1>();
+                        target.Item1 = feed.GetResult<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = feed.GetValue<T2>();
+                        target.Item2 = feed.GetResult<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = feed.GetValue<T3>();
+                        target.Item3 = feed.GetResult<T3>();
                         break;
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);
@@ -827,7 +818,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4>> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
         {
             var value = new ValueTuple<T1, T2, T3, T4>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -846,21 +837,21 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4> target, int index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = feed.GetValue<T1>();
+                        target.Item1 = feed.GetResult<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = feed.GetValue<T2>();
+                        target.Item2 = feed.GetResult<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = feed.GetValue<T3>();
+                        target.Item3 = feed.GetResult<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = feed.GetValue<T4>();
+                        target.Item4 = feed.GetResult<T4>();
                         break;
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);
@@ -874,7 +865,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4>> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
         {
             var value = new ValueTuple<T1, T2, T3, T4>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -895,21 +886,21 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4> target, int index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = feed.GetValue<T1>();
+                        target.Item1 = feed.GetResult<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = feed.GetValue<T2>();
+                        target.Item2 = feed.GetResult<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = feed.GetValue<T3>();
+                        target.Item3 = feed.GetResult<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = feed.GetValue<T4>();
+                        target.Item4 = feed.GetResult<T4>();
                         break;
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);
@@ -923,7 +914,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5>> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -944,24 +935,24 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5> target, int index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = feed.GetValue<T1>();
+                        target.Item1 = feed.GetResult<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = feed.GetValue<T2>();
+                        target.Item2 = feed.GetResult<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = feed.GetValue<T3>();
+                        target.Item3 = feed.GetResult<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = feed.GetValue<T4>();
+                        target.Item4 = feed.GetResult<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = feed.GetValue<T5>();
+                        target.Item5 = feed.GetResult<T5>();
                         break;
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);
@@ -975,7 +966,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5>> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -998,24 +989,24 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5> target, int index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = feed.GetValue<T1>();
+                        target.Item1 = feed.GetResult<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = feed.GetValue<T2>();
+                        target.Item2 = feed.GetResult<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = feed.GetValue<T3>();
+                        target.Item3 = feed.GetResult<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = feed.GetValue<T4>();
+                        target.Item4 = feed.GetResult<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = feed.GetValue<T5>();
+                        target.Item5 = feed.GetResult<T5>();
                         break;
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);
@@ -1029,7 +1020,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6>> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -1052,27 +1043,27 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5, T6> target, int index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = feed.GetValue<T1>();
+                        target.Item1 = feed.GetResult<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = feed.GetValue<T2>();
+                        target.Item2 = feed.GetResult<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = feed.GetValue<T3>();
+                        target.Item3 = feed.GetResult<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = feed.GetValue<T4>();
+                        target.Item4 = feed.GetResult<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = feed.GetValue<T5>();
+                        target.Item5 = feed.GetResult<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = feed.GetValue<T6>();
+                        target.Item6 = feed.GetResult<T6>();
                         break;
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);
@@ -1086,7 +1077,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6>> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -1111,27 +1102,27 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5, T6> target, int index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = feed.GetValue<T1>();
+                        target.Item1 = feed.GetResult<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = feed.GetValue<T2>();
+                        target.Item2 = feed.GetResult<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = feed.GetValue<T3>();
+                        target.Item3 = feed.GetResult<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = feed.GetValue<T4>();
+                        target.Item4 = feed.GetResult<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = feed.GetValue<T5>();
+                        target.Item5 = feed.GetResult<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = feed.GetValue<T6>();
+                        target.Item6 = feed.GetResult<T6>();
                         break;
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);
@@ -1145,7 +1136,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6, T7>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -1170,30 +1161,30 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5, T6, T7> target, int index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = feed.GetValue<T1>();
+                        target.Item1 = feed.GetResult<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = feed.GetValue<T2>();
+                        target.Item2 = feed.GetResult<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = feed.GetValue<T3>();
+                        target.Item3 = feed.GetResult<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = feed.GetValue<T4>();
+                        target.Item4 = feed.GetResult<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = feed.GetValue<T5>();
+                        target.Item5 = feed.GetResult<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = feed.GetValue<T6>();
+                        target.Item6 = feed.GetResult<T6>();
                         break;
                     case 6:
-                        target.value.Item7 = feed.GetValue<T7>();
+                        target.Item7 = feed.GetResult<T7>();
                         break;
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);
@@ -1207,7 +1198,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7, Promise promise8)
         {
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6, T7>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRef.PromisePassThrough>();
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
             ulong totalProgress = 0;
@@ -1234,30 +1225,30 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRef.MergePromise.GetOrCreate(passThroughs, value, (feed, target, index) =>
+            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5, T6, T7> target, int index) =>
             {
                 switch (index)
                 {
                     case 0:
-                        target.value.Item1 = feed.GetValue<T1>();
+                        target.Item1 = feed.GetResult<T1>();
                         break;
                     case 1:
-                        target.value.Item2 = feed.GetValue<T2>();
+                        target.Item2 = feed.GetResult<T2>();
                         break;
                     case 2:
-                        target.value.Item3 = feed.GetValue<T3>();
+                        target.Item3 = feed.GetResult<T3>();
                         break;
                     case 3:
-                        target.value.Item4 = feed.GetValue<T4>();
+                        target.Item4 = feed.GetResult<T4>();
                         break;
                     case 4:
-                        target.value.Item5 = feed.GetValue<T5>();
+                        target.Item5 = feed.GetResult<T5>();
                         break;
                     case 5:
-                        target.value.Item6 = feed.GetValue<T6>();
+                        target.Item6 = feed.GetResult<T6>();
                         break;
                     case 6:
-                        target.value.Item7 = feed.GetValue<T7>();
+                        target.Item7 = feed.GetResult<T7>();
                         break;
                 }
             }, pendingCount, completedProgress, totalProgress, maxDepth);

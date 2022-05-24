@@ -29,232 +29,97 @@ namespace Proto.Promises
 #endif
     internal static partial class Internal
     {
-        // This is used to optimize foreground synchronization so that multiple promises can use a single SynchronizationContext.Post call.
-        volatile internal static SynchronizationHandler _foregroundSynchronizationHandler;
+        // This is used to detect if we're currently executing on the context we're going to schedule to, so we can just invoke synchronously instead.
+        [ThreadStatic]
+        private static SynchronizationContext ts_currentContext;
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-        internal sealed partial class SynchronizationHandler : ILinked<HandleablePromiseBase>
+        private static readonly SendOrPostCallback s_synchronizationContextHandleCallback = HandleFromContext;
+        private static readonly WaitCallback s_threadPoolHandleCallback = HandleFromContext;
+
+        private static void ScheduleForHandle(HandleablePromiseBase handleable, SynchronizationContext context)
         {
-            private static readonly SendOrPostCallback _synchronizationContextCallback = ExecuteFromContext;
-
-            HandleablePromiseBase ILinked<HandleablePromiseBase>.Next { get; set; }
-
-            internal readonly SynchronizationContext _context;
-            // These must not be readonly.
-            private ValueWriteOnlyLinkedQueue<HandleablePromiseBase> _handleQueue;
-            private SpinLocker _locker;
-            volatile private bool _isScheduled = false;
-
-            internal SynchronizationHandler(SynchronizationContext synchronizationContext)
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            if (context == null)
             {
-                _context = synchronizationContext;
-                _handleQueue = new ValueWriteOnlyLinkedQueue<HandleablePromiseBase>(this);
-                InitProgress();
+                throw new InvalidOperationException("context cannot be null");
             }
-
-            private static void ExecuteFromContext(object state)
+#endif
+            if (context == BackgroundSynchronizationContextSentinel.s_instance)
             {
-                ((SynchronizationHandler) state).Execute();
+                ThreadPool.QueueUserWorkItem(s_threadPoolHandleCallback, handleable);
             }
-
-            internal void PostHandleable(HandleablePromiseBase handleable)
+            else
             {
-                _locker.Enter();
-                bool wasScheduled = _isScheduled;
-                _isScheduled = true;
-                _handleQueue.Enqueue(handleable);
-                _locker.Exit();
-
-                if (!wasScheduled)
-                {
-                    _context.Post(_synchronizationContextCallback, this);
-                }
+                context.Post(s_synchronizationContextHandleCallback, handleable);
             }
-
-            internal void Execute()
-            {
-                ValueLinkedQueue<IProgressInvokable> progressStack = new ValueLinkedQueue<IProgressInvokable>();
-                _locker.Enter();
-                ValueLinkedStack<HandleablePromiseBase> handleStack = _handleQueue.MoveElementsToStack();
-                TakeProgress(ref progressStack);
-                _isScheduled = false;
-                _locker.Exit();
-
-                new ExecutionScheduler(this, handleStack, progressStack).Execute();
-            }
-
-            partial void InitProgress();
-            partial void TakeProgress(ref ValueLinkedQueue<IProgressInvokable> progressStack);
         }
 
+        private static void HandleFromContext(object state)
+        {
+            // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
+            try
+            {
+                state.UnsafeAs<HandleablePromiseBase>().HandleFromContext();
+            }
+            catch (Exception e)
+            {
+                // This should never happen.
+                ReportRejection(e, state as ITraceable);
+            }
+        }
+
+        // This is used to facilitate stack unwinding in PromiseMultiAwaits to prevent StackOverflowExceptions in the case of very long promise chains.
+        // Also used for synchronous progress invoke to prevent deadlocks.
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal
-#if CSHARP_7_3_OR_NEWER
-            ref // Force to use only on the CPU stack.
-#endif
-            partial struct ExecutionScheduler
+        private partial struct StackUnwindHelper
         {
-            private static readonly WaitCallback _threadPoolCallback = ExecuteFromContext;
-            private static readonly SendOrPostCallback _synchronizationContextCallback = ExecuteFromContext;
-
-            internal ValueLinkedStack<HandleablePromiseBase> _handleStack;
-            private readonly SynchronizationHandler _synchronizationHandler;
-#if PROMISE_PROGRESS
-            private ValueLinkedQueue<IProgressInvokable> _progressQueue;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            private bool _isExecutingProgress;
-#endif
-#endif
+            [ThreadStatic]
+            private static bool ts_isUnwinding;
+            [ThreadStatic]
+            private static Stack<HandleablePromiseBase> ts_handlers;
 
             [MethodImpl(InlineOption)]
-            internal ExecutionScheduler(SynchronizationHandler synchronizationHandler, ValueLinkedStack<HandleablePromiseBase> handleStack, ValueLinkedQueue<IProgressInvokable> progressQueue)
+            internal static bool SwapUnwinding(bool isUnwinding)
             {
-                _handleStack = handleStack;
-                _synchronizationHandler = synchronizationHandler;
-#if PROMISE_PROGRESS
-                _progressQueue = progressQueue;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                _isExecutingProgress = false;
-#endif
-#endif
+                bool wasUnwinding = ts_isUnwinding;
+                ts_isUnwinding = isUnwinding;
+                return wasUnwinding;
             }
 
             [MethodImpl(InlineOption)]
-            internal ExecutionScheduler(bool forHandleables) : this(null, !forHandleables) { }
-
-            [MethodImpl(InlineOption)]
-            private ExecutionScheduler(SynchronizationHandler synchronizationHandler, bool isExecutingProgress)
+            internal static void AddHandler(HandleablePromiseBase handler)
             {
-                _handleStack = new ValueLinkedStack<HandleablePromiseBase>();
-                _synchronizationHandler = null;
-#if PROMISE_PROGRESS
-                _progressQueue = new ValueLinkedQueue<IProgressInvokable>();
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                _isExecutingProgress = isExecutingProgress;
-#endif
-#endif
-            }
-
-            internal void Execute()
-            {
-                // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
-                HandleablePromiseBase lastExecuted = null;
-                try
+                if (ts_handlers == null)
                 {
-                    while (_handleStack.IsNotEmpty)
+                    ts_handlers = new Stack<HandleablePromiseBase>();
+                }
+                ts_handlers.Push(handler);
+            }
+
+            internal static void InvokeHandlers()
+            {
+                if (ts_handlers != null)
+                {
+                    while (ts_handlers.Count > 0)
                     {
-                        lastExecuted = _handleStack.Pop();
-                        lastExecuted.Handle(ref this);
+                        ts_handlers.Pop().HandleFromContext();
                     }
                 }
-                catch (Exception e)
-                {
-                    // This should never happen.
-                    AddRejectionToUnhandledStack(e, lastExecuted as ITraceable);
-                }
-                ExecuteProgressPartial();
-                MaybeReportUnhandledRejections();
-            }
-
-            partial void ExecuteProgressPartial();
-            partial void AssertNotExecutingProgress();
-
-            [MethodImpl(InlineOption)]
-            internal void ScheduleSynchronous(HandleablePromiseBase handleable)
-            {
-                AssertNotExecutingProgress();
-#if PROTO_PROMISE_STACK_UNWIND_DISABLE && PROTO_PROMISE_DEVELOPER_MODE
-                handleable.Handle(ref this);
-#else
-                _handleStack.Push(handleable);
-#endif
-            }
-
-            internal void ScheduleOnContext(SynchronizationContext synchronizationContext, HandleablePromiseBase handleable)
-            {
-                AssertNotExecutingProgress();
-                if (_synchronizationHandler != null && _synchronizationHandler._context == synchronizationContext)
-                {
-                    // We're scheduling to the context that is currently executing, just place it on the stack instead of going through the context.
-                    ScheduleSynchronous(handleable);
-                    return;
-                }
-                ScheduleOnContextStatic(synchronizationContext, handleable);
-            }
-
-            internal static void ScheduleOnContextStatic(SynchronizationContext synchronizationContext, HandleablePromiseBase handleable)
-            {
-                if (synchronizationContext == null)
-                {
-                    // If there is no context, send it to the ThreadPool.
-                    ThreadPool.QueueUserWorkItem(_threadPoolCallback, handleable);
-                    return;
-                }
-                SynchronizationHandler foregroundHandler = _foregroundSynchronizationHandler;
-                if (foregroundHandler != null && foregroundHandler._context == synchronizationContext)
-                {
-                    // Schedule on the optimized foregroundHandler instead of going through the context.
-                    foregroundHandler.PostHandleable(handleable);
-                    return;
-                }
-                synchronizationContext.Post(_synchronizationContextCallback, handleable);
-            }
-
-            private static void ExecuteFromContext(object state)
-            {
-                // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
-                try
-                {
-                    var executionScheduler = new ExecutionScheduler(true);
-                    ((HandleablePromiseBase) state).Handle(ref executionScheduler);
-                    executionScheduler.Execute();
-                }
-                catch (Exception e)
-                {
-                    // This should never happen.
-                    AddRejectionToUnhandledStack(e, state as ITraceable);
-                }
             }
         }
 
-        [MethodImpl(InlineOption)]
-        internal static ValueContainer CreateResolveContainer<TValue>(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TValue value)
-        {
-            return ValueContainer.CreateResolve(value);
-        }
-
-        internal static ValueContainer CreateRejectContainer<TReject>(
+        internal static RejectContainer CreateRejectContainer<TReject>(
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
                 TReject reason, int rejectSkipFrames, ITraceable traceable)
         {
-            return ValueContainer.CreateReject(reason, rejectSkipFrames, traceable);
+            return RejectContainer.Create(reason, rejectSkipFrames, traceable);
         }
 
-        // Handle uncaught errors. These must not be readonly.
-        private static ValueLinkedStack<UnhandledException> _unhandledExceptions = new ValueLinkedStack<UnhandledException>();
-        private static SpinLocker _unhandledExceptionsLocker;
-
-        internal static void AddUnhandledException(UnhandledException exception)
-        {
-#if PROTO_PROMISE_DEVELOPER_MODE
-            exception = new UnhandledExceptionInternal(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new StackTrace(1, true).ToString(), exception);
-#endif
-            _unhandledExceptionsLocker.Enter();
-            _unhandledExceptions.Push(exception);
-            _unhandledExceptionsLocker.Exit();
-        }
-
-        internal static void AddRejectionToUnhandledStack(object unhandledValue, ITraceable traceable)
+        internal static void ReportRejection(object unhandledValue, ITraceable traceable)
         {
             ICantHandleException ex = unhandledValue as ICantHandleException;
             if (ex != null)
@@ -273,54 +138,31 @@ namespace Proto.Promises
             Exception innerException = unhandledValue as Exception;
             string message = innerException != null ? "An exception was not handled." : "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
 
-            AddUnhandledException(new UnhandledExceptionInternal(unhandledValue, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
+            ReportUnhandledException(new UnhandledExceptionInternal(unhandledValue, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
         }
 
-        internal static void MaybeReportUnhandledRejections()
+        internal static void ReportUnhandledException(UnhandledException exception)
         {
-            // Quick check to see if there are any unhandled rejections without entering the lock.
-            if (_unhandledExceptions.IsEmpty)
-            {
-                return;
-            }
-
-            _unhandledExceptionsLocker.Enter();
-            var unhandledExceptions = _unhandledExceptions;
-            _unhandledExceptions = new ValueLinkedStack<UnhandledException>();
-            _unhandledExceptionsLocker.Exit();
-
-            if (unhandledExceptions.IsEmpty)
-            {
-                return;
-            }
-
-            // If the handler exists, send each UnhandledException to it individually.
+#if PROTO_PROMISE_DEVELOPER_MODE
+            exception = new UnhandledExceptionInternal(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new StackTrace(1, true).ToString(), exception);
+#endif
+            // Send to the handler if it exists.
             Action<UnhandledException> handler = Promise.Config.UncaughtRejectionHandler;
             if (handler != null)
             {
-                do
-                {
-                    handler.Invoke(unhandledExceptions.Pop());
-                } while (unhandledExceptions.IsNotEmpty);
+                handler.Invoke(exception);
                 return;
             }
 
-            // Otherwise, throw an AggregateException in the ForegroundContext if it exists, or background if it doesn't.
-            List<Exception> exceptions = new List<Exception>();
-            do
-            {
-                exceptions.Add(unhandledExceptions.Pop());
-            } while (unhandledExceptions.IsNotEmpty);
-
-            AggregateException aggregateException = new AggregateException("Promise.Config.UncaughtRejectionHandler was null.", exceptions);
+            // Otherwise, throw it in the ForegroundContext if it exists, or background if it doesn't.
             SynchronizationContext synchronizationContext = Promise.Config.ForegroundContext ?? Promise.Config.BackgroundContext;
             if (synchronizationContext != null)
             {
-                synchronizationContext.Post(e => { throw (AggregateException) e; }, aggregateException);
+                synchronizationContext.Post(e => { throw (UnhandledException) e; }, exception);
             }
             else
             {
-                ThreadPool.QueueUserWorkItem(e => { throw (AggregateException) e; }, aggregateException);
+                ThreadPool.QueueUserWorkItem(e => { throw (UnhandledException) e; }, exception);
             }
         }
 
@@ -392,6 +234,16 @@ namespace Proto.Promises
             {
                 return BuildHashCode(_ref, hashcode1, hashcode2) * 31 + hashcode3;
             }
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static T UnsafeAs<T>(this object o) where T : class
+        {
+#if NET5_0_OR_GREATER && !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE
+            return Unsafe.As<T>(o);
+#else
+            return (T) o;
+#endif
         }
     } // class Internal
 } // namespace Proto.Promises

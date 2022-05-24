@@ -22,12 +22,12 @@ namespace Proto.Promises
 
             void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
             {
-                AddUnhandledException(this);
+                ReportUnhandledException(this);
             }
 
-            ValueContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+            RejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
             {
-                return RethrownRejectionContainer.GetOrCreate(this);
+                return RethrownRejectionContainer.Create(this);
             }
         }
 
@@ -37,7 +37,7 @@ namespace Proto.Promises
         internal sealed class CanceledExceptionInternal : CanceledException
         {
 #if !PROMISE_DEBUG
-            private static readonly CanceledExceptionInternal _instance = new CanceledExceptionInternal("Operation was canceled.");
+            private static readonly CanceledExceptionInternal s_instance = new CanceledExceptionInternal("Operation was canceled.");
 #endif
 
             internal static CanceledExceptionInternal GetOrCreate()
@@ -45,7 +45,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 return new CanceledExceptionInternal("Operation was canceled."); // Don't re-use instance in DEBUG mode so users can read its stacktrace on any thread.
 #else
-                return _instance;
+                return s_instance;
 #endif
             }
 
@@ -79,18 +79,18 @@ namespace Proto.Promises
                 Value = value;
             }
 
-            public ValueContainer ToContainer(ITraceable traceable)
+            public RejectContainer ToContainer(ITraceable traceable)
             {
                 var rejection = CreateRejectContainer(Value, int.MinValue, traceable);
 #if PROMISE_DEBUG
-                ((IRejectValueContainer) rejection).SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
+                rejection.UnsafeAs<IRejectValueContainer>().SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
 #endif
                 return rejection;
             }
 
             public void AddToUnhandledStack(ITraceable traceable)
             {
-                AddRejectionToUnhandledStack(Value, traceable);
+                ReportRejection(Value, traceable);
             }
         }
 
@@ -100,7 +100,7 @@ namespace Proto.Promises
         internal sealed class ForcedRethrowException : RethrowException
         {
 #if !PROMISE_DEBUG
-            private static readonly ForcedRethrowException _instance = new ForcedRethrowException();
+            private static readonly ForcedRethrowException s_instance = new ForcedRethrowException();
 #endif
 
             private ForcedRethrowException() { }
@@ -110,7 +110,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 return new ForcedRethrowException(); // Don't re-use instance in DEBUG mode so that we can read its stacktrace on any thread.
 #else
-                return _instance;
+                return s_instance;
 #endif
             }
         }

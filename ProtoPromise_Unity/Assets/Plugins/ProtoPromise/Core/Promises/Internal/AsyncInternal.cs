@@ -24,6 +24,7 @@
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0038 // Use pattern matching
 #pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0060 // Remove unused parameter
 #pragma warning disable 0436 // Type conflicts with imported type
@@ -231,24 +232,24 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal partial struct PromiseMethodBuilderInternal<T>
+        internal partial struct PromiseMethodBuilderInternal<TResult>
         {
             [MethodImpl(InlineOption)]
-            private PromiseMethodBuilderInternal(PromiseRef.AsyncPromiseRef promise)
+            private PromiseMethodBuilderInternal(PromiseRefBase.AsyncPromiseRef<TResult> promise)
             {
                 _ref = promise;
             }
 
-            public Promise<T> Task
+            public Promise<TResult> Task
             {
                 [MethodImpl(InlineOption)]
-                get { return new Promise<T>(_ref, _ref.Id, 0); }
+                get { return new Promise<TResult>(_ref, _ref.Id, 0); }
             }
 
             [MethodImpl(InlineOption)]
-            public static PromiseMethodBuilderInternal<T> Create()
+            public static PromiseMethodBuilderInternal<TResult> Create()
             {
-                return new PromiseMethodBuilderInternal<T>(PromiseRef.AsyncPromiseRef.GetOrCreate());
+                return new PromiseMethodBuilderInternal<TResult>(PromiseRefBase.AsyncPromiseRef<TResult>.GetOrCreate());
             }
 
             public void SetException(Exception exception)
@@ -257,9 +258,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            public void SetResult(T result)
+            public void SetResult(TResult result)
             {
-                _ref.SetResult(result);
+                _ref.SetAsyncResult(result);
             }
 
             [MethodImpl(InlineOption)]
@@ -267,15 +268,7 @@ namespace Proto.Promises
                 where TAwaiter : INotifyCompletion
                 where TStateMachine : IAsyncStateMachine
             {
-                _ref.SetStateMachine(ref stateMachine);
-                if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
-                {
-                    AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
-                }
-                else
-                {
-                    awaiter.OnCompleted(_ref.MoveNext);
-                }
+                _ref.AwaitOnCompleted<TResult, TAwaiter, TStateMachine>(ref awaiter, ref stateMachine);
             }
 
             [SecuritySafeCritical]
@@ -284,15 +277,7 @@ namespace Proto.Promises
                 where TAwaiter : ICriticalNotifyCompletion
                 where TStateMachine : IAsyncStateMachine
             {
-                _ref.SetStateMachine(ref stateMachine);
-                if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
-                {
-                    AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
-                }
-                else
-                {
-                    awaiter.UnsafeOnCompleted(_ref.MoveNext);
-                }
+                _ref.AwaitUnsafeOnCompleted<TResult, TAwaiter, TStateMachine>(ref awaiter, ref stateMachine);
             }
 
             [MethodImpl(InlineOption)]
@@ -313,25 +298,25 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-        internal partial struct PromiseMethodBuilderInternal<T>
+        internal partial struct PromiseMethodBuilderInternal<TResult>
         {
-            public Promise<T> Task
+            internal Promise<TResult> Task
             {
                 [MethodImpl(InlineOption)]
-                get { return new Promise<T>(_ref, _smallFields._id, 0, _smallFields._result); }
+                get { return new Promise<TResult>(_ref, _smallFields._id, 0, _smallFields._result); }
             }
 
             [MethodImpl(InlineOption)]
-            public static PromiseMethodBuilderInternal<T> Create()
+            internal static PromiseMethodBuilderInternal<TResult> Create()
             {
-                return new PromiseMethodBuilderInternal<T>();
+                return new PromiseMethodBuilderInternal<TResult>();
             }
 
             internal void SetException(Exception exception)
             {
                 if (_ref == null)
                 {
-                    _ref = PromiseRef.AsyncPromiseRef.GetOrCreate();
+                    _ref = PromiseRefBase.AsyncPromiseRef<TResult>.GetOrCreate();
                     _smallFields._id = _ref.Id;
                 }
                 _ref.SetException(exception);
@@ -341,16 +326,17 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
-                T result)
+                TResult result)
             {
                 if (_ref == null)
                 {
+                    _ref = PromiseResolvedSentinel;
                     _smallFields._result = result;
                     _smallFields._id = ValidIdFromApi;
                 }
                 else
                 {
-                    _ref.SetResult(result);
+                    _ref.SetAsyncResult(result);
                 }
             }
 
@@ -360,14 +346,20 @@ namespace Proto.Promises
                 where TStateMachine : IAsyncStateMachine
             {
                 SetStateMachine(ref stateMachine);
-                // TODO: optimize this check to call direct in .Net 5 or later. (see https://github.com/dotnet/runtime/discussions/61574)
+#if NET5_0_OR_GREATER
+                if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
+                {
+                    ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
+                }
+#else
                 if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
                 {
                     AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
                 }
+#endif
                 else
                 {
-                    awaiter.OnCompleted(_ref.MoveNext);
+                    awaiter.OnCompleted(_ref.UnsafeAs<PromiseRefBase.AsyncPromiseRef<TResult>>().MoveNext);
                 }
             }
 
@@ -378,13 +370,20 @@ namespace Proto.Promises
                 where TStateMachine : IAsyncStateMachine
             {
                 SetStateMachine(ref stateMachine);
+#if NET5_0_OR_GREATER
+                if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
+                {
+                    ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
+                }
+#else
                 if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
                 {
                     AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
                 }
+#endif
                 else
                 {
-                    awaiter.UnsafeOnCompleted(_ref.MoveNext);
+                    awaiter.UnsafeOnCompleted(_ref.UnsafeAs<PromiseRefBase.AsyncPromiseRef<TResult>>().MoveNext);
                 }
             }
 
@@ -404,152 +403,211 @@ namespace Proto.Promises
             {
                 if (_ref == null)
                 {
-                    PromiseRef.AsyncPromiseRef.SetStateMachine(ref stateMachine, ref _ref);
+                    PromiseRefBase.AsyncPromiseRef<TResult>.SetStateMachine(ref stateMachine, ref _ref);
                     _smallFields._id = _ref.Id;
                 }
             }
         }
 #endif // DEBUG or IL2CPP
 
-        partial class PromiseRef
+        partial class PromiseRefBase
         {
+            [ThreadStatic]
+            private static HandleablePromiseBase ts_currentRunner;
+
+            [MethodImpl(InlineOption)]
+            private HandleablePromiseBase ExchangeCurrentRunner(HandleablePromiseBase currentRunner)
+            {
+#if PROTO_PROMISE_STACK_UNWIND_DISABLE && PROTO_PROMISE_DEVELOPER_MODE
+                return null;
+#else
+                var previous = ts_currentRunner;
+                ts_currentRunner = currentRunner;
+                return previous;
+#endif
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void SetAsyncResult<TResult>(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                TResult result)
+            {
+                ThrowIfInPool(this);
+                this.UnsafeAs<PromiseRef<TResult>>().SetResult(result);
+                MaybeHandleCompletion();
+            }
+
+            internal void SetException(Exception exception)
+            {
+                if (exception is OperationCanceledException)
+                {
+                    SetRejectOrCancel(RejectContainer.s_completionSentinel, Promise.State.Canceled);
+                }
+                else
+                {
+                    SetRejectOrCancel(CreateRejectContainer(exception, int.MinValue, this), Promise.State.Rejected);
+                }
+                MaybeHandleCompletion();
+            }
+
+            private void MaybeHandleCompletion()
+            {
+                // If this is completed from another promise, let the stack can unwind so the other promise will schedule the continuation.
+                var nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel.s_instance, null);
+                if (ExchangeCurrentRunner(nextHandler) != this)
+                {
+                    ts_currentRunner = null;
+                    MaybeHandleNext(nextHandler);
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void HookupAwaiter(PromiseRefBase awaiter, short promiseId)
+            {
+                ts_currentRunner = null;
+                ValidateAwait(awaiter, promiseId);
+
+                SetPrevious(awaiter);
+
+                // TODO: detect if this is being called from another promise higher in the stack, and call AddWaiter and allow the stack to unwind instead of calling HookupExistingWaiter.
+                awaiter.HookupExistingWaiter(promiseId, this);
+            }
+
+            partial void SetPrevious(PromiseRefBase awaiter);
+#if PROMISE_DEBUG
+            partial void SetPrevious(PromiseRefBase awaiter)
+            {
+                _previous = awaiter;
+            }
+#endif
+
+            [MethodImpl(InlineOption)]
+            internal void HookupAwaiterWithProgress(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress)
+            {
+#if PROMISE_PROGRESS
+                HookupAwaiterWithProgressVirt(awaiter, promiseId, depth, minProgress, maxProgress);
+#else
+                HookupAwaiter(awaiter, promiseId);
+#endif
+            }
+
+#if PROMISE_PROGRESS
+            protected virtual void HookupAwaiterWithProgressVirt(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress) { throw new System.InvalidOperationException(); }
+#endif
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
 #endif
-            internal partial class AsyncPromiseRef : AsyncPromiseBase
+            internal partial class AsyncPromiseRef<TResult> : AsyncPromiseBase<TResult>
             {
-                [ThreadStatic]
-                private static HandleablePromiseBase _currentRunner;
-
                 [MethodImpl(InlineOption)]
-                private HandleablePromiseBase ExchangeCurrentRunner(HandleablePromiseBase currentRunner)
+                public static AsyncPromiseRef<TResult> GetOrCreate()
                 {
-#if PROTO_PROMISE_STACK_UNWIND_DISABLE && PROTO_PROMISE_DEVELOPER_MODE
-                    return null;
-#else
-                    var previous = _currentRunner;
-                    _currentRunner = currentRunner;
-                    return previous;
-#endif
-                }
-
-#if !PROMISE_PROGRESS
-                [MethodImpl(InlineOption)]
-                internal void SetPreviousAndProgress(PromiseRef other, float minProgress, float maxProgress)
-                {
-#if PROMISE_DEBUG
-                    _previous = other;
-#endif
-                }
-
-                [MethodImpl(InlineOption)]
-                private void SetAwaitedComplete(PromiseRef handler, ref ExecutionScheduler executionScheduler)
-                {
-#if PROMISE_DEBUG
-                    _previous = null;
-#endif
-                }
-#endif
-
-                [MethodImpl(InlineOption)]
-                public static AsyncPromiseRef GetOrCreate()
-                {
-                    var promise = ObjectPool<HandleablePromiseBase>.TryTake<AsyncPromiseRef>()
-                        ?? new AsyncPromiseRef();
+                    var promise = ObjectPool.TryTake<AsyncPromiseRef<TResult>>()
+                        ?? new AsyncPromiseRef<TResult>();
                     promise.Reset();
                     return promise;
                 }
 
-                [MethodImpl(InlineOption)]
-                internal void SetResult<T>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    T result)
+#if PROMISE_PROGRESS
+                protected override void HookupAwaiterWithProgressVirt(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress)
                 {
-                    ThrowIfInPool(this);
-                    ValueContainer valueContainer = CreateResolveContainer(result);
-                    MaybeHandleCompletion(valueContainer, Promise.State.Resolved);
-                }
+                    ts_currentRunner = null;
+                    ValidateAwait(awaiter, promiseId);
 
-                internal void SetException(Exception exception)
-                {
-                    ValueContainer valueContainer;
-                    Promise.State state;
-                    if (exception is OperationCanceledException)
-                    {
-                        valueContainer = CancelContainerVoid.GetOrCreate();
-                        state = Promise.State.Canceled;
-                    }
-                    else
-                    {
-                        valueContainer = CreateRejectContainer(exception, int.MinValue, this);
-                        state = Promise.State.Rejected;
-                    }
-                    MaybeHandleCompletion(valueContainer, state);
-                }
+                    SetPreviousAndProgress(awaiter, minProgress, maxProgress);
 
-                private void MaybeHandleCompletion(ValueContainer valueContainer, Promise.State state)
-                {
-                    // If this is completed from another promise, just set the result so that the stack can unwind and the other promise will schedule the continuation.
-                    SetResult(valueContainer, state);
-                    var nextHandler = CompareExchangeWaiter(PromiseCompletionSentinel._instance, null);
-                    if (ExchangeCurrentRunner(nextHandler) != this)
-                    {
-                        _currentRunner = null;
-                        var executionScheduler = new ExecutionScheduler(true);
-                        MaybeHandleNext(nextHandler, ref executionScheduler);
-                        executionScheduler.Execute();
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void HookupWaiter(PromiseRef waiter, short promiseId)
-                {
-                    _currentRunner = null;
-                    ValidateAwait(waiter, promiseId);
-
-                    // TODO: detect if this is being called from another promise higher in the stack, and call AddWaiter and allow the stack to unwind instead of calling HookupNewWaiter.
-
-                    SetPreviousAndProgress(waiter, float.NaN, float.NaN);
-                    waiter.HookupExistingWaiter(promiseId, this);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void HookupWaiterWithProgress(PromiseRef waiter, short promiseId, ushort depth, float minProgress, float maxProgress)
-                {
-                    _currentRunner = null;
-                    ValidateAwait(waiter, promiseId);
-
-                    // TODO: detect if this is being called from another promise higher in the stack, allow the stack to unwind instead of calling waiter.HandleNext.
-
-                    SetPreviousAndProgress(waiter, minProgress, maxProgress);
-
-                    var executionScheduler = new ExecutionScheduler(true);
-                    waiter.InterlockedIncrementProgressReportingCount();
+                    awaiter.InterlockedIncrementProgressReportingCount();
                     HandleablePromiseBase previousWaiter;
-                    PromiseSingleAwait promiseSingleAwait = waiter.AddWaiter(promiseId, this, out previousWaiter, ref executionScheduler);
+                    PromiseRefBase promiseSingleAwait = awaiter.AddWaiter(promiseId, this, out previousWaiter);
                     if (previousWaiter == null)
                     {
-                        ReportProgressFromHookupWaiterWithProgress(waiter, depth, ref executionScheduler);
+                        ReportProgressFromHookupWaiterWithProgress(awaiter, depth);
                     }
                     else
                     {
-                        waiter.InterlockedDecrementProgressReportingCount();
+                        awaiter.InterlockedDecrementProgressReportingCount();
                         if (!VerifyWaiter(promiseSingleAwait))
                         {
                             throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(2));
                         }
-                        waiter.HandleNext(this, ref executionScheduler);
+
+                        // TODO: detect if this is being called from another promise higher in the stack, allow the stack to unwind instead of calling HandleNext.
+                        awaiter.HandleNext(this);
                     }
-                    executionScheduler.Execute();
+                }
+#endif
+
+                partial void ReportProgressFromHookupWaiterWithProgress(PromiseRefBase other, ushort depth);
+                partial void SetPreviousAndProgress(PromiseRefBase awaiter, float minProgress, float maxProgress);
+                partial void SetAwaitedComplete(PromiseRefBase handler);
+#if !PROMISE_PROGRESS && PROMISE_DEBUG
+                [MethodImpl(InlineOption)]
+                partial void SetPreviousAndProgress(PromiseRefBase other, float minProgress, float maxProgress)
+                {
+                    _previous = other;
                 }
 
-                partial void ReportProgressFromHookupWaiterWithProgress(PromiseRef other, ushort depth, ref ExecutionScheduler executionScheduler);
+                [MethodImpl(InlineOption)]
+                partial void SetAwaitedComplete(PromiseRefBase handler)
+                {
+                    _previous = null;
+                }
+#endif
             }
 
 #if !OPTIMIZED_ASYNC_MODE
-            sealed partial class AsyncPromiseRef
+            [MethodImpl(InlineOption)]
+            internal void AwaitOnCompleted<TResult, TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+                where TAwaiter : INotifyCompletion
+                where TStateMachine : IAsyncStateMachine
+            {
+                var _this = this.UnsafeAs<AsyncPromiseRef<TResult>>();
+                _this.SetStateMachine(ref stateMachine);
+#if NET5_0_OR_GREATER
+                if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
+                {
+                    ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_this);
+                }
+#else
+                if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
+                {
+                    AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _this);
+                }
+#endif
+                else
+                {
+                    awaiter.OnCompleted(_this.MoveNext);
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void AwaitUnsafeOnCompleted<TResult, TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+                where TAwaiter : ICriticalNotifyCompletion
+                where TStateMachine : IAsyncStateMachine
+            {
+                var _this = this.UnsafeAs<AsyncPromiseRef<TResult>>();
+                _this.SetStateMachine(ref stateMachine);
+#if NET5_0_OR_GREATER
+                if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
+                {
+                    ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_this);
+                }
+#else
+                if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
+                {
+                    AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _this);
+                }
+#endif
+                else
+                {
+                    awaiter.UnsafeOnCompleted(_this.MoveNext);
+                }
+            }
+
+            sealed partial class AsyncPromiseRef<TResult>
             {
                 internal Action MoveNext
                 {
@@ -560,14 +618,14 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode]
 #endif
-                private abstract partial class PromiseMethodContinuer : IDisposable
+                private abstract partial class PromiseMethodContinuer : HandleablePromiseBase, IDisposable
                 {
                     public Action MoveNext
                     {
                         [MethodImpl(InlineOption)]
                         get
                         {
-                            _currentRunner = null;
+                            ts_currentRunner = null;
                             return _moveNext;
                         }
                     }
@@ -589,7 +647,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
                     [DebuggerNonUserCode]
 #endif
-                    private sealed partial class Continuer<TStateMachine> : PromiseMethodContinuer, ILinked<Continuer<TStateMachine>> where TStateMachine : IAsyncStateMachine
+                    private sealed partial class Continuer<TStateMachine> : PromiseMethodContinuer where TStateMachine : IAsyncStateMachine
                     {
                         private Continuer()
                         {
@@ -599,7 +657,7 @@ namespace Proto.Promises
                         [MethodImpl(InlineOption)]
                         public static Continuer<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
                         {
-                            var continuer = ObjectPool<Continuer<TStateMachine>>.TryTake<Continuer<TStateMachine>>()
+                            var continuer = ObjectPool.TryTake<Continuer<TStateMachine>>()
                                 ?? new Continuer<TStateMachine>();
                             continuer._stateMachine = stateMachine;
                             return continuer;
@@ -611,7 +669,7 @@ namespace Proto.Promises
                             _owner = null;
 #endif
                             _stateMachine = default(TStateMachine);
-                            ObjectPool<Continuer<TStateMachine>>.MaybeRepool(this);
+                            ObjectPool.MaybeRepool(this);
                         }
 
                         private void ContinueMethod()
@@ -636,7 +694,7 @@ namespace Proto.Promises
                 private PromiseMethodContinuer _continuer;
 
                 [MethodImpl(InlineOption)]
-                public void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
+                internal void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
                 {
                     if (_continuer == null)
                     {
@@ -652,13 +710,13 @@ namespace Proto.Promises
                         _continuer.Dispose();
                         _continuer = null;
                     }
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
-                internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
                 {
                     ThrowIfInPool(this);
-                    SetAwaitedComplete(handler, ref executionScheduler);
+                    SetAwaitedComplete(handler);
 
                     var previousRunner = ExchangeCurrentRunner(this);
 
@@ -671,21 +729,21 @@ namespace Proto.Promises
 
 #else // !OPTIMIZED_ASYNC_MODE
 
-            partial class AsyncPromiseRef
+            partial class AsyncPromiseRef<TResult>
             {
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode]
 #endif
-                private sealed partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef where TStateMachine : IAsyncStateMachine
+                private sealed partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef<TResult> where TStateMachine : IAsyncStateMachine
                 {
                     private AsyncPromiseRefMachine()
                     {
                         _moveNext = ContinueMethod;
                     }
 
-                    public static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref)
+                    internal static void SetStateMachine(ref TStateMachine stateMachine, ref PromiseRefBase _ref)
                     {
-                        var promise = ObjectPool<HandleablePromiseBase>.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
+                        var promise = ObjectPool.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
                             ?? new AsyncPromiseRefMachine<TStateMachine>();
                         promise.Reset();
                         // ORDER VERY IMPORTANT, ref must be set before copying stateMachine.
@@ -697,7 +755,7 @@ namespace Proto.Promises
                     {
                         Dispose();
                         _stateMachine = default(TStateMachine);
-                        ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                        ObjectPool.MaybeRepool(this);
                     }
 
                     [MethodImpl(InlineOption)]
@@ -706,10 +764,10 @@ namespace Proto.Promises
                         _stateMachine.MoveNext();
                     }
 
-                    internal override void Handle(ref PromiseRef handler, out HandleablePromiseBase nextHandler, ref ExecutionScheduler executionScheduler)
+                    internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
                     {
                         ThrowIfInPool(this);
-                        SetAwaitedComplete(handler, ref executionScheduler);
+                        SetAwaitedComplete(handler);
 
                         var previousRunner = ExchangeCurrentRunner(this);
 
@@ -725,7 +783,7 @@ namespace Proto.Promises
                     [MethodImpl(InlineOption)]
                     get
                     {
-                        _currentRunner = null;
+                        ts_currentRunner = null;
                         return _moveNext;
                     }
                 }
@@ -733,7 +791,7 @@ namespace Proto.Promises
                 protected AsyncPromiseRef() { }
 
                 [MethodImpl(InlineOption)]
-                internal static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef _ref) where TStateMachine : IAsyncStateMachine
+                internal static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref PromiseRefBase _ref) where TStateMachine : IAsyncStateMachine
                 {
                     AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref);
                 }
@@ -741,7 +799,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
-                    ObjectPool<HandleablePromiseBase>.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
             }
 #endif // OPTIMIZED_ASYNC_MODE

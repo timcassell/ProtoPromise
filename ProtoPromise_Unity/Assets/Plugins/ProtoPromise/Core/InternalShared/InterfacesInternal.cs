@@ -15,14 +15,9 @@ namespace Proto.Promises
             T Next { get; set; }
         }
 
-        internal interface IProgressInvokable : ILinked<IProgressInvokable>
-        {
-            void Invoke(ref ExecutionScheduler executionScheduler);
-        }
-
         internal interface IRejectionToContainer
         {
-            ValueContainer ToContainer(ITraceable traceable);
+            RejectContainer ToContainer(ITraceable traceable);
         }
 
         internal interface ICantHandleException
