@@ -84,7 +84,7 @@ namespace Proto.Promises
                 public virtual bool TryIncrementDeferredIdAndUnregisterCancelation(short deferredId)
                 {
                     bool success = _smallFields.InterlockedTryIncrementDeferredId(deferredId);
-                    ThrowIfInPool(this);
+                    MaybeThrowIfInPool(this, success);
                     return success;
                 }
 

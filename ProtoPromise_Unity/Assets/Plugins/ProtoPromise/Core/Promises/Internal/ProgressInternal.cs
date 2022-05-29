@@ -801,6 +801,7 @@ namespace Proto.Promises
                         PromiseRefBase nextRef = progressListener.SetProgress(ref progressCopy, ref depth);
                         if (nextRef != null)
                         {
+                            nextRef.InterlockedIncrementProgressReportingCount();
                             nextListeners.Add(ValueTuple.Create(nextRef, progressCopy, depth));
                         }
                     }
@@ -809,7 +810,7 @@ namespace Proto.Promises
 
                     foreach (var tuple in nextListeners)
                     {
-                        tuple.Item1.ReportProgress(tuple.Item2, tuple.Item3);
+                        tuple.Item1.ReportProgressAlreadyIncremented(tuple.Item2, tuple.Item3);
                     }
                     nextListeners.Clear();
                 }

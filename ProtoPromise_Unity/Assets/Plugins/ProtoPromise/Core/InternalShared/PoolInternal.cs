@@ -78,7 +78,7 @@ namespace Proto.Promises
             internal static T TryTake<T>() where T : HandleablePromiseBase
             {
                 T obj = Type<T>.TryTake();
-#if PROMISE_DEBUG
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 if (s_trackObjectsForRelease & obj == null)
                 {
                     // Create here via reflection so that the object can be tracked.
@@ -108,7 +108,7 @@ namespace Proto.Promises
 
             static partial void MarkInPool(object obj);
             static partial void MarkNotInPool(object obj);
-#if PROMISE_DEBUG
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             static partial void MarkInPool(object obj)
             {
                 lock (s_pooledObjects)
@@ -138,7 +138,7 @@ namespace Proto.Promises
         internal static void Discard(object waste)
         {
             GC.SuppressFinalize(waste);
-#if PROMISE_DEBUG
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             lock (s_pooledObjects)
             {
                 s_inUseObjects.Remove(waste);
@@ -147,7 +147,8 @@ namespace Proto.Promises
         }
 
         static partial void ThrowIfInPool(object obj);
-#if PROMISE_DEBUG
+        static partial void MaybeThrowIfInPool(object obj, bool shouldCheck);
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
         private static bool s_trackObjectsForRelease = false;
         private static readonly HashSet<object> s_pooledObjects = new HashSet<object>();
         private static readonly HashSet<object> s_inUseObjects = new HashSet<object>();
@@ -171,6 +172,14 @@ namespace Proto.Promises
                 {
                     throw new Exception("Object is in pool: " + obj);
                 }
+            }
+        }
+
+        static partial void MaybeThrowIfInPool(object obj, bool shouldCheck)
+        {
+            if (shouldCheck)
+            {
+                ThrowIfInPool(obj);
             }
         }
 
