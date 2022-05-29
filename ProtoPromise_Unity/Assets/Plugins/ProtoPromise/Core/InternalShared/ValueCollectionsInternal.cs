@@ -22,7 +22,7 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-#if PROMISE_DEBUG
+#if PROTO_PROMISE_DEVELOPER_MODE
         internal class TraceableCollection
         {
             internal readonly StackTrace createdAt;
@@ -37,7 +37,6 @@ namespace Proto.Promises
             }
         }
 
-#if PROTO_PROMISE_DEVELOPER_MODE
         // Make collections class instead of struct, and inherit TraceableCollection for debugging purposes.
         partial class ValueLinkedStack<T> : TraceableCollection
         {
@@ -69,42 +68,26 @@ namespace Proto.Promises
             }
         }
 
-        partial class ValueList<T> : TraceableCollection
-        {
-            internal ValueList() { }
-
-            private void AssertNotInCollection(T item)
-            {
-                CollectionChecker<T>.AssertNotInCollection(item, this);
-            }
-        }
-#else // PROTO_PROMISE_DEVELOPER_MODE
-        private static void AssertNotInCollection<T>(T item) where T : class, ILinked<T>
-        {
-            CollectionChecker<T>.AssertNotInCollection(item, null);
-        }
-#endif // PROTO_PROMISE_DEVELOPER_MODE
-
         private static class CollectionChecker<T> where T : class, ILinked<T>
         {
             private static readonly Dictionary<T, TraceableCollection> s_itemsInACollection = new Dictionary<T, TraceableCollection>();
 
             internal static void AssertNotInCollection(T item, TraceableCollection newCollection)
             {
+                if (newCollection == null)
+                {
+                    throw new System.ArgumentNullException();
+                }
                 TraceableCollection currentCollection;
                 lock (s_itemsInACollection)
                 {
-                    if (!s_itemsInACollection.TryGetValue(item, out currentCollection) && item.Next == null)
+                    if (!s_itemsInACollection.TryGetValue(item, out currentCollection))
                     {
                         s_itemsInACollection.Add(item, newCollection);
                         return;
                     }
                 }
-#if PROTO_PROMISE_DEVELOPER_MODE
                 Exception innerException = currentCollection.createdAt == null ? null : new InvalidOperationException("Inhabited collection createdAt stacktrace.", currentCollection.createdAt.ToString());
-#else
-                Exception innerException = null;
-#endif
                 throw new System.InvalidOperationException("Item is in a collection, cannot add to a different collection.", innerException);
             }
 
@@ -116,16 +99,15 @@ namespace Proto.Promises
                 }
             }
         }
-#else // PROMISE_DEBUG
+#else // PROTO_PROMISE_DEVELOPER_MODE
         static partial void AssertNotInCollection<T>(T item) where T : class, ILinked<T>;
-
-#endif // PROMISE_DEBUG
+#endif // PROTO_PROMISE_DEVELOPER_MODE
 
         [MethodImpl(InlineOption)]
         static private void MarkRemovedFromCollection<T>(T item) where T : class, ILinked<T>
         {
             item.Next = null;
-#if PROMISE_DEBUG
+#if PROTO_PROMISE_DEVELOPER_MODE
             CollectionChecker<T>.Remove(item);
 #endif
         }
@@ -180,12 +162,10 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
         internal partial class ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
 #else
+        [DebuggerNonUserCode]
         internal struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
 #endif
         {
@@ -293,17 +273,15 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
         internal partial class ValueLinkedStackSafe<T> where T : HandleablePromiseBase
 #else
+        [DebuggerNonUserCode]
         internal struct ValueLinkedStackSafe<T> where T : HandleablePromiseBase
 #endif
         {
-            // TODO: figure out why Interlocked.CompareExchange without SpinLocker is breaking concurrency tests
-            volatile private HandleablePromiseBase _head;
+            private HandleablePromiseBase _head;
+            // This must not be readonly.
             private SpinLocker _spinner;
 
             [MethodImpl(InlineOption)]
@@ -337,9 +315,10 @@ namespace Proto.Promises
             internal T TryPop()
             {
                 _spinner.Enter();
-                HandleablePromiseBase head = _head;
+                var head = _head;
                 _head = head._next;
                 _spinner.Exit();
+
                 if (head == PromiseRefBase.InvalidAwaitSentinel.s_instance)
                 {
                     return null;
@@ -352,7 +331,7 @@ namespace Proto.Promises
             static private void MarkRemovedFromCollection(HandleablePromiseBase item)
             {
                 item._next = null;
-#if PROMISE_DEBUG
+#if PROTO_PROMISE_DEVELOPER_MODE
                 CollectionChecker<HandleablePromiseBase>.Remove(item);
 #endif
             }
@@ -361,12 +340,10 @@ namespace Proto.Promises
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
-#endif
-#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
         internal partial class ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
 #else
+        [DebuggerNonUserCode]
         internal struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
 #endif
         {
@@ -438,11 +415,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
-#if PROMISE_DEBUG && PROTO_PROMISE_DEVELOPER_MODE
-        internal partial class ValueList<T> where T : class, ILinked<T>
-#else
         internal struct ValueList<T> where T : class, ILinked<T>
-#endif
         {
             // This structure is a specialized version of List<T> without the extra object overhead and unused methods.
             // Individual elements cannot be removed or modified, only all elements can be cleared at once.
