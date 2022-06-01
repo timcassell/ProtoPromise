@@ -52,7 +52,11 @@ namespace Proto.Promises
         /// Internal use.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Promise<Internal.VoidResult> target)
+        internal Promise(
+#if CSHARP_7_3_OR_NEWER
+            in
+#endif
+            Promise<Internal.VoidResult> target)
         {
             _target = target;
         }
@@ -70,7 +74,7 @@ namespace Proto.Promises
 #endif
             struct SmallFields
         {
-#if PROMISE_PROGRESS
+#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             internal readonly ushort _depth;
 #endif
             internal readonly short _id;
@@ -83,7 +87,7 @@ namespace Proto.Promises
 #endif
                 T result)
             {
-#if PROMISE_PROGRESS
+#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 _depth = depth;
 #endif
                 _id = id;
@@ -121,7 +125,7 @@ namespace Proto.Promises
         internal ushort Depth
         {
             [MethodImpl(Internal.InlineOption)]
-#if PROMISE_PROGRESS
+#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             get { return _smallFields._depth; }
 #else
             get { return 0; }
@@ -478,23 +482,22 @@ namespace Proto.Promises
             } // AsyncPromiseRef
         } // PromiseRefBase
 
+        partial struct PromiseMethodBuilderInternalVoid
+        {
+#if !OPTIMIZED_ASYNC_MODE
+            private readonly PromiseRefBase _ref;
+#else
+            private PromiseRefBase _ref;
+#endif // !OPTIMIZED_ASYNC_MODE
+        }
+
         partial struct PromiseMethodBuilderInternal<TResult>
         {
 #if !OPTIMIZED_ASYNC_MODE
             private readonly PromiseRefBase _ref;
 #else
-            // This is used so that _result will be packed efficiently and not padded with extra bytes (only relevant for small, non-primitive struct T types).
-            // Otherwise, if all fields are on the same level as _ref, because it is a class type, it will pad T up to IntPtr.Size if T is not primitive, causing the Promise<T> struct to be larger than necessary.
-            // This is especially needed for `Promise`, which uses `Internal.VoidResult` as T (and sadly, the runtime does not allow 0-sized structs, minimum size is 1 byte).
-            // See https://stackoverflow.com/questions/24742325/why-does-struct-alignment-depend-on-whether-a-field-type-is-primitive-or-user-de
-            private struct SmallFields
-            {
-                internal short _id;
-                internal TResult _result;
-            }
-
             private PromiseRefBase _ref;
-            private SmallFields _smallFields;
+            private TResult _result;
 #endif // !OPTIMIZED_ASYNC_MODE
         }
     } // Internal

@@ -803,12 +803,14 @@ namespace Proto.Promises
                 {
 #if PROMISE_PROGRESS
                     return Fixed32.GetNextDepth(depth);
-#else
+#elif PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     // Depth is unused, but it can help with debugging.
                     unchecked
                     {
                         return (ushort) (depth + 1);
                     }
+#else
+                    return 0;
 #endif
                 }
 

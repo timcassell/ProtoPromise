@@ -335,7 +335,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return _target.Promise;
+                    return _target.Promise.ToPromiseVoid();
                 }
             }
 
@@ -781,7 +781,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Cast <see cref="Promise{T}.DeferredBase"/> to <see cref="Deferred"/>.
+            /// Cast <see cref="Promise.DeferredBase"/> to <see cref="Deferred"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public static explicit operator Deferred(Promise.DeferredBase rhs)
