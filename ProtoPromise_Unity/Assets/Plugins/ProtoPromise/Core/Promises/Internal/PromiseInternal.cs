@@ -40,6 +40,16 @@ namespace Proto.Promises
         // Just a random number that's not zero. Using this in Promise(<T>) instead of a bool prevents extra memory padding.
         internal const short ValidIdFromApi = 31265;
 
+        [MethodImpl(InlineOption)]
+        internal static Promise ToPromiseVoid(this
+#if CSHARP_7_3_OR_NEWER
+            in
+#endif
+            Promise<VoidResult> promise)
+        {
+            return new Promise(promise);
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif

@@ -574,7 +574,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupAwaiterWithProgress(_awaiter._promise._ref, _awaiter._promise.Id, _awaiter._promise.Depth, _awaiter._minProgress, _awaiter._maxProgress);
+                asyncPromiseRef.HookupAwaiterWithProgress<Internal.VoidResult>(_awaiter._promise._ref, _awaiter._promise.Id, _awaiter._promise.Depth, _awaiter._minProgress, _awaiter._maxProgress);
             }
         } // struct PromiseAwaiterVoid
 
@@ -659,7 +659,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupAwaiterWithProgress(_promise._ref, _promise.Id, _promise.Depth, _minProgress, _maxProgress);
+                asyncPromiseRef.HookupAwaiterWithProgress<T>(_promise._ref, _promise.Id, _promise.Depth, _minProgress, _maxProgress);
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
