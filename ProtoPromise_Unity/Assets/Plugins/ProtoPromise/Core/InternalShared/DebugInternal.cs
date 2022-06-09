@@ -268,7 +268,7 @@ namespace Proto.Promises
         {
             partial void ValidateReturn(Promise other)
             {
-                ValidateAwait(other._target._ref, other._target.Id, false);
+                ValidateAwait(other._ref, other._id, false);
             }
 
             partial void ValidateAwait(PromiseRefBase other, short promiseId)

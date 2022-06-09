@@ -142,6 +142,17 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                internal static bool TryResolveVoid(DeferredPromise<TResult> _this, short deferredId)
+                {
+                    if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                    {
+                        _this.ResolveDirectVoid();
+                        return true;
+                    }
+                    return false;
+                }
+
+                [MethodImpl(InlineOption)]
                 internal void ResolveDirect(
 #if CSHARP_7_3_OR_NEWER
                     in
@@ -149,6 +160,14 @@ namespace Proto.Promises
                     TResult value)
                 {
                     SetResult(value);
+                    HandleNextInternal();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void ResolveDirectVoid()
+                {
+                    ThrowIfInPool(this);
+                    State = Promise.State.Resolved;
                     HandleNextInternal();
                 }
             }

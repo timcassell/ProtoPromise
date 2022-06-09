@@ -27,6 +27,13 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
             [MethodImpl(InlineOption)]
+            internal void GetResultVoid(short promiseId)
+            {
+                ValidateId(promiseId, this, 2);
+                MaybeDispose();
+            }
+
+            [MethodImpl(InlineOption)]
             internal TResult GetResult<TResult>(short promiseId)
             {
                 ValidateId(promiseId, this, 2);
@@ -246,17 +253,6 @@ namespace Proto.Promises
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
 #endif // !NET5_0_OR_GREATER
 
-        [MethodImpl(InlineOption)]
-        internal static void ValidateNullId(short promiseId, int skipFrames)
-        {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            if (promiseId != ValidIdFromApi)
-            {
-                ThrowInvalidAwait(skipFrames + 1);
-            }
-#endif
-        }
-
         internal static void ValidateId(short promiseId, PromiseRefBase _ref, int skipFrames)
         {
             if (promiseId != _ref.Id)
@@ -265,6 +261,7 @@ namespace Proto.Promises
             }
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private static void ThrowInvalidAwait(int skipFrames)
         {
             throw new InvalidOperationException("Cannot await a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(skipFrames + 1));
@@ -355,15 +352,19 @@ namespace Proto.Promises
 #endif
             partial struct PromiseAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
         {
-            private readonly PromiseAwaiter<Internal.VoidResult> _awaiter;
+            private readonly Promise _promise;
 
             /// <summary>
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal PromiseAwaiterVoid(Promise promise)
+            internal PromiseAwaiterVoid(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                Promise promise)
             {
-                _awaiter = new PromiseAwaiter<Internal.VoidResult>(promise._target);
+                _promise = promise;
                 CreateOverride();
             }
 
@@ -374,45 +375,64 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return _awaiter.IsCompleted;
+                    var _ref = _promise._ref;
+                    return _ref == null || _ref.GetIsCompleted(_promise._id);
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void GetResult()
             {
-                var promise = _awaiter._promise;
-                var _ref = promise._ref;
+                var _ref = _promise._ref;
+                if (_ref == null)
+                {
+                    return;
+                }
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    _ref.GetResult<Internal.VoidResult>(promise.Id);
+                    _ref.GetResultVoid(_promise._id);
                     return;
                 }
 #if NET_LEGACY
-                _ref.Throw(state, promise.Id);
+                _ref.Throw(state, _promise._id);
 #else
-                _ref.GetExceptionDispatchInfo(state, promise.Id).Throw();
+                _ref.GetExceptionDispatchInfo(state, _promise._id).Throw();
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                _awaiter.OnCompleted(continuation);
+                ValidateArgument(continuation, "continuation", 1);
+                var _ref = _promise._ref;
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _ref.OnCompleted(continuation, _promise._id);
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
             {
-                _awaiter.UnsafeOnCompleted(continuation);
+                OnCompleted(continuation);
             }
 
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupAwaiter(_awaiter._promise._ref, _awaiter._promise.Id);
+                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
             }
+
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+#if PROMISE_DEBUG
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+            {
+                Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            }
+#endif
         } // struct PromiseAwaiterVoid
 
         /// <summary>
@@ -427,16 +447,18 @@ namespace Proto.Promises
 #endif
             partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
         {
-            internal readonly Promise<T> _promise;
+            private readonly Promise<T> _promise;
 
             /// <summary>
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal PromiseAwaiter(Promise<T> promise)
+            internal PromiseAwaiter(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                Promise<T> promise)
             {
-                // TODO: check for null and use a sentinel PromiseRef so the other calls don't need to check for null.
-                // It may be better to have the sentinel on the promise itself, rather than the awaiters, so none of the APIs need to check for null.
                 _promise = promise;
                 CreateOverride();
             }
@@ -448,35 +470,43 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return _promise._ref.GetIsCompleted(_promise.Id);
+                    var _ref = _promise._ref;
+                    return _ref == null || _ref.GetIsCompleted(_promise._id);
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
             public T GetResult()
             {
-                if (_promise._ref == Internal.PromiseResolvedSentinel)
+                var _ref = _promise._ref;
+                if (_ref == null)
                 {
-                    return _promise.Result;
+                    return _promise._result;
                 }
-                var state = _promise._ref.State;
+                var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    return _promise._ref.GetResult<T>(_promise.Id);
+                    return _ref.GetResult<T>(_promise._id);
                 }
 #if NET_LEGACY
-                _promise._ref.Throw(state, _promise.Id);
+                _ref.Throw(state, _promise._id);
 #else
-                _promise._ref.GetExceptionDispatchInfo(state, _promise.Id).Throw();
+                _ref.GetExceptionDispatchInfo(state, _promise._id).Throw();
 #endif
-                throw new Exception(); // This will never be reached, but the compiler needs help understanding that.
+                throw null; // This will never be reached, but the compiler needs help understanding that.
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
                 ValidateArgument(continuation, "continuation", 1);
-                _promise._ref.OnCompleted(continuation, _promise.Id);
+                var _ref = _promise._ref;
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _ref.OnCompleted(continuation, _promise._id);
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -488,7 +518,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise.Id);
+                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -512,15 +542,23 @@ namespace Proto.Promises
 #endif
             partial struct PromiseProgressAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
         {
-            private readonly PromiseProgressAwaiter<Internal.VoidResult> _awaiter;
+            private readonly Promise _promise;
+            private readonly float _minProgress;
+            private readonly float _maxProgress;
 
             /// <summary>
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal PromiseProgressAwaiterVoid(Promise promise, float minProgress, float maxProgress)
+            internal PromiseProgressAwaiterVoid(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                Promise promise, float minProgress, float maxProgress)
             {
-                _awaiter = new PromiseProgressAwaiter<Internal.VoidResult>(promise._target, minProgress, maxProgress);
+                _promise = promise;
+                _minProgress = minProgress;
+                _maxProgress = maxProgress;
                 CreateOverride();
             }
 
@@ -537,45 +575,64 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return _awaiter.IsCompleted;
+                    var _ref = _promise._ref;
+                    return _ref == null || _ref.GetIsCompleted(_promise._id);
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void GetResult()
             {
-                var promise = _awaiter._promise;
-                var _ref = promise._ref;
+                var _ref = _promise._ref;
+                if (_ref == null)
+                {
+                    return;
+                }
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    _ref.GetResult<Internal.VoidResult>(promise.Id);
+                    _ref.GetResultVoid(_promise._id);
                     return;
                 }
 #if NET_LEGACY
-                _ref.Throw(state, promise.Id);
+                _ref.Throw(state, _promise._id);
 #else
-                _ref.GetExceptionDispatchInfo(state, promise.Id).Throw();
+                _ref.GetExceptionDispatchInfo(state, _promise._id).Throw();
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                _awaiter.OnCompleted(continuation);
+                ValidateArgument(continuation, "continuation", 1);
+                var _ref = _promise._ref;
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _promise._ref.OnCompleted(continuation, _promise._id);
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
             {
-                _awaiter.UnsafeOnCompleted(continuation);
+                OnCompleted(continuation);
             }
 
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupAwaiterWithProgress<Internal.VoidResult>(_awaiter._promise._ref, _awaiter._promise.Id, _awaiter._promise.Depth, _awaiter._minProgress, _awaiter._maxProgress);
+                asyncPromiseRef.HookupAwaiterWithProgress<Internal.VoidResult>(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress);
             }
+
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+#if PROMISE_DEBUG
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+            {
+                Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            }
+#endif
         } // struct PromiseAwaiterVoid
 
         /// <summary>
@@ -590,15 +647,19 @@ namespace Proto.Promises
 #endif
             partial struct PromiseProgressAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
         {
-            internal readonly Promise<T> _promise;
-            internal readonly float _minProgress;
-            internal readonly float _maxProgress;
+            private readonly Promise<T> _promise;
+            private readonly float _minProgress;
+            private readonly float _maxProgress;
 
             /// <summary>
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal PromiseProgressAwaiter(Promise<T> promise, float minProgress, float maxProgress)
+            internal PromiseProgressAwaiter(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                Promise<T> promise, float minProgress, float maxProgress)
             {
                 _promise = promise;
                 _minProgress = minProgress;
@@ -619,35 +680,43 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return _promise._ref.GetIsCompleted(_promise.Id);
+                    var _ref = _promise._ref;
+                    return _ref == null || _ref.GetIsCompleted(_promise._id);
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
             public T GetResult()
             {
-                if (_promise._ref == Internal.PromiseResolvedSentinel)
+                var _ref = _promise._ref;
+                if (_ref == null)
                 {
-                    return _promise.Result;
+                    return _promise._result;
                 }
-                var state = _promise._ref.State;
+                var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    return _promise._ref.GetResult<T>(_promise.Id);
+                    return _ref.GetResult<T>(_promise._id);
                 }
 #if NET_LEGACY
-                _promise._ref.Throw(state, _promise.Id);
+                _ref.Throw(state, _promise._id);
 #else
-                _promise._ref.GetExceptionDispatchInfo(state, _promise.Id).Throw();
+                _ref.GetExceptionDispatchInfo(state, _promise._id).Throw();
 #endif
-                throw new Exception(); // This will never be reached, but the compiler needs help understanding that.
+                throw null; // This will never be reached, but the compiler needs help understanding that.
             }
 
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
                 ValidateArgument(continuation, "continuation", 1);
-                _promise._ref.OnCompleted(continuation, _promise.Id);
+                var _ref = _promise._ref;
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _promise._ref.OnCompleted(continuation, _promise._id);
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -659,7 +728,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupAwaiterWithProgress<T>(_promise._ref, _promise.Id, _promise.Depth, _minProgress, _maxProgress);
+                asyncPromiseRef.HookupAwaiterWithProgress<T>(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress);
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -685,8 +754,8 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Used to support reporting progress to the async Promise function. The progress reported will be scaled from minProgress to maxProgress. Both values must be between 0 and 1 inclusive.
-        /// <para/> Use as `await promise.AwaitWithprogress(min, max);`
+        /// Used to support reporting progress to the async Promise function. The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
+        /// <para/> Use as `await promise.AwaitWithprogress(minProgress, maxProgress);`
         /// </summary>
         public PromiseProgressAwaiterVoid AwaitWithProgress(float minProgress, float maxProgress)
         {
@@ -711,7 +780,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Used to support reporting progress to the async Promise function. The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
-        /// <para/> Use as `await promise.AwaitWithProgress(min, max);`
+        /// <para/> Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`
         /// </summary>
         public PromiseProgressAwaiter<T> AwaitWithProgress(float minProgress, float maxProgress)
         {

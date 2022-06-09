@@ -20,7 +20,7 @@ namespace Proto.Promises
     {
         public static PromiseYieldInstruction ToYieldInstruction(this Promise promise)
         {
-            return ToYieldInstruction(promise._target);
+            return ToYieldInstruction(new Promise<Internal.VoidResult>(promise._ref, promise._id, promise.Depth));
         }
 
         public static PromiseYieldInstruction<T> ToYieldInstruction<T>(this Promise<T> promise)

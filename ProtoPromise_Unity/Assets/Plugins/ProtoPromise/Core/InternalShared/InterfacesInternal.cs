@@ -34,9 +34,24 @@ namespace Proto.Promises
 #endif
         }
 
-        internal interface IDelegateSimple
+        internal interface IAction
         {
             void Invoke();
+        }
+
+        internal interface IAction<TArg>
+        {
+            void Invoke(TArg arg);
+        }
+
+        internal interface IFunc<TResult>
+        {
+            TResult Invoke();
+        }
+
+        internal interface IFunc<TArg, TResult>
+        {
+            TResult Invoke(TArg arg);
         }
     }
 }

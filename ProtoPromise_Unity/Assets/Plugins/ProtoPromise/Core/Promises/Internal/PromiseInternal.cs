@@ -40,16 +40,6 @@ namespace Proto.Promises
         // Just a random number that's not zero. Using this in Promise(<T>) instead of a bool prevents extra memory padding.
         internal const short ValidIdFromApi = 31265;
 
-        [MethodImpl(InlineOption)]
-        internal static Promise ToPromiseVoid(this
-#if CSHARP_7_3_OR_NEWER
-            in
-#endif
-            Promise<VoidResult> promise)
-        {
-            return new Promise(promise);
-        }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
@@ -102,26 +92,46 @@ namespace Proto.Promises
                     nextHandler = TakeOrHandleNextWaiter();
                 }
 
+                internal void WaitFor(Promise other, ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                {
+                    ThrowIfInPool(this);
+                    ValidateReturn(other);
+                    MaybeDisposePreviousAfterSecondWait(handler);
+
+                    if (other._ref == null)
+                    {
+                        handler = this;
+                        State = Promise.State.Resolved;
+                        nextHandler = TakeOrHandleNextWaiter();
+                        return;
+                    }
+                    SetSecondPreviousAndWaitFor(other, ref handler, out nextHandler);
+                }
+
                 internal void WaitFor(Promise<TResult> other, ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
                 {
                     ThrowIfInPool(this);
                     ValidateReturn(other);
                     MaybeDisposePreviousAfterSecondWait(handler);
 
-                    var _ref = other._ref;
-                    if (_ref == ResolvedSentinel.s_instance)
+                    if (other._ref == null)
                     {
                         handler = this;
-                        SetResult(other.Result);
+                        SetResult(other._result);
                         nextHandler = TakeOrHandleNextWaiter();
                         return;
                     }
+                    SetSecondPreviousAndWaitFor(other, ref handler, out nextHandler);
+                }
 
+                private void SetSecondPreviousAndWaitFor(Promise other, ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                {
+                    var _ref = other._ref;
                     SetSecondPrevious(_ref);
                     _ref.InterlockedIncrementProgressReportingCount();
 
                     HandleablePromiseBase previousWaiter;
-                    PromiseRefBase promiseSingleAwait = _ref.AddWaiter(other.Id, this, out previousWaiter);
+                    PromiseRefBase promiseSingleAwait = _ref.AddWaiter(other._id, this, out previousWaiter);
                     if (previousWaiter == null)
                     {
                         ReportProgressFromWaitFor(_ref, other.Depth);
@@ -1235,7 +1245,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class PromiseFinally<TResult, TFinalizer> : PromiseSingleAwait<TResult>
-                where TFinalizer : IDelegateSimple
+                where TFinalizer : IAction
             {
                 private PromiseFinally() { }
 
@@ -1430,13 +1440,13 @@ namespace Proto.Promises
                 {
                     var passThrough = ObjectPool.TryTake<PromisePassThrough>()
                         ?? new PromisePassThrough();
-                    passThrough._ownerOrTarget = owner._target._ref;
-                    passThrough._smallFields._id = owner._target.Id;
+                    passThrough._ownerOrTarget = owner._ref;
+                    passThrough._smallFields._id = owner._id;
                     passThrough._smallFields._index = index;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     passThrough._smallFields._disposed = false;
 #endif
-                    passThrough.SetDepth(owner._target.Depth);
+                    passThrough.SetDepth(owner.Depth);
                     return passThrough;
                 }
 
@@ -1546,6 +1556,7 @@ namespace Proto.Promises
             {
                 if (promise != null)
                 {
+                    // TODO: suppress rejection before dispose.
                     promise.MaybeMarkAwaitedAndDispose(id);
                     promise.SuppressRejection = suppressRejection;
                 }
@@ -1561,8 +1572,24 @@ namespace Proto.Promises
         internal static void PrepareForMerge(Promise promise, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs,
             int index, ref int pendingAwaits, ref ulong completedProgress, ref ulong totalProgress, ref ushort maxDepth)
         {
-            VoidResult voidResult = default(VoidResult);
-            PrepareForMerge(promise._target, ref voidResult, ref passThroughs, index, ref pendingAwaits, ref completedProgress, ref totalProgress, ref maxDepth);
+            unchecked
+            {
+                uint expectedProgress = promise.Depth + 1u;
+                if (promise._ref == null)
+                {
+                    completedProgress += expectedProgress;
+                }
+                else
+                {
+                    passThroughs.Push(PromiseRefBase.PromisePassThrough.GetOrCreate(promise, index));
+                    checked
+                    {
+                        ++pendingAwaits;
+                    }
+                }
+                totalProgress += expectedProgress;
+                maxDepth = Math.Max(maxDepth, promise.Depth);
+            }
         }
 
         internal static void PrepareForMerge<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs,
@@ -1571,10 +1598,10 @@ namespace Proto.Promises
             unchecked
             {
                 uint expectedProgress = promise.Depth + 1u;
-                if (promise._ref == PromiseRefBase.ResolvedSentinel.s_instance)
+                if (promise._ref == null)
                 {
                     completedProgress += expectedProgress;
-                    value = promise.Result;
+                    value = promise._result;
                 }
                 else
                 {
@@ -1591,17 +1618,21 @@ namespace Proto.Promises
 
         internal static bool TryPrepareForRace(Promise promise, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs, int index, ref ushort minDepth)
         {
-            VoidResult voidResult = default(VoidResult);
-            return TryPrepareForRace(promise._target, ref voidResult, ref passThroughs, index, ref minDepth);
+            bool isPending = promise._ref != null;
+            if (isPending)
+            {
+                passThroughs.Push(PromiseRefBase.PromisePassThrough.GetOrCreate(promise, index));
+            }
+            minDepth = Math.Min(minDepth, promise.Depth);
+            return isPending;
         }
 
         internal static bool TryPrepareForRace<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs, int index, ref ushort minDepth)
         {
-            // TODO: check for state, then check sentinel for the result.
-            bool isPending = promise._ref != PromiseRefBase.ResolvedSentinel.s_instance;
+            bool isPending = promise._ref != null;
             if (!isPending)
             {
-                value = promise.Result;
+                value = promise._result;
             }
             else
             {
@@ -1614,15 +1645,19 @@ namespace Proto.Promises
         [MethodImpl(InlineOption)]
         internal static Promise CreateResolved(ushort depth)
         {
-            return new Promise(CreateResolved(new VoidResult(), depth));
+#if PROMISE_DEBUG
+            // Make a promise on the heap to capture causality trace and help with debugging.
+            var promise = PromiseRefBase.DeferredPromise<VoidResult>.GetOrCreate();
+            promise.ResolveDirect(new VoidResult());
+            return new Promise(promise, promise.Id, depth);
+#else
+            // Make a promise on the stack for efficiency.
+            return new Promise(null, 0, depth);
+#endif
         }
 
         [MethodImpl(InlineOption)]
-        internal static Promise<T> CreateResolved<T>(
-#if CSHARP_7_3_OR_NEWER
-            in
-#endif
-            T value, ushort depth)
+        internal static Promise<T> CreateResolved<T>(T value, ushort depth)
         {
 #if PROMISE_DEBUG
             // Make a promise on the heap to capture causality trace and help with debugging.
@@ -1630,8 +1665,8 @@ namespace Proto.Promises
             promise.ResolveDirect(value);
             return new Promise<T>(promise, promise.Id, depth);
 #else
-            // Make a promise with the resolved sentinel for efficiency.
-            return new Promise<T>(PromiseRefBase.ResolvedSentinel.s_instance, ValidIdFromApi, depth, value);
+            // Make a promise on the stack for efficiency.
+            return new Promise<T>(null, 0, depth, value);
 #endif
         }
     } // Internal

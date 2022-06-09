@@ -173,7 +173,6 @@ namespace Proto.Promises
 
             /// <summary>
             /// Cancel the linked <see cref="Promise"/>.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="NewDeferred(CancelationToken)"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             [MethodImpl(Internal.InlineOption)]
@@ -194,7 +193,6 @@ namespace Proto.Promises
             /// <summary>
             /// Try to cancel the linked <see cref="Promise"/>.
             /// <para/> Returns true if successful, false otherwise.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="NewDeferred(CancelationToken)"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public bool TryCancel()
@@ -320,11 +318,14 @@ namespace Proto.Promises
 #endif
             struct Deferred : ICancelable, IProgress<float>, IEquatable<Deferred>
         {
-            private readonly Promise<Internal.VoidResult>.Deferred _target;
+            internal readonly Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> _ref;
+            internal readonly short _promiseId;
+            internal readonly short _deferredId;
+
 
             void IProgress<float>.Report(float value)
             {
-                _target.ReportProgress(value);
+                ReportProgress(value);
             }
 
             /// <summary>
@@ -335,7 +336,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return _target.Promise.ToPromiseVoid();
+                    return new Promise(_ref, _promiseId, 0);
                 }
             }
 
@@ -357,14 +358,9 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return _target.IsValidAndPending;
+                    var _this = _ref;
+                    return _this != null && _this.DeferredId == _deferredId;
                 }
-            }
-
-            [MethodImpl(Internal.InlineOption)]
-            private Deferred(Promise<Internal.VoidResult>.Deferred target)
-            {
-                _target = target;
             }
 
             /// <summary>
@@ -373,7 +369,9 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             internal Deferred(Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> promise, short promiseId, short deferredId)
             {
-                _target = new Promise<Internal.VoidResult>.Deferred(promise, promiseId, deferredId);
+                _ref = promise;
+                _promiseId = promiseId;
+                _deferredId = deferredId;
             }
 
             /// <summary>
@@ -383,7 +381,10 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
             {
-                return new Deferred(Promise<Internal.VoidResult>.Deferred.New(cancelationToken));
+                Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> promise = cancelationToken.CanBeCanceled
+                    ? Internal.PromiseRefBase.DeferredPromiseCancel<Internal.VoidResult>.GetOrCreate(cancelationToken)
+                    : Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>.GetOrCreate();
+                return new Deferred(promise, promise.Id, promise.DeferredId);
             }
 
             /// <summary>
@@ -393,7 +394,16 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void Resolve()
             {
-                _target.Resolve(new Internal.VoidResult());
+                var _this = _ref;
+                if (
+#if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
+                    _this == null ||
+#endif
+                    !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                {
+                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+                _this.ResolveDirectVoid();
             }
 
             /// <summary>
@@ -403,7 +413,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool TryResolve()
             {
-                return _target.TryResolve(new Internal.VoidResult());
+                return Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>.TryResolveVoid(_ref, _deferredId);
             }
 
             /// <summary>
@@ -413,7 +423,12 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void Reject<TReject>(TReject reason)
             {
-                _target.Reject(reason);
+                var _this = _ref;
+                if (_this == null || !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                {
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
             }
 
             /// <summary>
@@ -423,29 +438,48 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool TryReject<TReject>(TReject reason)
             {
-                return _target.TryReject(reason);
+                var _this = _ref;
+                if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                {
+                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
+                    return true;
+                }
+                return false;
             }
 
             /// <summary>
             /// Cancel the linked <see cref="Promise"/>.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             [MethodImpl(Internal.InlineOption)]
             public void Cancel()
             {
-                _target.Cancel();
+                var _this = _ref;
+                if (
+#if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
+                    _this == null ||
+#endif
+                    !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                {
+                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
+                _this.CancelDirect();
             }
 
             /// <summary>
             /// Try to cancel the linked <see cref="Promise"/>.
             /// <para/> Returns true if successful, false otherwise.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public bool TryCancel()
             {
-                return _target.TryCancel();
+                var _this = _ref;
+                if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                {
+                    _this.CancelDirect();
+                    return true;
+                }
+                return false;
             }
 
             /// <summary>
@@ -459,7 +493,10 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void ReportProgress(float progress)
             {
-                _target.ReportProgress(progress);
+                if (!TryReportProgress(progress))
+                {
+                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                }
             }
 
             /// <summary>
@@ -473,7 +510,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool TryReportProgress(float progress)
             {
-                return _target.TryReportProgress(progress);
+                return Internal.DeferredPromiseHelper.TryReportProgress(_ref, _deferredId, progress);
             }
 
             /// <summary>
@@ -482,7 +519,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public static implicit operator DeferredBase(Deferred rhs)
             {
-                return new DeferredBase(rhs._target._ref, rhs._target._promiseId, rhs._target._deferredId);
+                return new DeferredBase(rhs._ref, rhs._promiseId, rhs._deferredId);
             }
 
             /// <summary>
@@ -497,7 +534,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public bool Equals(Deferred other)
             {
-                return _target == other._target;
+                return this == other;
             }
 
             public override bool Equals(object obj)
@@ -512,13 +549,15 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
             {
-                return _target.GetHashCode();
+                return Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
             }
 
             [MethodImpl(Internal.InlineOption)]
             public static bool operator ==(Deferred lhs, Deferred rhs)
             {
-                return lhs._target == rhs._target;
+                return lhs._ref == rhs._ref
+                    & lhs._deferredId == rhs._deferredId
+                    & lhs._promiseId == rhs._promiseId;
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -644,7 +683,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Resolve the linked <see cref="Promise{T}"/> with <paramref name="value"/>.
+            /// Resolve the linked <see cref="Promise"/> with <paramref name="value"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             [MethodImpl(Internal.InlineOption)]
@@ -663,7 +702,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Try to resolve the linked <see cref="Promise{T}"/> with <paramref name="value"/>.
+            /// Try to resolve the linked <see cref="Promise"/> with <paramref name="value"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
@@ -705,7 +744,6 @@ namespace Proto.Promises
 
             /// <summary>
             /// Cancel the linked <see cref="Promise"/>.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             [MethodImpl(Internal.InlineOption)]
@@ -726,7 +764,6 @@ namespace Proto.Promises
             /// <summary>
             /// Try to cancel the linked <see cref="Promise"/>.
             /// <para/> Returns true if successful, false otherwise.
-            /// <para/>Note: This is not recommended. Instead, you should pass a <see cref="CancelationToken"/> into <see cref="New(CancelationToken)"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public bool TryCancel()
