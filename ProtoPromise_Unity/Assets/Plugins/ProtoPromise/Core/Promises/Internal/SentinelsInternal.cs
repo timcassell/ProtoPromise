@@ -86,62 +86,7 @@ namespace Proto.Promises
                 internal override PromiseRefBase GetPreserved(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId) { throw new System.InvalidOperationException(); }
             }
-
-            internal sealed partial class ResolvedSentinel : PromiseRefBase
-            {
-                internal static readonly ResolvedSentinel s_instance = new ResolvedSentinel();
-
-                private ResolvedSentinel()
-                {
-                    State = Promise.State.Resolved;
-                    _next = InvalidAwaitSentinel.s_instance;
-                    _rejectContainer = RejectContainer.s_completionSentinel;
-                    _smallFields._promiseId = ValidIdFromApi;
-                }
-
-                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
-                {
-                    previousWaiter = PromiseCompletionSentinel.s_instance;
-                    return null;
-                }
-
-                internal override bool GetIsValid(short promiseId)
-                {
-                    return promiseId == ValidIdFromApi;
-                }
-
-                internal override bool GetIsCompleted(short promiseId)
-                {
-                    return true;
-                }
-
-                internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth)
-                {
-                    return this;
-                }
-
-                internal override PromiseRefBase GetPreserved(short promiseId, ushort depth)
-                {
-                    return this;
-                }
-
-                protected override void OnForget(short promiseId) { }
-                internal override void MaybeMarkAwaitedAndDispose(short promiseId) { }
-                protected override void MaybeDispose() { }
-
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth) { throw new System.InvalidOperationException(); }
-            }
         } // PromiseRefBase
-
-        internal static PromiseRefBase.ResolvedSentinel PromiseResolvedSentinel
-        {
-            [MethodImpl(InlineOption)]
-            get
-            {
-                return PromiseRefBase.ResolvedSentinel.s_instance;
-            }
-        }
 
         internal class BackgroundSynchronizationContextSentinel : SynchronizationContext
         {

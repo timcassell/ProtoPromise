@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -16,14 +17,14 @@ namespace Proto.Promises
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
-            ushort depth = Math.Min(promise1._target.Depth, promise2._target.Depth);
+            ushort depth = Math.Min(promise1.Depth, promise2.Depth);
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel)
+            if (promise1._ref == null | promise2._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
                 return Internal.CreateResolved(depth);
             }
             passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -41,16 +42,16 @@ namespace Proto.Promises
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
-            ushort depth = Math.Min(promise1._target.Depth, Math.Min(promise2._target.Depth, promise3._target.Depth));
+            ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, promise3.Depth));
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel | promise3._target._ref == Internal.PromiseResolvedSentinel)
+            if (promise1._ref == null | promise2._ref == null | promise3._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
                 return Internal.CreateResolved(depth);
             }
             passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -69,18 +70,18 @@ namespace Proto.Promises
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
-            ushort depth = Math.Min(promise1._target.Depth, Math.Min(promise2._target.Depth, Math.Min(promise3._target.Depth, promise4._target.Depth)));
+            ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, Math.Min(promise3.Depth, promise4.Depth)));
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel | promise3._target._ref == Internal.PromiseResolvedSentinel | promise4._target._ref == Internal.PromiseResolvedSentinel)
+            if (promise1._ref == null | promise2._ref == null | promise3._ref == null | promise4._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
                 return Internal.CreateResolved(depth);
             }
             passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -137,8 +138,8 @@ namespace Proto.Promises
                     {
                         p = promises.Current;
                         ValidateElement(p, "promises", 1);
-                        Internal.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id, false);
-                        minDepth = Math.Min(minDepth, p._target.Depth);
+                        Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, false);
+                        minDepth = Math.Min(minDepth, p.Depth);
                     }
                     // Repool any created passthroughs.
                     foreach (var passthrough in passThroughs)
@@ -198,14 +199,14 @@ namespace Proto.Promises
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
-            ushort depth = Math.Min(promise1._target.Depth, promise2._target.Depth);
+            ushort depth = Math.Min(promise1.Depth, promise2.Depth);
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel)
+            if (promise1._ref == null | promise2._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, true);
                 return Internal.CreateResolved(depth);
             }
             passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -223,16 +224,16 @@ namespace Proto.Promises
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
-            ushort depth = Math.Min(promise1._target.Depth, Math.Min(promise2._target.Depth, promise3._target.Depth));
+            ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, promise3.Depth));
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel | promise3._target._ref == Internal.PromiseResolvedSentinel)
+            if (promise1._ref == null | promise2._ref == null | promise3._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, true);
                 return Internal.CreateResolved(depth);
             }
             passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -251,18 +252,18 @@ namespace Proto.Promises
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
-            ushort depth = Math.Min(promise1._target.Depth, Math.Min(promise2._target.Depth, Math.Min(promise3._target.Depth, promise4._target.Depth)));
+            ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, Math.Min(promise3.Depth, promise4.Depth)));
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._target._ref == Internal.PromiseResolvedSentinel | promise2._target._ref == Internal.PromiseResolvedSentinel | promise3._target._ref == Internal.PromiseResolvedSentinel | promise4._target._ref == Internal.PromiseResolvedSentinel)
+            if (promise1._ref == null | promise2._ref == null | promise3._ref == null | promise4._ref == null)
             {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._target._ref, promise1._target.Id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._target._ref, promise2._target.Id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._target._ref, promise3._target.Id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._target._ref, promise4._target.Id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, true);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, true);
                 return Internal.CreateResolved(depth);
             }
             passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
@@ -319,8 +320,8 @@ namespace Proto.Promises
                     {
                         p = promises.Current;
                         ValidateElement(p, "promises", 1);
-                        Internal.MaybeMarkAwaitedAndDispose(p._target._ref, p._target.Id, true);
-                        minDepth = Math.Min(minDepth, p._target.Depth);
+                        Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, true);
+                        minDepth = Math.Min(minDepth, p.Depth);
                     }
                     // Repool any created passthroughs.
                     foreach (var passthrough in passThroughs)
@@ -440,7 +441,7 @@ namespace Proto.Promises
             }
 
             // Invoke funcs and normalize the progress.
-            var promise = new Promise(Internal.PromiseResolvedSentinel, Internal.ValidIdFromApi, Internal.NegativeOneDepth);
+            var promise = new Promise(null, 0, Internal.NegativeOneDepth);
             do
             {
                 promise = promise.Then(promiseFuncs.Current, cancelationToken);
@@ -1538,7 +1539,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationOption);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
+            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
                 .Then(function);
         }
 
@@ -1552,7 +1553,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationOption);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
+            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
                 .Then(captureValue, function);
         }
 
@@ -1566,7 +1567,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationContext);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
+            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
                 .Then(function);
         }
 
@@ -1580,7 +1581,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationContext);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
+            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
                 .Then(captureValue, function);
         }
 
@@ -1594,7 +1595,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationOption);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
+            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
                 .Then(function);
         }
 
@@ -1608,7 +1609,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationOption);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
+            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
                 .Then(captureValue, function);
         }
 
@@ -1622,7 +1623,7 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationContext);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
+            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
                 .Then(function);
         }
 
@@ -1636,24 +1637,34 @@ namespace Proto.Promises
 
             Promise promise = SwitchToContext(synchronizationContext);
             // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._target._ref, promise._target.Id, Internal.NegativeOneDepth)
+            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
                 .Then(captureValue, function);
         }
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that is already resolved.
         /// </summary>
+        [MethodImpl(Internal.InlineOption)]
 		public static Promise Resolved()
         {
+#if PROMISE_DEBUG
             return Internal.CreateResolved(0);
+#else
+            return new Promise();
+#endif
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that is already resolved with <paramref name="value"/>.
         /// </summary>
+        [MethodImpl(Internal.InlineOption)]
 		public static Promise<T> Resolved<T>(T value)
         {
+#if PROMISE_DEBUG
             return Internal.CreateResolved(value, 0);
+#else
+            return new Promise<T>(value);
+#endif
         }
 
         /// <summary>

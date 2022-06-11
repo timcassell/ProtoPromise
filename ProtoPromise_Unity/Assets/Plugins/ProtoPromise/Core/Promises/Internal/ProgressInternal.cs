@@ -166,11 +166,6 @@ namespace Proto.Promises
                 }
             }
 
-            partial class ResolvedSentinel : PromiseRefBase
-            {
-                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth) { throw new System.InvalidOperationException(); }
-            }
-
             internal partial struct Fixed32
             {
                 // Necessary to fix a race condition when hooking up a promise and the promise's deferred reports progress. Deferred report takes precedence.
@@ -535,7 +530,7 @@ namespace Proto.Promises
                     float value = (float) (progress.ToDouble() / expected);
                     if (!IsInvoking1 & !IsCanceled & !_cancelationRegistration.Token.IsCancelationRequested)
                     {
-                        CallbackHelper.InvokeAndCatchProgress(_progress, value, this);
+                        CallbackHelperVoid.InvokeAndCatchProgress(_progress, value, this);
                     }
                     MaybeDispose();
 
@@ -614,7 +609,7 @@ namespace Proto.Promises
                     {
                         if (state == Promise.State.Resolved)
                         {
-                            CallbackHelper.InvokeAndCatchProgress(_progress, 1f, this);
+                            CallbackHelperVoid.InvokeAndCatchProgress(_progress, 1f, this);
                         }
                         // Release since Cancel() will not be invoked.
                         InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0);
@@ -819,7 +814,7 @@ namespace Proto.Promises
             partial class DeferredPromiseBase<TResult>
             {
                 [MethodImpl(InlineOption)]
-                public bool TryReportProgress(short deferredId, float progress)
+                public bool TryReportProgress(int deferredId, float progress)
                 {
                     InterlockedIncrementProgressReportingCount();
                     if (deferredId != DeferredId)
@@ -896,12 +891,13 @@ namespace Proto.Promises
                     _smallFields._secondPrevious = false;
                 }
 
-                internal void WaitForWithProgress<T>(Promise<T> other)
+                [MethodImpl(InlineOption)]
+                internal void WaitForWithProgress(PromiseRefBase _ref, short promiseId)
                 {
                     ThrowIfInPool(this);
-                    SetSecondPrevious(other._ref);
+                    SetSecondPrevious(_ref);
                     _smallFields._currentProgress = Fixed32.FromWhole(Depth);
-                    other._ref.HookupNewWaiter(other.Id, this);
+                    _ref.HookupNewWaiter(promiseId, this);
                 }
 
                 internal override sealed PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
@@ -1015,7 +1011,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                partial void SetPreviousAndProgress(PromiseRefBase waiter, float minProgress, float maxProgress)
+                private void SetPreviousAndProgress(PromiseRefBase waiter, float minProgress, float maxProgress)
                 {
 #if PROMISE_DEBUG
                     _previous = waiter;
@@ -1024,7 +1020,7 @@ namespace Proto.Promises
                     _maxProgress = maxProgress;
                 }
 
-                partial void ReportProgressFromHookupWaiterWithProgress(PromiseRefBase other, ushort depth)
+                private void ReportProgressFromHookupWaiterWithProgress(PromiseRefBase other, ushort depth)
                 {
                     var wasReportingPriority = Fixed32.ts_reportingPriority;
                     Fixed32.ts_reportingPriority = false;

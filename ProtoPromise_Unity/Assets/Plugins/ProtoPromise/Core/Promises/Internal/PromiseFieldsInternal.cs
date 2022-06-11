@@ -37,87 +37,14 @@ namespace Proto.Promises
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal readonly Promise<Internal.VoidResult> _target;
-
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRefBase promiseRef, short id, ushort depth)
-        {
-            _target = new Promise<Internal.VoidResult>(promiseRef, id, depth);
-        }
-
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        [MethodImpl(Internal.InlineOption)]
-        internal Promise(
-#if CSHARP_7_3_OR_NEWER
-            in
-#endif
-            Promise<Internal.VoidResult> target)
-        {
-            _target = target;
-        }
-    }
-
-    partial struct Promise<T>
-    {
-        // This is used so that _result will be packed efficiently and not padded with extra bytes (only relevant for small, non-primitive struct T types).
-        // Otherwise, if all fields are on the same level as _ref, because it is a class type, it will pad T up to IntPtr.Size if T is not primitive, causing the Promise<T> struct to be larger than necessary.
-        // This is especially needed for `Promise`, which has an internal `Promise<Internal.VoidResult>` field (and sadly, the runtime does not allow 0-sized structs, minimum size is 1 byte).
-        // See https://stackoverflow.com/questions/24742325/why-does-struct-alignment-depend-on-whether-a-field-type-is-primitive-or-user-de
-        private
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            struct SmallFields
-        {
-#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            internal readonly ushort _depth;
-#endif
-            internal readonly short _id;
-            internal readonly T _result;
-
-            [MethodImpl(Internal.InlineOption)]
-            internal SmallFields(short id, ushort depth,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                T result)
-            {
-#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                _depth = depth;
-#endif
-                _id = id;
-                _result = result;
-            }
-        }
-
-        /// <summary>
-        /// Internal use.
-        /// </summary>
         internal readonly Internal.PromiseRefBase _ref;
-        private readonly SmallFields _smallFields;
-
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal short Id
-        {
-            [MethodImpl(Internal.InlineOption)]
-            get { return _smallFields._id; }
-        }
-
-        /// <summary>
-        /// Internal use.
-        /// </summary>
-        internal T Result
-        {
-            [MethodImpl(Internal.InlineOption)]
-            get { return _smallFields._result; }
-        }
+        internal readonly short _id;
+#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+        private readonly ushort _depth;
+#endif
 
         /// <summary>
         /// Internal use.
@@ -126,7 +53,7 @@ namespace Proto.Promises
         {
             [MethodImpl(Internal.InlineOption)]
 #if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            get { return _smallFields._depth; }
+            get { return _depth; }
 #else
             get { return 0; }
 #endif
@@ -136,14 +63,87 @@ namespace Proto.Promises
         /// Internal use.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRefBase promiseRef, short id, ushort depth,
-#if CSHARP_7_3_OR_NEWER
-            in
-#endif
-            T value = default(T))
+        internal Promise(Internal.PromiseRefBase promiseRef, short id, ushort depth)
         {
             _ref = promiseRef;
-            _smallFields = new SmallFields(id, depth, value);
+            _id = id;
+#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            _depth = depth;
+#endif
+        }
+    }
+
+    partial struct Promise<T>
+    {
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        internal readonly Internal.PromiseRefBase.PromiseRef<T> _ref;
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        internal readonly T _result;
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        internal readonly short _id;
+#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+        private readonly ushort _depth;
+#endif
+
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        internal ushort Depth
+        {
+            [MethodImpl(Internal.InlineOption)]
+#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            get { return _depth; }
+#else
+            get { return 0; }
+#endif
+        }
+
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef, short id, ushort depth)
+        {
+            _result = default(T);
+            _ref = promiseRef;
+            _id = id;
+#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            _depth = depth;
+#endif
+        }
+
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef, short id, ushort depth, T result)
+        {
+            _ref = promiseRef;
+            _result = result;
+            _id = id;
+#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            _depth = depth;
+#endif
+        }
+
+        /// <summary>
+        /// Internal use.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        internal Promise(T result)
+        {
+            _ref = null;
+            _id = 0;
+#if PROMISE_PROGRESS || PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            _depth = 0;
+#endif
+            _result = result;
         }
     }
 
@@ -270,7 +270,7 @@ namespace Proto.Promises
             }
 
             partial class PromiseFinally<TResult, TFinalizer> : PromiseSingleAwait<TResult>
-                where TFinalizer : IDelegateSimple
+                where TFinalizer : IAction
             {
                 private TFinalizer _finalizer;
             }
@@ -293,6 +293,18 @@ namespace Proto.Promises
             {
                 private CancelationRegistration _cancelationRegistration;
                 private int _retainCounter;
+            }
+
+            partial class DeferredPromiseBase<TResult> : AsyncPromiseBase<TResult>, IDeferredPromise
+            {
+                // Interlocked is more efficient on int than forcing it on a short with a CompareExchange loop.
+                // Hopefully this won't be necessary in the future when .Net adds Interlocked methods for byte/sbyte/ushort/short. https://github.com/dotnet/runtime/issues/64658
+                // Then we can use the bit space from SmallFields._deferredId instead of an extra field here.
+                volatile protected int _deferredId;
+            }
+
+            partial class DeferredPromise<TResult> : DeferredPromiseBase<TResult>
+            {
             }
 
             partial class DeferredPromiseCancel<TResult> : DeferredPromise<TResult>
@@ -419,7 +431,7 @@ namespace Proto.Promises
 
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
             }
-#endregion
+            #endregion
 
 #if PROMISE_PROGRESS
             partial struct Fixed32
@@ -457,9 +469,7 @@ namespace Proto.Promises
 #if !OPTIMIZED_ASYNC_MODE
                 partial class PromiseMethodContinuer : HandleablePromiseBase
                 {
-#if PROMISE_DEBUG
-                    protected ITraceable _owner;
-#endif
+                    protected AsyncPromiseRef<TResult> _owner;
                     // Cache the delegate to prevent new allocations.
                     private Action _moveNext;
 
@@ -481,24 +491,21 @@ namespace Proto.Promises
 #endif // !OPTIMIZED_ASYNC_MODE
             } // AsyncPromiseRef
         } // PromiseRefBase
-
-        partial struct PromiseMethodBuilderInternalVoid
-        {
-#if !OPTIMIZED_ASYNC_MODE
-            private readonly PromiseRefBase _ref;
-#else
-            private PromiseRefBase _ref;
-#endif // !OPTIMIZED_ASYNC_MODE
-        }
-
-        partial struct PromiseMethodBuilderInternal<TResult>
-        {
-#if !OPTIMIZED_ASYNC_MODE
-            private readonly PromiseRefBase _ref;
-#else
-            private PromiseRefBase _ref;
-            private TResult _result;
-#endif // !OPTIMIZED_ASYNC_MODE
-        }
     } // Internal
+
+    namespace Async.CompilerServices
+    {
+        partial struct PromiseMethodBuilder
+        {
+            private Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult> _ref;
+        }
+
+        partial struct PromiseMethodBuilder<T>
+        {
+            private Internal.PromiseRefBase.AsyncPromiseRef<T> _ref;
+#if OPTIMIZED_ASYNC_MODE
+            private T _result;
+#endif
+        }
+    }
 }

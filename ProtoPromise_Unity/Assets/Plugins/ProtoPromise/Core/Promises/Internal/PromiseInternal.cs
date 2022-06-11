@@ -40,16 +40,6 @@ namespace Proto.Promises
         // Just a random number that's not zero. Using this in Promise(<T>) instead of a bool prevents extra memory padding.
         internal const short ValidIdFromApi = 31265;
 
-        [MethodImpl(InlineOption)]
-        internal static Promise ToPromiseVoid(this
-#if CSHARP_7_3_OR_NEWER
-            in
-#endif
-            Promise<VoidResult> promise)
-        {
-            return new Promise(promise);
-        }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
@@ -60,20 +50,6 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseRef<TResult> : PromiseRefBase
             {
-                internal override PromiseRefBase GetPreserved(short promiseId, ushort depth)
-                {
-                    var newPromise = PromiseMultiAwait<TResult>.GetOrCreate(depth);
-                    HookupNewPromise(promiseId, newPromise);
-                    return newPromise;
-                }
-
-                internal override PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
-                {
-                    var newPromise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, depth);
-                    HookupNewPromise(promiseId, newPromise);
-                    return newPromise;
-                }
-
                 [MethodImpl(InlineOption)]
                 internal void SetResult(
 #if CSHARP_7_3_OR_NEWER
@@ -94,12 +70,28 @@ namespace Proto.Promises
                     handler.SuppressRejection = true;
                     _result = handler.GetResult<TResult>();
                     _rejectContainer = handler._rejectContainer;
-                    // Very important, write State must come after write _result and _valueContainer. This is a volatile write, so we don't need a full memory barrier.
-                    // State is checked for completion, and if it is read not pending on another thread, _result and _valueContainer must have already been written so the other thread can read them.
+                    // Very important, write State must come after write _result and _rejectContainer. This is a volatile write, so we don't need a full memory barrier.
+                    // State is checked for completion, and if it is read not pending on another thread, _result and _rejectContainer must have already been written so the other thread can read them.
                     State = handler.State;
                     handler.MaybeDispose();
                     handler = this;
                     nextHandler = TakeOrHandleNextWaiter();
+                }
+
+                internal void WaitFor(Promise other, ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                {
+                    ThrowIfInPool(this);
+                    ValidateReturn(other);
+                    MaybeDisposePreviousAfterSecondWait(handler);
+
+                    if (other._ref == null)
+                    {
+                        handler = this;
+                        State = Promise.State.Resolved;
+                        nextHandler = TakeOrHandleNextWaiter();
+                        return;
+                    }
+                    SetSecondPreviousAndWaitFor(other, ref handler, out nextHandler);
                 }
 
                 internal void WaitFor(Promise<TResult> other, ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
@@ -108,20 +100,24 @@ namespace Proto.Promises
                     ValidateReturn(other);
                     MaybeDisposePreviousAfterSecondWait(handler);
 
-                    var _ref = other._ref;
-                    if (_ref == ResolvedSentinel.s_instance)
+                    if (other._ref == null)
                     {
                         handler = this;
-                        SetResult(other.Result);
+                        SetResult(other._result);
                         nextHandler = TakeOrHandleNextWaiter();
                         return;
                     }
+                    SetSecondPreviousAndWaitFor(other, ref handler, out nextHandler);
+                }
 
+                private void SetSecondPreviousAndWaitFor(Promise other, ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                {
+                    var _ref = other._ref;
                     SetSecondPrevious(_ref);
                     _ref.InterlockedIncrementProgressReportingCount();
 
                     HandleablePromiseBase previousWaiter;
-                    PromiseRefBase promiseSingleAwait = _ref.AddWaiter(other.Id, this, out previousWaiter);
+                    PromiseRefBase promiseSingleAwait = _ref.AddWaiter(other._id, this, out previousWaiter);
                     if (previousWaiter == null)
                     {
                         ReportProgressFromWaitFor(_ref, other.Depth);
@@ -137,6 +133,33 @@ namespace Proto.Promises
 
                     handler = this;
                     HandleSelf(ref _ref, out nextHandler);
+                }
+
+                internal abstract PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth);
+                internal virtual PromiseRef<TResult> GetConfiguredT(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
+                {
+                    var newPromise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, depth);
+                    HookupNewPromise(promiseId, newPromise);
+                    return newPromise;
+                }
+
+                internal override PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
+                {
+                    var newPromise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, depth);
+                    HookupNewPromise(promiseId, newPromise);
+                    return newPromise;
+                }
+
+                internal sealed override PromiseRefBase GetPreserved(short promiseId, ushort depth)
+                {
+                    return GetPreservedT(promiseId, depth);
+                }
+
+                internal PromiseRef<TResult> GetPreservedT(short promiseId, ushort depth)
+                {
+                    var newPromise = PromiseMultiAwait<TResult>.GetOrCreate(depth);
+                    HookupNewPromise(promiseId, newPromise);
+                    return newPromise;
                 }
             }
 
@@ -294,8 +317,8 @@ namespace Proto.Promises
             private void SetRejectOrCancel(RejectContainer rejectOrCancelContainer, Promise.State state)
             {
                 _rejectContainer = rejectOrCancelContainer;
-                // Very important, write State must come after write _valueContainer. This is a volatile write, so we don't need a full memory barrier.
-                // State is checked for completion, and if it is read not pending on another thread, _valueContainer must have already been written so the other thread can read it.
+                // Very important, write State must come after write _rejectContainer. This is a volatile write, so we don't need a full memory barrier.
+                // State is checked for completion, and if it is read not pending on another thread, _rejectContainer must have already been written so the other thread can read it.
                 State = state;
             }
 
@@ -406,8 +429,8 @@ namespace Proto.Promises
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
-                    var waiter = _next;
-                    bool isValid = promiseId == Id & (waiter == null | waiter == PromiseCompletionSentinel.s_instance);
+                    //var waiter = _next;
+                    bool isValid = promiseId == Id;// & (waiter == null | waiter == PromiseCompletionSentinel.s_instance);
                     if (!isValid)
                     {
                         throw new InvalidOperationException("Cannot await a non-preserved promise more than once.", GetFormattedStacktrace(3));
@@ -425,6 +448,11 @@ namespace Proto.Promises
                 }
 
                 internal sealed override PromiseRefBase GetDuplicate(short promiseId, ushort depth)
+                {
+                    return GetDuplicateT(promiseId, depth);
+                }
+
+                internal sealed override PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth)
                 {
                     // This isn't strictly thread-safe, but when the next promise is awaited, the CompareExchange should catch it.
                     ValidateIdAndNotAwaited(promiseId);
@@ -517,8 +545,8 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _rejectContainer = valueContainer;
-                    // Very important, write State must come after write _valueContainer. This is a volatile write, so we don't need a full memory barrier.
-                    // State is checked for completion, and if it is read rejected on another thread, _valueContainer must have already been written so the other thread can read it.
+                    // Very important, write State must come after write _rejectContainer. This is a volatile write, so we don't need a full memory barrier.
+                    // State is checked for completion, and if it is read rejected on another thread, _rejectContainer must have already been written so the other thread can read it.
                     State = state;
                     nextHandler = TakeOrHandleNextWaiter();
                 }
@@ -617,6 +645,11 @@ namespace Proto.Promises
                 }
 
                 internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth)
+                {
+                    return GetDuplicateT(promiseId, depth);
+                }
+
+                internal override PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth)
                 {
                     var newPromise = PromiseDuplicate<TResult>.GetOrCreate(depth);
                     HookupNewPromise(promiseId, newPromise);
@@ -717,8 +750,8 @@ namespace Proto.Promises
                     handler.SuppressRejection = true;
                     _result = handler.GetResult<TResult>();
                     _rejectContainer = handler._rejectContainer;
-                    // Very important, write State must come after write _result and _valueContainer. This is a volatile write, so we don't need a full memory barrier.
-                    // State is checked for completion, and if it is read not pending on another thread, _result and _valueContainer must have already been written so the other thread can read them.
+                    // Very important, write State must come after write _result and _rejectContainer. This is a volatile write, so we don't need a full memory barrier.
+                    // State is checked for completion, and if it is read not pending on another thread, _result and _rejectContainer must have already been written so the other thread can read them.
                     State = handler.State;
                     handler.MaybeDispose();
                     nextHandler = null;
@@ -810,6 +843,11 @@ namespace Proto.Promises
                 }
 
                 internal override PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
+                {
+                    return GetConfiguredT(promiseId, synchronizationContext, depth);
+                }
+
+                internal override PromiseRef<TResult> GetConfiguredT(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (synchronizationContext == null)
@@ -1235,7 +1273,7 @@ namespace Proto.Promises
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
             private sealed partial class PromiseFinally<TResult, TFinalizer> : PromiseSingleAwait<TResult>
-                where TFinalizer : IDelegateSimple
+                where TFinalizer : IAction
             {
                 private PromiseFinally() { }
 
@@ -1430,13 +1468,13 @@ namespace Proto.Promises
                 {
                     var passThrough = ObjectPool.TryTake<PromisePassThrough>()
                         ?? new PromisePassThrough();
-                    passThrough._ownerOrTarget = owner._target._ref;
-                    passThrough._smallFields._id = owner._target.Id;
+                    passThrough._ownerOrTarget = owner._ref;
+                    passThrough._smallFields._id = owner._id;
                     passThrough._smallFields._index = index;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     passThrough._smallFields._disposed = false;
 #endif
-                    passThrough.SetDepth(owner._target.Depth);
+                    passThrough.SetDepth(owner.Depth);
                     return passThrough;
                 }
 
@@ -1546,6 +1584,7 @@ namespace Proto.Promises
             {
                 if (promise != null)
                 {
+                    // TODO: suppress rejection before dispose.
                     promise.MaybeMarkAwaitedAndDispose(id);
                     promise.SuppressRejection = suppressRejection;
                 }
@@ -1561,8 +1600,24 @@ namespace Proto.Promises
         internal static void PrepareForMerge(Promise promise, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs,
             int index, ref int pendingAwaits, ref ulong completedProgress, ref ulong totalProgress, ref ushort maxDepth)
         {
-            VoidResult voidResult = default(VoidResult);
-            PrepareForMerge(promise._target, ref voidResult, ref passThroughs, index, ref pendingAwaits, ref completedProgress, ref totalProgress, ref maxDepth);
+            unchecked
+            {
+                uint expectedProgress = promise.Depth + 1u;
+                if (promise._ref == null)
+                {
+                    completedProgress += expectedProgress;
+                }
+                else
+                {
+                    passThroughs.Push(PromiseRefBase.PromisePassThrough.GetOrCreate(promise, index));
+                    checked
+                    {
+                        ++pendingAwaits;
+                    }
+                }
+                totalProgress += expectedProgress;
+                maxDepth = Math.Max(maxDepth, promise.Depth);
+            }
         }
 
         internal static void PrepareForMerge<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs,
@@ -1571,10 +1626,10 @@ namespace Proto.Promises
             unchecked
             {
                 uint expectedProgress = promise.Depth + 1u;
-                if (promise._ref == PromiseRefBase.ResolvedSentinel.s_instance)
+                if (promise._ref == null)
                 {
                     completedProgress += expectedProgress;
-                    value = promise.Result;
+                    value = promise._result;
                 }
                 else
                 {
@@ -1591,17 +1646,21 @@ namespace Proto.Promises
 
         internal static bool TryPrepareForRace(Promise promise, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs, int index, ref ushort minDepth)
         {
-            VoidResult voidResult = default(VoidResult);
-            return TryPrepareForRace(promise._target, ref voidResult, ref passThroughs, index, ref minDepth);
+            bool isPending = promise._ref != null;
+            if (isPending)
+            {
+                passThroughs.Push(PromiseRefBase.PromisePassThrough.GetOrCreate(promise, index));
+            }
+            minDepth = Math.Min(minDepth, promise.Depth);
+            return isPending;
         }
 
         internal static bool TryPrepareForRace<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs, int index, ref ushort minDepth)
         {
-            // TODO: check for state, then check sentinel for the result.
-            bool isPending = promise._ref != PromiseRefBase.ResolvedSentinel.s_instance;
+            bool isPending = promise._ref != null;
             if (!isPending)
             {
-                value = promise.Result;
+                value = promise._result;
             }
             else
             {
@@ -1614,15 +1673,19 @@ namespace Proto.Promises
         [MethodImpl(InlineOption)]
         internal static Promise CreateResolved(ushort depth)
         {
-            return new Promise(CreateResolved(new VoidResult(), depth));
+#if PROMISE_DEBUG
+            // Make a promise on the heap to capture causality trace and help with debugging.
+            var promise = PromiseRefBase.DeferredPromise<VoidResult>.GetOrCreate();
+            promise.ResolveDirect(new VoidResult());
+            return new Promise(promise, promise.Id, depth);
+#else
+            // Make a promise on the stack for efficiency.
+            return new Promise(null, 0, depth);
+#endif
         }
 
         [MethodImpl(InlineOption)]
-        internal static Promise<T> CreateResolved<T>(
-#if CSHARP_7_3_OR_NEWER
-            in
-#endif
-            T value, ushort depth)
+        internal static Promise<T> CreateResolved<T>(T value, ushort depth)
         {
 #if PROMISE_DEBUG
             // Make a promise on the heap to capture causality trace and help with debugging.
@@ -1630,8 +1693,8 @@ namespace Proto.Promises
             promise.ResolveDirect(value);
             return new Promise<T>(promise, promise.Id, depth);
 #else
-            // Make a promise with the resolved sentinel for efficiency.
-            return new Promise<T>(PromiseRefBase.ResolvedSentinel.s_instance, ValidIdFromApi, depth, value);
+            // Make a promise on the stack for efficiency.
+            return new Promise<T>(null, 0, depth, value);
 #endif
         }
     } // Internal

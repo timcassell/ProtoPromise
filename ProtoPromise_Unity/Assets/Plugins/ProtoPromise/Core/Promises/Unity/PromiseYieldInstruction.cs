@@ -20,7 +20,7 @@ namespace Proto.Promises
     {
         public static PromiseYieldInstruction ToYieldInstruction(this Promise promise)
         {
-            return ToYieldInstruction(promise._target);
+            return Internal.YieldInstructionVoid.GetOrCreate(promise);
         }
 
         public static PromiseYieldInstruction<T> ToYieldInstruction<T>(this Promise<T> promise)
@@ -93,7 +93,7 @@ namespace Proto.Promises
                 {
 #if !NET_LEGACY
                     ((Internal.IRejectValueContainer) _rejectContainer).GetExceptionDispatchInfo().Throw();
-                    throw new Exception(); // This point will never be reached, but the C# compiler thinks it might.
+                    throw null; // This point will never be reached, but the C# compiler thinks it might.
 #else
                     throw ((Internal.IRejectValueContainer) _rejectContainer).GetException();
 #endif
@@ -165,7 +165,7 @@ namespace Proto.Promises
                 {
 #if !NET_LEGACY
                     ((Internal.IRejectValueContainer) _rejectContainer).GetExceptionDispatchInfo().Throw();
-                    throw new Exception(); // This point will never be reached, but the C# compiler thinks it might.
+                    throw null; // This point will never be reached, but the C# compiler thinks it might.
 #else
                     throw ((Internal.IRejectValueContainer) _rejectContainer).GetException();
 #endif
@@ -180,6 +180,78 @@ namespace Proto.Promises
 
     partial class Internal
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [System.Diagnostics.DebuggerNonUserCode]
+#endif
+        internal sealed class YieldInstructionVoid : PromiseYieldInstruction, ILinked<YieldInstructionVoid>
+        {
+            // These must not be readonly.
+            private static ValueLinkedStack<YieldInstructionVoid> s_pool;
+            private static SpinLocker s_spinLocker;
+
+            private int _disposeChecker; // To detect if Dispose is called from multiple threads.
+
+            YieldInstructionVoid ILinked<YieldInstructionVoid>.Next { get; set; }
+
+            private YieldInstructionVoid() { }
+
+            public static YieldInstructionVoid GetOrCreate(Promise promise)
+            {
+                YieldInstructionVoid yieldInstruction;
+                s_spinLocker.Enter();
+                yieldInstruction = s_pool.IsNotEmpty
+                    ? s_pool.Pop()
+                    : new YieldInstructionVoid();
+                s_spinLocker.Exit();
+
+                yieldInstruction._disposeChecker = 0;
+                yieldInstruction._state = Promise.State.Pending;
+                yieldInstruction._retainCounter = 2; // 1 retain for complete, 1 for dispose.
+                promise
+                    .ContinueWith(yieldInstruction, (yi, resultContainer) =>
+                    {
+                        var state = resultContainer.State;
+                        if (state != Promise.State.Resolved)
+                        {
+                            yi._rejectContainer = resultContainer._target._target._rejectContainer;
+                        }
+                        yi._state = state;
+                        yi.MaybeDispose();
+                    })
+                    .Forget();
+                return yieldInstruction;
+            }
+
+            public override void Dispose()
+            {
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
+                if (Interlocked.CompareExchange(ref _disposeChecker, 1, 0) == 1)
+#else
+                if (Interlocked.Exchange(ref _disposeChecker, 1) == 1)
+#endif
+                {
+                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", GetFormattedStacktrace(1));
+                }
+                MaybeDispose();
+            }
+
+            private void MaybeDispose()
+            {
+                if (Interlocked.Decrement(ref _retainCounter) == 0)
+                {
+                    _rejectContainer = null;
+#if !PROMISE_DEBUG // Don't repool in DEBUG mode.
+                    if (Promise.Config.ObjectPoolingEnabled)
+                    {
+                        s_spinLocker.Enter();
+                        s_pool.Push(this);
+                        s_spinLocker.Exit();
+                    }
+#endif
+                }
+            }
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
 #endif
