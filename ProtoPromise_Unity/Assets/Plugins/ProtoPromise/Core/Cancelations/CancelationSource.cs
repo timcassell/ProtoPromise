@@ -9,7 +9,7 @@ using System;
 namespace Proto.Promises
 {
     /// <summary>
-    /// Cancelation source used to cancel promises.
+    /// Cancelation source used to cancel operations.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
@@ -21,8 +21,8 @@ namespace Proto.Promises
         struct CancelationSource : ICancelable, IDisposable, IEquatable<CancelationSource>
     {
         private readonly Internal.CancelationRef _ref;
-        private readonly short _sourceId;
-        private readonly short _tokenId;
+        private readonly int _sourceId;
+        private readonly int _tokenId;
 
         /// <summary>
         /// Create a new <see cref="CancelationSource"/>.
@@ -91,7 +91,7 @@ namespace Proto.Promises
         {
             get
             {
-                return new CancelationToken(_ref, _tokenId, false);
+                return new CancelationToken(_ref, _tokenId);
             }
         }
 
@@ -176,7 +176,7 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            return Internal.BuildHashCode(_ref, _sourceId.GetHashCode(), _tokenId.GetHashCode());
+            return Internal.BuildHashCode(_ref, _sourceId.GetHashCode(), 0);
         }
 
         public static bool operator ==(CancelationSource c1, CancelationSource c2)
