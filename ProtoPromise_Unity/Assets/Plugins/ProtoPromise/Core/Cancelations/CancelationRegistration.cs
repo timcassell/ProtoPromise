@@ -20,20 +20,18 @@ namespace Proto.Promises
 #endif
         struct CancelationRegistration : IEquatable<CancelationRegistration>
     {
-        private readonly Internal.CancelationRef _ref;
-        private readonly uint _order;
-        private readonly short _id;
-        private readonly bool _isCanceled;
+        private readonly Internal.CancelationCallbackNode _node;
+        private readonly int _nodeId;
+        private readonly int _tokenId;
 
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal CancelationRegistration(Internal.CancelationRef cancelationRef, short tokenId, uint registrationPosition, bool isCanceled)
+        internal CancelationRegistration(Internal.CancelationCallbackNode node, int nodeId, int tokenId)
         {
-            _ref = cancelationRef;
-            _id = tokenId;
-            _order = registrationPosition;
-            _isCanceled = isCanceled;
+            _node = node;
+            _nodeId = nodeId;
+            _tokenId = tokenId;
         }
 
         /// <summary>
@@ -43,7 +41,10 @@ namespace Proto.Promises
         {
             get
             {
-                return new CancelationToken(_ref, _id, _isCanceled);
+                var node = _node;
+                return node == null
+                    ? new CancelationToken()
+                    : new CancelationToken(_node.Parent, _tokenId);
             }
         }
 
@@ -54,10 +55,6 @@ namespace Proto.Promises
         {
             get
             {
-                if (_isCanceled)
-                {
-                    return false;
-                }
                 bool isRegistered, _;
                 GetIsRegisteredAndIsCancelationRequested(out isRegistered, out _);
                 return isRegistered;
@@ -71,13 +68,7 @@ namespace Proto.Promises
         /// <param name="isTokenCancelationRequested">true if the associated <see cref="CancelationToken"/> is requesting cancelation, false otherwise</param>
         public void GetIsRegisteredAndIsCancelationRequested(out bool isRegistered, out bool isTokenCancelationRequested)
         {
-            if (_isCanceled)
-            {
-                isTokenCancelationRequested = true;
-                isRegistered = false;
-                return;
-            }
-            isRegistered = Internal.CancelationRef.GetIsRegisteredAndIsCanceled(_ref, _id, _order, out isTokenCancelationRequested);
+            isRegistered = Internal.CancelationCallbackNode.GetIsRegisteredAndIsCanceled(_node, _nodeId, _tokenId, out isTokenCancelationRequested);
         }
 
         /// <summary>
@@ -110,12 +101,7 @@ namespace Proto.Promises
         /// <returns>true if the callback was previously registered and the associated <see cref="CancelationSource"/> not yet canceled or disposed, false otherwise</returns>
         public bool TryUnregister(out bool isTokenCancelationRequested)
         {
-            if (_isCanceled)
-            {
-                isTokenCancelationRequested = true;
-                return false;
-            }
-            return Internal.CancelationRef.TryUnregister(_ref, _id, _order, out isTokenCancelationRequested);
+            return Internal.CancelationCallbackNode.TryUnregister(_node, _nodeId, _tokenId, out isTokenCancelationRequested);
         }
 
         public bool Equals(CancelationRegistration other)
@@ -134,12 +120,12 @@ namespace Proto.Promises
 
         public override int GetHashCode()
         {
-            return Internal.BuildHashCode(_ref, _order.GetHashCode(), _id.GetHashCode(), _isCanceled.GetHashCode());
+            return Internal.BuildHashCode(_node, _nodeId.GetHashCode(), _tokenId.GetHashCode());
         }
 
         public static bool operator ==(CancelationRegistration lhs, CancelationRegistration rhs)
         {
-            return lhs._ref == rhs._ref & lhs._id == rhs._id & lhs._order == rhs._order;
+            return lhs._node == rhs._node & lhs._nodeId == rhs._nodeId & lhs._tokenId == rhs._tokenId;
         }
 
         public static bool operator !=(CancelationRegistration lhs, CancelationRegistration rhs)
