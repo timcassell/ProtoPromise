@@ -35,7 +35,7 @@ namespace Proto.Promises
         {
             private readonly Internal.IDeferredPromise _ref;
             private readonly short _promiseId;
-            private readonly short _deferredId;
+            private readonly int _deferredId;
 
             void IProgress<float>.Report(float value)
             {
@@ -80,7 +80,7 @@ namespace Proto.Promises
             /// Internal use for implicit cast operator.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal DeferredBase(Internal.IDeferredPromise promise, short promiseId, short deferredId)
+            internal DeferredBase(Internal.IDeferredPromise promise, short promiseId, int deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;
@@ -320,7 +320,7 @@ namespace Proto.Promises
         {
             internal readonly Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> _ref;
             internal readonly short _promiseId;
-            internal readonly short _deferredId;
+            internal readonly int _deferredId;
 
 
             void IProgress<float>.Report(float value)
@@ -367,7 +367,7 @@ namespace Proto.Promises
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal Deferred(Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> promise, short promiseId, short deferredId)
+            internal Deferred(Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> promise, short promiseId, int deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;
@@ -617,7 +617,7 @@ namespace Proto.Promises
         {
             internal readonly Internal.PromiseRefBase.DeferredPromise<T> _ref;
             internal readonly short _promiseId;
-            internal readonly short _deferredId;
+            internal readonly int _deferredId;
 
             void IProgress<float>.Report(float value)
             {
@@ -663,7 +663,7 @@ namespace Proto.Promises
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal Deferred(Internal.PromiseRefBase.DeferredPromise<T> promise, short promiseId, short deferredId)
+            internal Deferred(Internal.PromiseRefBase.DeferredPromise<T> promise, short promiseId, int deferredId)
             {
                 _ref = promise;
                 _promiseId = promiseId;

@@ -24,7 +24,7 @@ namespace Proto.Promises
 #endif
         partial struct ReasonContainer
     {
-        private readonly Internal.RejectContainer _valueContainer;
+        private readonly Internal.RejectContainer _rejectContainer;
 #if PROMISE_DEBUG
         private readonly long _id;
 #endif
@@ -34,7 +34,7 @@ namespace Proto.Promises
         /// </summary>
         internal ReasonContainer(Internal.RejectContainer valueContainer, long id)
         {
-            _valueContainer = valueContainer;
+            _rejectContainer = valueContainer;
 #if PROMISE_DEBUG
             _id = id;
 #endif
@@ -48,7 +48,7 @@ namespace Proto.Promises
             get
             {
                 Validate();
-                return _valueContainer.Value.GetType();
+                return _rejectContainer.Value.GetType();
             }
         }
 
@@ -60,7 +60,7 @@ namespace Proto.Promises
             get
             {
                 Validate();
-                return _valueContainer.Value;
+                return _rejectContainer.Value;
             }
         }
 
@@ -71,7 +71,7 @@ namespace Proto.Promises
         public bool TryGetValueAs<T>(out T value)
         {
             Validate();
-            return _valueContainer.TryGetValue(out value);
+            return _rejectContainer.TryGetValue(out value);
         }
 
 
@@ -79,7 +79,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
         partial void Validate()
         {
-            bool isValid = _valueContainer != null && _id == Internal.InvokeId;
+            bool isValid = _rejectContainer != null && _id == Internal.InvokeId;
             if (!isValid)
             {
                 throw new InvalidOperationException("An instance of ReasonContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
@@ -103,7 +103,10 @@ namespace Proto.Promises
 #endif
             partial struct ResultContainer
         {
-            private readonly Promise<Internal.VoidResult>.ResultContainer _target;
+            /// <summary>
+            /// FOR INTERNAL USE ONLY!
+            /// </summary>
+            internal readonly Promise<Internal.VoidResult>.ResultContainer _target;
 
             /// <summary>
             /// FOR INTERNAL USE ONLY!

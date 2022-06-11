@@ -90,7 +90,7 @@ namespace Proto.Promises
             {
                 return this;
             }
-            var newPromise = r.GetPreserved(_id, Depth);
+            var newPromise = r.GetPreservedT(_id, Depth);
             return new Promise<T>(newPromise, newPromise.Id, newPromise.Depth);
         }
 

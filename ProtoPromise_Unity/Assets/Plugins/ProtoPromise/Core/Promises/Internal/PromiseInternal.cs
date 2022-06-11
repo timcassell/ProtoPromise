@@ -50,20 +50,6 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseRef<TResult> : PromiseRefBase
             {
-                internal override PromiseRefBase GetPreserved(short promiseId, ushort depth)
-                {
-                    var newPromise = PromiseMultiAwait<TResult>.GetOrCreate(depth);
-                    HookupNewPromise(promiseId, newPromise);
-                    return newPromise;
-                }
-
-                internal override PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
-                {
-                    var newPromise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, depth);
-                    HookupNewPromise(promiseId, newPromise);
-                    return newPromise;
-                }
-
                 [MethodImpl(InlineOption)]
                 internal void SetResult(
 #if CSHARP_7_3_OR_NEWER
@@ -84,8 +70,8 @@ namespace Proto.Promises
                     handler.SuppressRejection = true;
                     _result = handler.GetResult<TResult>();
                     _rejectContainer = handler._rejectContainer;
-                    // Very important, write State must come after write _result and _valueContainer. This is a volatile write, so we don't need a full memory barrier.
-                    // State is checked for completion, and if it is read not pending on another thread, _result and _valueContainer must have already been written so the other thread can read them.
+                    // Very important, write State must come after write _result and _rejectContainer. This is a volatile write, so we don't need a full memory barrier.
+                    // State is checked for completion, and if it is read not pending on another thread, _result and _rejectContainer must have already been written so the other thread can read them.
                     State = handler.State;
                     handler.MaybeDispose();
                     handler = this;
@@ -147,6 +133,33 @@ namespace Proto.Promises
 
                     handler = this;
                     HandleSelf(ref _ref, out nextHandler);
+                }
+
+                internal abstract PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth);
+                internal virtual PromiseRef<TResult> GetConfiguredT(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
+                {
+                    var newPromise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, depth);
+                    HookupNewPromise(promiseId, newPromise);
+                    return newPromise;
+                }
+
+                internal override PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
+                {
+                    var newPromise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, depth);
+                    HookupNewPromise(promiseId, newPromise);
+                    return newPromise;
+                }
+
+                internal sealed override PromiseRefBase GetPreserved(short promiseId, ushort depth)
+                {
+                    return GetPreservedT(promiseId, depth);
+                }
+
+                internal PromiseRef<TResult> GetPreservedT(short promiseId, ushort depth)
+                {
+                    var newPromise = PromiseMultiAwait<TResult>.GetOrCreate(depth);
+                    HookupNewPromise(promiseId, newPromise);
+                    return newPromise;
                 }
             }
 
@@ -304,8 +317,8 @@ namespace Proto.Promises
             private void SetRejectOrCancel(RejectContainer rejectOrCancelContainer, Promise.State state)
             {
                 _rejectContainer = rejectOrCancelContainer;
-                // Very important, write State must come after write _valueContainer. This is a volatile write, so we don't need a full memory barrier.
-                // State is checked for completion, and if it is read not pending on another thread, _valueContainer must have already been written so the other thread can read it.
+                // Very important, write State must come after write _rejectContainer. This is a volatile write, so we don't need a full memory barrier.
+                // State is checked for completion, and if it is read not pending on another thread, _rejectContainer must have already been written so the other thread can read it.
                 State = state;
             }
 
@@ -416,8 +429,8 @@ namespace Proto.Promises
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
-                    var waiter = _next;
-                    bool isValid = promiseId == Id & (waiter == null | waiter == PromiseCompletionSentinel.s_instance);
+                    //var waiter = _next;
+                    bool isValid = promiseId == Id;// & (waiter == null | waiter == PromiseCompletionSentinel.s_instance);
                     if (!isValid)
                     {
                         throw new InvalidOperationException("Cannot await a non-preserved promise more than once.", GetFormattedStacktrace(3));
@@ -435,6 +448,11 @@ namespace Proto.Promises
                 }
 
                 internal sealed override PromiseRefBase GetDuplicate(short promiseId, ushort depth)
+                {
+                    return GetDuplicateT(promiseId, depth);
+                }
+
+                internal sealed override PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth)
                 {
                     // This isn't strictly thread-safe, but when the next promise is awaited, the CompareExchange should catch it.
                     ValidateIdAndNotAwaited(promiseId);
@@ -527,8 +545,8 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _rejectContainer = valueContainer;
-                    // Very important, write State must come after write _valueContainer. This is a volatile write, so we don't need a full memory barrier.
-                    // State is checked for completion, and if it is read rejected on another thread, _valueContainer must have already been written so the other thread can read it.
+                    // Very important, write State must come after write _rejectContainer. This is a volatile write, so we don't need a full memory barrier.
+                    // State is checked for completion, and if it is read rejected on another thread, _rejectContainer must have already been written so the other thread can read it.
                     State = state;
                     nextHandler = TakeOrHandleNextWaiter();
                 }
@@ -627,6 +645,11 @@ namespace Proto.Promises
                 }
 
                 internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth)
+                {
+                    return GetDuplicateT(promiseId, depth);
+                }
+
+                internal override PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth)
                 {
                     var newPromise = PromiseDuplicate<TResult>.GetOrCreate(depth);
                     HookupNewPromise(promiseId, newPromise);
@@ -727,8 +750,8 @@ namespace Proto.Promises
                     handler.SuppressRejection = true;
                     _result = handler.GetResult<TResult>();
                     _rejectContainer = handler._rejectContainer;
-                    // Very important, write State must come after write _result and _valueContainer. This is a volatile write, so we don't need a full memory barrier.
-                    // State is checked for completion, and if it is read not pending on another thread, _result and _valueContainer must have already been written so the other thread can read them.
+                    // Very important, write State must come after write _result and _rejectContainer. This is a volatile write, so we don't need a full memory barrier.
+                    // State is checked for completion, and if it is read not pending on another thread, _result and _rejectContainer must have already been written so the other thread can read them.
                     State = handler.State;
                     handler.MaybeDispose();
                     nextHandler = null;
@@ -820,6 +843,11 @@ namespace Proto.Promises
                 }
 
                 internal override PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
+                {
+                    return GetConfiguredT(promiseId, synchronizationContext, depth);
+                }
+
+                internal override PromiseRef<TResult> GetConfiguredT(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (synchronizationContext == null)

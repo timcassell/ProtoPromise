@@ -78,7 +78,7 @@ namespace Proto.Promises
         /// <summary>
         /// Internal use.
         /// </summary>
-        internal readonly Internal.PromiseRefBase _ref;
+        internal readonly Internal.PromiseRefBase.PromiseRef<T> _ref;
         /// <summary>
         /// Internal use.
         /// </summary>
@@ -108,7 +108,7 @@ namespace Proto.Promises
         /// Internal use.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRefBase promiseRef, short id, ushort depth)
+        internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef, short id, ushort depth)
         {
             _result = default(T);
             _ref = promiseRef;
@@ -122,7 +122,7 @@ namespace Proto.Promises
         /// Internal use.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRefBase promiseRef, short id, ushort depth, T result)
+        internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef, short id, ushort depth, T result)
         {
             _ref = promiseRef;
             _result = result;
@@ -295,6 +295,18 @@ namespace Proto.Promises
                 private int _retainCounter;
             }
 
+            partial class DeferredPromiseBase<TResult> : AsyncPromiseBase<TResult>, IDeferredPromise
+            {
+                // Interlocked is more efficient on int than forcing it on a short with a CompareExchange loop.
+                // Hopefully this won't be necessary in the future when .Net adds Interlocked methods for byte/sbyte/ushort/short. https://github.com/dotnet/runtime/issues/64658
+                // Then we can use the bit space from SmallFields._deferredId instead of an extra field here.
+                volatile protected int _deferredId;
+            }
+
+            partial class DeferredPromise<TResult> : DeferredPromiseBase<TResult>
+            {
+            }
+
             partial class DeferredPromiseCancel<TResult> : DeferredPromise<TResult>
             {
                 private CancelationRegistration _cancelationRegistration;
@@ -457,9 +469,7 @@ namespace Proto.Promises
 #if !OPTIMIZED_ASYNC_MODE
                 partial class PromiseMethodContinuer : HandleablePromiseBase
                 {
-#if PROMISE_DEBUG
-                    protected ITraceable _owner;
-#endif
+                    protected AsyncPromiseRef<TResult> _owner;
                     // Cache the delegate to prevent new allocations.
                     private Action _moveNext;
 
@@ -487,19 +497,13 @@ namespace Proto.Promises
     {
         partial struct PromiseMethodBuilder
         {
-#if !OPTIMIZED_ASYNC_MODE
-            private readonly Internal.PromiseRefBase _ref;
-#else
-            private Internal.PromiseRefBase _ref;
-#endif
+            private Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult> _ref;
         }
 
         partial struct PromiseMethodBuilder<T>
         {
-#if !OPTIMIZED_ASYNC_MODE
-            private readonly Internal.PromiseRefBase _ref;
-#else
-            private Internal.PromiseRefBase _ref;
+            private Internal.PromiseRefBase.AsyncPromiseRef<T> _ref;
+#if OPTIMIZED_ASYNC_MODE
             private T _result;
 #endif
         }

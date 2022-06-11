@@ -814,7 +814,7 @@ namespace Proto.Promises
             partial class DeferredPromiseBase<TResult>
             {
                 [MethodImpl(InlineOption)]
-                public bool TryReportProgress(short deferredId, float progress)
+                public bool TryReportProgress(int deferredId, float progress)
                 {
                     InterlockedIncrementProgressReportingCount();
                     if (deferredId != DeferredId)
@@ -1011,7 +1011,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                partial void SetPreviousAndProgress(PromiseRefBase waiter, float minProgress, float maxProgress)
+                private void SetPreviousAndProgress(PromiseRefBase waiter, float minProgress, float maxProgress)
                 {
 #if PROMISE_DEBUG
                     _previous = waiter;
@@ -1020,7 +1020,7 @@ namespace Proto.Promises
                     _maxProgress = maxProgress;
                 }
 
-                partial void ReportProgressFromHookupWaiterWithProgress(PromiseRefBase other, ushort depth)
+                private void ReportProgressFromHookupWaiterWithProgress(PromiseRefBase other, ushort depth)
                 {
                     var wasReportingPriority = Fixed32.ts_reportingPriority;
                     Fixed32.ts_reportingPriority = false;

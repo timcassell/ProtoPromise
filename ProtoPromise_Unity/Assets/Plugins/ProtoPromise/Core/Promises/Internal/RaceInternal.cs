@@ -102,8 +102,8 @@ namespace Proto.Promises
                         {
                             _rejectContainer = handler._rejectContainer;
                         }
-                        // Very important, write State must come after write _result or _valueContainer. This is a volatile write, so we don't need a full memory barrier.
-                        // State is checked for completion, and if it is read not pending on another thread, _result and _valueContainer must have already been written so the other thread can read them.
+                        // Very important, write State must come after write _result or _rejectContainer. This is a volatile write, so we don't need a full memory barrier.
+                        // State is checked for completion, and if it is read not pending on another thread, _result and _rejectContainer must have already been written so the other thread can read them.
                         State = handler.State;
                         nextHandler = TakeOrHandleNextWaiter();
                     }

@@ -33,15 +33,6 @@ namespace Proto.Promises
                 MaybeDispose();
             }
 
-            [MethodImpl(InlineOption)]
-            internal TResult GetResult<TResult>(short promiseId)
-            {
-                ValidateId(promiseId, this, 2);
-                TResult result = GetResult<TResult>();
-                MaybeDispose();
-                return result;
-            }
-
 #if NET_LEGACY
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal void Throw(Promise.State state, short promiseId)
@@ -86,6 +77,18 @@ namespace Proto.Promises
             internal void OnCompleted(Action continuation, short promiseId)
             {
                 HookupNewWaiter(promiseId, AwaiterRef.GetOrCreate(continuation));
+            }
+
+            partial class PromiseRef<TResult>
+            {
+                [MethodImpl(InlineOption)]
+                internal TResult GetResult(short promiseId)
+                {
+                    ValidateId(promiseId, this, 2);
+                    TResult result = _result;
+                    MaybeDispose();
+                    return result;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -486,7 +489,7 @@ namespace Proto.Promises
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    return _ref.GetResult<T>(_promise._id);
+                    return _ref.GetResult(_promise._id);
                 }
 #if NET_LEGACY
                 _ref.Throw(state, _promise._id);
@@ -623,7 +626,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupAwaiterWithProgress<Internal.VoidResult>(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress);
+                asyncPromiseRef.HookupAwaiterWithProgress(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress);
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -696,7 +699,7 @@ namespace Proto.Promises
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    return _ref.GetResult<T>(_promise._id);
+                    return _ref.GetResult(_promise._id);
                 }
 #if NET_LEGACY
                 _ref.Throw(state, _promise._id);
@@ -728,7 +731,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             {
-                asyncPromiseRef.HookupAwaiterWithProgress<T>(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress);
+                asyncPromiseRef.HookupAwaiterWithProgress(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress);
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);

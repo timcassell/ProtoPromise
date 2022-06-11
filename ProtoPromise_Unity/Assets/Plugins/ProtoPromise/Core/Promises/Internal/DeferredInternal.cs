@@ -5,9 +5,11 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -15,28 +17,28 @@ namespace Proto.Promises
     {
         internal interface IDeferredPromise : ITraceable
         {
-            short DeferredId { get; }
-            bool TryIncrementDeferredIdAndUnregisterCancelation(short deferredId);
+            int DeferredId { get; }
+            bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId);
             void RejectDirect(RejectContainer reasonContainer);
             void CancelDirect();
 #if PROMISE_PROGRESS
-            bool TryReportProgress(short deferredId, float progress);
+            bool TryReportProgress(int deferredId, float progress);
 #endif
         }
 
         internal static class DeferredPromiseHelper
         {
-            internal static bool GetIsValidAndPending(IDeferredPromise _this, short deferredId)
+            internal static bool GetIsValidAndPending(IDeferredPromise _this, int deferredId)
             {
                 return _this != null && _this.DeferredId == deferredId;
             }
 
-            internal static bool TryIncrementDeferredIdAndUnregisterCancelation(IDeferredPromise _this, short deferredId)
+            internal static bool TryIncrementDeferredIdAndUnregisterCancelation(IDeferredPromise _this, int deferredId)
             {
                 return _this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId);
             }
 
-            internal static bool TryReportProgress(IDeferredPromise _this, short deferredId, float progress)
+            internal static bool TryReportProgress(IDeferredPromise _this, int deferredId, float progress)
             {
                 ValidateProgressValue(progress, "progress", 1);
 #if !PROMISE_PROGRESS
@@ -54,10 +56,10 @@ namespace Proto.Promises
 #endif
             internal abstract partial class DeferredPromiseBase<TResult> : AsyncPromiseBase<TResult>, IDeferredPromise
             {
-                public short DeferredId
+                public int DeferredId
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _smallFields._deferredId; }
+                    get { return _deferredId; }
                 }
 
                 protected DeferredPromiseBase() { }
@@ -81,11 +83,14 @@ namespace Proto.Promises
 
 
                 [MethodImpl(InlineOption)]
-                public virtual bool TryIncrementDeferredIdAndUnregisterCancelation(short deferredId)
+                public virtual bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId)
                 {
-                    bool success = _smallFields.InterlockedTryIncrementDeferredId(deferredId);
-                    MaybeThrowIfInPool(this, success);
-                    return success;
+                    unchecked
+                    {
+                        bool success = Interlocked.CompareExchange(ref _deferredId, deferredId + 1, deferredId) == deferredId;
+                        MaybeThrowIfInPool(this, success);
+                        return success;
+                    }
                 }
 
                 public void RejectDirect(RejectContainer reasonContainer)
@@ -108,7 +113,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [System.Diagnostics.DebuggerNonUserCode]
 #endif
-            internal class DeferredPromise<TResult> : DeferredPromiseBase<TResult>
+            internal partial class DeferredPromise<TResult> : DeferredPromiseBase<TResult>
             {
                 protected DeferredPromise() { }
 
@@ -127,7 +132,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static bool TryResolve(DeferredPromise<TResult> _this, short deferredId,
+                internal static bool TryResolve(DeferredPromise<TResult> _this, int deferredId,
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
@@ -142,7 +147,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static bool TryResolveVoid(DeferredPromise<TResult> _this, short deferredId)
+                internal static bool TryResolveVoid(DeferredPromise<TResult> _this, int deferredId)
                 {
                     if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
@@ -200,7 +205,7 @@ namespace Proto.Promises
                     return TryUnregisterAndIsNotCanceling(ref _cancelationRegistration);
                 }
 
-                public override bool TryIncrementDeferredIdAndUnregisterCancelation(short deferredId)
+                public override bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId)
                 {
                     return base.TryIncrementDeferredIdAndUnregisterCancelation(deferredId)
                         && TryUnregisterCancelation(); // If TryUnregisterCancelation returns false, it means the CancelationSource was canceled.
@@ -211,7 +216,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     // A simple increment is sufficient.
                     // If the CancelationSource was canceled before the Deferred was completed, even if the Deferred was completed before the cancelation was invoked, the cancelation takes precedence.
-                    _smallFields.InterlockedIncrementDeferredId();
+                    Interlocked.Increment(ref _deferredId);
                     CancelDirect();
                 }
             }
