@@ -921,9 +921,9 @@ namespace ProtoPromiseTests.APIs
 
             new ThreadHelper().ExecuteSynchronousOrOnThread(() =>
             {
-                Await();
+                Await().Forget();
 
-                async void Await()
+                async Promise Await()
                 {
                     Promise promise = synchronizationType == SynchronizationType.Foreground
                         ? Promise.SwitchToForeground()

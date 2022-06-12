@@ -429,13 +429,10 @@ namespace Proto.Promises
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
-                    //var waiter = _next;
-                    bool isValid = promiseId == Id;// & (waiter == null | waiter == PromiseCompletionSentinel.s_instance);
-                    if (!isValid)
-                    {
-                        throw new InvalidOperationException("Cannot await a non-preserved promise more than once.", GetFormattedStacktrace(3));
-                    }
-                    return State != Promise.State.Pending;
+                    ValidateId(promiseId, this, 2);
+                    ThrowIfInPool(this);
+                    WasAwaitedOrForgotten = true;
+                    return CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance;
                 }
 
                 [MethodImpl(InlineOption)]
@@ -928,6 +925,21 @@ namespace Proto.Promises
                     }
                     previousWaiter = null;
                     return this; // It doesn't matter what we return since previousWaiter is set to null.
+                }
+
+                internal override bool GetIsCompleted(short promiseId)
+                {
+                    ValidateId(promiseId, this, 2);
+                    ThrowIfInPool(this);
+                    // Make sure the continuation happens on the synchronization context.
+                    if (_synchronizationContext == ts_currentContext
+                        && CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance)
+                    {
+                        WasAwaitedOrForgotten = true;
+                        State = _previousState;
+                        return true;
+                    }
+                    return false;
                 }
             }
 

@@ -13,6 +13,7 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0016 // Use 'throw' expression
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
@@ -628,7 +629,7 @@ namespace Proto.Promises
 
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
                 {
-                    if (_isSynchronous)
+                    if (_isSynchronous | _synchronizationContext == ts_currentContext)
                     {
                         return AddWaiterImpl(promiseId, waiter, out previousWaiter, Depth);
                     }
@@ -684,6 +685,21 @@ namespace Proto.Promises
                         // This should never happen.
                         ReportRejection(e, state as ITraceable);
                     }
+                }
+
+                internal override bool GetIsCompleted(short promiseId)
+                {
+                    ValidateId(promiseId, this, 2);
+                    ThrowIfInPool(this);
+                    // Make sure the continuation happens on the synchronization context.
+                    if ((_isSynchronous | _synchronizationContext == ts_currentContext)
+                        && CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance)
+                    {
+                        WasAwaitedOrForgotten = true;
+                        State = _previousState;
+                        return true;
+                    }
+                    return false;
                 }
             } // PromiseProgress<TProgress>
 

@@ -120,6 +120,7 @@ namespace Proto.Promises
                 protected override void MaybeDispose()
                 {
                     Dispose();
+                    WaitWhileProgressReporting();
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -188,6 +189,7 @@ namespace Proto.Promises
                 {
                     Dispose();
                     _cancelationRegistration = default(CancelationRegistration);
+                    WaitWhileProgressReporting();
                     ObjectPool.MaybeRepool(this);
                 }
 
