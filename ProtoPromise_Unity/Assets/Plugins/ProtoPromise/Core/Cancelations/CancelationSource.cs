@@ -52,7 +52,7 @@ namespace Proto.Promises
         public static CancelationSource New(CancelationToken token)
         {
             CancelationSource newCancelationSource = New();
-            token.MaybeLinkSourceInternal(newCancelationSource._ref);
+            newCancelationSource._ref.MaybeLinkToken(token);
             return newCancelationSource;
         }
 
@@ -66,8 +66,8 @@ namespace Proto.Promises
         public static CancelationSource New(CancelationToken token1, CancelationToken token2)
         {
             CancelationSource newCancelationSource = New();
-            token1.MaybeLinkSourceInternal(newCancelationSource._ref);
-            token2.MaybeLinkSourceInternal(newCancelationSource._ref);
+            newCancelationSource._ref.MaybeLinkToken(token1);
+            newCancelationSource._ref.MaybeLinkToken(token2);
             return newCancelationSource;
         }
 
@@ -82,7 +82,7 @@ namespace Proto.Promises
             CancelationSource newCancelationSource = New();
             for (int i = 0, max = tokens.Length; i < max; ++i)
             {
-                tokens[i].MaybeLinkSourceInternal(newCancelationSource._ref);
+                newCancelationSource._ref.MaybeLinkToken(tokens[i]);
             }
             return newCancelationSource;
         }

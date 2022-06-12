@@ -282,14 +282,14 @@ namespace Proto.Promises
         {
             private HandleablePromiseBase _head;
             // This must not be readonly.
-            private SpinLocker _spinner;
+            private SpinLocker _locker;
 
             [MethodImpl(InlineOption)]
             internal ValueLinkedStackSafe(HandleablePromiseBase tailSentinel)
             {
                 // Sentinel is PromiseRefBase.InvalidAwaitSentinel.s_instance
                 _head = tailSentinel;
-                _spinner = new SpinLocker();
+                _locker = new SpinLocker();
             }
 
             [MethodImpl(InlineOption)]
@@ -305,19 +305,19 @@ namespace Proto.Promises
             {
                 AssertNotInCollection((HandleablePromiseBase) item);
 
-                _spinner.Enter();
+                _locker.Enter();
                 item._next = _head;
                 _head = item;
-                _spinner.Exit();
+                _locker.Exit();
             }
 
             [MethodImpl(InlineOption)]
             internal T TryPop()
             {
-                _spinner.Enter();
+                _locker.Enter();
                 var head = _head;
                 _head = head._next;
-                _spinner.Exit();
+                _locker.Exit();
 
                 if (head == PromiseRefBase.InvalidAwaitSentinel.s_instance)
                 {

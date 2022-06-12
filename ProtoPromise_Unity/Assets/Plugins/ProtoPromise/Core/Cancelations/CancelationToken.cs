@@ -43,14 +43,6 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// FOR INTERNAL USE ONLY!
-        /// </summary>
-        internal void MaybeLinkSourceInternal(Internal.CancelationRef cancelationRef)
-        {
-            Internal.CancelationRef.MaybeAddLinkedCancelation(cancelationRef, _ref, _id);
-        }
-
-        /// <summary>
         /// Get a token that is already in the canceled state.
         /// </summary>
         public static CancelationToken Canceled()

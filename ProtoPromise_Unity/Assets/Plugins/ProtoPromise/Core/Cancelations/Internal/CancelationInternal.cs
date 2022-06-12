@@ -110,7 +110,7 @@ namespace Proto.Promises
             private ValueLinkedStackZeroGC<CancelationRegistration> _links = ValueLinkedStackZeroGC<CancelationRegistration>.Create();
             // Use a sentinel for the linked list so we don't need to null check.
             private readonly CancelationCallbackNode _registeredCallbacksHead = CancelationCallbackNode.CreateLinkedListSentinel();
-            internal SpinLocker _spinner = new SpinLocker();
+            internal SpinLocker _locker = new SpinLocker();
             // Start with Id 1 instead of 0 to reduce risk of false positives.
             private int _sourceId = 1;
             private int _tokenId = 1;
@@ -184,44 +184,18 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl(InlineOption)]
-            internal static void MaybeAddLinkedCancelation(CancelationRef listener, CancelationRef _this, int tokenId)
+            internal void MaybeLinkToken(CancelationToken token)
             {
-                if (_this != null)
+                CancelationRegistration linkedRegistration;
+                if (token.TryRegister(this, out linkedRegistration))
                 {
-                    _this.MaybeAddLinkedCancelation(listener, tokenId);
-                }
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void MaybeAddLinkedCancelation(CancelationRef listener, int tokenId)
-            {
-                _spinner.Enter();
-                if (tokenId != _tokenId)
-                {
-                    _spinner.Exit();
-                    return;
-                }
-
-                State state = _state;
-                if (state == State.Pending)
-                {
-                    listener._spinner.Enter();
-                    if (listener._state == State.Pending) // Make sure listener wasn't canceled from another token on another thread.
+                    _locker.Enter();
+                    // Register may have invoked Cancel synchronously or on another thread, so we check the state here before adding the registration for later unlinking.
+                    if (_state == State.Pending)
                     {
-                        var node = CallbackNodeImpl<CancelationRef>.GetOrCreate(listener, this);
-                        _registeredCallbacksHead.InsertPrevious(node);
-                        listener._links.Push(new CancelationRegistration(node, node.NodeId, TokenId));
+                        _links.Push(linkedRegistration);
                     }
-                    listener._spinner.Exit();
-                    _spinner.Exit();
-                    return;
-                }
-                _spinner.Exit();
-
-                if (state == State.Canceled)
-                {
-                    listener.TryInvokeCallbacks();
+                    _locker.Exit();
                 }
             }
 
@@ -247,11 +221,11 @@ namespace Proto.Promises
 #endif
                 TCancelable cancelable, int tokenId, out CancelationRegistration registration) where TCancelable : ICancelable
             {
-                _spinner.Enter();
+                _locker.Enter();
                 int oldTokenId = TokenId;
                 if (tokenId != oldTokenId)
                 {
-                    _spinner.Exit();
+                    _locker.Exit();
                     registration = default(CancelationRegistration);
                     return false;
                 }
@@ -261,12 +235,12 @@ namespace Proto.Promises
                 {
                     var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable, this);
                     _registeredCallbacksHead.InsertPrevious(node);
-                    _spinner.Exit();
+                    _locker.Exit();
                     registration = new CancelationRegistration(node, node.NodeId, oldTokenId);
                     return true;
                 }
 
-                _spinner.Exit();
+                _locker.Exit();
                 registration = default(CancelationRegistration);
                 if (state == State.Canceled)
                 {
@@ -285,37 +259,21 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool TrySetCanceled(int sourceId)
             {
-                _spinner.Enter();
+                _locker.Enter();
                 if (sourceId != SourceId | _state != State.Pending)
                 {
-                    _spinner.Exit();
+                    _locker.Exit();
                     return false;
                 }
                 _state = State.Canceled;
                 ++_internalRetainCounter;
-                _spinner.Exit();
+                _locker.Exit();
 
                 InvokeCallbacks();
                 return true;
             }
 
-            private bool TryInvokeCallbacks()
-            {
-                _spinner.Enter();
-                if (_state != State.Pending)
-                {
-                    _spinner.Exit();
-                    return false;
-                }
-                _state = State.Canceled;
-                ++_internalRetainCounter;
-                _spinner.Exit();
-
-                InvokeCallbacks();
-                return true;
-            }
-
-            private bool InvokeCallbacks()
+            private void InvokeCallbacks()
             {
                 ThrowIfInPool(this);
                 Unlink();
@@ -347,7 +305,6 @@ namespace Proto.Promises
                     // Propagate exceptions to caller as aggregate.
                     throw new AggregateException(exceptions);
                 }
-                return true;
             }
 
             [MethodImpl(InlineOption)]
@@ -359,18 +316,17 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal bool TryDispose(int sourceId)
             {
-                _spinner.Enter();
+                _locker.Enter();
                 if (sourceId != SourceId)
                 {
-                    _spinner.Exit();
+                    _locker.Exit();
                     return false;
                 }
 
                 ++_sourceId;
                 if (_state != State.Pending)
                 {
-                    MaybeResetAndRepoolNoLock();
-                    _spinner.Exit();
+                    MaybeResetAndRepoolAlreadyLocked();
                     return true;
                 }
 
@@ -386,7 +342,7 @@ namespace Proto.Promises
                     next = current._next;
                     current.Dispose();
                 }
-                _spinner.Exit();
+                _locker.Exit();
 
                 MaybeResetAndRepool();
                 return true;
@@ -409,10 +365,10 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool TryRetainUser(int tokenId)
             {
-                _spinner.Enter();
+                _locker.Enter();
                 if (tokenId != TokenId)
                 {
-                    _spinner.Exit();
+                    _locker.Exit();
                     return false;
                 }
 
@@ -421,7 +377,7 @@ namespace Proto.Promises
                 {
                     ++_userRetainCounter;
                 }
-                _spinner.Exit();
+                _locker.Exit();
                 return true;
             }
 
@@ -434,10 +390,10 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool TryReleaseUser(int tokenId)
             {
-                _spinner.Enter();
+                _locker.Enter();
                 if (tokenId != TokenId)
                 {
-                    _spinner.Exit();
+                    _locker.Exit();
                     return false;
                 }
                 checked
@@ -445,31 +401,31 @@ namespace Proto.Promises
                     if (--_userRetainCounter == 0 & _internalRetainCounter == 0)
                     {
                         ++_tokenId;
-                        _spinner.Exit();
+                        _locker.Exit();
                         ResetAndRepool();
                         return true;
                     }
                 }
-                _spinner.Exit();
+                _locker.Exit();
                 return true;
             }
 
             private void MaybeResetAndRepool()
             {
-                _spinner.Enter();
-                MaybeResetAndRepoolNoLock();
-                _spinner.Exit();
+                _locker.Enter();
+                MaybeResetAndRepoolAlreadyLocked();
             }
 
-            private void MaybeResetAndRepoolNoLock()
+            private void MaybeResetAndRepoolAlreadyLocked()
             {
                 if (--_internalRetainCounter == 0 & _userRetainCounter == 0)
                 {
                     ++_tokenId;
-                    _spinner.Exit();
+                    _locker.Exit();
                     ResetAndRepool();
                     return;
                 }
+                _locker.Exit();
             }
 
             [MethodImpl(InlineOption)]
@@ -488,7 +444,7 @@ namespace Proto.Promises
 
             void ICancelable.Cancel()
             {
-                TryInvokeCallbacks();
+                TrySetCanceled(SourceId);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -548,6 +504,7 @@ namespace Proto.Promises
                 internal override void Invoke()
                 {
                     ThrowIfInPool(this);
+                    var parent = _parent;
                     var canceler = _cancelable;
 #if PROMISE_DEBUG
                     SetCurrentInvoker(this);
@@ -558,18 +515,25 @@ namespace Proto.Promises
                     finally
                     {
                         ClearCurrentInvoker();
-                        _parent._spinner.Enter();
-                        Dispose();
-                        _parent._spinner.Exit();
+                        parent._locker.Enter();
+                        DisposeAlreadyLocked(parent);
                     }
 #else
-                    Dispose();
+                    parent._locker.Enter();
+                    DisposeAlreadyLocked(parent);
                     canceler.Cancel();
 #endif
                 }
 
                 [MethodImpl(InlineOption)]
                 internal override void Dispose()
+                {
+                    ResetForDispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                [MethodImpl(InlineOption)]
+                private void ResetForDispose()
                 {
                     ThrowIfInPool(this);
                     ++_nodeId;
@@ -578,6 +542,12 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
 #endif
+                }
+
+                protected override void DisposeAlreadyLocked(CancelationRef parent)
+                {
+                    ResetForDispose();
+                    parent._locker.Exit();
                     ObjectPool.MaybeRepool(this);
                 }
             }
@@ -636,8 +606,14 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool IsRegistered(int nodeId, int tokenId, out bool isCanceled)
             {
-                bool canceled = _parent._state == CancelationRef.State.Canceled;
-                bool tokenIdMatches = _parent.TokenId == tokenId;
+                return GetIsRegistered(_parent, nodeId, tokenId, out isCanceled);
+            }
+
+            [MethodImpl(InlineOption)]
+            private bool GetIsRegistered(CancelationRef parent, int nodeId, int tokenId, out bool isCanceled)
+            {
+                bool canceled = parent._state == CancelationRef.State.Canceled;
+                bool tokenIdMatches = parent.TokenId == tokenId;
                 isCanceled = canceled & tokenIdMatches;
                 return !canceled & tokenIdMatches && _nodeId == nodeId;
             }
@@ -656,24 +632,26 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool TryUnregister(int nodeId, int tokenId, out bool isCanceled)
             {
-                _parent._spinner.Enter();
+                var parent = _parent;
+                parent._locker.Enter();
                 bool canceled;
-                bool isRegistered = IsRegistered(nodeId, tokenId, out canceled);
+                bool isRegistered = GetIsRegistered(parent, nodeId, tokenId, out canceled);
                 if (!isRegistered)
                 {
-                    _parent._spinner.Exit();
+                    parent._locker.Exit();
                     isCanceled = canceled;
                     return false;
                 }
 
                 _previous._next = _next;
                 _next.UnsafeAs<CancelationCallbackNode>()._previous = _previous;
+                DisposeAlreadyLocked(parent);
 
-                Dispose();
-                _parent._spinner.Exit();
                 isCanceled = canceled;
                 return true;
             }
+
+            protected virtual void DisposeAlreadyLocked(CancelationRef parent) { throw new System.InvalidOperationException(); }
         }
     } // class Internal
 } // namespace Proto.Promises
