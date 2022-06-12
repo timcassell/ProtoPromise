@@ -104,11 +104,13 @@ namespace Proto.Promises
             return Internal.CancelationCallbackNode.TryUnregister(_node, _nodeId, _tokenId, out isTokenCancelationRequested);
         }
 
+        /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationRegistration"/>.</summary>
         public bool Equals(CancelationRegistration other)
         {
             return this == other;
         }
 
+        /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
         {
 #if CSHARP_7_3_OR_NEWER
@@ -118,16 +120,19 @@ namespace Proto.Promises
 #endif
         }
 
+        /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
         {
             return Internal.BuildHashCode(_node, _nodeId.GetHashCode(), _tokenId.GetHashCode());
         }
 
+        /// <summary>Returns a value indicating whether two <see cref="CancelationRegistration"/> values are equal.</summary>
         public static bool operator ==(CancelationRegistration lhs, CancelationRegistration rhs)
         {
             return lhs._node == rhs._node & lhs._nodeId == rhs._nodeId & lhs._tokenId == rhs._tokenId;
         }
 
+        /// <summary>Returns a value indicating whether two <see cref="CancelationRegistration"/> values are not equal.</summary>
         public static bool operator !=(CancelationRegistration lhs, CancelationRegistration rhs)
         {
             return !(lhs == rhs);

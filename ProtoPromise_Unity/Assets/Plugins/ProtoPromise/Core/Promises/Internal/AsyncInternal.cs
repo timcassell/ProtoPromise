@@ -51,6 +51,7 @@ namespace System.Runtime.CompilerServices
     }
 
 #if NET_LEGACY
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     public interface INotifyCompletion
     {
         void OnCompleted(Action continuation);
@@ -66,6 +67,7 @@ namespace System.Runtime.CompilerServices
         void MoveNext();
         void SetStateMachine(IAsyncStateMachine stateMachine);
     }
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 #endif // NET_LEGACY
 }
 
@@ -80,13 +82,21 @@ namespace Proto.Promises
     namespace Async.CompilerServices
     {
         /// <summary>
-        /// This type and its members are intended for use by the compiler.
+        /// Provides a builder for asynchronous methods that return <see cref="Promise"/>.
+        /// This type is intended for compiler use only.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
         public partial struct PromiseMethodBuilder
         {
+            /// <summary>
+            /// Schedules the specified state machine to be pushed forward when the specified awaiter completes.
+            /// </summary>
+            /// <typeparam name="TAwaiter">Specifies the type of the awaiter.</typeparam>
+            /// <typeparam name="TStateMachine">Specifies the type of the state machine.</typeparam>
+            /// <param name="awaiter">The awaiter.</param>
+            /// <param name="stateMachine">The state machine.</param>
             [MethodImpl(Internal.InlineOption)]
             public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : INotifyCompletion
@@ -95,6 +105,13 @@ namespace Proto.Promises
                 Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.AwaitOnCompleted(ref awaiter, ref stateMachine, ref _ref);
             }
 
+            /// <summary>
+            /// Schedules the specified state machine to be pushed forward when the specified awaiter completes.
+            /// </summary>
+            /// <typeparam name="TAwaiter">Specifies the type of the awaiter.</typeparam>
+            /// <typeparam name="TStateMachine">Specifies the type of the state machine.</typeparam>
+            /// <param name="awaiter">The awaiter.</param>
+            /// <param name="stateMachine">The state machine.</param>
             [SecuritySafeCritical]
             [MethodImpl(Internal.InlineOption)]
             public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
@@ -104,6 +121,9 @@ namespace Proto.Promises
                 Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine, ref _ref);
             }
 
+            /// <summary>Initiates the builder's execution with the associated state machine.</summary>
+            /// <typeparam name="TStateMachine">Specifies the type of the state machine.</typeparam>
+            /// <param name="stateMachine">The state machine instance, passed by reference.</param>
             [MethodImpl(Internal.InlineOption)]
             public void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
@@ -113,18 +133,28 @@ namespace Proto.Promises
                 stateMachine.MoveNext();
             }
 
+            /// <summary>Does nothing.</summary>
+            /// <param name="stateMachine">The heap-allocated state machine object.</param>
             [MethodImpl(Internal.InlineOption)]
             public void SetStateMachine(IAsyncStateMachine stateMachine) { }
         }
 
         /// <summary>
-        /// This type and its members are intended for use by the compiler.
+        /// Provides a builder for asynchronous methods that return <see cref="Promise{T}"/>.
+        /// This type is intended for compiler use only.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
         public partial struct PromiseMethodBuilder<T>
         {
+            /// <summary>
+            /// Schedules the specified state machine to be pushed forward when the specified awaiter completes.
+            /// </summary>
+            /// <typeparam name="TAwaiter">Specifies the type of the awaiter.</typeparam>
+            /// <typeparam name="TStateMachine">Specifies the type of the state machine.</typeparam>
+            /// <param name="awaiter">The awaiter.</param>
+            /// <param name="stateMachine">The state machine.</param>
             [MethodImpl(Internal.InlineOption)]
             public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : INotifyCompletion
@@ -133,6 +163,13 @@ namespace Proto.Promises
                 Internal.PromiseRefBase.AsyncPromiseRef<T>.AwaitOnCompleted(ref awaiter, ref stateMachine, ref _ref);
             }
 
+            /// <summary>
+            /// Schedules the specified state machine to be pushed forward when the specified awaiter completes.
+            /// </summary>
+            /// <typeparam name="TAwaiter">Specifies the type of the awaiter.</typeparam>
+            /// <typeparam name="TStateMachine">Specifies the type of the state machine.</typeparam>
+            /// <param name="awaiter">The awaiter.</param>
+            /// <param name="stateMachine">The state machine.</param>
             [SecuritySafeCritical]
             [MethodImpl(Internal.InlineOption)]
             public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
@@ -142,6 +179,9 @@ namespace Proto.Promises
                 Internal.PromiseRefBase.AsyncPromiseRef<T>.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine, ref _ref);
             }
 
+            /// <summary>Initiates the builder's execution with the associated state machine.</summary>
+            /// <typeparam name="TStateMachine">Specifies the type of the state machine.</typeparam>
+            /// <param name="stateMachine">The state machine instance, passed by reference.</param>
             [MethodImpl(Internal.InlineOption)]
             public void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
@@ -151,6 +191,8 @@ namespace Proto.Promises
                 stateMachine.MoveNext();
             }
 
+            /// <summary>Does nothing.</summary>
+            /// <param name="stateMachine">The heap-allocated state machine object.</param>
             [MethodImpl(Internal.InlineOption)]
             public void SetStateMachine(IAsyncStateMachine stateMachine) { }
         }
@@ -165,23 +207,34 @@ namespace Proto.Promises
                 _ref = promise;
             }
 
+            /// <summary>Gets the <see cref="Promise"/> for this builder.</summary>
+            /// <returns>The <see cref="Promise"/> representing the builder's asynchronous operation.</returns>
             public Promise Task
             {
                 [MethodImpl(Internal.InlineOption)]
                 get { return new Promise(_ref, _ref.Id, 0); }
             }
 
+            /// <summary>Initializes a new <see cref="PromiseMethodBuilder"/>.</summary>
+            /// <returns>The initialized <see cref="PromiseMethodBuilder"/>.</returns>
             [MethodImpl(Internal.InlineOption)]
             public static PromiseMethodBuilder Create()
             {
                 return new PromiseMethodBuilder(Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.GetOrCreate());
             }
 
+            /// <summary>
+            /// Completes the <see cref="Promise"/> in the <see cref="Promise.State">Rejected</see> state with the specified exception.
+            /// </summary>
+            /// <param name="exception">The <see cref="Exception"/> to use to reject the promise.</param>
             public void SetException(Exception exception)
             {
                 _ref.SetException(exception);
             }
 
+            /// <summary>
+            /// Completes the <see cref="Promise{T}"/> in the <see cref="Promise.State">Resolved</see> state.
+            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public void SetResult()
             {
@@ -197,23 +250,35 @@ namespace Proto.Promises
                 _ref = promise;
             }
 
+            /// <summary>Gets the <see cref="Promise{T}"/> for this builder.</summary>
+            /// <returns>The <see cref="Promise{T}"/> representing the builder's asynchronous operation.</returns>
             public Promise<T> Task
             {
                 [MethodImpl(Internal.InlineOption)]
                 get { return new Promise<T>(_ref, _ref.Id, 0); }
             }
 
+            /// <summary>Initializes a new <see cref="PromiseMethodBuilder{T}"/>.</summary>
+            /// <returns>The initialized <see cref="PromiseMethodBuilder{T}"/>.</returns>
             [MethodImpl(Internal.InlineOption)]
             public static PromiseMethodBuilder<T> Create()
             {
                 return new PromiseMethodBuilder<T>(Internal.PromiseRefBase.AsyncPromiseRef<T>.GetOrCreate());
             }
 
+            /// <summary>
+            /// Completes the <see cref="Promise{T}"/> in the <see cref="Promise.State">Rejected</see> state with the specified exception.
+            /// </summary>
+            /// <param name="exception">The <see cref="Exception"/> to use to reject the promise.</param>
             public void SetException(Exception exception)
             {
                 _ref.SetException(exception);
             }
 
+            /// <summary>
+            /// Completes the <see cref="Promise{T}"/> in the <see cref="Promise.State">Resolved</see> state with the specified result.
+            /// </summary>
+            /// <param name="result">The result to use to complete the task.</param>
             [MethodImpl(Internal.InlineOption)]
             public void SetResult(T result)
             {
@@ -226,6 +291,8 @@ namespace Proto.Promises
         // This code could be used for DEBUG mode, but IL2CPP requires the non-optimized code even in RELEASE mode, and I don't want to add extra unnecessary null checks there.
         partial struct PromiseMethodBuilder
         {
+            /// <summary>Gets the <see cref="Promise"/> for this builder.</summary>
+            /// <returns>The <see cref="Promise"/> representing the builder's asynchronous operation.</returns>
             public Promise Task
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -234,13 +301,19 @@ namespace Proto.Promises
                     return _ref == null ? Promise.Resolved() : new Promise(_ref, _ref.Id, 0);
                 }
             }
-
+            
+            /// <summary>Initializes a new <see cref="PromiseMethodBuilder"/>.</summary>
+            /// <returns>The initialized <see cref="PromiseMethodBuilder"/>.</returns>
             [MethodImpl(Internal.InlineOption)]
             public static PromiseMethodBuilder Create()
             {
                 return default(PromiseMethodBuilder);
             }
 
+            /// <summary>
+            /// Completes the <see cref="Promise"/> in the <see cref="Promise.State">Rejected</see> state with the specified exception.
+            /// </summary>
+            /// <param name="exception">The <see cref="Exception"/> to use to reject the promise.</param>
             public void SetException(Exception exception)
             {
                 if (_ref == null)
@@ -250,6 +323,9 @@ namespace Proto.Promises
                 _ref.SetException(exception);
             }
 
+            /// <summary>
+            /// Completes the <see cref="Promise{T}"/> in the <see cref="Promise.State">Resolved</see> state.
+            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public void SetResult()
             {
@@ -262,6 +338,8 @@ namespace Proto.Promises
 
         partial struct PromiseMethodBuilder<T>
         {
+            /// <summary>Gets the <see cref="Promise{T}"/> for this builder.</summary>
+            /// <returns>The <see cref="Promise{T}"/> representing the builder's asynchronous operation.</returns>
             public Promise<T> Task
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -271,12 +349,18 @@ namespace Proto.Promises
                 }
             }
 
+            /// <summary>Initializes a new <see cref="PromiseMethodBuilder{T}"/>.</summary>
+            /// <returns>The initialized <see cref="PromiseMethodBuilder{T}"/>.</returns>
             [MethodImpl(Internal.InlineOption)]
             public static PromiseMethodBuilder<T> Create()
             {
                 return default(PromiseMethodBuilder<T>);
             }
 
+            /// <summary>
+            /// Completes the <see cref="Promise{T}"/> in the <see cref="Promise.State">Rejected</see> state with the specified exception.
+            /// </summary>
+            /// <param name="exception">The <see cref="Exception"/> to use to reject the promise.</param>
             public void SetException(Exception exception)
             {
                 if (_ref == null)
@@ -286,6 +370,10 @@ namespace Proto.Promises
                 _ref.SetException(exception);
             }
 
+            /// <summary>
+            /// Completes the <see cref="Promise{T}"/> in the <see cref="Promise.State">Resolved</see> state with the specified result.
+            /// </summary>
+            /// <param name="result">The result to use to complete the task.</param>
             [MethodImpl(Internal.InlineOption)]
             public void SetResult(T result)
             {

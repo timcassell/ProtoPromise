@@ -8,6 +8,7 @@
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 
 namespace Proto.Promises
@@ -189,7 +190,7 @@ namespace Proto.Promises
         internal CanceledException(string message) : base(message) { }
 
 
-        [Obsolete("Cancelation reasons are no longer supported.", true)]
+        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public Type ValueType
         {
             get
@@ -198,7 +199,7 @@ namespace Proto.Promises
             }
         }
 
-        [Obsolete("Cancelation reasons are no longer supported.", true)]
+        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public object Value
         {
             get
@@ -207,7 +208,7 @@ namespace Proto.Promises
             }
         }
 
-        [Obsolete("Cancelation reasons are no longer supported.", true)]
+        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public bool TryGetValueAs<T>(out T value)
         {
             throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));

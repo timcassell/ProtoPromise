@@ -8,6 +8,10 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 
+#pragma warning disable IDE0019 // Use pattern matching
+#pragma warning disable IDE0044 // Add readonly modifier
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 namespace Proto.Promises
 {
 #if !NET_LEGACY
@@ -120,7 +124,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns the <see cref="System.AggregateException"/> that is the root cause of this exception.
+        /// Returns the <see cref="AggregateException"/> that is the root cause of this exception.
         /// </summary>
         public override Exception GetBaseException()
         {

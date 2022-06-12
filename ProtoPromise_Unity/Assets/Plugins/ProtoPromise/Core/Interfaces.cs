@@ -1,5 +1,8 @@
 ﻿namespace Proto.Promises
 {
+    /// <summary>
+    /// Cancelable interface
+    /// </summary>
     public interface ICancelable
     {
         /// <summary>
@@ -8,6 +11,9 @@
         void Cancel();
     }
 
+    /// <summary>
+    /// Retainable interface
+    /// </summary>
     public interface IRetainable
     {
         /// <summary>

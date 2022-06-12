@@ -5,6 +5,9 @@ using System.Threading;
 
 namespace Proto.Promises.Threading
 {
+    /// <summary>
+    /// A <see cref="SynchronizationContext"/> used to schedule callbacks to the thread that it was created on.
+    /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
 #endif
@@ -73,16 +76,26 @@ namespace Proto.Promises.Threading
         private Internal.ValueLinkedQueue<Internal.HandleablePromiseBase> _syncQueue = new Internal.ValueLinkedQueue<Internal.HandleablePromiseBase>();
         private Internal.SpinLocker _syncLocker;
 
+        /// <summary>
+        /// Create a new <see cref="PromiseSynchronizationContext"/> affiliated with the current thread.
+        /// </summary>
         public PromiseSynchronizationContext()
         {
             _thread = Thread.CurrentThread;
         }
 
+        /// <summary>
+        /// Create copy.
+        /// </summary>
+        /// <returns>this</returns>
         public override SynchronizationContext CreateCopy()
         {
             return this;
         }
 
+        /// <summary>
+        /// Schedule the delegate to execute on this context with the given state asynchronously, without waiting for it to complete.
+        /// </summary>
         public override void Post(SendOrPostCallback d, object state)
         {
             if (d == null)
@@ -96,6 +109,9 @@ namespace Proto.Promises.Threading
             _syncLocker.Exit();
         }
 
+        /// <summary>
+        /// Schedule the delegate to execute on this context with the given state, and wait for it to complete.
+        /// </summary>
         public override void Send(SendOrPostCallback d, object state)
         {
             if (d == null)
@@ -120,6 +136,11 @@ namespace Proto.Promises.Threading
             }
         }
 
+        /// <summary>
+        /// Execute all callbacks that have been scheduled to run on this thread.
+        /// </summary>
+        /// <exception cref="System.InvalidOperationException">If this is called on a different thread than this was created on.</exception>
+        /// <exception cref="AggregateException">If one or more callbacks throw an exception, they will be wrapped and rethrown as <see cref="AggregateException"/>.</exception>
         public void Execute()
         {
             if (Thread.CurrentThread != _thread)

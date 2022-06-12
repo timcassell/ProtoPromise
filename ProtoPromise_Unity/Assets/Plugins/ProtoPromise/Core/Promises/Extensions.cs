@@ -14,6 +14,9 @@ using System.Threading.Tasks;
 
 namespace Proto.Promises
 {
+    /// <summary>
+    /// Helpful extensions to convert promises to and from other asynchronous types.
+    /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [System.Diagnostics.DebuggerNonUserCode]
 #endif

@@ -4,7 +4,10 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
+
 using System;
+using System.ComponentModel;
 
 namespace Proto.Promises
 {
@@ -97,7 +100,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Get whether or not this <see cref="CancelationSource"/> is valid.
-        /// <para/>A <see cref="CancelationSource"/> is valid if it was created from <see cref="New"/> and was not disposed.
+        /// <para/>A <see cref="CancelationSource"/> is valid if it was created from <see cref="New()"/> and was not disposed.
         /// </summary>
         public bool IsValid
         {
@@ -160,11 +163,13 @@ namespace Proto.Promises
             }
         }
 
+        /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationSource"/>.</summary>
         public bool Equals(CancelationSource other)
         {
             return this == other;
         }
 
+        /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
         {
 #if CSHARP_7_3_OR_NEWER
@@ -174,28 +179,31 @@ namespace Proto.Promises
 #endif
         }
 
+        /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
         {
             return Internal.BuildHashCode(_ref, _sourceId.GetHashCode(), 0);
         }
 
+        /// <summary>Returns a value indicating whether two <see cref="CancelationSource"/> values are equal.</summary>
         public static bool operator ==(CancelationSource c1, CancelationSource c2)
         {
             return c1._ref == c2._ref & c1._sourceId == c2._sourceId;
         }
 
+        /// <summary>Returns a value indicating whether two <see cref="CancelationSource"/> values are not equal.</summary>
         public static bool operator !=(CancelationSource c1, CancelationSource c2)
         {
             return !(c1 == c2);
         }
 
-        [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true)]
+        [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public bool TryCancel<TCancel>(TCancel reason)
         {
             throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
         }
 
-        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
+        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public void Cancel<TCancel>(TCancel reason)
         {
             throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));

@@ -6,8 +6,10 @@
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
+using System.ComponentModel;
 
 namespace Proto.Promises
 {
@@ -216,11 +218,13 @@ namespace Proto.Promises
             }
         }
 
+        /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationToken"/>.</summary>
         public bool Equals(CancelationToken other)
         {
             return this == other;
         }
 
+        /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
         {
 #if CSHARP_7_3_OR_NEWER
@@ -230,16 +234,19 @@ namespace Proto.Promises
 #endif
         }
 
+        /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
         {
             return Internal.BuildHashCode(_ref, _id.GetHashCode(), 0);
         }
 
+        /// <summary>Returns a value indicating whether two <see cref="CancelationToken"/> values are equal.</summary>
         public static bool operator ==(CancelationToken lhs, CancelationToken rhs)
         {
             return lhs._ref == rhs._ref & lhs._id == rhs._id;
         }
 
+        /// <summary>Returns a value indicating whether two <see cref="CancelationToken"/> values are not equal.</summary>
         public static bool operator !=(CancelationToken lhs, CancelationToken rhs)
         {
             return !(lhs == rhs);
@@ -254,7 +261,7 @@ namespace Proto.Promises
         }
 #endif
 
-        [Obsolete("Cancelation reasons are no longer supported.", true)]
+        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public Type CancelationValueType
         {
             get
@@ -263,7 +270,7 @@ namespace Proto.Promises
             }
         }
 
-        [Obsolete("Cancelation reasons are no longer supported.", true)]
+        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public object CancelationValue
         {
             get
@@ -272,7 +279,7 @@ namespace Proto.Promises
             }
         }
 
-        [Obsolete("Cancelation reasons are no longer supported.", true)]
+        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public bool TryGetCancelationValueAs<T>(out T value)
         {
             throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));

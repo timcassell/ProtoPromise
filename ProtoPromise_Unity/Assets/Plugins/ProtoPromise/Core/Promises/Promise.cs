@@ -17,8 +17,10 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -36,6 +38,9 @@ namespace Proto.Promises
 #endif
         partial struct Promise : IEquatable<Promise>
     {
+        /// <summary>
+        /// Gets whether this instance is valid to be awaited.
+        /// </summary>
         public bool IsValid
         {
             [MethodImpl(Internal.InlineOption)]
@@ -47,6 +52,10 @@ namespace Proto.Promises
             }
         }
 
+        /// <summary>
+        /// Gets the string representation of this instance.
+        /// </summary>
+        /// <returns>The string representation of this instance.</returns>
         public override string ToString()
         {
             var _this = this;
@@ -2214,12 +2223,14 @@ namespace Proto.Promises
         }
         #endregion
 
+        /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Promise"/>.</summary>
         [MethodImpl(Internal.InlineOption)]
         public bool Equals(Promise other)
         {
             return this == other;
         }
 
+        /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
         {
 #if CSHARP_7_3_OR_NEWER
@@ -2230,12 +2241,14 @@ namespace Proto.Promises
         }
 
         // Promises really shouldn't be used for lookups, but GetHashCode is overridden to complement ==.
+        /// <summary>Returns the hash code for this instance.</summary>
         [MethodImpl(Internal.InlineOption)]
         public override int GetHashCode()
         {
             return Internal.BuildHashCode(_ref, _id.GetHashCode(), 0);
         }
 
+        /// <summary>Returns a value indicating whether two <see cref="Promise"/> values are equal.</summary>
         [MethodImpl(Internal.InlineOption)]
         public static bool operator ==(Promise lhs, Promise rhs)
         {
@@ -2243,19 +2256,20 @@ namespace Proto.Promises
                 & lhs._id == rhs._id;
         }
 
+        /// <summary>Returns a value indicating whether two <see cref="Promise"/> values are not equal.</summary>
         [MethodImpl(Internal.InlineOption)]
         public static bool operator !=(Promise lhs, Promise rhs)
         {
             return !(lhs == rhs);
         }
 
-        [Obsolete("Retain is no longer valid, use Preserve instead.", true)]
+        [Obsolete("Retain is no longer valid, use Preserve instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public void Retain()
         {
             throw new InvalidOperationException("Retain is no longer valid, use Preserve instead.", Internal.GetFormattedStacktrace(1));
         }
 
-        [Obsolete("Release is no longer valid, use Forget instead.", true)]
+        [Obsolete("Release is no longer valid, use Forget instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public void Release()
         {
             throw new InvalidOperationException("Release is no longer valid, use Forget instead.", Internal.GetFormattedStacktrace(1));

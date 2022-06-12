@@ -14,8 +14,10 @@
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -23,6 +25,9 @@ namespace Proto.Promises
 {
     partial struct Promise
     {
+        /// <summary>
+        /// At what granularity should stack traces be captured when a promise is created or rejected. Higher values are more costly, but give more information for debugging purposes.
+        /// </summary>
         public enum TraceLevel : byte
         {
             /// <summary>
@@ -41,7 +46,7 @@ namespace Proto.Promises
             All
         }
 
-        [Obsolete("Promise Config now uses a simple boolean for object pooling.")]
+        [Obsolete("Promise Config now uses a simple boolean for object pooling."), EditorBrowsable(EditorBrowsableState.Never)]
         public enum PoolType : byte
         {
             None,
@@ -57,7 +62,7 @@ namespace Proto.Promises
 #endif
         public static partial class Config
         {
-            [Obsolete("Use ProgressPrecision to get the precision of progress reports.")]
+            [Obsolete("Use ProgressPrecision to get the precision of progress reports."), EditorBrowsable(EditorBrowsableState.Never)]
             public static readonly int ProgressDecimalBits = Internal.PromiseRefBase.Fixed32.DecimalBits;
 
             /// <summary>
@@ -68,13 +73,16 @@ namespace Proto.Promises
 #endif
             public static readonly float ProgressPrecision = (float) (1d / Math.Pow(2d, Internal.PromiseRefBase.Fixed32.DecimalBits));
 
-            [Obsolete("Use ObjectPoolingEnabled instead.")]
+            [Obsolete("Use ObjectPoolingEnabled instead."), EditorBrowsable(EditorBrowsableState.Never)]
             public static PoolType ObjectPooling 
             {
                 get { return ObjectPoolingEnabled ? PoolType.All : PoolType.None; }
                 set { ObjectPoolingEnabled = value != PoolType.None; }
             }
 
+            /// <summary>
+            /// Should objects be pooled or not. If this is enabled, objects can be reused to reduce GC pressure.
+            /// </summary>
 #if PROMISE_DEBUG
             // Object pooling disabled in DEBUG mode to prevent thread race conditions when validating for circular awaits.
             public static bool ObjectPoolingEnabled
@@ -156,8 +164,7 @@ namespace Proto.Promises
             }
             volatile private static SynchronizationContext s_backgroundContext;
 
-            // TODO: add EditorBrowsable(EditorBrowsableState.Never) to all obsolete APIs.
-            [Obsolete]
+            [Obsolete, EditorBrowsable(EditorBrowsableState.Never)]
             public static Action<string> WarningHandler { get; set; }
         }
     }

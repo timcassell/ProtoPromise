@@ -4,6 +4,12 @@
 
 #pragma warning disable RECS0025 // Non-readonly field referenced in 'GetHashCode()'
 #pragma warning disable RECS0017 // Possible compare of value type with 'null'
+#pragma warning disable IDE0031 // Use null propagation
+#pragma warning disable IDE0019 // Use pattern matching
+#pragma warning disable IDE0038 // Use pattern matching
+#pragma warning disable IDE0066 // Convert switch statement to expression
+#pragma warning disable 0436 // Type conflicts with imported type
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 #if NET_LEGACY || NET45 // ValueTuples are available in .Net 4.7 and newer.
 // Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.

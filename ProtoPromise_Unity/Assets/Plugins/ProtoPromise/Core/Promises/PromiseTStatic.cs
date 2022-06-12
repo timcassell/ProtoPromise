@@ -1,7 +1,9 @@
 ﻿#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Threading;
 
 namespace Proto.Promises
@@ -394,6 +396,8 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
+        /// <param name="promise1">The first promise to combine.</param>
+        /// <param name="promise2">The second promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
         {
@@ -446,6 +450,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
+        /// <param name="promise1">The first promise to combine.</param>
+        /// <param name="promise2">The second promise to combine.</param>
+        /// <param name="promise3">The third promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
         {
@@ -502,6 +509,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
+        /// <param name="promise1">The first promise to combine.</param>
+        /// <param name="promise2">The second promise to combine.</param>
+        /// <param name="promise3">The third promise to combine.</param>
+        /// <param name="promise4">The fourth promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
         {
@@ -571,6 +582,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/> when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
+        /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T>[] promises, IList<T> valueContainer = null)
         {
@@ -581,6 +593,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/>s when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
+        /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(IEnumerable<Promise<T>> promises, IList<T> valueContainer = null)
         {
@@ -591,6 +604,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve a list of values in the same order as <paramref name="promises"/> when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
+        /// <param name="promises">The enumerator of promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All<TEnumerator>(TEnumerator promises, IList<T> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
         {
@@ -644,7 +658,7 @@ namespace Proto.Promises
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
 
-        [Obsolete("Prefer Promise<T>.All()")]
+        [Obsolete("Prefer Promise<T>.All()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<IList<T>> AllNonAlloc<TEnumerator>(TEnumerator promises, IList<T> valueContainer) where TEnumerator : IEnumerator<Promise<T>>
         {
             ValidateArgument(valueContainer, "valueContainer", 1);
@@ -805,7 +819,7 @@ namespace Proto.Promises
             return deferred.Promise;
         }
 
-        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
+        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> Canceled<TCancel>(TCancel reason)
         {
             throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Canceled() instead.", Internal.GetFormattedStacktrace(1));

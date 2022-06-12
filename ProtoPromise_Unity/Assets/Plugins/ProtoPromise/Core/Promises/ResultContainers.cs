@@ -5,8 +5,10 @@
 # endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
@@ -166,7 +168,7 @@ namespace Proto.Promises
                 get { return _target.RejectContainer; }
             }
 
-            [Obsolete("Cancelation reasons are no longer supported.", true)]
+            [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public ReasonContainer CancelContainer
             {
                 get { return _target.CancelContainer; }
@@ -312,6 +314,9 @@ namespace Proto.Promises
                 }
             }
 
+            /// <summary>
+            /// Cast to <see cref="Promise.ResultContainer"/>.
+            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public static implicit operator Promise.ResultContainer(ResultContainer rhs)
             {
@@ -348,7 +353,7 @@ namespace Proto.Promises
             }
 #endif
 
-            [Obsolete("Cancelation reasons are no longer supported.", true)]
+            [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public ReasonContainer CancelContainer
             {
                 [MethodImpl(Internal.InlineOption)]

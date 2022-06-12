@@ -12,8 +12,10 @@
 #pragma warning disable IDE0019 // Use pattern matching
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable 0618 // Type or member is obsolete
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
@@ -54,7 +56,7 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Use IsValidAndPending.", false)]
+            [Obsolete("Use IsValidAndPending.", false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -237,12 +239,14 @@ namespace Proto.Promises
                 return Internal.DeferredPromiseHelper.TryReportProgress(_ref, _deferredId, progress);
             }
 
+            /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="DeferredBase"/>.</summary>
             [MethodImpl(Internal.InlineOption)]
             public bool Equals(DeferredBase other)
             {
                 return this == other;
             }
 
+            /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
             {
 #if CSHARP_7_3_OR_NEWER
@@ -252,12 +256,14 @@ namespace Proto.Promises
 #endif
             }
 
+            /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
             {
                 return Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
             }
 
+            /// <summary>Returns a value indicating whether two <see cref="DeferredBase"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator ==(DeferredBase lhs, DeferredBase rhs)
             {
@@ -266,25 +272,26 @@ namespace Proto.Promises
                     & lhs._promiseId == rhs._promiseId;
             }
 
+            /// <summary>Returns a value indicating whether two <see cref="DeferredBase"/> values are not equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator !=(DeferredBase lhs, DeferredBase rhs)
             {
                 return !(lhs == rhs);
             }
 
-            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
+            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public void Cancel<TCancel>(TCancel reason)
             {
                 throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
             }
 
-            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true)]
+            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryCancel<TCancel>(TCancel reason)
             {
                 throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
             }
 
-            [Obsolete("DeferredBase.State is no longer valid. Use IsValidAndPending.", true)]
+            [Obsolete("DeferredBase.State is no longer valid. Use IsValidAndPending.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public State State
             {
                 get
@@ -293,13 +300,13 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("DeferredBase.Retain is no longer valid.", true)]
+            [Obsolete("DeferredBase.Retain is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public void Retain()
             {
                 throw new InvalidOperationException("DeferredBase.Retain is no longer valid.", Internal.GetFormattedStacktrace(1));
             }
 
-            [Obsolete("DeferredBase.Release is no longer valid.", true)]
+            [Obsolete("DeferredBase.Release is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public void Release()
             {
                 throw new InvalidOperationException("DeferredBase.Release is no longer valid.", Internal.GetFormattedStacktrace(1));
@@ -340,7 +347,7 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Use IsValidAndPending.", false)]
+            [Obsolete("Use IsValidAndPending.", false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -531,12 +538,14 @@ namespace Proto.Promises
                 return rhs.ToDeferred();
             }
 
+            /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Deferred"/>.</summary>
             [MethodImpl(Internal.InlineOption)]
             public bool Equals(Deferred other)
             {
                 return this == other;
             }
 
+            /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
             {
 #if CSHARP_7_3_OR_NEWER
@@ -546,12 +555,14 @@ namespace Proto.Promises
 #endif
             }
 
+            /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
             {
                 return Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
             }
 
+            /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator ==(Deferred lhs, Deferred rhs)
             {
@@ -560,25 +571,26 @@ namespace Proto.Promises
                     & lhs._promiseId == rhs._promiseId;
             }
 
+            /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are not equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator !=(Deferred lhs, Deferred rhs)
             {
                 return !(lhs == rhs);
             }
 
-            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
+            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public void Cancel<TCancel>(TCancel reason)
             {
                 throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
             }
 
-            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true)]
+            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryCancel<TCancel>(TCancel reason)
             {
                 throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
             }
 
-            [Obsolete("Deferred.State is no longer valid. Use IsValidAndPending.", true)]
+            [Obsolete("Deferred.State is no longer valid. Use IsValidAndPending.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public State State
             {
                 get
@@ -587,13 +599,13 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Deferred.Retain is no longer valid.", true)]
+            [Obsolete("Deferred.Retain is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public void Retain()
             {
                 throw new InvalidOperationException("Deferred.Retain is no longer valid.", Internal.GetFormattedStacktrace(1));
             }
 
-            [Obsolete("Deferred.Release is no longer valid.", true)]
+            [Obsolete("Deferred.Release is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public void Release()
             {
                 throw new InvalidOperationException("Deferred.Release is no longer valid.", Internal.GetFormattedStacktrace(1));
@@ -636,7 +648,7 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Use IsValidAndPending.", false)]
+            [Obsolete("Use IsValidAndPending.", false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -826,12 +838,14 @@ namespace Proto.Promises
                 return rhs.ToDeferred<T>();
             }
 
+            /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Deferred"/>.</summary>
             [MethodImpl(Internal.InlineOption)]
             public bool Equals(Deferred other)
             {
                 return this == other;
             }
 
+            /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
             {
 #if CSHARP_7_3_OR_NEWER
@@ -841,12 +855,14 @@ namespace Proto.Promises
 #endif
             }
 
+            /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
             {
                 return Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
             }
 
+            /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator ==(Deferred lhs, Deferred rhs)
             {
@@ -855,25 +871,26 @@ namespace Proto.Promises
                     & lhs._promiseId == rhs._promiseId;
             }
 
+            /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are not equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator !=(Deferred lhs, Deferred rhs)
             {
                 return !(lhs == rhs);
             }
 
-            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
+            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public void Cancel<TCancel>(TCancel reason)
             {
                 throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
             }
 
-            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true)]
+            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryCancel<TCancel>(TCancel reason)
             {
                 throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
             }
 
-            [Obsolete("Deferred.State is no longer valid. Use IsValidAndPending.", true)]
+            [Obsolete("Deferred.State is no longer valid. Use IsValidAndPending.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public Promise.State State
             {
                 get
@@ -882,13 +899,13 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Deferred.Retain is no longer valid.", true)]
+            [Obsolete("Deferred.Retain is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public void Retain()
             {
                 throw new InvalidOperationException("Deferred.Retain is no longer valid.", Internal.GetFormattedStacktrace(1));
             }
 
-            [Obsolete("Deferred.Release is no longer valid.", true)]
+            [Obsolete("Deferred.Release is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public void Release()
             {
                 throw new InvalidOperationException("Deferred.Release is no longer valid.", Internal.GetFormattedStacktrace(1));
