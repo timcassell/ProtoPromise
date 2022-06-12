@@ -1,4 +1,7 @@
-﻿using System;
+﻿#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
+
+using System;
+using System.ComponentModel;
 
 namespace Proto.Promises
 {
@@ -12,19 +15,19 @@ namespace Proto.Promises
 #endif
         public static class Manager
         {
-            [Obsolete("Promise.Manager.HandleCompletes is no longer valid. Set Promise.Config.ForegroundContext instead.", true)]
+            [Obsolete("Promise.Manager.HandleCompletes is no longer valid. Set Promise.Config.ForegroundContext instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public static void HandleCompletes()
             {
                 throw new System.InvalidOperationException("Promise.Manager.HandleCompletes is no longer valid. Set Promise.Config.ForegroundContext instead.");
             }
 
-            [Obsolete("Promise.Manager.HandleCompletesAndProgress is no longer valid. Set Promise.Config.ForegroundContext instead.", true)]
+            [Obsolete("Promise.Manager.HandleCompletesAndProgress is no longer valid. Set Promise.Config.ForegroundContext instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public static void HandleCompletesAndProgress()
             {
                 throw new System.InvalidOperationException("Promise.Manager.HandleCompletesAndProgress is no longer valid. Set Promise.Config.ForegroundContext instead.");
             }
 
-            [Obsolete("Promise.Manager.HandleProgress is no longer valid. Set Promise.Config.ForegroundContext instead.", true)]
+            [Obsolete("Promise.Manager.HandleProgress is no longer valid. Set Promise.Config.ForegroundContext instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
             public static void HandleProgress()
             {
                 throw new System.InvalidOperationException("Promise.Manager.HandleProgress is no longer valid. Set Promise.Config.ForegroundContext instead.");
@@ -38,7 +41,7 @@ namespace Proto.Promises
                 Internal.ClearPool();
             }
 
-            [Obsolete]
+            [Obsolete, EditorBrowsable(EditorBrowsableState.Never)]
             public static void LogWarning(string message)
             {
                 var temp = Config.WarningHandler;

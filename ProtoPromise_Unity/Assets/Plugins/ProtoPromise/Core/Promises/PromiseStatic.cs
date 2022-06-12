@@ -1,7 +1,9 @@
 ﻿#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -155,37 +157,37 @@ namespace Proto.Promises
             return new Promise(promise, promise.Id, minDepth);
         }
 
-        [Obsolete("Prefer Promise<T>.Race()")]
+        [Obsolete("Prefer Promise<T>.Race()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2)
         {
             return Promise<T>.Race(promise1, promise2);
         }
 
-        [Obsolete("Prefer Promise<T>.Race()")]
+        [Obsolete("Prefer Promise<T>.Race()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             return Promise<T>.Race(promise1, promise2, promise3);
         }
 
-        [Obsolete("Prefer Promise<T>.Race()")]
+        [Obsolete("Prefer Promise<T>.Race()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             return Promise<T>.Race(promise1, promise2, promise3, promise4);
         }
 
-        [Obsolete("Prefer Promise<T>.Race()")]
+        [Obsolete("Prefer Promise<T>.Race()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> Race<T>(params Promise<T>[] promises)
         {
             return Promise<T>.Race(promises);
         }
 
-        [Obsolete("Prefer Promise<T>.Race()")]
+        [Obsolete("Prefer Promise<T>.Race()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
         {
             return Promise<T>.Race(promises);
         }
 
-        [Obsolete("Prefer Promise<T>.Race()")]
+        [Obsolete("Prefer Promise<T>.Race()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> Race<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.Race(promises);
@@ -337,37 +339,37 @@ namespace Proto.Promises
             return new Promise(promise, promise.Id, minDepth);
         }
 
-        [Obsolete("Prefer Promise<T>.First()")]
+        [Obsolete("Prefer Promise<T>.First()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2)
         {
             return Promise<T>.First(promise1, promise2);
         }
 
-        [Obsolete("Prefer Promise<T>.First()")]
+        [Obsolete("Prefer Promise<T>.First()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             return Promise<T>.First(promise1, promise2, promise3);
         }
 
-        [Obsolete("Prefer Promise<T>.First()")]
+        [Obsolete("Prefer Promise<T>.First()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             return Promise<T>.First(promise1, promise2, promise3, promise4);
         }
 
-        [Obsolete("Prefer Promise<T>.First()")]
+        [Obsolete("Prefer Promise<T>.First()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> First<T>(params Promise<T>[] promises)
         {
             return Promise<T>.First(promises);
         }
 
-        [Obsolete("Prefer Promise<T>.First()")]
+        [Obsolete("Prefer Promise<T>.First()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> First<T>(IEnumerable<Promise<T>> promises)
         {
             return Promise<T>.First(promises);
         }
 
-        [Obsolete("Prefer Promise<T>.First()")]
+        [Obsolete("Prefer Promise<T>.First()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> First<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.First(promises);
@@ -577,43 +579,43 @@ namespace Proto.Promises
             return new Promise(promise, promise.Id, maxDepth);
         }
 
-        [Obsolete("Prefer Promise<T>.All()")]
+        [Obsolete("Prefer Promise<T>.All()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
         {
             return Promise<T>.All(promise1, promise2, valueContainer);
         }
 
-        [Obsolete("Prefer Promise<T>.All()")]
+        [Obsolete("Prefer Promise<T>.All()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
         {
             return Promise<T>.All(promise1, promise2, promise3, valueContainer);
         }
 
-        [Obsolete("Prefer Promise<T>.All()")]
+        [Obsolete("Prefer Promise<T>.All()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
         {
             return Promise<T>.All(promise1, promise2, promise3, promise4, valueContainer);
         }
 
-        [Obsolete("Prefer Promise<T>.All()")]
+        [Obsolete("Prefer Promise<T>.All()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<IList<T>> All<T>(params Promise<T>[] promises)
         {
             return Promise<T>.All(promises);
         }
 
-        [Obsolete("Prefer Promise<T>.All()")]
+        [Obsolete("Prefer Promise<T>.All()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises)
         {
             return Promise<T>.All(promises);
         }
 
-        [Obsolete("Prefer Promise<T>.All()")]
+        [Obsolete("Prefer Promise<T>.All()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<IList<T>> All<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.All(promises);
         }
 
-        [Obsolete("Prefer Promise<T>.All()")]
+        [Obsolete("Prefer Promise<T>.All()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<IList<T>> AllNonAlloc<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.AllNonAlloc(promises, valueContainer);
@@ -1348,13 +1350,13 @@ namespace Proto.Promises
             return deferred.Promise;
         }
 
-        [Obsolete("Prefer Promise<T>.New()")]
+        [Obsolete("Prefer Promise<T>.New()"), EditorBrowsable(EditorBrowsableState.Never)]
 		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
         {
             return Promise<T>.New(resolver, synchronizationOption);
         }
 
-        [Obsolete("Prefer Promise<T>.New()")]
+        [Obsolete("Prefer Promise<T>.New()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver, SynchronizationContext synchronizationContext)
         {
             return Promise<T>.New(resolver, synchronizationContext);
@@ -1421,13 +1423,13 @@ namespace Proto.Promises
             return deferred.Promise;
         }
 
-        [Obsolete("Prefer Promise<T>.New()")]
+        [Obsolete("Prefer Promise<T>.New()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
         {
             return Promise<T>.New(captureValue, resolver, synchronizationOption);
         }
 
-        [Obsolete("Prefer Promise<T>.New()")]
+        [Obsolete("Prefer Promise<T>.New()"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver, SynchronizationContext synchronizationContext)
         {
             return Promise<T>.New(captureValue, resolver, synchronizationContext);
@@ -1677,7 +1679,7 @@ namespace Proto.Promises
             return deferred.Promise;
         }
 
-        [Obsolete("Prefer Promise<T>.Rejected<TReject>(TReject reason)")]
+        [Obsolete("Prefer Promise<T>.Rejected<TReject>(TReject reason)"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> Rejected<T, TReject>(TReject reason)
         {
             return Promise<T>.Rejected(reason);
@@ -1693,7 +1695,7 @@ namespace Proto.Promises
             return deferred.Promise;
         }
 
-        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
+        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise Canceled<TCancel>(TCancel reason)
         {
             throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Canceled() instead.", Internal.GetFormattedStacktrace(1));
@@ -1707,7 +1709,7 @@ namespace Proto.Promises
             return Promise<T>.Canceled();
         }
 
-        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true)]
+        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> Canceled<T, TCancel>(TCancel reason)
         {
             return Promise<T>.Canceled(reason);
@@ -1753,7 +1755,7 @@ namespace Proto.Promises
             return Internal.CanceledExceptionInternal.GetOrCreate();
         }
 
-        [Obsolete("Cancelation reasons are no longer supported. Use CancelException() instead.", true)]
+        [Obsolete("Cancelation reasons are no longer supported. Use CancelException() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public static CanceledException CancelException<T>(T value)
         {
             throw new InvalidOperationException("Cancelation reasons are no longer supported. Use CancelException() instead.", Internal.GetFormattedStacktrace(1));

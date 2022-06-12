@@ -14,9 +14,11 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -34,6 +36,9 @@ namespace Proto.Promises
 #endif
         partial struct Promise<T> : IEquatable<Promise<T>>
     {
+        /// <summary>
+        /// Gets whether this instance is valid to be awaited.
+        /// </summary>
         public bool IsValid
         {
             get
@@ -66,6 +71,10 @@ namespace Proto.Promises
             return rhs.AsPromise();
         }
 
+        /// <summary>
+        /// Gets the string representation of this instance.
+        /// </summary>
+        /// <returns>The string representation of this instance.</returns>
         public override string ToString()
         {
             var _this = this;
@@ -2227,13 +2236,13 @@ namespace Proto.Promises
         }
 #endregion
 
-        [Obsolete("Retain is no longer valid, use Preserve instead.", true)]
+        [Obsolete("Retain is no longer valid, use Preserve instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public void Retain()
         {
             throw new InvalidOperationException("Retain is no longer valid, use Preserve instead.", Internal.GetFormattedStacktrace(1));
         }
 
-        [Obsolete("Release is no longer valid, use Forget instead.", true)]
+        [Obsolete("Release is no longer valid, use Forget instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public void Release()
         {
             throw new InvalidOperationException("Release is no longer valid, use Forget instead.", Internal.GetFormattedStacktrace(1));
@@ -3616,14 +3625,16 @@ namespace Proto.Promises
         {
             return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
         }
-#endregion
+        #endregion
 
+        /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Promise{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]
         public bool Equals(Promise<T> other)
         {
             return this == other;
         }
 
+        /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
         {
 #if CSHARP_7_3_OR_NEWER
@@ -3634,6 +3645,7 @@ namespace Proto.Promises
         }
 
         // Promises really shouldn't be used for lookups, but GetHashCode is overridden to complement ==.
+        /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
         {
             T result = _result;
@@ -3641,6 +3653,7 @@ namespace Proto.Promises
             return Internal.BuildHashCode(_ref, _id.GetHashCode(), resultHashCode, typeof(T).TypeHandle.GetHashCode()); // Hashcode variance for different T types.
         }
 
+        /// <summary>Returns a value indicating whether two <see cref="Promise{T}"/> values are equal.</summary>
         public static bool operator ==(Promise<T> lhs, Promise<T> rhs)
         {
             return lhs._ref == rhs._ref
@@ -3648,6 +3661,7 @@ namespace Proto.Promises
                 & EqualityComparer<T>.Default.Equals(lhs._result, rhs._result);
         }
 
+        /// <summary>Returns a value indicating whether two <see cref="Promise{T}"/> values are not equal.</summary>
         [MethodImpl(Internal.InlineOption)]
         public static bool operator !=(Promise<T> lhs, Promise<T> rhs)
         {

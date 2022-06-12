@@ -344,8 +344,9 @@ namespace Proto.Promises
 #endif // !NET5_0_OR_GREATER
 
         /// <summary>
-        /// Used to support the await keyword.
+        /// Provides an awaiter for awaiting a <see cref="Promise"/>.
         /// </summary>
+        /// <remarks>This type is intended for compiler user rather than use directly in code.</remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
@@ -373,6 +374,9 @@ namespace Proto.Promises
 
             static partial void CreateOverride();
 
+            /// <summary>Gets whether the <see cref="Promise"/> being awaited is completed.</summary>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -383,6 +387,9 @@ namespace Proto.Promises
                 }
             }
 
+            /// <summary>Ends the await on the completed <see cref="Promise"/>.</summary>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten, or it has not yet completed.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void GetResult()
             {
@@ -404,6 +411,10 @@ namespace Proto.Promises
 #endif
             }
 
+            /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
@@ -417,6 +428,10 @@ namespace Proto.Promises
                 _ref.OnCompleted(continuation, _promise._id);
             }
 
+            /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
             {
@@ -439,8 +454,9 @@ namespace Proto.Promises
         } // struct PromiseAwaiterVoid
 
         /// <summary>
-        /// Used to support the await keyword.
+        /// Provides an awaiter for awaiting a <see cref="Promise{T}"/>.
         /// </summary>
+        /// <remarks>This type is intended for compiler user rather than use directly in code.</remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
@@ -468,6 +484,9 @@ namespace Proto.Promises
 
             static partial void CreateOverride();
 
+            /// <summary>Gets whether the <see cref="Promise{T}"/> being awaited is completed.</summary>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -478,6 +497,10 @@ namespace Proto.Promises
                 }
             }
 
+            /// <summary>Ends the await on the completed <see cref="Promise{T}"/>.</summary>
+            /// <returns>The result of the completed <see cref="Promise{T}"/></returns>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten, or it has not yet completed.</exception>
             [MethodImpl(Internal.InlineOption)]
             public T GetResult()
             {
@@ -499,6 +522,10 @@ namespace Proto.Promises
                 throw null; // This will never be reached, but the compiler needs help understanding that.
             }
 
+            /// <summary>Schedules the continuation onto the <see cref="Promise{T}"/> associated with this <see cref="PromiseAwaiter{T}"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
@@ -512,6 +539,10 @@ namespace Proto.Promises
                 _ref.OnCompleted(continuation, _promise._id);
             }
 
+            /// <summary>Schedules the continuation onto the <see cref="Promise{T}"/> associated with this <see cref="PromiseAwaiter{T}"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
             {
@@ -534,8 +565,9 @@ namespace Proto.Promises
         } // struct PromiseAwaiter<T>
 
         /// <summary>
-        /// Used to support the await keyword.
+        /// Provides an awaiter for awaiting a <see cref="Promise"/> and reporting its progress to the associated async <see cref="Promise"/> or <see cref="Promise{T}"/>.
         /// </summary>
+        /// <remarks>This type is intended for compiler user rather than use directly in code.</remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
@@ -567,12 +599,18 @@ namespace Proto.Promises
 
             static partial void CreateOverride();
 
+            /// <summary>Gets the awaiter for this.</summary>
+            /// <remarks>This method is intended for compiler user rather than use directly in code.</remarks>
+            /// <returns>this</returns>
             [MethodImpl(Internal.InlineOption)]
             public PromiseProgressAwaiterVoid GetAwaiter()
             {
                 return this;
             }
 
+            /// <summary>Gets whether the <see cref="Promise"/> being awaited is completed.</summary>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -583,6 +621,9 @@ namespace Proto.Promises
                 }
             }
 
+            /// <summary>Ends the await on the completed <see cref="Promise"/>.</summary>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten, or it has not yet completed.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void GetResult()
             {
@@ -604,6 +645,10 @@ namespace Proto.Promises
 #endif
             }
 
+            /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseProgressAwaiterVoid"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
@@ -617,6 +662,10 @@ namespace Proto.Promises
                 _promise._ref.OnCompleted(continuation, _promise._id);
             }
 
+            /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseProgressAwaiterVoid"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
             {
@@ -639,8 +688,9 @@ namespace Proto.Promises
         } // struct PromiseAwaiterVoid
 
         /// <summary>
-        /// Used to support the await keyword.
+        /// Provides an awaiter for awaiting a <see cref="Promise{T}"/> and reporting its progress to the associated async <see cref="Promise"/> or <see cref="Promise{T}"/>.
         /// </summary>
+        /// <remarks>This type is intended for compiler user rather than use directly in code.</remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode]
 #endif
@@ -672,12 +722,18 @@ namespace Proto.Promises
 
             static partial void CreateOverride();
 
+            /// <summary>Gets the awaiter for this.</summary>
+            /// <remarks>This method is intended for compiler user rather than use directly in code.</remarks>
+            /// <returns>this</returns>
             [MethodImpl(Internal.InlineOption)]
             public PromiseProgressAwaiter<T> GetAwaiter()
             {
                 return this;
             }
 
+            /// <summary>Gets whether the <see cref="Promise{T}"/> being awaited is completed.</summary>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -688,6 +744,10 @@ namespace Proto.Promises
                 }
             }
 
+            /// <summary>Ends the await on the completed <see cref="Promise{T}"/>.</summary>
+            /// <returns>The result of the completed <see cref="Promise{T}"/></returns>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten, or it has not yet completed.</exception>
             [MethodImpl(Internal.InlineOption)]
             public T GetResult()
             {
@@ -709,6 +769,10 @@ namespace Proto.Promises
                 throw null; // This will never be reached, but the compiler needs help understanding that.
             }
 
+            /// <summary>Schedules the continuation onto the <see cref="Promise{T}"/> associated with this <see cref="PromiseProgressAwaiter{T}"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
@@ -722,6 +786,10 @@ namespace Proto.Promises
                 _promise._ref.OnCompleted(continuation, _promise._id);
             }
 
+            /// <summary>Schedules the continuation onto the <see cref="Promise{T}"/> associated with this <see cref="PromiseProgressAwaiter{T}"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler user rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
             {
@@ -746,9 +814,9 @@ namespace Proto.Promises
 
     partial struct Promise
     {
-        /// <summary>
-        /// Used to support the await keyword.
-        /// </summary>
+        /// <summary>Gets an awaiter for this <see cref="Promise"/>.</summary>
+        /// <remarks>This method is intended for compiler user rather than use directly in code.</remarks>
+        /// <returns>The awaiter.</returns>
         [MethodImpl(Internal.InlineOption)]
         public PromiseAwaiterVoid GetAwaiter()
         {
@@ -757,9 +825,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Used to support reporting progress to the async Promise function. The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
-        /// <para/> Use as `await promise.AwaitWithprogress(minProgress, maxProgress);`
+        /// Gets an awaiter for this <see cref="Promise"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function.
+        /// The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
         /// </summary>
+        /// <remarks> Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`</remarks>
+        /// <returns>The awaiter.</returns>
         public PromiseProgressAwaiterVoid AwaitWithProgress(float minProgress, float maxProgress)
         {
             ValidateOperation(1);
@@ -771,9 +841,9 @@ namespace Proto.Promises
 
     partial struct Promise<T>
     {
-        /// <summary>
-        /// Used to support the await keyword.
-        /// </summary>
+        /// <summary>Gets an awaiter for this <see cref="Promise{T}"/>.</summary>
+        /// <remarks>This method is intended for compiler user rather than use directly in code.</remarks>
+        /// <returns>The awaiter.</returns>
         [MethodImpl(Internal.InlineOption)]
         public PromiseAwaiter<T> GetAwaiter()
         {
@@ -782,9 +852,11 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Used to support reporting progress to the async Promise function. The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
-        /// <para/> Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`
+        /// Gets an awaiter for this <see cref="Promise{T}"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function.
+        /// The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
         /// </summary>
+        /// <remarks> Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`</remarks>
+        /// <returns>The awaiter.</returns>
         public PromiseProgressAwaiter<T> AwaitWithProgress(float minProgress, float maxProgress)
         {
             ValidateOperation(1);
