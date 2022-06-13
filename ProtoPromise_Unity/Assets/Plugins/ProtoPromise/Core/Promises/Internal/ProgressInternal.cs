@@ -832,14 +832,17 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public bool TryReportProgress(int deferredId, float progress)
                 {
+                    // It is possible this is called concurrently on another thread after this object has been repooled.
+                    // User code really shouldn't use this in that manner, which the deferredId protects against accidental usage.
+                    // But in case that does happen (like in unit tests for stress testing), calling SetProgress on the progressListener will be a no-op.
+
+                    var progressListener = _next;
                     InterlockedIncrementProgressReportingCount();
                     if (deferredId != DeferredId)
                     {
                         InterlockedDecrementProgressReportingCount();
                         return false;
                     }
-
-                    ThrowIfInPool(this);
 
                     // Don't report progress 1.0, that will be reported automatically when the promise is resolved.
                     if (progress >= 0 & progress < 1f)
@@ -848,7 +851,7 @@ namespace Proto.Promises
                         var wasReportingPriority = Fixed32.ts_reportingPriority;
                         Fixed32.ts_reportingPriority = true;
 
-                        ReportProgressAlreadyIncremented(newProgress, 0);
+                        ReportProgressAlreadyIncremented(newProgress, progressListener);
 
                         Fixed32.ts_reportingPriority = wasReportingPriority;
                     }
@@ -857,6 +860,26 @@ namespace Proto.Promises
                         InterlockedDecrementProgressReportingCount();
                     }
                     return true;
+                }
+
+                private void ReportProgressAlreadyIncremented(Fixed32 progress, HandleablePromiseBase progressListener)
+                {
+                    if (progressListener == null)
+                    {
+                        InterlockedDecrementProgressReportingCount();
+                        return;
+                    }
+                    ushort depth = 0;
+                    var next = progressListener.SetProgress(ref progress, ref depth);
+                    if (next == null)
+                    {
+                        InterlockedDecrementProgressReportingCount();
+                        StackUnwindHelper.InvokeProgressors();
+                        return;
+                    }
+                    next.InterlockedIncrementProgressReportingCount();
+                    InterlockedDecrementProgressReportingCount();
+                    next.ReportProgressAlreadyIncremented(progress, depth);
                 }
             }
 
