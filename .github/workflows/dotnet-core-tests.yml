@@ -34,22 +34,22 @@ jobs:
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v2
         with:
-          dotnet-version: 5.0.x
+          global-json-file: global.json
           
       - name: Run Tests
         timeout-minutes: 180
         run: |
-          dotnet test -c ${{ matrix.config }} -f net5.0 --logger "trx;logfilename=dotnet-test-results-net5.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}.trx" -p:ExtraDefineConstants=PROTO_PROMISE_${{ matrix.pooling }} -p:DeveloperMode=${{ matrix.developerMode }} --results-directory "./TestResults"
+          dotnet test -c ${{ matrix.config }} -f net6.0 --logger "trx;logfilename=dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}.trx" -p:ExtraDefineConstants=PROTO_PROMISE_${{ matrix.pooling }} -p:DeveloperMode=${{ matrix.developerMode }} --results-directory "./TestResults"
 
       - uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: dotnet-test-results-net5.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
+          name: dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
           path: TestResults/*.trx
           reporter: dotnet-trx
 
       - uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: dotnet-test-results-net5.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
+          name: dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
           path: TestResults
