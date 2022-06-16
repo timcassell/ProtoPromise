@@ -1,15 +1,25 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.ComponentModel;
+
+#if !NET_LEGACY || NET40
+using System.Linq;
+#endif
 
 namespace Proto.Promises
 {
@@ -210,6 +220,17 @@ namespace Proto.Promises
             }
         }
 
+#if !NET_LEGACY || NET40
+        /// <summary>
+        /// Convert this to a <see cref="System.Threading.CancellationToken"/>.
+        /// </summary>
+        /// <returns>A <see cref="System.Threading.CancellationToken"/> that will be canceled when this is canceled.</returns>
+        public System.Threading.CancellationToken ToCancellationToken()
+        {
+            return Internal.CancelationRef.GetCancellationToken(_ref, _id);
+        }
+#endif
+
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationToken"/>.</summary>
         public bool Equals(CancelationToken other)
         {
@@ -277,4 +298,68 @@ namespace Proto.Promises
             throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
         }
     }
+
+    partial class Extensions
+    {
+#if !NET_LEGACY || NET40
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, Internal.CancelationRef> s_cancelationSourceMap = new System.Runtime.CompilerServices.ConditionalWeakTable<object, Internal.CancelationRef>();
+        private static readonly System.Reflection.FieldInfo s_cancelationSourceFieldInfo = typeof(System.Threading.CancellationToken).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .FirstOrDefault(fi => !fi.FieldType.IsValueType);
+
+        /// <summary>
+        /// Convert <paramref name="token"/> to a <see cref="CancelationToken"/>.
+        /// </summary>
+        /// <param name="token">The cancellation token to convert</param>
+        /// <returns>A <see cref="CancelationToken"/> that will be canceled when <paramref name="token"/> is canceled.</returns>
+        public static CancelationToken ToCancelationToken(this System.Threading.CancellationToken token)
+        {
+            if (token.IsCancellationRequested)
+            {
+                return CancelationToken.Canceled();
+            }
+
+            // Implementation detail, the token wraps the source, so we can retrieve it via reflection.
+            // If the implementation changes so this is no longer the case (unlikely), then source will just be null.
+            // We do this so that if ToCancelationToken is called multiple times on the same token, it doesn't need to create a new Internal.CancelationRef every time.
+            object source = s_cancelationSourceFieldInfo == null ? null
+#if ENABLE_IL2CPP // IL2CPP does not support TypedReference or __makeref. https://docs.unity3d.com/Manual/ScriptingRestrictions.html
+                : s_cancelationSourceFieldInfo.GetValue(token);
+#else
+                // Use GetValueDirect and __makeref to avoid boxing the token.
+                : s_cancelationSourceFieldInfo.GetValueDirect(__makeref(token));
+#endif
+            Internal.CancelationRef _ref;
+            if (source == null)
+            {
+                _ref = Internal.CancelationRef.GetOrCreateWithoutDisposedCheck();
+                token.Register(state => state.UnsafeAs<Internal.CancelationRef>().Cancel(), _ref, false);
+            }
+            else if (!s_cancelationSourceMap.TryGetValue(source, out _ref))
+            {
+#if NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+                // It is possible for multiple cancelation refs to be created on separate threads. That is fine.
+                _ref = Internal.CancelationRef.GetOrCreateWithoutDisposedCheck();
+                s_cancelationSourceMap.AddOrUpdate(source, _ref);
+#else
+                lock (s_cancelationSourceMap)
+                {
+                    if (!s_cancelationSourceMap.TryGetValue(source, out _ref))
+                    {
+                        _ref = Internal.CancelationRef.GetOrCreateWithoutDisposedCheck();
+                        s_cancelationSourceMap.Add(source, _ref);
+                    }
+                }
+#endif
+                _ref.AttachCancelationSource(source);
+                token.Register(state => state.UnsafeAs<Internal.CancelationRef>().Cancel(), _ref, false);
+            }
+            return new CancelationToken(_ref, _ref.TokenId);
+        }
+
+        internal static void AttachCancelationRef(this System.Threading.CancellationTokenSource source, Internal.CancelationRef _ref)
+        {
+            s_cancelationSourceMap.Add(source, _ref);
+        }
+#endif
+        }
 }

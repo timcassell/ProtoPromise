@@ -8,6 +8,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0017 // Simplify object initialization
 #pragma warning disable IDE0019 // Use pattern matching
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0038 // Use pattern matching
@@ -187,12 +188,22 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
                 _stackTraces = createdStacktraces;
                 // rejectedStacktrace will only be non-null when this is created from Deferred.Reject and causality traces are enabled.
-                // Otherwise, _rejectException will have been gotten from _rejectExceptionsForTrace in Create.
+                // Otherwise, _rejectException will have been gotten from s_rejectExceptionsForTrace in Create.
                 if (rejectedStacktrace != null)
                 {
-                    _rejectException = new RejectionException("This exception contains the stacktrace of the Deferred.Reject for the uncaught exception.", FormatStackTrace(new StackTrace[1] { rejectedStacktrace }), (Exception) Value);
 #if !NET_LEGACY
-                    s_rejectExceptionsForTrace.Add(Value, _rejectException);
+                    lock (s_rejectExceptionsForTrace)
+                    {
+                        if (!s_rejectExceptionsForTrace.TryGetValue(Value, out _rejectException))
+                        {
+                            _rejectException = new RejectionException("This exception contains the stacktrace of the Deferred.Reject for the uncaught exception.",
+                                FormatStackTrace(new StackTrace[1] { rejectedStacktrace }), (Exception) Value);
+                            s_rejectExceptionsForTrace.Add(Value, _rejectException);
+                        }
+                    }
+#else
+                    _rejectException = new RejectionException("This exception contains the stacktrace of the Deferred.Reject for the uncaught exception.",
+                        FormatStackTrace(new StackTrace[1] { rejectedStacktrace }), (Exception) Value);
 #endif
                 }
             }
