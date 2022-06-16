@@ -430,22 +430,11 @@ namespace Proto.Promises
             protected virtual void HookupAwaiterWithProgressVirt(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress) { throw new System.InvalidOperationException(); }
 #endif
 
-            [ThreadStatic]
-            private static HandleablePromiseBase ts_next;
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
 #endif
             internal partial class AsyncPromiseRef<TResult> : AsyncPromiseBase<TResult>
             {
-                [MethodImpl(InlineOption)]
-                private static HandleablePromiseBase ExchangeNext(HandleablePromiseBase currentRunner)
-                {
-                    var previous = ts_next;
-                    ts_next = currentRunner;
-                    return previous;
-                }
-
                 [MethodImpl(InlineOption)]
                 internal static AsyncPromiseRef<TResult> GetOrCreate()
                 {
@@ -461,7 +450,7 @@ namespace Proto.Promises
                     // We let the stack unwind here instead of immediately handling next.
                     // If this is completed from another promise, the other promise will schedule the continuation.
                     // If this is completed from a different type of awaiter, next will be handled from the move next higher in the stack.
-                    ts_next = TakeOrHandleNextWaiter();
+                    _nextForComplete = TakeOrHandleNextWaiter();
                 }
 
                 internal void SetException(Exception exception)
@@ -636,16 +625,13 @@ namespace Proto.Promises
 
                         public override void Dispose()
                         {
-#if PROMISE_DEBUG
                             _owner = null;
-#endif
                             _stateMachine = default(TStateMachine);
                             ObjectPool.MaybeRepool(this);
                         }
 
                         private void MoveNextMethod()
                         {
-#if PROMISE_DEBUG
                             SetCurrentInvoker(_owner);
                             try
                             {
@@ -655,16 +641,12 @@ namespace Proto.Promises
                             {
                                 ClearCurrentInvoker();
                             }
-#else
-                            _stateMachine.MoveNext();
-#endif
                         }
 
                         private void ContinueMethod()
                         {
-                            var previousNext = ts_next;
                             MoveNextMethod();
-                            _owner.MaybeHandleNext(ExchangeNext(previousNext));
+                            _owner.MaybeHandleNext(Interlocked.Exchange(ref _owner._nextForComplete, null));
                         }
 
                         internal override void MoveNextWithoutHandle()
@@ -701,12 +683,10 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     SetAwaitedComplete(handler);
 
-                    var previousNext = ts_next;
-
                     _continuer.MoveNextWithoutHandle();
 
                     handler = this;
-                    nextHandler = ExchangeNext(previousNext);
+                    nextHandler = Interlocked.Exchange(ref _nextForComplete, null);
                 }
             } // class AsyncPromiseRef
 
@@ -744,9 +724,8 @@ namespace Proto.Promises
                     [MethodImpl(InlineOption)]
                     private void ContinueMethod()
                     {
-                        var previousNext = ts_next;
                         _stateMachine.MoveNext();
-                        MaybeHandleNext(ExchangeNext(previousNext));
+                        MaybeHandleNext(Interlocked.Exchange(ref _nextForComplete, null));
                     }
 
                     internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
@@ -754,12 +733,10 @@ namespace Proto.Promises
                         ThrowIfInPool(this);
                         SetAwaitedComplete(handler);
 
-                        var previousNext = ts_next;
-
                         _stateMachine.MoveNext();
 
                         handler = this;
-                        nextHandler = ExchangeNext(previousNext);
+                        nextHandler = Interlocked.Exchange(ref _nextForComplete, null);
                     }
                 }
 
