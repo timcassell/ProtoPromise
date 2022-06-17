@@ -108,7 +108,7 @@ namespace Proto.Promises
             }
 
 #if !NET_LEGACY || NET40
-            CancellationTokenSource _cancellationTokenSource;
+            internal CancellationTokenSource _cancellationTokenSource;
 #endif
             private ValueLinkedStackZeroGC<CancelationRegistration> _links = ValueLinkedStackZeroGC<CancelationRegistration>.Create();
             // Use a sentinel for the linked list so we don't need to null check.
@@ -193,13 +193,6 @@ namespace Proto.Promises
                 {
                     _locker.Exit();
                 }
-            }
-
-            internal void AttachCancelationSource(object cancelationSource)
-            {
-                // The object may or may not be the CancellationTokenSource we expect,
-                // because it's retrieved from reflection and is subject to the internal implementation details of CancellationToken.
-                _cancellationTokenSource = cancelationSource as CancellationTokenSource;
             }
 #endif
 
@@ -483,7 +476,6 @@ namespace Proto.Promises
             {
                 if (--_internalRetainCounter == 0 & _userRetainCounter == 0)
                 {
-                    ++_tokenId;
 #if !NET_LEGACY || NET40
                     if (_cancellationTokenSource != null)
                     {
@@ -491,8 +483,10 @@ namespace Proto.Promises
                         // But this should only be done if we add a TryReset() API to our own CancelationSource, because if a user still holds an old token after this is reused, it could have cancelations triggered unexpectedly.
                         _cancellationTokenSource.Dispose();
                         _cancellationTokenSource = null;
+                        Thread.MemoryBarrier();
                     }
 #endif
+                    ++_tokenId;
                     _locker.Exit();
                     ResetAndRepool();
                     return;
