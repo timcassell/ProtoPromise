@@ -15,6 +15,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
+#pragma warning disable 1574 // XML comment has cref attribute that could not be resolved
 
 using System;
 using System.ComponentModel;
@@ -163,6 +164,34 @@ namespace Proto.Promises
                 set { s_backgroundContext = value; }
             }
             volatile private static SynchronizationContext s_backgroundContext;
+
+            /// <summary>
+            /// When enabled, <see cref="AsyncLocal{T}"/> objects are supported in async <see cref="Promise"/> and async <see cref="Promise{T}"/> methods.
+            /// </summary>
+            /// <remarks>
+            /// This is disabled by default, and cannot be disabled after enabled.
+            /// </remarks>
+            public static bool AsyncFlowExecutionContextEnabled
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return s_asyncFlowExecutionContextEnabled; }
+                [MethodImpl(Internal.InlineOption)]
+                set
+                {
+                    if (!value)
+                    {
+                        ThrowCannotDisableAsyncLocal();
+                    }
+                    s_asyncFlowExecutionContextEnabled = true;
+                }
+            }
+            private static bool s_asyncFlowExecutionContextEnabled;
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private static void ThrowCannotDisableAsyncLocal()
+            {
+                throw new InvalidOperationException("Cannot disable AsyncLocal. It may only be enabled.");
+            }
 
             [Obsolete, EditorBrowsable(EditorBrowsableState.Never)]
             public static Action<string> WarningHandler { get; set; }
