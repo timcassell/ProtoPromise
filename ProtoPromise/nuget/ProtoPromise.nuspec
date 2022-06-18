@@ -32,6 +32,9 @@
     
     <file src="..\bin\Release\netstandard2.0\**" target="lib/netstandard2.0/Release" />
     <file src="..\bin\Debug\netstandard2.0\**" target="lib/netstandard2.0/Debug" />
+
+    <file src="..\bin\Release\netstandard2.1\**" target="lib/netstandard2.1/Release" />
+    <file src="..\bin\Debug\netstandard2.1\**" target="lib/netstandard2.1/Debug" />
     
     <file src="..\bin\Release\net35\**" target="lib/net35/Release" />
     <file src="..\bin\Debug\net35\**" target="lib/net35/Debug" />
@@ -44,6 +47,9 @@
     
     <file src="..\bin\Release\net47\**" target="lib/net47/Release" />
     <file src="..\bin\Debug\net47\**" target="lib/net47/Debug" />
+
+    <file src="..\bin\Release\netcoreapp2.1\**" target="lib/netcoreapp2.1/Release" />
+    <file src="..\bin\Debug\netcoreapp2.1\**" target="lib/netcoreapp2.1/Debug" />
     
     <file src="..\bin\Release\net5.0\**" target="lib/net5.0/Release" />
     <file src="..\bin\Debug\net5.0\**" target="lib/net5.0/Debug" />
