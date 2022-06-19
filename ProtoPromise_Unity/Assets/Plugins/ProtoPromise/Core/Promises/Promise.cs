@@ -38,6 +38,34 @@ namespace Proto.Promises
 #endif
         partial struct Promise : IEquatable<Promise>
     {
+#if UNITY_2021_2_OR_NEWER || (!NET_LEGACY && !UNITY_5_5_OR_NEWER)
+        /// <summary>
+        /// Convert this to a <see cref="System.Threading.Tasks.ValueTask"/>.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        public System.Threading.Tasks.ValueTask AsValueTask()
+        {
+            ValidateOperation(1);
+            var r = _ref;
+            return r == null
+                ? new System.Threading.Tasks.ValueTask()
+                : new System.Threading.Tasks.ValueTask(_ref, _id);
+        }
+
+        /// <summary>
+        /// Cast to <see cref="System.Threading.Tasks.ValueTask"/>.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        public static implicit operator System.Threading.Tasks.ValueTask(
+#if CSHARP_7_3_OR_NEWER
+            in
+#endif
+            Promise rhs)
+        {
+            return rhs.AsValueTask();
+        }
+#endif
+
         /// <summary>
         /// Gets whether this instance is valid to be awaited.
         /// </summary>
@@ -50,21 +78,6 @@ namespace Proto.Promises
                 var r = _ref;
                 return r == null || r.GetIsValid(_id);
             }
-        }
-
-        /// <summary>
-        /// Gets the string representation of this instance.
-        /// </summary>
-        /// <returns>The string representation of this instance.</returns>
-        public override string ToString()
-        {
-            var _this = this;
-            string state = _this._ref == null
-                ? State.Resolved.ToString()
-                : _this._ref.GetIsValid(_this._id)
-                ? _this._ref.State.ToString()
-                : "Invalid";
-            return string.Format("Type: Promise, State: {0}", state);
         }
 
         /// <summary>
@@ -2261,6 +2274,21 @@ namespace Proto.Promises
         public static bool operator !=(Promise lhs, Promise rhs)
         {
             return !(lhs == rhs);
+        }
+
+        /// <summary>
+        /// Gets the string representation of this instance.
+        /// </summary>
+        /// <returns>The string representation of this instance.</returns>
+        public override string ToString()
+        {
+            var _this = this;
+            string state = _this._ref == null
+                ? State.Resolved.ToString()
+                : _this._ref.GetIsValid(_this._id)
+                ? _this._ref.State.ToString()
+                : "Invalid";
+            return string.Format("Type: Promise, State: {0}", state);
         }
 
         [Obsolete("Retain is no longer valid, use Preserve instead.", true), EditorBrowsable(EditorBrowsableState.Never)]

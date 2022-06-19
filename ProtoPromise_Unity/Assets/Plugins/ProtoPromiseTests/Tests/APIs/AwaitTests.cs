@@ -8,6 +8,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using System.Threading.Tasks;
 
 namespace ProtoPromiseTests.APIs
 {
@@ -648,6 +649,184 @@ namespace ProtoPromiseTests.APIs
 
             Assert.AreEqual(2, continuedCount);
         }
+
+        [Test]
+        public void PromiseToTaskIsResolvedProperly_void([Values] bool isPending)
+        {
+            Promise.Deferred deferred = isPending ? Promise.NewDeferred() : default(Promise.Deferred);
+            var promise = isPending ? deferred.Promise : Promise.Resolved();
+
+            bool completed = false;
+
+            Func();
+            deferred.TryResolve();
+
+            Assert.IsTrue(completed);
+
+            async void Func()
+            {
+                await promise.ToTask();
+                completed = true;
+            }
+        }
+
+        [Test]
+        public void PromiseToTaskIsResolvedProperly_T([Values] bool isPending)
+        {
+            Promise<int>.Deferred deferred = isPending ? Promise.NewDeferred<int>() : default(Promise<int>.Deferred);
+            var promise = isPending ? deferred.Promise : Promise.Resolved(1);
+
+            bool completed = false;
+
+            Func();
+            deferred.TryResolve(1);
+
+            Assert.IsTrue(completed);
+
+            async void Func()
+            {
+                int result = await promise.ToTask();
+                Assert.AreEqual(1, result);
+                completed = true;
+            }
+        }
+
+        [Test]
+        public void TaskToPromiseIsResolvedProperly_void([Values] bool isPending)
+        {
+            TaskCompletionSource<bool> taskCompletionSource = isPending ? new TaskCompletionSource<bool>() : null;
+            Task task = isPending ? taskCompletionSource.Task : Task.CompletedTask;
+
+            bool completed = false;
+
+            Func();
+            if (isPending)
+            {
+                taskCompletionSource.SetResult(true);
+            }
+
+            Assert.IsTrue(completed);
+
+            async void Func()
+            {
+                await task.ToPromise();
+                completed = true;
+            }
+        }
+
+        [Test]
+        public void TaskToPromiseIsResolvedProperly_T([Values] bool isPending)
+        {
+            TaskCompletionSource<int> taskCompletionSource = isPending ? new TaskCompletionSource<int>() : null;
+            Task<int> task = isPending ? taskCompletionSource.Task : Task.FromResult(1);
+
+            bool completed = false;
+
+            Func();
+            if (isPending)
+            {
+                taskCompletionSource.SetResult(1);
+            }
+
+            Assert.IsTrue(completed);
+
+            async void Func()
+            {
+                int result = await task.ToPromise();
+                Assert.AreEqual(1, result);
+                completed = true;
+            }
+        }
+
+#if UNITY_2021_2_OR_NEWER || (!NET_LEGACY && !UNITY_5_5_OR_NEWER)
+        [Test]
+        public void PromiseAsValueTaskIsResolvedProperly_void([Values] bool isPending)
+        {
+            Promise.Deferred deferred = isPending ? Promise.NewDeferred() : default(Promise.Deferred);
+            var promise = isPending ? deferred.Promise : Promise.Resolved();
+
+            bool completed = false;
+
+            Func();
+            deferred.TryResolve();
+
+            Assert.IsTrue(completed);
+
+            async void Func()
+            {
+                await promise.AsValueTask();
+                completed = true;
+            }
+        }
+
+        [Test]
+        public void PromiseAsValueTaskIsResolvedProperly_T([Values] bool isPending)
+        {
+            Promise<int>.Deferred deferred = isPending ? Promise.NewDeferred<int>() : default(Promise<int>.Deferred);
+            var promise = isPending ? deferred.Promise : Promise.Resolved(1);
+
+            bool completed = false;
+
+            Func();
+            deferred.TryResolve(1);
+
+            Assert.IsTrue(completed);
+
+            async void Func()
+            {
+                int result = await promise.AsValueTask();
+                Assert.AreEqual(1, result);
+                completed = true;
+            }
+        }
+
+        [Test]
+        public void ValueTaskToPromiseIsResolvedProperly_void([Values] bool isPending)
+        {
+            TaskCompletionSource<bool> taskCompletionSource = isPending ? new TaskCompletionSource<bool>() : null;
+            ValueTask task = isPending ? new ValueTask(taskCompletionSource.Task) : new ValueTask();
+
+            bool completed = false;
+
+            Func();
+            if (isPending)
+            {
+                taskCompletionSource.SetResult(true);
+            }
+
+            Assert.IsTrue(completed);
+
+            async void Func()
+            {
+                await task.ToPromise();
+                completed = true;
+            }
+        }
+
+        [Test]
+        public void ValueTaskToPromiseIsResolvedProperly_T([Values] bool isPending)
+        {
+            TaskCompletionSource<int> taskCompletionSource = isPending ? new TaskCompletionSource<int>() : null;
+            ValueTask<int> task = isPending ? new ValueTask<int>(taskCompletionSource.Task) : new ValueTask<int>(1);
+
+            bool completed = false;
+
+            Func();
+            if (isPending)
+            {
+                taskCompletionSource.SetResult(1);
+            }
+
+            Assert.IsTrue(completed);
+
+            async void Func()
+            {
+                int result = await task.ToPromise();
+                Assert.AreEqual(1, result);
+                completed = true;
+            }
+        }
+#endif
     }
 }
 

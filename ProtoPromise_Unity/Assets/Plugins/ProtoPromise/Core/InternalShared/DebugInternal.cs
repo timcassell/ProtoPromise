@@ -23,6 +23,9 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+        // Just a random number that's not zero.
+        internal const short ValidIdFromApi = 31265;
+
         internal static string CausalityTraceMessage
         {
             get

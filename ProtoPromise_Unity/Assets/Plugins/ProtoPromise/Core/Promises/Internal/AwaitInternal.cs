@@ -27,7 +27,7 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
             [MethodImpl(InlineOption)]
-            internal void GetResultVoid(short promiseId)
+            internal void GetResultForAwaiterVoid(short promiseId)
             {
                 ValidateId(promiseId, this, 2);
                 MaybeDispose();
@@ -76,13 +76,13 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, short promiseId)
             {
-                HookupNewWaiter(promiseId, AwaiterRef.GetOrCreate(continuation));
+                HookupNewWaiter(promiseId, AwaiterRef<DelegateVoidVoid>.GetOrCreate(new DelegateVoidVoid(continuation)));
             }
 
             partial class PromiseRef<TResult>
             {
                 [MethodImpl(InlineOption)]
-                internal TResult GetResult(short promiseId)
+                internal TResult GetResultForAwaiter(short promiseId)
                 {
                     ValidateId(promiseId, this, 2);
                     TResult result = _result;
@@ -94,22 +94,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode]
 #endif
-            private sealed class AwaiterRef : HandleablePromiseBase, ITraceable
+            private sealed class AwaiterRef<TContinuer> : HandleablePromiseBase, ITraceable
+                where TContinuer : IAction
             {
 #if PROMISE_DEBUG
                 CausalityTrace ITraceable.Trace { get; set; }
 #endif
-
-                private Action _continuation;
+                private TContinuer _continuer;
 
                 private AwaiterRef() { }
 
                 [MethodImpl(InlineOption)]
-                internal static AwaiterRef GetOrCreate(Action continuation)
+                internal static AwaiterRef<TContinuer> GetOrCreate(TContinuer continuer)
                 {
-                    var awaiter = ObjectPool.TryTake<AwaiterRef>()
-                        ?? new AwaiterRef();
-                    awaiter._continuation = continuation;
+                    var awaiter = ObjectPool.TryTake<AwaiterRef<TContinuer>>()
+                        ?? new AwaiterRef<TContinuer>();
+                    awaiter._continuer = continuer;
                     SetCreatedStacktrace(awaiter, 3);
                     return awaiter;
                 }
@@ -117,14 +117,14 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private void Dispose()
                 {
-                    _continuation = null;
+                    _continuer = default(TContinuer);
                     ObjectPool.MaybeRepool(this);
                 }
 
                 private void Invoke()
                 {
                     ThrowIfInPool(this);
-                    var callback = _continuation;
+                    var callback = _continuer;
 #if PROMISE_DEBUG
                     SetCurrentInvoker(this);
 #else
@@ -165,7 +165,7 @@ namespace Proto.Promises
             void AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef);
         }
 
-#if !NET5_0_OR_GREATER
+#if !NETCOREAPP
         // Override AwaitOnCompleted implementation to prevent boxing in Unity.
 #if UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER // C# 9 added in 2021.2. We can also use this in non-Unity library since CIL has supported function pointers forever.
         internal unsafe abstract class AwaitOverrider<T> where T : INotifyCompletion
@@ -254,7 +254,7 @@ namespace Proto.Promises
             }
         }
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
-#endif // !NET5_0_OR_GREATER
+#endif // !NETCOREAPP
 
         internal static void ValidateId(short promiseId, PromiseRefBase _ref, int skipFrames)
         {
@@ -273,7 +273,7 @@ namespace Proto.Promises
 
     namespace Async.CompilerServices
     {
-#if !NET5_0_OR_GREATER
+#if !NETCOREAPP
         partial struct PromiseAwaiterVoid
         {
             // Fix for IL2CPP not invoking the static constructor.
@@ -341,7 +341,7 @@ namespace Proto.Promises
             }
 #endif
         }
-#endif // !NET5_0_OR_GREATER
+#endif // !NETCOREAPP
 
         /// <summary>
         /// Provides an awaiter for awaiting a <see cref="Promise"/>.
@@ -401,7 +401,7 @@ namespace Proto.Promises
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    _ref.GetResultVoid(_promise._id);
+                    _ref.GetResultForAwaiterVoid(_promise._id);
                     return;
                 }
 #if NET_LEGACY
@@ -512,7 +512,7 @@ namespace Proto.Promises
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    return _ref.GetResult(_promise._id);
+                    return _ref.GetResultForAwaiter(_promise._id);
                 }
 #if NET_LEGACY
                 _ref.Throw(state, _promise._id);
@@ -635,7 +635,7 @@ namespace Proto.Promises
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    _ref.GetResultVoid(_promise._id);
+                    _ref.GetResultForAwaiterVoid(_promise._id);
                     return;
                 }
 #if NET_LEGACY
@@ -759,7 +759,7 @@ namespace Proto.Promises
                 var state = _ref.State;
                 if (state == Promise.State.Resolved)
                 {
-                    return _ref.GetResult(_promise._id);
+                    return _ref.GetResultForAwaiter(_promise._id);
                 }
 #if NET_LEGACY
                 _ref.Throw(state, _promise._id);

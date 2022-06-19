@@ -510,7 +510,7 @@ namespace Proto.Promises
                     where TStateMachine : IAsyncStateMachine
                 {
                     SetStateMachine(ref stateMachine, ref _ref);
-#if NET5_0_OR_GREATER
+#if NETCOREAPP
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
                         ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
@@ -533,7 +533,7 @@ namespace Proto.Promises
                     where TStateMachine : IAsyncStateMachine
                 {
                     SetStateMachine(ref stateMachine, ref _ref);
-#if NET5_0_OR_GREATER
+#if NETCOREAPP
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
                         ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);

@@ -37,8 +37,81 @@ namespace Proto.Promises
 
     partial class Internal
     {
-        // Just a random number that's not zero. Using this in Promise(<T>) instead of a bool prevents extra memory padding.
-        internal const short ValidIdFromApi = 31265;
+#if UNITY_2021_2_OR_NEWER || (!NET_LEGACY && !UNITY_5_5_OR_NEWER)
+        partial class PromiseRefBase : System.Threading.Tasks.Sources.IValueTaskSource
+        {
+            public void GetResult(short token)
+            {
+                var state = State;
+                if (state == Promise.State.Resolved)
+                {
+                    GetResultForAwaiterVoid(token);
+                    return;
+                }
+                GetExceptionDispatchInfo(state, token).Throw();
+            }
+
+            public abstract System.Threading.Tasks.Sources.ValueTaskSourceStatus GetStatus(short token);
+
+            public void OnCompleted(Action<object> continuation, object state, short token, System.Threading.Tasks.Sources.ValueTaskSourceOnCompletedFlags flags)
+            {
+                // Ignore flags.
+                HookupNewWaiter(token, AwaiterRef<DelegateCaptureVoidVoid<object>>.GetOrCreate(new DelegateCaptureVoidVoid<object>(state, continuation)));
+            }
+
+            partial class PromiseRef<TResult> : System.Threading.Tasks.Sources.IValueTaskSource<TResult>
+            {
+                TResult System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(short token)
+                {
+                    var state = State;
+                    if (state == Promise.State.Resolved)
+                    {
+                        return GetResultForAwaiter(token);
+                    }
+                    GetExceptionDispatchInfo(state, token).Throw();
+                    throw null; // This will never be reached, but the compiler needs help understanding that.
+                }
+            }
+
+            partial class PromiseSingleAwait<TResult>
+            {
+                public override System.Threading.Tasks.Sources.ValueTaskSourceStatus GetStatus(short token)
+                {
+                    ValidateId(token, this, 2);
+                    ThrowIfInPool(this);
+                    WasAwaitedOrForgotten = true;
+                    return CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance
+                        ? (System.Threading.Tasks.Sources.ValueTaskSourceStatus) State
+                        : System.Threading.Tasks.Sources.ValueTaskSourceStatus.Pending;
+                }
+            }
+
+            partial class PromiseMultiAwait<TResult>
+            {
+                public override System.Threading.Tasks.Sources.ValueTaskSourceStatus GetStatus(short token)
+                {
+                    lock (this)
+                    {
+                        if (!GetIsValid(token))
+                        {
+                            throw new InvalidOperationException("Cannot await a forgotten promise.", GetFormattedStacktrace(3));
+                        }
+                        var state = State;
+                        if (state != Promise.State.Pending)
+                        {
+                            Retain(); // Retain since GetResult() will be called higher in the stack which will call MaybeDispose indiscriminately.
+                        }
+                        return (System.Threading.Tasks.Sources.ValueTaskSourceStatus) state;
+                    }
+                }
+            }
+
+            partial class InvalidAwaitSentinel
+            {
+                public override System.Threading.Tasks.Sources.ValueTaskSourceStatus GetStatus(short token) { throw new System.InvalidOperationException("GetStatus called on InvalidAwaitSentinel"); }
+            }
+        }
+#endif
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [System.Diagnostics.DebuggerNonUserCode]
