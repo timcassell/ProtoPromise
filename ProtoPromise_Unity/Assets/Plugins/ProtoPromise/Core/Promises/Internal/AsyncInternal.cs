@@ -128,9 +128,7 @@ namespace Proto.Promises
             public void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
-                // TODO: to support ExecutionContext for AsyncLocal
-                //new AsyncTaskMethodBuilder().Start(ref stateMachine);
-                stateMachine.MoveNext();
+                Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.Start(ref stateMachine, ref _ref);
             }
 
             /// <summary>Does nothing.</summary>
@@ -186,9 +184,7 @@ namespace Proto.Promises
             public void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
-                // TODO: to support ExecutionContext for AsyncLocal
-                //new AsyncTaskMethodBuilder().Start(ref stateMachine);
-                stateMachine.MoveNext();
+                Internal.PromiseRefBase.AsyncPromiseRef<T>.Start(ref stateMachine, ref _ref);
             }
 
             /// <summary>Does nothing.</summary>
@@ -487,6 +483,28 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                internal static void Start<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
+                    where TStateMachine : IAsyncStateMachine
+                {
+                    if (Promise.Config.AsyncFlowExecutionContextEnabled)
+                    {
+                        // To support ExecutionContext for AsyncLocal<T>.
+#if !NET_LEGACY
+                        // We can use AsyncTaskMethodBuilder to run the state machine on the execution context without creating an object. https://github.com/dotnet/runtime/discussions/56202#discussioncomment-1042195
+                        new AsyncTaskMethodBuilder().Start(ref stateMachine);
+#else
+                        // AsyncTaskMethodBuilder isn't available pre .Net 4.5, so we have to create the object to run the state machine on the execution context.
+                        SetStateMachine(ref stateMachine, ref _ref);
+                        _ref.MoveNext();
+#endif
+                    }
+                    else
+                    {
+                        stateMachine.MoveNext();
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
                     where TAwaiter : INotifyCompletion
                     where TStateMachine : IAsyncStateMachine
@@ -609,6 +627,8 @@ namespace Proto.Promises
 #endif
                     private sealed partial class Continuer<TStateMachine> : PromiseMethodContinuer where TStateMachine : IAsyncStateMachine
                     {
+                        private static readonly ContextCallback s_executionContextCallback = ExecutionContextCallback;
+
                         private Continuer()
                         {
                             _moveNext = ContinueMethod;
@@ -630,12 +650,24 @@ namespace Proto.Promises
                             ObjectPool.MaybeRepool(this);
                         }
 
-                        private void MoveNextMethod()
+                        private static void ExecutionContextCallback(object state)
+                        {
+                            state.UnsafeAs<Continuer<TStateMachine>>()._stateMachine.MoveNext();
+                        }
+
+                        private void InvokeMoveNext()
                         {
                             SetCurrentInvoker(_owner);
                             try
                             {
-                                _stateMachine.MoveNext();
+                                if (_owner._executionContext != null)
+                                {
+                                    ExecutionContext.Run(_owner._executionContext, s_executionContextCallback, this);
+                                }
+                                else
+                                {
+                                    _stateMachine.MoveNext();
+                                }
                             }
                             finally
                             {
@@ -645,13 +677,13 @@ namespace Proto.Promises
 
                         private void ContinueMethod()
                         {
-                            MoveNextMethod();
+                            InvokeMoveNext();
                             _owner.MaybeHandleNext(Interlocked.Exchange(ref _owner._nextForComplete, null));
                         }
 
                         internal override void MoveNextWithoutHandle()
                         {
-                            MoveNextMethod();
+                            InvokeMoveNext();
                         }
                     }
                 }
@@ -665,6 +697,10 @@ namespace Proto.Promises
                     {
                         _ref._continuer = PromiseMethodContinuer.GetOrCreate(ref stateMachine, _ref);
                     }
+                    if (Promise.Config.AsyncFlowExecutionContextEnabled)
+                    {
+                        _ref._executionContext = ExecutionContext.Capture();
+                    }
                 }
 
                 protected override void MaybeDispose()
@@ -675,6 +711,7 @@ namespace Proto.Promises
                         _continuer.Dispose();
                         _continuer = null;
                     }
+                    _executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -699,6 +736,8 @@ namespace Proto.Promises
 #endif
                 private sealed partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef<TResult> where TStateMachine : IAsyncStateMachine
                 {
+                    private static readonly ContextCallback s_executionContextCallback = ExecutionContextCallback;
+
                     private AsyncPromiseRefMachine()
                     {
                         _moveNext = ContinueMethod;
@@ -718,13 +757,32 @@ namespace Proto.Promises
                     {
                         Dispose();
                         _stateMachine = default(TStateMachine);
+                        _executionContext = null;
                         ObjectPool.MaybeRepool(this);
+                    }
+
+                    private static void ExecutionContextCallback(object state)
+                    {
+                        state.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>()._stateMachine.MoveNext();
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    private void InvokeMoveNext()
+                    {
+                        if (_executionContext != null)
+                        {
+                            ExecutionContext.Run(_executionContext, s_executionContextCallback, this);
+                        }
+                        else
+                        {
+                            _stateMachine.MoveNext();
+                        }
                     }
 
                     [MethodImpl(InlineOption)]
                     private void ContinueMethod()
                     {
-                        _stateMachine.MoveNext();
+                        InvokeMoveNext();
                         MaybeHandleNext(Interlocked.Exchange(ref _nextForComplete, null));
                     }
 
@@ -733,7 +791,7 @@ namespace Proto.Promises
                         ThrowIfInPool(this);
                         SetAwaitedComplete(handler);
 
-                        _stateMachine.MoveNext();
+                        InvokeMoveNext();
 
                         handler = this;
                         nextHandler = Interlocked.Exchange(ref _nextForComplete, null);
@@ -755,11 +813,16 @@ namespace Proto.Promises
                     {
                         AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref);
                     }
+                    if (Promise.Config.AsyncFlowExecutionContextEnabled)
+                    {
+                        _ref._executionContext = ExecutionContext.Capture();
+                    }
                 }
 
                 protected override void MaybeDispose()
                 {
                     Dispose();
+                    _executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
             }

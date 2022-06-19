@@ -1,4 +1,8 @@
-﻿#if CSHARP_7_3_OR_NEWER
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if CSHARP_7_3_OR_NEWER
 
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
@@ -1296,6 +1300,87 @@ namespace ProtoPromiseTests.APIs
         }
 #endif // PROMISE_DEBUG
     }
+
+#if !NET_LEGACY
+    public class AsyncLocalTests
+    {
+        [SetUp]
+        public void Setup()
+        {
+            TestHelper.Setup();
+            Promise.Config.AsyncFlowExecutionContextEnabled = true;
+        }
+
+        [TearDown]
+        public void Teardown()
+        {
+            TestHelper.Cleanup();
+        }
+
+        private System.Threading.AsyncLocal<int> _asyncLocal;
+        private Promise _promise;
+
+        [Test]
+        public void AsyncLocalWorks_void([Values] bool isPending)
+        {
+            _asyncLocal = new System.Threading.AsyncLocal<int>();
+            var deferred = isPending ? Promise.NewDeferred() : default(Promise.Deferred);
+            _promise = isPending ? deferred.Promise : Promise.Resolved();
+            FuncVoid().Forget();
+            deferred.TryResolve();
+        }
+
+        private async Promise FuncVoid()
+        {
+            _asyncLocal.Value = 1;
+
+            await FuncVoidNested();
+
+            Assert.AreEqual(1, _asyncLocal.Value);
+        }
+
+        private async Promise FuncVoidNested()
+        {
+            Assert.AreEqual(1, _asyncLocal.Value);
+            _asyncLocal.Value = 2;
+
+            await _promise;
+
+            Assert.AreEqual(2, _asyncLocal.Value);
+        }
+
+        [Test]
+        public void AsyncLocalWorks_T([Values] bool isPending)
+        {
+            _asyncLocal = new System.Threading.AsyncLocal<int>();
+            var deferred = isPending ? Promise.NewDeferred() : default(Promise.Deferred);
+            _promise = isPending ? deferred.Promise : Promise.Resolved();
+            FuncT().Forget();
+            deferred.TryResolve();
+        }
+
+        private async Promise<int> FuncT()
+        {
+            _asyncLocal.Value = 1;
+
+            int result = await FuncTNested();
+
+            Assert.AreEqual(1, _asyncLocal.Value);
+            return result;
+        }
+
+        private async Promise<int> FuncTNested()
+        {
+            Assert.AreEqual(1, _asyncLocal.Value);
+            _asyncLocal.Value = 2;
+
+            await _promise;
+
+            Assert.AreEqual(2, _asyncLocal.Value);
+            return 3;
+        }
+    }
+#endif
 }
 
 #endif

@@ -462,6 +462,7 @@ namespace Proto.Promises
             partial class AsyncPromiseRef<TResult> : AsyncPromiseBase<TResult>
             {
                 private HandleablePromiseBase _nextForComplete;
+                private ExecutionContext _executionContext;
 #if PROMISE_PROGRESS
                 private float _minProgress;
                 private float _maxProgress;
