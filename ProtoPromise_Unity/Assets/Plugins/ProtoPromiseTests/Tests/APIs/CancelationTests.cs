@@ -1,4 +1,8 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -10,6 +14,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 using System;
+using System.Threading;
 
 namespace ProtoPromiseTests.APIs
 {
@@ -736,6 +741,156 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Dispose();
                 Assert.IsTrue(caughtException);
             }
+
+#if !NET_LEGACY || NET40
+            [Test]
+            public void ToCancellationTokenIsCanceledWhenSourceIsCanceled()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var token = cancelationSource.Token.ToCancellationToken();
+
+                Assert.IsFalse(token.IsCancellationRequested);
+                cancelationSource.Cancel();
+                Assert.IsTrue(token.IsCancellationRequested);
+
+                token = cancelationSource.Token.ToCancellationToken();
+                Assert.IsTrue(token.IsCancellationRequested);
+
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void ToCancellationTokenCallbackIsInvokedWhenSourceIsCanceled()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var token = cancelationSource.Token.ToCancellationToken();
+
+                bool invoked = false;
+                token.Register(() => invoked = true, false);
+
+                Assert.IsFalse(invoked);
+                cancelationSource.Cancel();
+                Assert.IsTrue(invoked);
+
+                token = cancelationSource.Token.ToCancellationToken();
+                invoked = false;
+                token.Register(() => invoked = true, false);
+                Assert.IsTrue(invoked);
+
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void ToCancelationTokenIsCanceledWhenTokenSourceIsCanceled()
+            {
+                CancellationTokenSource cancelationSource = new CancellationTokenSource();
+                var token = cancelationSource.Token.ToCancelationToken();
+
+                Assert.IsFalse(token.IsCancelationRequested);
+                cancelationSource.Cancel();
+                Assert.IsTrue(token.IsCancelationRequested);
+
+                token = cancelationSource.Token.ToCancelationToken();
+                Assert.IsTrue(token.IsCancelationRequested);
+
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void ToCancelationTokenCallbackIsInvokedWhenTokenSourceIsCanceled()
+            {
+                CancellationTokenSource cancelationSource = new CancellationTokenSource();
+                var token = cancelationSource.Token.ToCancelationToken();
+
+                bool invoked = false;
+                token.Register(() => invoked = true);
+
+                Assert.IsFalse(invoked);
+                cancelationSource.Cancel();
+                Assert.IsTrue(invoked);
+
+                token = cancelationSource.Token.ToCancelationToken();
+                invoked = false;
+                token.Register(() => invoked = true);
+                Assert.IsTrue(invoked);
+
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void ToCancellationTokenCircularIsCanceledWhenSourceIsCanceled()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var token = cancelationSource.Token.ToCancellationToken().ToCancelationToken();
+
+                Assert.IsFalse(token.IsCancelationRequested);
+                cancelationSource.Cancel();
+                Assert.IsTrue(token.IsCancelationRequested);
+
+                token = cancelationSource.Token.ToCancellationToken().ToCancelationToken();
+                Assert.IsTrue(token.IsCancelationRequested);
+
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void ToCancellationTokenCircularCallbackIsInvokedWhenSourceIsCanceled()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var token = cancelationSource.Token.ToCancellationToken().ToCancelationToken();
+
+                bool invoked = false;
+                token.Register(() => invoked = true);
+
+                Assert.IsFalse(invoked);
+                cancelationSource.Cancel();
+                Assert.IsTrue(invoked);
+
+                token = cancelationSource.Token.ToCancellationToken().ToCancelationToken();
+                invoked = false;
+                token.Register(() => invoked = true);
+                Assert.IsTrue(invoked);
+
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void ToCancelationTokenCircularIsCanceledWhenTokenSourceIsCanceled()
+            {
+                CancellationTokenSource cancelationSource = new CancellationTokenSource();
+                var token = cancelationSource.Token.ToCancelationToken().ToCancellationToken();
+
+                Assert.IsFalse(token.IsCancellationRequested);
+                cancelationSource.Cancel();
+                Assert.IsTrue(token.IsCancellationRequested);
+
+                token = cancelationSource.Token.ToCancelationToken().ToCancellationToken();
+                Assert.IsTrue(token.IsCancellationRequested);
+
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void ToCancelationTokenCircularCallbackIsInvokedWhenTokenSourceIsCanceled()
+            {
+                CancellationTokenSource cancelationSource = new CancellationTokenSource();
+                var token = cancelationSource.Token.ToCancelationToken().ToCancellationToken();
+
+                bool invoked = false;
+                token.Register(() => invoked = true, false);
+
+                Assert.IsFalse(invoked);
+                cancelationSource.Cancel();
+                Assert.IsTrue(invoked);
+
+                token = cancelationSource.Token.ToCancelationToken().ToCancellationToken();
+                invoked = false;
+                token.Register(() => invoked = true, false);
+                Assert.IsTrue(invoked);
+
+                cancelationSource.Dispose();
+            }
+#endif
         }
 
         public class Registration

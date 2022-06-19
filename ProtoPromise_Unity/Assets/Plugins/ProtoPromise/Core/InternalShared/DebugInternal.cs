@@ -15,7 +15,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-#if PROMISE_DEBUG
+#if PROMISE_DEBUG && !NET_LEGACY
 using System.Linq;
 #endif
 
@@ -60,11 +60,6 @@ namespace Proto.Promises
         {
             partial void ValidateReturn(Promise other);
             partial void ValidateAwait(PromiseRefBase other, short promiseId);
-
-            partial class DeferredPromiseBase<TResult>
-            {
-                static partial void ValidateProgress(float progress, int skipFrames);
-            }
         }
 
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames);
@@ -154,9 +149,9 @@ namespace Proto.Promises
         {
 #if NET_LEGACY
             // Format stack trace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
-            List<string> _stackTraces = new List<string>();
-            string[] separator = new string[1] { Environment.NewLine + " " };
-            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            var _stackTraces = new List<string>();
+            var separator = new string[1] { Environment.NewLine + " " };
+            var sb = new System.Text.StringBuilder();
             foreach (StackTrace st in stackTraces)
             {
                 if (st == null)
@@ -189,7 +184,7 @@ namespace Proto.Promises
             return sb.ToString();
 #else // NET_LEGACY
             // StackTrace.ToString() format issue was fixed in the new runtime.
-            List<StackFrame> stackFrames = new List<StackFrame>();
+            var stackFrames = new List<StackFrame>();
             foreach (StackTrace stackTrace in stackTraces)
             {
                 stackFrames.AddRange(stackTrace.GetFrames());
@@ -243,7 +238,7 @@ namespace Proto.Promises
                 {
                     return null;
                 }
-                List<StackTrace> stackTraces = new List<StackTrace>();
+                var stackTraces = new List<StackTrace>();
                 for (CausalityTrace current = this; current != null; current = current._next)
                 {
                     if (current._stackTrace == null)

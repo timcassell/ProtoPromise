@@ -87,7 +87,7 @@ namespace Proto.Promises
                         string message = "A CancelationToken's resources were garbage collected without being released. You must release all IRetainable objects that you have retained.";
                         ReportRejection(new UnreleasedObjectException(message), this);
                     }
-                    if (_state != State.Disposed)
+                    if (_checkForDisposed & _state != State.Disposed)
                     {
                         // CancelationSource wasn't disposed.
                         ReportRejection(new UnreleasedObjectException("CancelationSource's resources were garbage collected without being disposed."), this);
@@ -107,6 +107,9 @@ namespace Proto.Promises
                 Disposed
             }
 
+#if !NET_LEGACY || NET40
+            internal CancellationTokenSource _cancellationTokenSource;
+#endif
             private ValueLinkedStackZeroGC<CancelationRegistration> _links = ValueLinkedStackZeroGC<CancelationRegistration>.Create();
             // Use a sentinel for the linked list so we don't need to null check.
             private readonly CancelationCallbackNode _registeredCallbacksHead = CancelationCallbackNode.CreateLinkedListSentinel();
@@ -116,6 +119,7 @@ namespace Proto.Promises
             private int _tokenId = 1;
             private uint _userRetainCounter;
             private byte _internalRetainCounter;
+            private bool _checkForDisposed;
             internal State _state;
 
             internal int SourceId
@@ -129,15 +133,68 @@ namespace Proto.Promises
                 get { return _tokenId; }
             }
 
+            [MethodImpl(InlineOption)]
+            private void Initialize(bool checkForDisposed)
+            {
+                _internalRetainCounter = 1; // 1 for Dispose.
+                _checkForDisposed = checkForDisposed;
+                _state = State.Pending;
+                SetCreatedStacktrace(this, 2);
+            }
+
+            internal static CancelationRef GetOrCreateWithoutDisposedCheck()
+            {
+                // Don't take from the object pool, just create new.
+                var cancelRef = new CancelationRef();
+                cancelRef.Initialize(false);
+                return cancelRef;
+            }
+
+            [MethodImpl(InlineOption)]
             internal static CancelationRef GetOrCreate()
             {
                 var cancelRef = ObjectPool.TryTake<CancelationRef>()
                     ?? new CancelationRef();
-                cancelRef._internalRetainCounter = 1; // 1 for Dispose.
-                cancelRef._state = State.Pending;
-                SetCreatedStacktrace(cancelRef, 2);
+                cancelRef.Initialize(true);
                 return cancelRef;
             }
+
+#if !NET_LEGACY || NET40
+            internal static CancellationToken GetCancellationToken(CancelationRef _this, int _tokenId)
+            {
+                return _this == null ? default(CancellationToken) : _this.GetCancellationToken(_tokenId);
+            }
+
+            private CancellationToken GetCancellationToken(int _tokenId)
+            {
+                _locker.Enter();
+                try
+                {
+                    var state = _state;
+                    if (_tokenId != TokenId | state == State.Disposed)
+                    {
+                        return default(CancellationToken);
+                    }
+                    if (state == State.Canceled)
+                    {
+                        return new CancellationToken(true);
+                    }
+                    if (_cancellationTokenSource == null)
+                    {
+                        _cancellationTokenSource = new CancellationTokenSource();
+                        _cancellationTokenSource.AttachCancelationRef(this);
+                        var del = new CancelDelegateToken<CancellationTokenSource>(_cancellationTokenSource, source => source.Cancel(false));
+                        var node = CallbackNodeImpl<CancelDelegateToken<CancellationTokenSource>>.GetOrCreate(del, this);
+                        _registeredCallbacksHead.InsertPrevious(node);
+                    }
+                    return _cancellationTokenSource.Token;
+                }
+                finally
+                {
+                    _locker.Exit();
+                }
+            }
+#endif
 
             [MethodImpl(InlineOption)]
             internal static bool IsValidSource(CancelationRef _this, int sourceId)
@@ -342,9 +399,8 @@ namespace Proto.Promises
                     next = current._next;
                     current.Dispose();
                 }
-                _locker.Exit();
 
-                MaybeResetAndRepool();
+                MaybeResetAndRepoolAlreadyLocked();
                 return true;
             }
 
@@ -420,6 +476,16 @@ namespace Proto.Promises
             {
                 if (--_internalRetainCounter == 0 & _userRetainCounter == 0)
                 {
+#if !NET_LEGACY || NET40
+                    if (_cancellationTokenSource != null)
+                    {
+                        // TODO: We can call _cancellationTokenSource.TryReset() in .Net 6+ instead of always creating a new one.
+                        // But this should only be done if we add a TryReset() API to our own CancelationSource, because if a user still holds an old token after this is reused, it could have cancelations triggered unexpectedly.
+                        _cancellationTokenSource.Dispose();
+                        _cancellationTokenSource = null;
+                        Thread.MemoryBarrier();
+                    }
+#endif
                     ++_tokenId;
                     _locker.Exit();
                     ResetAndRepool();
@@ -442,7 +508,7 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            void ICancelable.Cancel()
+            public void Cancel()
             {
                 TrySetCanceled(SourceId);
             }
