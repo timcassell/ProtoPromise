@@ -18,22 +18,39 @@ jobs:
         git branch --remote --contains | grep origin/master
 
     - name: Set VERSION variable from tag
-      run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
+      id: set_tag
+      run: |
+        VERSION=${GITHUB_REF/refs\/tags\/v/}
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "::set-output name=version::v$VERSION"
 
-    - name: Verify version in csproj, nuspec, and package.json
+    - name: Verify version in csproj and package.json
       run: |
         if ! grep -q "<Version>${VERSION}</Version>" ProtoPromise/ProtoPromise.csproj; then
           echo "version ${VERSION} not found in ProtoPromise.csproj"
-          exit 1
-        fi
-        if ! grep -q "<version>${VERSION}</version>" ProtoPromise/nuget/ProtoPromise.nuspec; then
-          echo "version ${VERSION} not found in ProtoPromise.nuspec"
           exit 1
         fi
         if ! grep -q "\"version\": \"${VERSION}\"" ProtoPromise_Unity/Assets/Plugins/ProtoPromise/package.json; then
           echo "version ${VERSION} not found in package.json"
           exit 1
         fi
+
+    - name: Get release notes
+      uses: cardinalby/git-get-release-action@v1
+      id: get_release
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        tag: v${{ steps.set_tag.outputs.version }}
+
+    - name: Overwrite nuspec version
+      run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromise/nuget/ProtoPromise.nuspec
+
+    - name: Overwrite nuspec release notes
+      run: |
+        RELEASE_NOTES='${{ steps.get_release.outputs.body }}'
+        export REPLACE_RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed -e ':a' -e 'N' -e '$!ba' -e 's|\n|\n      |g')
+        perl -l -p -i -e 's/{RELEASE_NOTES}/$ENV{REPLACE_RELEASE_NOTES}/g' ProtoPromise/nuget/ProtoPromise.nuspec
 
     - name: Setup nuget
       uses: nuget/setup-nuget@v1

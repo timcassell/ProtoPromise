@@ -2,7 +2,7 @@
 <package >
   <metadata minClientVersion="2.5">
     <id>ProtoPromise</id>
-    <version>2.0.2</version>
+    <version>{VERSION}</version>
     <title>ProtoPromise</title>
     <authors>Tim Cassell</authors>
     <owners>Tim Cassell</owners>
@@ -11,7 +11,9 @@
     <projectUrl>https://github.com/timcassell/ProtoPromise</projectUrl>
     <repository type="git" url="https://github.com/timcassell/ProtoPromise" />
     <description>Robust and efficient library for management of asynchronous operations.</description>
-    <releaseNotes>First nuget version.</releaseNotes>
+    <releaseNotes>
+      {RELEASE_NOTES}
+    </releaseNotes>
     <copyright>Copyright 2022</copyright>
     <tags>promise promises task tasks csharp unity dotnet mono coroutine coroutines concurrency concurrent parallel asynchronous async await thread threads threading then thenable callback callbacks</tags>
 

@@ -1,4 +1,4 @@
-﻿For each new release, update the version in both `ProtoPromise.csproj` and `ProtoPromise.nuspec` and `package.json`.
+﻿For each new release, update the version in both `ProtoPromise.csproj` and `package.json`.
 
 To create the UnityPackage for releases:
 
