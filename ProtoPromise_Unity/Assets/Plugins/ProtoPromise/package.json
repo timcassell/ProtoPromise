@@ -1,6 +1,6 @@
 {
     "name": "com.timcassell.protopromise",
-    "version": "2.0.2",
+    "version": "2.1.0",
     "displayName": "ProtoPromise",
     "description": "Robust and efficient library for management of asynchronous operations.",
     "changelogUrl": "https://github.com/timcassell/ProtoPromise/blob/master/ReleaseNotes.md",
