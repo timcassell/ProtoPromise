@@ -35,7 +35,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Get the <see cref="CancelationToken"/> associated with this <see cref="CancelationRegistration"/>.
+        /// Get the <see cref="CancelationToken"/> associated with this <see cref="CancelationRegistration"/> if this is still registered, or a non-cancelable token if it's not registered.
         /// </summary>
         public CancelationToken Token
         {

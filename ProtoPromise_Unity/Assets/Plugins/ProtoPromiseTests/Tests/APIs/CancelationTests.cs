@@ -14,6 +14,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace ProtoPromiseTests.APIs
@@ -890,7 +891,97 @@ namespace ProtoPromiseTests.APIs
 
                 cancelationSource.Dispose();
             }
-#endif
+
+#if !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE // Nulled out fields aren't garbage collected in Debug mode until the end of the scope.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            void ConvertToken(CancellationTokenSource source)
+            {
+                source.Token.ToCancelationToken();
+            }
+
+            [Test]
+            [MethodImpl((MethodImplOptions) 512)] // AggressiveOptimization. This is necessary in Core runtime so the source will actually be collected.
+            public void ToCancelationToken_SourceIsCollectedWhenReferenceIsDropped()
+            {
+                var cancelationSource = new CancellationTokenSource();
+                var weakReference = new WeakReference(cancelationSource, true);
+
+                ConvertToken(cancelationSource);
+
+                Assert.IsTrue(weakReference.IsAlive);
+                
+                cancelationSource = null;
+                TestHelper.GcCollectAndWaitForFinalizers();
+
+                Assert.IsFalse(weakReference.IsAlive);
+            }
+
+            // TODO: test cancelationSource.Dispose().
+
+#if NET6_0_OR_GREATER
+            [Test]
+            [MethodImpl(MethodImplOptions.AggressiveOptimization)] // AggressiveOptimization is necessary in Core runtime so the source will actually be collected.
+            public void ToCancelationToken_SourceIsCollectedWhenSourceIsResetThenReferenceIsDropped()
+            {
+                bool canceled = false;
+
+                var cancelationSource = new CancellationTokenSource();
+                var weakReference = new WeakReference(cancelationSource, true);
+
+                ConvertTokenAndRegister(cancelationSource);
+
+                Assert.IsFalse(canceled);
+                Assert.IsTrue(weakReference.IsAlive);
+
+                cancelationSource.TryReset();
+                cancelationSource = null;
+                TestHelper.GcCollectAndWaitForFinalizers();
+                Assert.IsFalse(weakReference.IsAlive);
+                Assert.IsFalse(canceled);
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                void ConvertTokenAndRegister(CancellationTokenSource source)
+                {
+                    source.Token.ToCancelationToken().Register(() => canceled = true);
+                }
+            }
+
+            [Test]
+            [MethodImpl(MethodImplOptions.AggressiveOptimization)] // AggressiveOptimization is necessary in Core runtime so the source will actually be collected.
+            public void ToCancelationTokenIsCanceled_AndSourceIsCollected_WhenSourceIsResetThenCanceledThenReferenceIsDropped()
+            {
+                bool canceled = false;
+
+                var cancelationSource = new CancellationTokenSource();
+                var weakReference = new WeakReference(cancelationSource, true);
+
+                ConvertTokenAndRegister(cancelationSource);
+
+                Assert.IsFalse(canceled);
+                Assert.IsTrue(weakReference.IsAlive);
+
+                cancelationSource.TryReset();
+                cancelationSource.Cancel();
+                Assert.IsFalse(canceled);
+
+                ConvertTokenAndRegister(cancelationSource);
+                Assert.IsTrue(canceled);
+
+                cancelationSource = null;
+                TestHelper.GcCollectAndWaitForFinalizers();
+                Assert.IsFalse(weakReference.IsAlive);
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                void ConvertTokenAndRegister(CancellationTokenSource source)
+                {
+                    source.Token.ToCancelationToken().Register(() => canceled = true);
+                }
+            }
+#endif // NET6_0_OR_GREATER
+
+#endif // !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE
+
+#endif // !NET_LEGACY || NET40
         }
 
         public class Registration
