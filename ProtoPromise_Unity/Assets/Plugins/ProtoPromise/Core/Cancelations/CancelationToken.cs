@@ -302,22 +302,6 @@ namespace Proto.Promises
     partial class Extensions
     {
 #if !NET_LEGACY || NET40
-        // ConditionalWeakTable is necessary to return a cached value in case `ToCancelationToken` is called on the same token more than once,
-        // and it allows the sources to be garbage collected when the original source was never canceled.
-        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<System.Threading.CancellationTokenSource, Internal.CancelationRef> s_cancelationSourceMap = new System.Runtime.CompilerServices.ConditionalWeakTable<System.Threading.CancellationTokenSource, Internal.CancelationRef>();
-
-        // Implementation detail, the token wraps the source, so we can retrieve it by placing it in this explicit layout struct and reading the source.
-        // This is equivalent to `Unsafe.As`, but also works in older runtimes that don't support Unsafe.
-        // I think it is very unlikely, but the internal implementation of CancellationToken could change in the future to break this code. Hopefully fast reflection APIs will become available before that happens. https://github.com/dotnet/runtime/issues/23716
-        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit)]
-        private struct TokenSourceExtractor
-        {
-            [System.Runtime.InteropServices.FieldOffset(0)]
-            internal System.Threading.CancellationToken _token;
-            [System.Runtime.InteropServices.FieldOffset(0)]
-            internal System.Threading.CancellationTokenSource _source;
-        }
-
         /// <summary>
         /// Convert <paramref name="token"/> to a <see cref="CancelationToken"/>.
         /// </summary>
@@ -333,47 +317,9 @@ namespace Proto.Promises
             {
                 return CancelationToken.Canceled();
             }
-
-            // Warning: this relies on internal implementation details. Should update to a stable API as soon as one becomes available.
-            var source = new TokenSourceExtractor() { _token = token }._source;
-
-            Internal.CancelationRef _ref;
-            if (source == null)
-            {
-                _ref = Internal.CancelationRef.GetOrCreateWithoutDisposedCheck();
-                token.Register(state => state.UnsafeAs<Internal.CancelationRef>().Cancel(), _ref, false);
-                return new CancelationToken(_ref, _ref.TokenId);
-            }
-            if (!s_cancelationSourceMap.TryGetValue(source, out _ref))
-            {
-#if NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-                // It is possible for multiple cancelation refs to be created on separate threads. That is fine.
-                _ref = Internal.CancelationRef.GetOrCreateWithoutDisposedCheck();
-                s_cancelationSourceMap.AddOrUpdate(source, _ref);
-#else
-                lock (s_cancelationSourceMap)
-                {
-                    if (!s_cancelationSourceMap.TryGetValue(source, out _ref))
-                    {
-                        _ref = Internal.CancelationRef.GetOrCreateWithoutDisposedCheck();
-                        s_cancelationSourceMap.Add(source, _ref);
-                    }
-                }
-#endif
-                _ref._cancellationTokenSource = source;
-                token.Register(state => state.UnsafeAs<Internal.CancelationRef>().Cancel(), _ref, false);
-                return new CancelationToken(_ref, _ref.TokenId);
-            }
-            var tokenId = _ref.TokenId;
-            System.Threading.Thread.MemoryBarrier();
-            return _ref._cancellationTokenSource != source // In case of race condition on another thread.
-                ? default(CancelationToken)
-                : new CancelationToken(_ref, tokenId);
-        }
-
-        internal static void AttachCancelationRef(this System.Threading.CancellationTokenSource source, Internal.CancelationRef _ref)
-        {
-            s_cancelationSourceMap.Add(source, _ref);
+            var _ref = Internal.CancelationRef.GetOrCreateWithoutDisposedCheck();
+            token.Register(state => state.UnsafeAs<Internal.CancelationRef>().Cancel(), _ref, false);
+            return new CancelationToken(_ref, _ref.TokenId);
         }
 #endif
     }

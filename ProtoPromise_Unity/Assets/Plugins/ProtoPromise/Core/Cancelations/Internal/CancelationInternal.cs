@@ -182,7 +182,6 @@ namespace Proto.Promises
                     if (_cancellationTokenSource == null)
                     {
                         _cancellationTokenSource = new CancellationTokenSource();
-                        _cancellationTokenSource.AttachCancelationRef(this);
                         var del = new CancelDelegateToken<CancellationTokenSource>(_cancellationTokenSource, source => source.Cancel(false));
                         var node = CallbackNodeImpl<CancelDelegateToken<CancellationTokenSource>>.GetOrCreate(del, this);
                         _registeredCallbacksHead.InsertPrevious(node);
