@@ -26,14 +26,13 @@ This library took inspiration from [ES6 Promises](https://developer.mozilla.org/
 
 ## Latest Updates
 
-## v 2.0.2 - April 25, 2022
+## v 2.1.0 - June 19, 2022
 
-- Fixed `Promise.AwaitWithProgress` not working in IL2CPP.
-- Fixed a rare race condition where a canceled promise could cause an invalid cast exception.
-- Fixed boxing nullable value-types.
-- Reduced size of cancelable promises.
-- Subscribing to progress now runs in O(1) time and consumes O(1) memory, down from O(n) for both.
-- Increased precision of progress, from 1/(2^13) to 1/(2^16).
+- Added `AsyncLocal<T>` support in `async Promise` functions.
+- Added `ValueTask(<T>)` interoperability.
+- Added `System.Threading.CancellationToken` interoperability.
+- 2x - 3x performance improvement for promises and cancelation tokens.
+- Reduced memory consumption of pending promises.
 
 See [Release Notes](ReleaseNotes.md) for the full changelog.
 
@@ -75,6 +74,7 @@ See [Release Notes](ReleaseNotes.md) for the full changelog.
     - [Multiple-Consumer](#multiple-consumer)
     - [Capture Values](#capture-values)
     - [Switching Execution Context](#switching-execution-context)
+    - [AsyncLocal Support](#asynclocal-support)
 - [Additional Information](#additional-information)
     - [Understanding Then](#understanding-then)
     - [Finally](#finally)
@@ -587,6 +587,8 @@ If you are in DEBUG mode, you can configure when additional stacktraces will be 
 
 `Promise.Config.BackgroundContext` can be set to override how background operations are executed. If this is null, `ThreadPool.QueueUserWorkItem(callback, state)` is used.
 
+`Promise.Config.AsyncFlowExecutionContextEnabled` can be set to true to enable [AsyncLocal support](#asynclocal-support).
+
 ### Compiler Options
 
 If you're compiling from source (not from dll), you can configure some compilation options.
@@ -908,6 +910,33 @@ If your application uses multiple `SynchronizationContext`s, instead of using `S
 
 Other APIs that allow you to pass `SynchronizationOption` or `SynchronizationContext` to configure the context that the callback executes on are `Promise.Progress` (default `Foreground`), `Promise.New` (default `Synchronous`), and `Promise.Run` (default `Background`).
 
+### AsyncLocal Support
+
+`AsyncLocal<T>` is supported in `async Promise` functions, but it is disabled by default because it makes execution more expensive and causes allocations in older runtimes. It can be enabled by setting `Promise.Config.AsyncFlowExecutionContextEnabled = true`.
+
+```cs
+private AsyncLocal<int> _asyncLocal = new AsyncLocal<int>();
+
+public async Promise FuncVoid()
+{
+    _asyncLocal.Value = 1;
+
+    await FuncVoidNested();
+
+    Assert.AreEqual(1, _asyncLocal.Value);
+}
+
+private async Promise FuncVoidNested()
+{
+    Assert.AreEqual(1, _asyncLocal.Value);
+    _asyncLocal.Value = 2;
+
+    await _promise;
+
+    Assert.AreEqual(2, _asyncLocal.Value);
+}
+```
+
 ## Additional Information
 
 ### Understanding Then
@@ -953,6 +982,10 @@ You may realize that `Catch(onRejected)` also works just like `onRejected` in `T
 ## Task Interoperability
 
 Promises can easily interoperate with Tasks simply by calling the `Promise.ToTask()` or `Task.ToPromise()` extension methods.
+
+Promises can also be converted to ValueTasks by calling `Promise.AsValueTask()` method, or by implicitly casting `ValueTask valueTask = promise`. ValueTasks can be converted to Promises by calling the `ValueTask.ToPromise()` extensions method. Converting a Promise to a ValueTask does not cause any allocations to occur (but the same may not be true vice-versa).
+
+`Proto.Promises.CancelationToken` can be converted to and from `System.Threading.CancellationToken` by calling `token.ToCancellationToken()` method or `token.ToCancelationToken()` extension method.
 
 ## Unity Yield Instructions and Coroutines Interoperability
 
