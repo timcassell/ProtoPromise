@@ -9,64 +9,72 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
 
-    - name: Verify commit exists in origin/master
-      run: |
-        git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/*
-        git branch --remote --contains | grep origin/master
+      - name: Verify commit exists in origin/master
+        run: |
+          git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/*
+          git branch --remote --contains | grep origin/master
 
-    - name: Set VERSION variable from tag
-      id: set_tag
-      run: |
-        VERSION=${GITHUB_REF/refs\/tags\/v/}
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
-        echo "::set-output name=version::v$VERSION"
+      - name: Set VERSION variable from tag
+        id: set_tag
+        run: |
+          VERSION=${GITHUB_REF/refs\/tags\/v/}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "::set-output name=version::$VERSION"
 
-    - name: Verify version in csproj and package.json
-      run: |
-        if ! grep -q "<Version>${VERSION}</Version>" ProtoPromise/ProtoPromise.csproj; then
-          echo "version ${VERSION} not found in ProtoPromise.csproj"
-          exit 1
-        fi
-        if ! grep -q "\"version\": \"${VERSION}\"" ProtoPromise_Unity/Assets/Plugins/ProtoPromise/package.json; then
-          echo "version ${VERSION} not found in package.json"
-          exit 1
-        fi
+      - name: Verify version in csproj and package.json
+        run: |
+          if ! grep -q "<Version>${VERSION}</Version>" ProtoPromise/ProtoPromise.csproj; then
+            echo "version ${VERSION} not found in ProtoPromise.csproj"
+            exit 1
+          fi
+          if ! grep -q "\"version\": \"${VERSION}\"" ProtoPromise_Unity/Assets/Plugins/ProtoPromise/package.json; then
+            echo "version ${VERSION} not found in package.json"
+            exit 1
+          fi
 
-    - name: Get release notes
-      uses: cardinalby/git-get-release-action@v1
-      id: get_release
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      with:
-        tag: v${{ steps.set_tag.outputs.version }}
+      - name: Get release notes
+        uses: cardinalby/git-get-release-action@v1
+        id: get_release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          tag: v${{ steps.set_tag.outputs.version }}
 
-    - name: Overwrite nuspec version
-      run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromise/nuget/ProtoPromise.nuspec
+      - name: Overwrite nuspec version
+        run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromise/nuget/ProtoPromise.nuspec
 
-    - name: Overwrite nuspec release notes
-      run: |
-        RELEASE_NOTES='${{ steps.get_release.outputs.body }}'
-        export REPLACE_RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed -e ':a' -e 'N' -e '$!ba' -e 's|\n|\n      |g')
-        perl -l -p -i -e 's/{RELEASE_NOTES}/$ENV{REPLACE_RELEASE_NOTES}/g' ProtoPromise/nuget/ProtoPromise.nuspec
+      - name: Overwrite nuspec release notes
+        run: |
+          RELEASE_NOTES='${{ steps.get_release.outputs.body }}'
+          export REPLACE_RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed -e ':a' -e 'N' -e '$!ba' -e 's|\n|\n      |g; s/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g')
+          perl -l -p -i -e 's/{RELEASE_NOTES}/$ENV{REPLACE_RELEASE_NOTES}/g' ProtoPromise/nuget/ProtoPromise.nuspec
 
-    - name: Setup nuget
-      uses: nuget/setup-nuget@v1
-      with:
-        nuget-api-key: ${{ secrets.NUGET_API_KEY }}
+      - name: Print nuspec
+        run: cat ProtoPromise/nuget/ProtoPromise.nuspec
 
-    - name: Build Debug
-      run: dotnet build -c Debug
+      - name: Setup nuget
+        uses: nuget/setup-nuget@v1
+        with:
+          nuget-api-key: ${{ secrets.NUGET_API_KEY }}
 
-    - name: Build Release
-      run: dotnet build -c Release
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v2
+        with:
+          global-json-file: global.json
 
-    - name: Pack
-      run: nuget pack ProtoPromise/nuget/ProtoPromise.nuspec
+      - name: Build Debug
+        run: dotnet build -c Debug
 
-    - name: Push
-      run: dotnet nuget push ProtoPromise.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
-      env:
-        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      - name: Build Release
+        run: dotnet build -c Release
+
+      - name: Pack
+        run: nuget pack ProtoPromise/nuget/ProtoPromise.nuspec
+
+      - name: Push
+        run: dotnet nuget push ProtoPromise.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
