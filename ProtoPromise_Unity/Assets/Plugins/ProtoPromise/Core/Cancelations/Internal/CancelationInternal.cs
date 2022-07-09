@@ -264,14 +264,14 @@ namespace Proto.Promises
                         {
                             int sourceId = SourceId;
                             _locker.Exit();
+                            // Dispose to forcibly wait for the callback to complete, or unregister the callback if it wasn't canceled.
+                            _bclRegistration.Dispose();
+                            TryDispose(sourceId);
                             bool isCanceled = _bclSource.IsCancellationRequested;
                             if (isCanceled)
                             {
                                 cancelable.Cancel();
                             }
-                            // Dispose to forcibly wait for the callback to complete, or unregister the callback if it wasn't canceled.
-                            _bclRegistration.Dispose();
-                            TryDispose(sourceId);
                             registration = default(CancelationRegistration);
                             return isCanceled;
                         }
@@ -817,6 +817,18 @@ namespace Proto.Promises
                     {
                         // Source should never be null if token.CanBeCanceled returned true.
                         throw new System.Reflection.TargetException("The token's internal source was null.");
+                    }
+
+                    // If the source was disposed, the Token property will throw ObjectDisposedException.
+                    // Unfortunately, this is the only way to check if it's disposed, since token.CanBeCanceled may still return true after it's disposed in .Net Core.
+                    try
+                    {
+                        token = source.Token;
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Check canceled state again in case of a race condition.
+                        return source.IsCancellationRequested ? CancelationToken.Canceled() : default(CancelationToken);
                     }
 
                     if (s_tokenCache.TryGetValue(source, out var cancelationRef))
