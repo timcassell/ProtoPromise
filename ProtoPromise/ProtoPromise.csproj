@@ -27,13 +27,6 @@
     <DefineConstants>$(DefineConstants);NET_LEGACY</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
-    <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>portable</DebugType>
-    <Optimize>false</Optimize>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(AllowStackToUnwind)'=='false'">
     <DefineConstants>$(DefineConstants);PROTO_PROMISE_STACK_UNWIND_DISABLE</DefineConstants>
   </PropertyGroup>
@@ -43,6 +36,13 @@
     <DebugSymbols>false</DebugSymbols>
     <DebugType>portable</DebugType>
     <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
+    <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_NoProgress|AnyCPU'">

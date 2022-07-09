@@ -892,7 +892,8 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Dispose();
             }
 
-#if !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE // Nulled out fields aren't garbage collected in Debug mode until the end of the scope.
+// Nulled out fields aren't garbage collected in Debug mode until the end of the scope.
+#if !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE && !DEBUG
             [MethodImpl(MethodImplOptions.NoInlining)]
             void ConvertToken(CancellationTokenSource source)
             {
@@ -915,8 +916,6 @@ namespace ProtoPromiseTests.APIs
 
                 Assert.IsFalse(weakReference.IsAlive);
             }
-
-            // TODO: test cancelationSource.Dispose().
 
 #if NET6_0_OR_GREATER
             [Test]

@@ -72,7 +72,6 @@ namespace Proto.Promises
         internal sealed partial class CancelationRef : HandleablePromiseBase, ICancelable, ITraceable
         {
             internal static readonly CancelationRef s_canceledSentinel = new CancelationRef() { _state = State.Canceled, _internalRetainCounter = 1, _tokenId = -1 };
-            internal static readonly CancelationRef s_disposedSentinel = new CancelationRef() { _state = State.Disposed, _internalRetainCounter = 1, _tokenId = -1 };
 
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
@@ -307,7 +306,7 @@ namespace Proto.Promises
                         if (!ts_isLinkingToBclToken)
                         {
                             // Hook up the node instead of invoking since it might throw, and we need all registered callbacks to be invoked.
-                            var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable, this);
+                            var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable);
                             int oldNodeId = node.NodeId;
                             _registeredCallbacksHead.InsertPrevious(node);
 
@@ -316,7 +315,7 @@ namespace Proto.Promises
                             _locker.Exit();
 
                             InvokeCallbacks();
-                            registration = new CancelationRegistration(node, oldNodeId, oldTokenId);
+                            registration = new CancelationRegistration(this, node, oldNodeId, oldTokenId);
                             return true;
                         }
                         ts_isLinkingToBclToken = false;
@@ -324,11 +323,11 @@ namespace Proto.Promises
 #endif
 
                     {
-                        var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable, this);
+                        var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable);
                         int oldNodeId = node.NodeId;
                         _registeredCallbacksHead.InsertPrevious(node);
                         _locker.Exit();
-                        registration = new CancelationRegistration(node, oldNodeId, oldTokenId);
+                        registration = new CancelationRegistration(this, node, oldNodeId, oldTokenId);
                         return true;
                     }
                 }
@@ -380,7 +379,7 @@ namespace Proto.Promises
                     next = current._next;
                     try
                     {
-                        current.Invoke();
+                        current.Invoke(this);
                     }
                     catch (Exception e)
                     {
@@ -463,7 +462,7 @@ namespace Proto.Promises
             private bool TryRetainUser(int tokenId)
             {
                 _locker.Enter();
-                if (tokenId != TokenId)
+                if (tokenId != TokenId | _state == State.Disposed)
                 {
                     _locker.Exit();
                     return false;
@@ -600,12 +599,11 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
-                    TCancelable cancelable, CancelationRef parent)
+                    TCancelable cancelable)
                 {
                     var del = ObjectPool.TryTake<CallbackNodeImpl<TCancelable>>()
                         ?? new CallbackNodeImpl<TCancelable>();
                     del._cancelable = cancelable;
-                    del._parent = parent;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     del._disposed = false;
 #endif
@@ -613,11 +611,11 @@ namespace Proto.Promises
                     return del;
                 }
 
-                internal override void Invoke()
+                internal override void Invoke(CancelationRef parent)
                 {
                     ThrowIfInPool(this);
-                    var parent = _parent;
                     var canceler = _cancelable;
+#if PROMISE_DEBUG
                     SetCurrentInvoker(this);
                     try
                     {
@@ -629,6 +627,11 @@ namespace Proto.Promises
                         parent._locker.Enter();
                         DisposeAlreadyLocked(parent);
                     }
+#else
+                    parent._locker.Enter();
+                    DisposeAlreadyLocked(parent);
+                    canceler.Cancel();
+#endif
                 }
 
                 [MethodImpl(InlineOption)]
@@ -643,9 +646,6 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     ++_nodeId;
-                    // We set the parent to the disposed sentinel so the previous parent can be garbage collected and so the cancel state check will still keep this as marked unregistered.
-                    // We don't set null so we can avoid null checks.
-                    _parent = s_disposedSentinel;
                     _previous = null;
                     _cancelable = default(TCancelable);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -665,14 +665,7 @@ namespace Proto.Promises
         internal class CancelationCallbackNode : HandleablePromiseBase
         {
             internal CancelationCallbackNode _previous; // _next is HandleablePromiseBase which we just unsafe cast to CallbackNode.
-            protected CancelationRef _parent;
             protected int _nodeId = 1; // Start with id 1 instead of 0 to reduce risk of false positives.
-
-            internal CancelationRef Parent
-            {
-                [MethodImpl(InlineOption)]
-                get { return _parent; }
-            }
 
             internal int NodeId
             {
@@ -698,50 +691,43 @@ namespace Proto.Promises
                 _previous = node;
             }
 
-            internal virtual void Invoke() { throw new System.InvalidOperationException(); }
+            internal virtual void Invoke(CancelationRef parent) { throw new System.InvalidOperationException(); }
             internal virtual void Dispose() { throw new System.InvalidOperationException(); }
 
             [MethodImpl(InlineOption)]
-            internal static bool GetIsRegisteredAndIsCanceled(CancelationCallbackNode _this, int nodeId, int tokenId, out bool isCanceled)
+            internal static bool GetIsRegisteredAndIsCanceled(CancelationRef parent, CancelationCallbackNode _this, int nodeId, int tokenId, out bool isCanceled)
             {
                 if (_this == null)
                 {
                     isCanceled = false;
                     return false;
                 }
-                return _this.IsRegistered(nodeId, tokenId, out isCanceled);
-            }
-
-            [MethodImpl(InlineOption)]
-            private bool IsRegistered(int nodeId, int tokenId, out bool isCanceled)
-            {
-                return GetIsRegistered(_parent, nodeId, tokenId, out isCanceled);
+                return _this.GetIsRegistered(parent, nodeId, tokenId, out isCanceled);
             }
 
             [MethodImpl(InlineOption)]
             private bool GetIsRegistered(CancelationRef parent, int nodeId, int tokenId, out bool isCanceled)
             {
                 bool canceled = parent._state == CancelationRef.State.Canceled;
-                bool tokenIdMatches = parent.TokenId == tokenId & parent != CancelationRef.s_disposedSentinel;
+                bool tokenIdMatches = parent.TokenId == tokenId;
                 isCanceled = canceled & tokenIdMatches;
                 return !canceled & tokenIdMatches & _nodeId == nodeId;
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryUnregister(CancelationCallbackNode _this, int nodeId, int tokenId, out bool isCanceled)
+            internal static bool TryUnregister(CancelationRef parent, CancelationCallbackNode _this, int nodeId, int tokenId, out bool isCanceled)
             {
                 if (_this == null)
                 {
                     isCanceled = false;
                     return false;
                 }
-                return _this.TryUnregister(nodeId, tokenId, out isCanceled);
+                return _this.TryUnregister(parent, nodeId, tokenId, out isCanceled);
             }
 
             [MethodImpl(InlineOption)]
-            private bool TryUnregister(int nodeId, int tokenId, out bool isCanceled)
+            private bool TryUnregister(CancelationRef parent, int nodeId, int tokenId, out bool isCanceled)
             {
-                var parent = _parent;
                 parent._locker.Enter();
                 bool canceled;
                 bool isRegistered = GetIsRegistered(parent, nodeId, tokenId, out canceled);
@@ -906,7 +892,7 @@ namespace Proto.Promises
                         _bclSource = new CancellationTokenSource();
                         CancelationConverter.AttachCancelationRef(_bclSource, this);
                         var del = new CancelDelegateToken<CancellationTokenSource>(_bclSource, source => source.Cancel(false));
-                        var node = CallbackNodeImpl<CancelDelegateToken<CancellationTokenSource>>.GetOrCreate(del, this);
+                        var node = CallbackNodeImpl<CancelDelegateToken<CancellationTokenSource>>.GetOrCreate(del);
                         _registeredCallbacksHead.InsertPrevious(node);
                     }
                     return _bclSource.Token;

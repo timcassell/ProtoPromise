@@ -10,13 +10,6 @@
     <DeveloperMode>false</DeveloperMode>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
-    <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>portable</DebugType>
-    <Optimize>false</Optimize>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoProgress|AnyCPU'">
     <DefineConstants>$(DefineConstants);RELEASE;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
     <DebugSymbols>false</DebugSymbols>
@@ -26,6 +19,13 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_NoProgress|AnyCPU'">
     <DefineConstants>$(DefineConstants);DEBUG;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
+    <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
   </PropertyGroup>
 
   <!-- For command-line testing -->
