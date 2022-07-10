@@ -837,6 +837,19 @@ namespace Proto.Promises
             Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
             return new PromiseProgressAwaiterVoid(this, minProgress, maxProgress);
         }
+
+        /// <summary>
+        /// Gets an awaiter for this <see cref="Promise"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function.
+        /// The progress reported will be lerped from its current progress to <paramref name="maxProgress"/>. <paramref name="maxProgress"/> must be between 0 and 1 inclusive.
+        /// </summary>
+        /// <remarks> Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`</remarks>
+        /// <returns>The awaiter.</returns>
+        public PromiseProgressAwaiterVoid AwaitWithProgress(float maxProgress)
+        {
+            ValidateOperation(1);
+            Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
+            return new PromiseProgressAwaiterVoid(this, float.NaN, maxProgress);
+        }
     }
 
     partial struct Promise<T>
@@ -863,6 +876,19 @@ namespace Proto.Promises
             Internal.ValidateProgressValue(minProgress, "minProgress", 1);
             Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
             return new PromiseProgressAwaiter<T>(this, minProgress, maxProgress);
+        }
+
+        /// <summary>
+        /// Gets an awaiter for this <see cref="Promise{T}"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function.
+        /// The progress reported will be lerped from its current progress to <paramref name="maxProgress"/>. <paramref name="maxProgress"/> must be between 0 and 1 inclusive.
+        /// </summary>
+        /// <remarks> Use as `await promise.AwaitWithProgress(maxProgress);`</remarks>
+        /// <returns>The awaiter.</returns>
+        public PromiseProgressAwaiter<T> AwaitWithProgress(float maxProgress)
+        {
+            ValidateOperation(1);
+            Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
+            return new PromiseProgressAwaiter<T>(this, float.NaN, maxProgress);
         }
     }
 }
