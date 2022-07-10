@@ -12,7 +12,7 @@ namespace Proto.Promises
     partial class Internal
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal sealed class UnhandledExceptionInternal : UnhandledException, IRejectionToContainer, ICantHandleException
         {
@@ -32,7 +32,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal sealed class CanceledExceptionInternal : CanceledException
         {
@@ -53,7 +53,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal sealed class RejectionException : Exception
         {
@@ -68,7 +68,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal sealed class RejectExceptionInternal<T> : RejectException, IRejectionToContainer, ICantHandleException
         {
@@ -95,7 +95,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal sealed class ForcedRethrowException : RethrowException
         {

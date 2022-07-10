@@ -13,6 +13,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -33,7 +34,7 @@ namespace Proto.Promises
             // These help reduce typed out generics.
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal static class CallbackHelperArg<TArg>
             {
@@ -188,7 +189,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal static class CallbackHelperResult<TResult>
             {
@@ -402,7 +403,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal static class CallbackHelper<TArg, TResult>
             {
@@ -557,7 +558,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal static class CallbackHelperVoid
             {

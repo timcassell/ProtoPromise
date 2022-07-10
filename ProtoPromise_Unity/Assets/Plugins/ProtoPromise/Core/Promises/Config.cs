@@ -19,6 +19,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -59,7 +60,7 @@ namespace Proto.Promises
         /// Promise configuration. Configuration settings affect the global behaviour of promises.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public static partial class Config
         {

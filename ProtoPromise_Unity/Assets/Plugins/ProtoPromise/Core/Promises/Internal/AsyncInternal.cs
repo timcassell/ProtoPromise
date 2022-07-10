@@ -86,7 +86,7 @@ namespace Proto.Promises
         /// This type is intended for compiler use only.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public partial struct PromiseMethodBuilder
         {
@@ -142,7 +142,7 @@ namespace Proto.Promises
         /// This type is intended for compiler use only.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public partial struct PromiseMethodBuilder<T>
         {
@@ -427,7 +427,7 @@ namespace Proto.Promises
 #endif
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal partial class AsyncPromiseRef<TResult> : AsyncPromiseBase<TResult>
             {
@@ -598,7 +598,7 @@ namespace Proto.Promises
                 }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-                [DebuggerNonUserCode]
+                [DebuggerNonUserCode, StackTraceHidden]
 #endif
                 private abstract partial class PromiseMethodContinuer : HandleablePromiseBase, IDisposable
                 {
@@ -623,7 +623,7 @@ namespace Proto.Promises
                     internal abstract void MoveNextWithoutHandle();
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-                    [DebuggerNonUserCode]
+                    [DebuggerNonUserCode, StackTraceHidden]
 #endif
                     private sealed partial class Continuer<TStateMachine> : PromiseMethodContinuer where TStateMachine : IAsyncStateMachine
                     {
@@ -732,7 +732,7 @@ namespace Proto.Promises
             partial class AsyncPromiseRef<TResult>
             {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-                [DebuggerNonUserCode]
+                [DebuggerNonUserCode, StackTraceHidden]
 #endif
                 private sealed partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef<TResult> where TStateMachine : IAsyncStateMachine
                 {

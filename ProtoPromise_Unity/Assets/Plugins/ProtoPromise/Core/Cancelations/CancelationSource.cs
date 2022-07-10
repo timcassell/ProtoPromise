@@ -8,6 +8,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 
 namespace Proto.Promises
 {
@@ -15,7 +16,7 @@ namespace Proto.Promises
     /// Cancelation source used to cancel operations.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [System.Diagnostics.DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public
 #if CSHARP_7_3_OR_NEWER

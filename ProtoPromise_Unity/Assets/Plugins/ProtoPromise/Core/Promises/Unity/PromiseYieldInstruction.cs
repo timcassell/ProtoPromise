@@ -11,6 +11,7 @@
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using UnityEngine;
 
@@ -34,7 +35,7 @@ namespace Proto.Promises
     /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from has settled.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [System.Diagnostics.DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public abstract class PromiseYieldInstruction : CustomYieldInstruction, IDisposable
     {
@@ -134,7 +135,7 @@ namespace Proto.Promises
     /// An instance of this should be disposed when you are finished with it.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [System.Diagnostics.DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public abstract class PromiseYieldInstruction<T> : PromiseYieldInstruction
     {
@@ -181,7 +182,7 @@ namespace Proto.Promises
     partial class Internal
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal sealed class YieldInstructionVoid : PromiseYieldInstruction, ILinked<YieldInstructionVoid>
         {
@@ -253,7 +254,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal sealed class YieldInstruction<T> : PromiseYieldInstruction<T>, ILinked<YieldInstruction<T>>
         {

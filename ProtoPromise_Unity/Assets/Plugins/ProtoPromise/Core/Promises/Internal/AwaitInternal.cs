@@ -92,7 +92,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             private sealed class AwaiterRef<TContinuer> : HandleablePromiseBase, ITraceable
                 where TContinuer : IAction
@@ -348,7 +348,7 @@ namespace Proto.Promises
         /// </summary>
         /// <remarks>This type is intended for compiler user rather than use directly in code.</remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public
 #if CSHARP_7_3_OR_NEWER
@@ -458,7 +458,7 @@ namespace Proto.Promises
         /// </summary>
         /// <remarks>This type is intended for compiler user rather than use directly in code.</remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public
 #if CSHARP_7_3_OR_NEWER
@@ -569,7 +569,7 @@ namespace Proto.Promises
         /// </summary>
         /// <remarks>This type is intended for compiler user rather than use directly in code.</remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public
 #if CSHARP_7_3_OR_NEWER
@@ -692,7 +692,7 @@ namespace Proto.Promises
         /// </summary>
         /// <remarks>This type is intended for compiler user rather than use directly in code.</remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public
 #if CSHARP_7_3_OR_NEWER

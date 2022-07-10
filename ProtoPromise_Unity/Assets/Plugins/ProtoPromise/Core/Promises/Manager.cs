@@ -2,6 +2,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 
 namespace Proto.Promises
 {
@@ -11,7 +12,7 @@ namespace Proto.Promises
         /// Promise manager. This can be used to clear pooled objects (if enabled).
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public static class Manager
         {

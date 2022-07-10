@@ -9,6 +9,7 @@
 #endif
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
@@ -24,7 +25,7 @@ namespace Proto.Promises
     {
         // Abstract classes are used instead of interfaces, because virtual calls on interfaces are twice as slow as virtual calls on classes.
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal abstract partial class HandleablePromiseBase : ILinked<HandleablePromiseBase>
         {

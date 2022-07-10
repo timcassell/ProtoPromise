@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
@@ -33,7 +34,7 @@ namespace Proto.Promises
     namespace Unity // I would have nested this within Internal, but you can only change the execution order of public, un-nested behaviours, so add a nested namespace instead.
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public sealed class PromiseBehaviour : MonoBehaviour
         {
@@ -41,7 +42,7 @@ namespace Proto.Promises
             // UnityException: get_isPlayingOrWillChangePlaymode is not allowed to be called from a MonoBehaviour constructor (or instance field initializer),
             // call it in Awake or Start instead.
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             private static class Dummy
             {
@@ -53,7 +54,7 @@ namespace Proto.Promises
                 {
 #pragma warning disable 0612 // Type or member is obsolete
                     // Set default warning handler to route to UnityEngine.Debug.
-                    Promise.Config.WarningHandler = Debug.LogWarning;
+                    Promise.Config.WarningHandler = UnityEngine.Debug.LogWarning;
 #pragma warning restore 0612 // Type or member is obsolete
 
 #if UNITY_EDITOR
@@ -97,7 +98,7 @@ namespace Proto.Promises
             {
                 if (_instance != null)
                 {
-                    Debug.LogWarning("There can only be one instance of PromiseBehaviour. Destroying new instance.");
+                    UnityEngine.Debug.LogWarning("There can only be one instance of PromiseBehaviour. Destroying new instance.");
                     Destroy(this);
                     return;
                 }
@@ -117,7 +118,7 @@ namespace Proto.Promises
                 {
                     if (_instance == this)
                     {
-                        Debug.LogWarning("PromiseBehaviour destroyed! Removing PromiseSynchronizationContext from Promise.Config.ForegroundContext.");
+                        UnityEngine.Debug.LogWarning("PromiseBehaviour destroyed! Removing PromiseSynchronizationContext from Promise.Config.ForegroundContext.");
                         _instance = null;
                         if (Promise.Config.ForegroundContext == _syncContext)
                         {
@@ -154,7 +155,7 @@ namespace Proto.Promises
                     // In case someone clears `Promise.Config.UncaughtRejectionHandler`, we catch the AggregateException here and log it so that the coroutine won't stop.
                     catch (AggregateException e)
                     {
-                        Debug.LogException(e);
+                        UnityEngine.Debug.LogException(e);
                     }
                 }
             }
@@ -174,7 +175,7 @@ namespace Proto.Promises
                 {
                     // Unfortunately, Unity does not provide a means to completely eliminate the stack trace at the point of calling `Debug.Log`, so the log will always have at least 1 extra stack frame.
                     // This implementation minimizes it to 1 extra stack frame always (because `Update()` is called from Unity's side, and they do not include their own internal stack traces).
-                    Debug.LogException(_currentlyReportingExceptions.Dequeue());
+                    UnityEngine.Debug.LogException(_currentlyReportingExceptions.Dequeue());
                 }
             }
         }

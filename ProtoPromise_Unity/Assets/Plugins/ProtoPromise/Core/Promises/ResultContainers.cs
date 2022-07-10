@@ -9,6 +9,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
@@ -18,7 +19,7 @@ namespace Proto.Promises
     /// An instance of <see cref="ReasonContainer"/> is only valid during the invocation of the delegate it is passed into.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [System.Diagnostics.DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public
 #if CSHARP_7_3_OR_NEWER
@@ -97,7 +98,7 @@ namespace Proto.Promises
         /// An instance of <see cref="ResultContainer"/> is only valid during the invocation of the onContinue delegate it is passed into.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public
 #if CSHARP_7_3_OR_NEWER
@@ -183,7 +184,7 @@ namespace Proto.Promises
         /// An instance of <see cref="ResultContainer"/> is only valid during the invocation of the onContinue delegate it is passed into.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public
 #if CSHARP_7_3_OR_NEWER

@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("ProtoPromiseTests")]
@@ -32,12 +33,12 @@ namespace Proto.Promises
 
         // Using static generic classes to hold the pools allows direct pool access at runtime without doing a dictionary lookup.
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal static partial class ObjectPool
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             private static class Type<T> where T : HandleablePromiseBase
             {

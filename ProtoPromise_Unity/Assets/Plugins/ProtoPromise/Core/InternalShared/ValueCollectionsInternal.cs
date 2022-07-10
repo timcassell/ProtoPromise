@@ -113,7 +113,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal struct Enumerator<T> : IEnumerator<T> where T : class, ILinked<T>
         {
@@ -165,7 +165,7 @@ namespace Proto.Promises
 #if PROTO_PROMISE_DEVELOPER_MODE
         internal partial class ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
 #else
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
         internal struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
 #endif
         {
@@ -228,7 +228,7 @@ namespace Proto.Promises
         /// Must not be readonly.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal struct SpinLocker
         {
@@ -276,7 +276,7 @@ namespace Proto.Promises
 #if PROTO_PROMISE_DEVELOPER_MODE
         internal partial class ValueLinkedStackSafe<T> where T : HandleablePromiseBase
 #else
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
         internal struct ValueLinkedStackSafe<T> where T : HandleablePromiseBase
 #endif
         {
@@ -343,7 +343,7 @@ namespace Proto.Promises
 #if PROTO_PROMISE_DEVELOPER_MODE
         internal partial class ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
 #else
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
         internal struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
 #endif
         {
@@ -413,7 +413,7 @@ namespace Proto.Promises
         /// This structure is unsuitable for general purpose.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal struct ValueList<T> where T : class, ILinked<T>
         {
@@ -465,12 +465,12 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal struct ValueLinkedStackZeroGC<T> : IEnumerable<T>
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             private sealed class Node : HandleablePromiseBase, ILinked<Node>
             {
@@ -500,7 +500,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct Enumerator : IEnumerator<T>
             {
@@ -593,7 +593,7 @@ namespace Proto.Promises
     } // class Internal
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
     internal static class ArrayExtensions
     {
@@ -601,7 +601,7 @@ namespace Proto.Promises
         /// Generic Array enumerator. Use this instead of the default <see cref="Array.GetEnumerator"/> for passing it around as an <see cref="IEnumerator{T}"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal struct Enumerator<T> : IEnumerator<T>
         {

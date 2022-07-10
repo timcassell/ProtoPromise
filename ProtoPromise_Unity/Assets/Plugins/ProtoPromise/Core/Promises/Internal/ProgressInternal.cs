@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -111,7 +112,7 @@ namespace Proto.Promises
             partial void InterlockedDecrementProgressReportingCount();
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal partial struct Fixed32
             {
@@ -381,7 +382,7 @@ namespace Proto.Promises
             /// Precision: 1/(2^<see cref="Promise.Config.ProgressDecimalBits"/>)
             /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal partial struct UnsignedFixed64 // Simplified compared to Fixed32 to remove unused functions.
             {
@@ -431,7 +432,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal sealed partial class PromiseProgress<TResult, TProgress> : PromiseSingleAwait<TResult>, ICancelable
                 where TProgress : IProgress<float>

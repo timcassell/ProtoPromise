@@ -9,12 +9,12 @@ namespace Proto.Promises.Threading
     /// A <see cref="SynchronizationContext"/> used to schedule callbacks to the thread that it was created on.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public sealed class PromiseSynchronizationContext : SynchronizationContext
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         private sealed class SyncCallback : Internal.HandleablePromiseBase
         {

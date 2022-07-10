@@ -21,7 +21,7 @@ namespace Proto.Promises
     internal static partial class Internal
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal struct CancelDelegateTokenVoid : ICancelable
         {
@@ -41,7 +41,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal struct CancelDelegateToken<TCapture> : ICancelable
         {
@@ -67,7 +67,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal sealed partial class CancelationRef : HandleablePromiseBase, ICancelable, ITraceable
         {
@@ -559,7 +559,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             private sealed class CallbackNodeImpl<TCancelable> : CancelationCallbackNode, ITraceable
                 where TCancelable : ICancelable

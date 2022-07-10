@@ -8,6 +8,7 @@
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -52,7 +53,7 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal abstract partial class DeferredPromiseBase<TResult> : AsyncPromiseBase<TResult>, IDeferredPromise
             {
@@ -111,7 +112,7 @@ namespace Proto.Promises
             // The only purpose of this is to cast the ref when converting a DeferredBase to a Deferred(<T>) to avoid extra checks.
             // Otherwise, DeferredPromise<T> would be unnecessary and this would be implemented in the base class.
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal partial class DeferredPromise<TResult> : DeferredPromiseBase<TResult>
             {
@@ -178,7 +179,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal sealed partial class DeferredPromiseCancel<TResult> : DeferredPromise<TResult>, ICancelable
             {
