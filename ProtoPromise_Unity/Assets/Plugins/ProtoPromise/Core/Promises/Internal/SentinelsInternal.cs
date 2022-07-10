@@ -88,14 +88,5 @@ namespace Proto.Promises
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId) { throw new System.InvalidOperationException(); }
             }
         } // PromiseRefBase
-
-        internal class BackgroundSynchronizationContextSentinel : SynchronizationContext
-        {
-            internal static readonly BackgroundSynchronizationContextSentinel s_instance = new BackgroundSynchronizationContextSentinel();
-
-            public override void Post(SendOrPostCallback d, object state) { throw new System.InvalidOperationException(); }
-            public override void Send(SendOrPostCallback d, object state) { throw new System.InvalidOperationException(); }
-            public override SynchronizationContext CreateCopy() { throw new System.InvalidOperationException(); }
-        }
     } // Internal
 }

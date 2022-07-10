@@ -38,13 +38,7 @@ namespace Proto.Promises
 
         private static void ScheduleForHandle(HandleablePromiseBase handleable, SynchronizationContext context)
         {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             if (context == null)
-            {
-                throw new InvalidOperationException("context cannot be null");
-            }
-#endif
-            if (context == BackgroundSynchronizationContextSentinel.s_instance)
             {
                 ThreadPool.QueueUserWorkItem(s_threadPoolHandleCallback, handleable);
             }

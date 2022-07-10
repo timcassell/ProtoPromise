@@ -886,12 +886,6 @@ namespace Proto.Promises
 
                 internal static PromiseConfigured<TResult> GetOrCreate(SynchronizationContext synchronizationContext, ushort depth)
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (synchronizationContext == null)
-                    {
-                        throw new InvalidOperationException("synchronizationContext cannot be null");
-                    }
-#endif
                     var promise = ObjectPool.TryTake<PromiseConfigured<TResult>>()
                         ?? new PromiseConfigured<TResult>();
                     promise.Reset(depth);
@@ -920,12 +914,6 @@ namespace Proto.Promises
 
                 internal override PromiseRef<TResult> GetConfiguredT(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (synchronizationContext == null)
-                    {
-                        throw new InvalidOperationException("synchronizationContext cannot be null");
-                    }
-#endif
                     // This isn't strictly thread-safe, but when the next promise is awaited, the CompareExchange should catch it if this is used improperly.
                     ValidateIdAndNotAwaited(promiseId);
                     _smallFields.IncrementPromiseId();

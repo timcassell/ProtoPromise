@@ -45,13 +45,7 @@ namespace Proto.Promises
 
         private static void ScheduleForProgress(HandleablePromiseBase progressable, SynchronizationContext context)
         {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             if (context == null)
-            {
-                throw new InvalidOperationException("context cannot be null");
-            }
-#endif
-            if (context == BackgroundSynchronizationContextSentinel.s_instance)
             {
                 ThreadPool.QueueUserWorkItem(s_threadPoolProgressCallback, progressable);
             }
@@ -467,12 +461,6 @@ namespace Proto.Promises
 
                 internal static PromiseProgress<TResult, TProgress> GetOrCreate(TProgress progress, CancelationToken cancelationToken, ushort depth, bool isSynchronous, SynchronizationContext synchronizationContext)
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (!isSynchronous && synchronizationContext == null)
-                    {
-                        throw new InvalidOperationException("synchronizationContext cannot be null");
-                    }
-#endif
                     var promise = ObjectPool.TryTake<PromiseProgress<TResult, TProgress>>()
                         ?? new PromiseProgress<TResult, TProgress>();
                     promise.Reset(depth);
@@ -487,12 +475,6 @@ namespace Proto.Promises
 
                 internal static PromiseProgress<TResult, TProgress> GetOrCreateFromResolved(TProgress progress, CancelationToken cancelationToken, ushort depth, SynchronizationContext synchronizationContext, TResult result)
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (synchronizationContext == null)
-                    {
-                        throw new InvalidOperationException("synchronizationContext cannot be null");
-                    }
-#endif
                     var promise = ObjectPool.TryTake<PromiseProgress<TResult, TProgress>>()
                         ?? new PromiseProgress<TResult, TProgress>();
                     promise.Reset(depth);
