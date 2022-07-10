@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net35;net40;net45;net47;netstandard2.0;netstandard2.1;netcoreapp2.1;net5.0</TargetFrameworks>
+    <TargetFrameworks>net35;net40;net45;net47;netstandard2.0;netstandard2.1;netcoreapp2.1;net5.0;net6.0</TargetFrameworks>
     <DefineConstants>CSHARP_7_3_OR_NEWER</DefineConstants>
     <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
     <Version>2.1.0</Version>
@@ -27,13 +27,6 @@
     <DefineConstants>$(DefineConstants);NET_LEGACY</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
-    <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>portable</DebugType>
-    <Optimize>false</Optimize>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(AllowStackToUnwind)'=='false'">
     <DefineConstants>$(DefineConstants);PROTO_PROMISE_STACK_UNWIND_DISABLE</DefineConstants>
   </PropertyGroup>
@@ -43,6 +36,13 @@
     <DebugSymbols>false</DebugSymbols>
     <DebugType>portable</DebugType>
     <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
+    <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_NoProgress|AnyCPU'">

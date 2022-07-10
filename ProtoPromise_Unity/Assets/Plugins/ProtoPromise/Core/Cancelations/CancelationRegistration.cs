@@ -20,6 +20,7 @@ namespace Proto.Promises
 #endif
         struct CancelationRegistration : IEquatable<CancelationRegistration>
     {
+        private readonly Internal.CancelationRef _ref;
         private readonly Internal.CancelationCallbackNode _node;
         private readonly int _nodeId;
         private readonly int _tokenId;
@@ -27,8 +28,9 @@ namespace Proto.Promises
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal CancelationRegistration(Internal.CancelationCallbackNode node, int nodeId, int tokenId)
+        internal CancelationRegistration(Internal.CancelationRef cancelationRef, Internal.CancelationCallbackNode node, int nodeId, int tokenId)
         {
+            _ref = cancelationRef;
             _node = node;
             _nodeId = nodeId;
             _tokenId = tokenId;
@@ -44,7 +46,7 @@ namespace Proto.Promises
                 var node = _node;
                 return node == null
                     ? new CancelationToken()
-                    : new CancelationToken(_node.Parent, _tokenId);
+                    : new CancelationToken(_ref, _tokenId);
             }
         }
 
@@ -68,7 +70,7 @@ namespace Proto.Promises
         /// <param name="isTokenCancelationRequested">true if the associated <see cref="CancelationToken"/> is requesting cancelation, false otherwise</param>
         public void GetIsRegisteredAndIsCancelationRequested(out bool isRegistered, out bool isTokenCancelationRequested)
         {
-            isRegistered = Internal.CancelationCallbackNode.GetIsRegisteredAndIsCanceled(_node, _nodeId, _tokenId, out isTokenCancelationRequested);
+            isRegistered = Internal.CancelationCallbackNode.GetIsRegisteredAndIsCanceled(_ref, _node, _nodeId, _tokenId, out isTokenCancelationRequested);
         }
 
         /// <summary>
@@ -101,7 +103,7 @@ namespace Proto.Promises
         /// <returns>true if the callback was previously registered and the associated <see cref="CancelationSource"/> not yet canceled or disposed, false otherwise</returns>
         public bool TryUnregister(out bool isTokenCancelationRequested)
         {
-            return Internal.CancelationCallbackNode.TryUnregister(_node, _nodeId, _tokenId, out isTokenCancelationRequested);
+            return Internal.CancelationCallbackNode.TryUnregister(_ref, _node, _nodeId, _tokenId, out isTokenCancelationRequested);
         }
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationRegistration"/>.</summary>

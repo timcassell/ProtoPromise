@@ -1039,13 +1039,13 @@ namespace Proto.Promises
             }
 
             partial void ReportProgressFromWaitFor(PromiseRefBase other, ushort depth);
-            partial void SetSecondPrevious(PromiseRefBase other);
+            partial void SetSecondPrevious(PromiseRefBase secondPrevious);
 
 #if !PROMISE_PROGRESS && PROMISE_DEBUG
             [MethodImpl(InlineOption)]
-            partial void SetSecondPrevious(PromiseRefBase other)
+            partial void SetSecondPrevious(PromiseRefBase secondPrevious)
             {
-                _previous = other;
+                _previous = secondPrevious;
             }
 #endif
 

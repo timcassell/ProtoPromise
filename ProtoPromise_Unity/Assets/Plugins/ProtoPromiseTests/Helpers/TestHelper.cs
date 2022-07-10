@@ -79,7 +79,7 @@ namespace ProtoPromiseTests
         {
             if (Promise.Config.ForegroundContext != _foregroundContext)
             {
-#if PROMISE_DEBUG
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 Internal.TrackObjectsForRelease();
 #endif
 
@@ -147,15 +147,25 @@ namespace ProtoPromiseTests
             _backgroundContext.WaitForAllThreadsToComplete();
 
             ExecuteForegroundCallbacks();
+            GcCollectAndWaitForFinalizers();
+        }
+
+        public static void GcCollectAndWaitForFinalizers()
+        {
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
-
         }
 
         public static void ExecuteForegroundCallbacks()
         {
             _foregroundContext.Execute();
+        }
+
+        public static void ExecuteForegroundCallbacksAndWaitForThreadsToComplete()
+        {
+            _foregroundContext.Execute();
+            _backgroundContext.WaitForAllThreadsToComplete();
         }
 
         public static float Lerp(float a, float b, float t)
