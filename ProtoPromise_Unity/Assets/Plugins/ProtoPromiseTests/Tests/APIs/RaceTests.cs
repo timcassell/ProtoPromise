@@ -333,6 +333,280 @@ namespace ProtoPromiseTests.APIs
             Assert.IsTrue(invoked);
         }
 
+        private static void Swap(ref Promise.Deferred deferred1, ref Promise.Deferred deferred2)
+        {
+            var temp = deferred1;
+            deferred1 = deferred2;
+            deferred2 = temp;
+        }
+
+        [Test]
+        public void RaceWithIndex_2_void([Values(0, 1)] int winIndex)
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            int resultIndex = -1;
+
+            Promise.RaceWithIndex(deferred1.Promise, deferred2.Promise)
+                .Then(index => resultIndex = index)
+                .Forget();
+
+            if (winIndex == 1)
+            {
+                Swap(ref deferred1, ref deferred2);
+            }
+            deferred1.Resolve();
+            deferred2.Resolve();
+
+            Assert.AreEqual(winIndex, resultIndex);
+        }
+
+        [Test]
+        public void RaceWithIndex_3_void([Values(0, 1, 2)] int winIndex)
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+            var deferred3 = Promise.NewDeferred();
+
+            int resultIndex = -1;
+
+            Promise.RaceWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                .Then(index => resultIndex = index)
+                .Forget();
+
+            if (winIndex == 1)
+            {
+                Swap(ref deferred1, ref deferred2);
+            }
+            else if (winIndex == 2)
+            {
+                Swap(ref deferred1, ref deferred3);
+            }
+            deferred1.Resolve();
+            deferred2.Resolve();
+            deferred3.Resolve();
+
+            Assert.AreEqual(winIndex, resultIndex);
+        }
+
+        [Test]
+        public void RaceWithIndex_4_void([Values(0, 1, 2, 3)] int winIndex)
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+            var deferred3 = Promise.NewDeferred();
+            var deferred4 = Promise.NewDeferred();
+
+            int resultIndex = -1;
+
+            Promise.RaceWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise)
+                .Then(index => resultIndex = index)
+                .Forget();
+
+            if (winIndex == 1)
+            {
+                Swap(ref deferred1, ref deferred2);
+            }
+            else if (winIndex == 2)
+            {
+                Swap(ref deferred1, ref deferred3);
+            }
+            else if (winIndex == 3)
+            {
+                Swap(ref deferred1, ref deferred4);
+            }
+            deferred1.Resolve();
+            deferred2.Resolve();
+            deferred3.Resolve();
+            deferred4.Resolve();
+
+            Assert.AreEqual(winIndex, resultIndex);
+        }
+
+        [Test]
+        public void RaceWithIndex_array_void([Values(0, 1, 2, 3)] int winIndex)
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+            var deferred3 = Promise.NewDeferred();
+            var deferred4 = Promise.NewDeferred();
+
+            int resultIndex = -1;
+
+            Promise.RaceWithIndex(new Promise[] { deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise })
+                .Then(index => resultIndex = index)
+                .Forget();
+
+            if (winIndex == 1)
+            {
+                Swap(ref deferred1, ref deferred2);
+            }
+            else if (winIndex == 2)
+            {
+                Swap(ref deferred1, ref deferred3);
+            }
+            else if (winIndex == 3)
+            {
+                Swap(ref deferred1, ref deferred4);
+            }
+            deferred1.Resolve();
+            deferred2.Resolve();
+            deferred3.Resolve();
+            deferred4.Resolve();
+
+            Assert.AreEqual(winIndex, resultIndex);
+        }
+
+        private static void Swap(ref Promise<int>.Deferred deferred1, ref Promise<int>.Deferred deferred2)
+        {
+            var temp = deferred1;
+            deferred1 = deferred2;
+            deferred2 = temp;
+        }
+
+        [Test]
+        public void RaceWithIndex_2_T([Values(0, 1)] int winIndex)
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+
+            int resultIndex = -1;
+            int result = -1;
+
+            Promise<int>.RaceWithIndex(deferred1.Promise, deferred2.Promise)
+                .Then(cv =>
+                {
+                    resultIndex = cv.Item1;
+                    result = cv.Item2;
+                })
+                .Forget();
+
+            if (winIndex == 1)
+            {
+                Swap(ref deferred1, ref deferred2);
+            }
+            deferred1.Resolve(1);
+            deferred2.Resolve(2);
+
+            Assert.AreEqual(winIndex, resultIndex);
+            Assert.AreEqual(1, result);
+        }
+
+        [Test]
+        public void RaceWithIndex_3_T([Values(0, 1, 2)] int winIndex)
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+            var deferred3 = Promise.NewDeferred<int>();
+
+            int resultIndex = -1;
+            int result = -1;
+
+            Promise<int>.RaceWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise)
+                .Then(cv =>
+                {
+                    resultIndex = cv.Item1;
+                    result = cv.Item2;
+                })
+                .Forget();
+
+            if (winIndex == 1)
+            {
+                Swap(ref deferred1, ref deferred2);
+            }
+            else if (winIndex == 2)
+            {
+                Swap(ref deferred1, ref deferred3);
+            }
+            deferred1.Resolve(1);
+            deferred2.Resolve(2);
+            deferred3.Resolve(3);
+
+            Assert.AreEqual(winIndex, resultIndex);
+            Assert.AreEqual(1, result);
+        }
+
+        [Test]
+        public void RaceWithIndex_4_T([Values(0, 1, 2, 3)] int winIndex)
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+            var deferred3 = Promise.NewDeferred<int>();
+            var deferred4 = Promise.NewDeferred<int>();
+
+            int resultIndex = -1;
+            int result = -1;
+
+            Promise<int>.RaceWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise)
+                .Then(cv =>
+                {
+                    resultIndex = cv.Item1;
+                    result = cv.Item2;
+                })
+                .Forget();
+
+            if (winIndex == 1)
+            {
+                Swap(ref deferred1, ref deferred2);
+            }
+            else if (winIndex == 2)
+            {
+                Swap(ref deferred1, ref deferred3);
+            }
+            else if (winIndex == 3)
+            {
+                Swap(ref deferred1, ref deferred4);
+            }
+            deferred1.Resolve(1);
+            deferred2.Resolve(2);
+            deferred3.Resolve(3);
+            deferred4.Resolve(4);
+
+            Assert.AreEqual(winIndex, resultIndex);
+            Assert.AreEqual(1, result);
+        }
+
+        [Test]
+        public void RaceWithIndex_array_T([Values(0, 1, 2, 3)] int winIndex)
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+            var deferred3 = Promise.NewDeferred<int>();
+            var deferred4 = Promise.NewDeferred<int>();
+
+            int resultIndex = -1;
+            int result = -1;
+
+            Promise<int>.RaceWithIndex(new Promise<int>[] { deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise })
+                .Then(cv =>
+                {
+                    resultIndex = cv.Item1;
+                    result = cv.Item2;
+                })
+                .Forget();
+
+            if (winIndex == 1)
+            {
+                Swap(ref deferred1, ref deferred2);
+            }
+            else if (winIndex == 2)
+            {
+                Swap(ref deferred1, ref deferred3);
+            }
+            else if (winIndex == 3)
+            {
+                Swap(ref deferred1, ref deferred4);
+            }
+            deferred1.Resolve(1);
+            deferred2.Resolve(2);
+            deferred3.Resolve(3);
+            deferred4.Resolve(4);
+
+            Assert.AreEqual(winIndex, resultIndex);
+            Assert.AreEqual(1, result);
+        }
+
 #if PROMISE_PROGRESS
         [Test]
         public void RaceProgressReportsTheMaximumProgress_void0(

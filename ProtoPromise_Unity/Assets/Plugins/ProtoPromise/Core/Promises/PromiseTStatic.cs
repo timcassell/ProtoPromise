@@ -1,4 +1,5 @@
 ﻿#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable CA1507 // Use nameof to express symbol names
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
@@ -163,42 +164,249 @@ namespace Proto.Promises
         public static Promise<T> Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             ValidateArgument(promises, "promises", 1);
-            if (!promises.MoveNext())
-            {
-                throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
-            }
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            T value = default(T);
-            int pendingCount = 0;
-            ushort minDepth = ushort.MaxValue;
 
-            int index = -1; // Index isn't necessary for Race, but might help with debugging.
-            do
+            try
             {
-                var p = promises.Current;
-                ValidateElement(p, "promises", 1);
-                if (!Internal.TryPrepareForRace(p, ref value, ref passThroughs, ++index, ref minDepth))
+                if (!promises.MoveNext())
                 {
-                    // Validate and release remaining elements.
-                    while (promises.MoveNext())
-                    {
-                        p = promises.Current;
-                        ValidateElement(p, "promises", 1);
-                        Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, false);
-                        minDepth = Math.Min(minDepth, p.Depth);
-                    }
-                    // Repool any created passthroughs.
-                    foreach (var passthrough in passThroughs)
-                    {
-                        passthrough.Dispose();
-                    }
-                    return Internal.CreateResolved(value, minDepth);
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
-                ++pendingCount;
-            } while (promises.MoveNext());
+                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+                T value = default(T);
+                int pendingCount = 0;
+                ushort minDepth = ushort.MaxValue;
 
-            var promise = Internal.PromiseRefBase.RacePromise<T>.GetOrCreate(passThroughs, pendingCount, minDepth);
-            return new Promise<T>(promise, promise.Id, minDepth);
+                int index = -1; // Index isn't necessary for Race, but might help with debugging.
+                do
+                {
+                    var p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (!Internal.TryPrepareForRace(p, ref value, ref passThroughs, ++index, ref minDepth))
+                    {
+                        // Validate and release remaining elements.
+                        while (promises.MoveNext())
+                        {
+                            p = promises.Current;
+                            ValidateElement(p, "promises", 1);
+                            Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, false);
+                            minDepth = Math.Min(minDepth, p.Depth);
+                        }
+                        // Repool any created passthroughs.
+                        foreach (var passthrough in passThroughs)
+                        {
+                            passthrough.Dispose();
+                        }
+                        return Internal.CreateResolved(value, minDepth);
+                    }
+                    ++pendingCount;
+                } while (promises.MoveNext());
+
+                var promise = Internal.PromiseRefBase.RacePromise<T>.GetOrCreate(passThroughs, pendingCount, minDepth);
+                return new Promise<T>(promise, promise.Id, minDepth);
+            }
+            finally
+            {
+                promises.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> RaceWithIndex(Promise<T> promise1, Promise<T> promise2)
+        {
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+
+            ushort depth = Math.Min(promise1.Depth, promise2.Depth);
+
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            if (promise1._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                var result = new ValueTuple<int, T>(0, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise2._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                var result = new ValueTuple<int, T>(1, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+
+            var promise = Internal.PromiseRefBase.RacePromiseWithIndex<T>.GetOrCreate(passThroughs, 2, depth);
+            return new Promise<ValueTuple<int, T>>(promise, promise.Id, depth);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> RaceWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
+        {
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+
+            ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, promise3.Depth));
+
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            if (promise1._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
+                var result = new ValueTuple<int, T>(0, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise2._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
+                var result = new ValueTuple<int, T>(1, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise3._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                var result = new ValueTuple<int, T>(2, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
+
+            var promise = Internal.PromiseRefBase.RacePromiseWithIndex<T>.GetOrCreate(passThroughs, 3, depth);
+            return new Promise<ValueTuple<int, T>>(promise, promise.Id, depth);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> RaceWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
+        {
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+
+            ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, Math.Min(promise3.Depth, promise4.Depth)));
+
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            if (promise1._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
+                var result = new ValueTuple<int, T>(0, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise2._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
+                var result = new ValueTuple<int, T>(1, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise3._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
+                var result = new ValueTuple<int, T>(2, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise4._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
+                var result = new ValueTuple<int, T>(3, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
+
+            var promise = Internal.PromiseRefBase.RacePromiseWithIndex<T>.GetOrCreate(passThroughs, 4, depth);
+            return new Promise<ValueTuple<int, T>>(promise, promise.Id, depth);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> RaceWithIndex(params Promise<T>[] promises)
+        {
+            return RaceWithIndex(promises.GetGenericEnumerator());
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> RaceWithIndex(IEnumerable<Promise<T>> promises)
+        {
+            return RaceWithIndex(promises.GetEnumerator());
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> RaceWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+        {
+            ValidateArgument(promises, "promises", 1);
+
+            try
+            {
+                if (!promises.MoveNext())
+                {
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to RaceWithIndex.", Internal.GetFormattedStacktrace(1));
+                }
+                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+                T value = default(T);
+                int pendingCount = 0;
+                ushort minDepth = ushort.MaxValue;
+
+                int index = -1;
+                do
+                {
+                    var p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (!Internal.TryPrepareForRace(p, ref value, ref passThroughs, ++index, ref minDepth))
+                    {
+                        // Validate and release remaining elements.
+                        while (promises.MoveNext())
+                        {
+                            p = promises.Current;
+                            ValidateElement(p, "promises", 1);
+                            Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, false);
+                            minDepth = Math.Min(minDepth, p.Depth);
+                        }
+                        // Repool any created passthroughs.
+                        foreach (var passthrough in passThroughs)
+                        {
+                            passthrough.Dispose();
+                        }
+                        return Internal.CreateResolved(new ValueTuple<int, T>(index, value), minDepth);
+                    }
+                    ++pendingCount;
+                } while (promises.MoveNext());
+
+                var promise = Internal.PromiseRefBase.RacePromiseWithIndex<T>.GetOrCreate(passThroughs, pendingCount, minDepth);
+                return new Promise<ValueTuple<int, T>>(promise, promise.Id, minDepth);
+            }
+            finally
+            {
+                promises.Dispose();
+            }
         }
 
         /// <summary>
@@ -354,42 +562,249 @@ namespace Proto.Promises
         public static Promise<T> First<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             ValidateArgument(promises, "promises", 1);
-            if (!promises.MoveNext())
-            {
-                throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(1));
-            }
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            T value = default(T);
-            int pendingCount = 0;
-            ushort minDepth = ushort.MaxValue;
 
-            int index = -1; // Index isn't necessary for First, but might help with debugging.
-            do
+            try
             {
-                var p = promises.Current;
-                ValidateElement(p, "promises", 1);
-                if (!Internal.TryPrepareForRace(p, ref value, ref passThroughs, ++index, ref minDepth))
+                if (!promises.MoveNext())
                 {
-                    // Validate and release remaining elements.
-                    while (promises.MoveNext())
-                    {
-                        p = promises.Current;
-                        ValidateElement(p, "promises", 1);
-                        Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, true);
-                        minDepth = Math.Min(minDepth, p.Depth);
-                    }
-                    // Repool any created passthroughs.
-                    foreach (var passthrough in passThroughs)
-                    {
-                        passthrough.Dispose();
-                    }
-                    return Internal.CreateResolved(value, minDepth);
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(1));
                 }
-                ++pendingCount;
-            } while (promises.MoveNext());
+                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+                T value = default(T);
+                int pendingCount = 0;
+                ushort minDepth = ushort.MaxValue;
 
-            var promise = Internal.PromiseRefBase.FirstPromise<T>.GetOrCreate(passThroughs, pendingCount, minDepth);
-            return new Promise<T>(promise, promise.Id, minDepth);
+                int index = -1; // Index isn't necessary for First, but might help with debugging.
+                do
+                {
+                    var p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (!Internal.TryPrepareForRace(p, ref value, ref passThroughs, ++index, ref minDepth))
+                    {
+                        // Validate and release remaining elements.
+                        while (promises.MoveNext())
+                        {
+                            p = promises.Current;
+                            ValidateElement(p, "promises", 1);
+                            Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, true);
+                            minDepth = Math.Min(minDepth, p.Depth);
+                        }
+                        // Repool any created passthroughs.
+                        foreach (var passthrough in passThroughs)
+                        {
+                            passthrough.Dispose();
+                        }
+                        return Internal.CreateResolved(value, minDepth);
+                    }
+                    ++pendingCount;
+                } while (promises.MoveNext());
+
+                var promise = Internal.PromiseRefBase.FirstPromise<T>.GetOrCreate(passThroughs, pendingCount, minDepth);
+                return new Promise<T>(promise, promise.Id, minDepth);
+            }
+            finally
+            {
+                promises.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> FirstWithIndex(Promise<T> promise1, Promise<T> promise2)
+        {
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+
+            ushort depth = Math.Min(promise1.Depth, promise2.Depth);
+
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            if (promise1._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                var result = new ValueTuple<int, T>(0, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise2._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                var result = new ValueTuple<int, T>(1, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+
+            var promise = Internal.PromiseRefBase.FirstPromiseWithIndex<T>.GetOrCreate(passThroughs, 2, depth);
+            return new Promise<ValueTuple<int, T>>(promise, promise.Id, depth);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> FirstWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
+        {
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+
+            ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, promise3.Depth));
+
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            if (promise1._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
+                var result = new ValueTuple<int, T>(0, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise2._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
+                var result = new ValueTuple<int, T>(1, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise3._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                var result = new ValueTuple<int, T>(2, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
+
+            var promise = Internal.PromiseRefBase.FirstPromiseWithIndex<T>.GetOrCreate(passThroughs, 3, depth);
+            return new Promise<ValueTuple<int, T>>(promise, promise.Id, depth);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> FirstWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
+        {
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+
+            ushort depth = Math.Min(promise1.Depth, Math.Min(promise2.Depth, Math.Min(promise3.Depth, promise4.Depth)));
+
+            ValidateArgument(promise1, "promise1", 1);
+            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise4, "promise4", 1);
+            if (promise1._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
+                var result = new ValueTuple<int, T>(0, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise2._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
+                var result = new ValueTuple<int, T>(1, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise3._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
+                var result = new ValueTuple<int, T>(2, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            if (promise4._ref == null)
+            {
+                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
+                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
+                var result = new ValueTuple<int, T>(3, promise1._result);
+                return Internal.CreateResolved(result, depth);
+            }
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
+            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
+
+            var promise = Internal.PromiseRefBase.FirstPromiseWithIndex<T>.GetOrCreate(passThroughs, 4, depth);
+            return new Promise<ValueTuple<int, T>>(promise, promise.Id, depth);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> FirstWithIndex(params Promise<T>[] promises)
+        {
+            return FirstWithIndex(promises.GetGenericEnumerator());
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> FirstWithIndex(IEnumerable<Promise<T>> promises)
+        {
+            return FirstWithIndex(promises.GetEnumerator());
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise<ValueTuple<int, T>> FirstWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+        {
+            ValidateArgument(promises, "promises", 1);
+
+            try
+            {
+                if (!promises.MoveNext())
+                {
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to FirstWithIndex.", Internal.GetFormattedStacktrace(1));
+                }
+                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+                T value = default(T);
+                int pendingCount = 0;
+                ushort minDepth = ushort.MaxValue;
+
+                int index = -1;
+                do
+                {
+                    var p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (!Internal.TryPrepareForRace(p, ref value, ref passThroughs, ++index, ref minDepth))
+                    {
+                        // Validate and release remaining elements.
+                        while (promises.MoveNext())
+                        {
+                            p = promises.Current;
+                            ValidateElement(p, "promises", 1);
+                            Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, false);
+                            minDepth = Math.Min(minDepth, p.Depth);
+                        }
+                        // Repool any created passthroughs.
+                        foreach (var passthrough in passThroughs)
+                        {
+                            passthrough.Dispose();
+                        }
+                        return Internal.CreateResolved(new ValueTuple<int, T>(index, value), minDepth);
+                    }
+                    ++pendingCount;
+                } while (promises.MoveNext());
+
+                var promise = Internal.PromiseRefBase.FirstPromiseWithIndex<T>.GetOrCreate(passThroughs, pendingCount, minDepth);
+                return new Promise<ValueTuple<int, T>>(promise, promise.Id, minDepth);
+            }
+            finally
+            {
+                promises.Dispose();
+            }
         }
 
         /// <summary>
@@ -609,53 +1024,61 @@ namespace Proto.Promises
         public static Promise<IList<T>> All<TEnumerator>(TEnumerator promises, IList<T> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
         {
             ValidateArgument(promises, "promises", 1);
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-            ulong completedProgress = 0;
-            ulong totalProgress = 0;
-            ushort maxDepth = 0;
 
-            if (valueContainer == null)
+            try
             {
-                valueContainer = new List<T>();
-            }
+                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+                int pendingCount = 0;
+                ulong completedProgress = 0;
+                ulong totalProgress = 0;
+                ushort maxDepth = 0;
 
-            int i = 0;
-            int listSize = valueContainer.Count;
-            while (promises.MoveNext())
-            {
-                var p = promises.Current;
-                ValidateElement(p, "promises", 1);
-                T value = default(T);
-                Internal.PrepareForMerge(p, ref value, ref passThroughs, i, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+                if (valueContainer == null)
+                {
+                    valueContainer = new List<T>();
+                }
+
+                int i = 0;
+                int listSize = valueContainer.Count;
+                while (promises.MoveNext())
+                {
+                    var p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    T value = default(T);
+                    Internal.PrepareForMerge(p, ref value, ref passThroughs, i, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+                    // Make sure list has the same count as promises.
+                    if (listSize < (i + 1))
+                    {
+                        ++listSize;
+                        valueContainer.Add(value);
+                    }
+                    else
+                    {
+                        valueContainer[i] = value;
+                    }
+                    ++i;
+                }
                 // Make sure list has the same count as promises.
-                if (listSize < (i + 1))
+                while (listSize > i)
                 {
-                    ++listSize;
-                    valueContainer.Add(value);
+                    valueContainer.RemoveAt(--listSize);
                 }
-                else
+
+                if (pendingCount == 0)
                 {
-                    valueContainer[i] = value;
+                    return Internal.CreateResolved(valueContainer, maxDepth);
                 }
-                ++i;
-            }
-            // Make sure list has the same count as promises.
-            while (listSize > i)
-            {
-                valueContainer.RemoveAt(--listSize);
-            }
 
-            if (pendingCount == 0)
-            {
-                return Internal.CreateResolved(valueContainer, maxDepth);
+                var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
+                {
+                    target[index] = feed.GetResult<T>();
+                }, pendingCount, completedProgress, totalProgress, maxDepth);
+                return new Promise<IList<T>>(promise, promise.Id, maxDepth);
             }
-
-            var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
+            finally
             {
-                target[index] = feed.GetResult<T>();
-            }, pendingCount, completedProgress, totalProgress, maxDepth);
-            return new Promise<IList<T>>(promise, promise.Id, maxDepth);
+                promises.Dispose();
+            }
         }
 
         [Obsolete("Prefer Promise<T>.All()"), EditorBrowsable(EditorBrowsableState.Never)]
