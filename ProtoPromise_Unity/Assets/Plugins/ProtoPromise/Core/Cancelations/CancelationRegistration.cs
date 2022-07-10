@@ -44,10 +44,7 @@ namespace Proto.Promises
         {
             get
             {
-                var node = _node;
-                return node == null
-                    ? new CancelationToken()
-                    : new CancelationToken(_ref, _tokenId);
+                return new CancelationToken(_ref, _tokenId);
             }
         }
 
