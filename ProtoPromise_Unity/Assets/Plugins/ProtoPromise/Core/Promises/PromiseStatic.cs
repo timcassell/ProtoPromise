@@ -121,41 +121,49 @@ namespace Proto.Promises
         public static Promise Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, "promises", 1);
-            if (!promises.MoveNext())
-            {
-                throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
-            }
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-            ushort minDepth = ushort.MaxValue;
 
-            int index = -1; // Index isn't necessary for Race, but might help with debugging.
-            do
+            try
             {
-                var p = promises.Current;
-                ValidateElement(p, "promises", 1);
-                if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth))
+                if (!promises.MoveNext())
                 {
-                    // Validate and release remaining elements.
-                    while (promises.MoveNext())
-                    {
-                        p = promises.Current;
-                        ValidateElement(p, "promises", 1);
-                        Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, false);
-                        minDepth = Math.Min(minDepth, p.Depth);
-                    }
-                    // Repool any created passthroughs.
-                    foreach (var passthrough in passThroughs)
-                    {
-                        passthrough.Dispose();
-                    }
-                    return Internal.CreateResolved(minDepth);
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
-                ++pendingCount;
-            } while (promises.MoveNext());
+                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+                int pendingCount = 0;
+                ushort minDepth = ushort.MaxValue;
 
-            var promise = Internal.PromiseRefBase.RacePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, minDepth);
-            return new Promise(promise, promise.Id, minDepth);
+                int index = -1; // Index isn't necessary for Race, but might help with debugging.
+                do
+                {
+                    var p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth))
+                    {
+                        // Validate and release remaining elements.
+                        while (promises.MoveNext())
+                        {
+                            p = promises.Current;
+                            ValidateElement(p, "promises", 1);
+                            Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, false);
+                            minDepth = Math.Min(minDepth, p.Depth);
+                        }
+                        // Repool any created passthroughs.
+                        foreach (var passthrough in passThroughs)
+                        {
+                            passthrough.Dispose();
+                        }
+                        return Internal.CreateResolved(minDepth);
+                    }
+                    ++pendingCount;
+                } while (promises.MoveNext());
+
+                var promise = Internal.PromiseRefBase.RacePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, minDepth);
+                return new Promise(promise, promise.Id, minDepth);
+            }
+            finally
+            {
+                promises.Dispose();
+            }
         }
 
         /// <summary>
@@ -275,41 +283,49 @@ namespace Proto.Promises
         public static Promise<int> RaceWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, "promises", 1);
-            if (!promises.MoveNext())
-            {
-                throw new EmptyArgumentException("promises", "You must provide at least one element to RaceWithIndex.", Internal.GetFormattedStacktrace(1));
-            }
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-            ushort minDepth = ushort.MaxValue;
 
-            int index = -1;
-            do
+            try
             {
-                var p = promises.Current;
-                ValidateElement(p, "promises", 1);
-                if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth))
+                if (!promises.MoveNext())
                 {
-                    // Validate and release remaining elements.
-                    while (promises.MoveNext())
-                    {
-                        p = promises.Current;
-                        ValidateElement(p, "promises", 1);
-                        Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, false);
-                        minDepth = Math.Min(minDepth, p.Depth);
-                    }
-                    // Repool any created passthroughs.
-                    foreach (var passthrough in passThroughs)
-                    {
-                        passthrough.Dispose();
-                    }
-                    return Internal.CreateResolved(index, minDepth);
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to RaceWithIndex.", Internal.GetFormattedStacktrace(1));
                 }
-                ++pendingCount;
-            } while (promises.MoveNext());
+                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+                int pendingCount = 0;
+                ushort minDepth = ushort.MaxValue;
 
-            var promise = Internal.PromiseRefBase.RacePromiseWithIndexVoid.GetOrCreate(passThroughs, pendingCount, minDepth);
-            return new Promise<int>(promise, promise.Id, minDepth);
+                int index = -1;
+                do
+                {
+                    var p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth))
+                    {
+                        // Validate and release remaining elements.
+                        while (promises.MoveNext())
+                        {
+                            p = promises.Current;
+                            ValidateElement(p, "promises", 1);
+                            Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, false);
+                            minDepth = Math.Min(minDepth, p.Depth);
+                        }
+                        // Repool any created passthroughs.
+                        foreach (var passthrough in passThroughs)
+                        {
+                            passthrough.Dispose();
+                        }
+                        return Internal.CreateResolved(index, minDepth);
+                    }
+                    ++pendingCount;
+                } while (promises.MoveNext());
+
+                var promise = Internal.PromiseRefBase.RacePromiseWithIndexVoid.GetOrCreate(passThroughs, pendingCount, minDepth);
+                return new Promise<int>(promise, promise.Id, minDepth);
+            }
+            finally
+            {
+                promises.Dispose();
+            }
         }
 
         [Obsolete("Prefer Promise<T>.Race()"), EditorBrowsable(EditorBrowsableState.Never)]
@@ -457,41 +473,49 @@ namespace Proto.Promises
         public static Promise First<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, "promises", 1);
-            if (!promises.MoveNext())
-            {
-                throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(1));
-            }
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-            ushort minDepth = ushort.MaxValue;
 
-            int index = -1; // Index isn't necessary for First, but might help with debugging.
-            do
+            try
             {
-                var p = promises.Current;
-                ValidateElement(p, "promises", 1);
-                if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth))
+                if (!promises.MoveNext())
                 {
-                    // Validate and release remaining elements.
-                    while (promises.MoveNext())
-                    {
-                        p = promises.Current;
-                        ValidateElement(p, "promises", 1);
-                        Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, true);
-                        minDepth = Math.Min(minDepth, p.Depth);
-                    }
-                    // Repool any created passthroughs.
-                    foreach (var passthrough in passThroughs)
-                    {
-                        passthrough.Dispose();
-                    }
-                    return Internal.CreateResolved(minDepth);
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(1));
                 }
-                ++pendingCount;
-            } while (promises.MoveNext());
+                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+                int pendingCount = 0;
+                ushort minDepth = ushort.MaxValue;
 
-            var promise = Internal.PromiseRefBase.FirstPromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, minDepth);
-            return new Promise(promise, promise.Id, minDepth);
+                int index = -1; // Index isn't necessary for First, but might help with debugging.
+                do
+                {
+                    var p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth))
+                    {
+                        // Validate and release remaining elements.
+                        while (promises.MoveNext())
+                        {
+                            p = promises.Current;
+                            ValidateElement(p, "promises", 1);
+                            Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, true);
+                            minDepth = Math.Min(minDepth, p.Depth);
+                        }
+                        // Repool any created passthroughs.
+                        foreach (var passthrough in passThroughs)
+                        {
+                            passthrough.Dispose();
+                        }
+                        return Internal.CreateResolved(minDepth);
+                    }
+                    ++pendingCount;
+                } while (promises.MoveNext());
+
+                var promise = Internal.PromiseRefBase.FirstPromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, minDepth);
+                return new Promise(promise, promise.Id, minDepth);
+            }
+            finally
+            {
+                promises.Dispose();
+            }
         }
 
         /// <summary>
@@ -611,41 +635,49 @@ namespace Proto.Promises
         public static Promise<int> FirstWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, "promises", 1);
-            if (!promises.MoveNext())
-            {
-                throw new EmptyArgumentException("promises", "You must provide at least one element to FirstWithIndex.", Internal.GetFormattedStacktrace(1));
-            }
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-            ushort minDepth = ushort.MaxValue;
 
-            int index = -1;
-            do
+            try
             {
-                var p = promises.Current;
-                ValidateElement(p, "promises", 1);
-                if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth))
+                if (!promises.MoveNext())
                 {
-                    // Validate and release remaining elements.
-                    while (promises.MoveNext())
-                    {
-                        p = promises.Current;
-                        ValidateElement(p, "promises", 1);
-                        Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, false);
-                        minDepth = Math.Min(minDepth, p.Depth);
-                    }
-                    // Repool any created passthroughs.
-                    foreach (var passthrough in passThroughs)
-                    {
-                        passthrough.Dispose();
-                    }
-                    return Internal.CreateResolved(index, minDepth);
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to FirstWithIndex.", Internal.GetFormattedStacktrace(1));
                 }
-                ++pendingCount;
-            } while (promises.MoveNext());
+                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+                int pendingCount = 0;
+                ushort minDepth = ushort.MaxValue;
 
-            var promise = Internal.PromiseRefBase.FirstPromiseWithIndexVoid.GetOrCreate(passThroughs, pendingCount, minDepth);
-            return new Promise<int>(promise, promise.Id, minDepth);
+                int index = -1;
+                do
+                {
+                    var p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (!Internal.TryPrepareForRace(p, ref passThroughs, ++index, ref minDepth))
+                    {
+                        // Validate and release remaining elements.
+                        while (promises.MoveNext())
+                        {
+                            p = promises.Current;
+                            ValidateElement(p, "promises", 1);
+                            Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, false);
+                            minDepth = Math.Min(minDepth, p.Depth);
+                        }
+                        // Repool any created passthroughs.
+                        foreach (var passthrough in passThroughs)
+                        {
+                            passthrough.Dispose();
+                        }
+                        return Internal.CreateResolved(index, minDepth);
+                    }
+                    ++pendingCount;
+                } while (promises.MoveNext());
+
+                var promise = Internal.PromiseRefBase.FirstPromiseWithIndexVoid.GetOrCreate(passThroughs, pendingCount, minDepth);
+                return new Promise<int>(promise, promise.Id, minDepth);
+            }
+            finally
+            {
+                promises.Dispose();
+            }
         }
 
         [Obsolete("Prefer Promise<T>.First()"), EditorBrowsable(EditorBrowsableState.Never)]
@@ -746,18 +778,25 @@ namespace Proto.Promises
         {
             ValidateArgument(promiseFuncs, "promiseFuncs", 2);
 
-            if (!promiseFuncs.MoveNext())
+            try
             {
-                return Internal.CreateResolved(0);
-            }
+                if (!promiseFuncs.MoveNext())
+                {
+                    return Internal.CreateResolved(0);
+                }
 
-            // Invoke funcs and normalize the progress.
-            var promise = new Promise(null, 0, Internal.NegativeOneDepth);
-            do
+                // Invoke funcs and normalize the progress.
+                var promise = new Promise(null, 0, Internal.NegativeOneDepth);
+                do
+                {
+                    promise = promise.Then(promiseFuncs.Current, cancelationToken);
+                } while (promiseFuncs.MoveNext());
+                return promise;
+            }
+            finally
             {
-                promise = promise.Then(promiseFuncs.Current, cancelationToken);
-            } while (promiseFuncs.MoveNext());
-            return promise;
+                promiseFuncs.Dispose();
+            }
         }
 
         /// <summary>
@@ -866,26 +905,34 @@ namespace Proto.Promises
         public static Promise All<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, "promises", 1);
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-            ulong completedProgress = 0;
-            ulong totalProgress = 0;
-            ushort maxDepth = 0;
 
-            int index = -1;
-            while (promises.MoveNext())
+            try
             {
-                var p = promises.Current;
-                ValidateElement(p, "promises", 1);
-                Internal.PrepareForMerge(p, ref passThroughs, ++index, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
-            }
+                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+                int pendingCount = 0;
+                ulong completedProgress = 0;
+                ulong totalProgress = 0;
+                ushort maxDepth = 0;
 
-            if (pendingCount == 0)
-            {
-                return Internal.CreateResolved(maxDepth);
+                int index = -1;
+                while (promises.MoveNext())
+                {
+                    var p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    Internal.PrepareForMerge(p, ref passThroughs, ++index, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+                }
+
+                if (pendingCount == 0)
+                {
+                    return Internal.CreateResolved(maxDepth);
+                }
+                var promise = Internal.PromiseRefBase.MergePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, completedProgress, totalProgress, maxDepth);
+                return new Promise(promise, promise.Id, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, completedProgress, totalProgress, maxDepth);
-            return new Promise(promise, promise.Id, maxDepth);
+            finally
+            {
+                promises.Dispose();
+            }
         }
 
         [Obsolete("Prefer Promise<T>.All()"), EditorBrowsable(EditorBrowsableState.Never)]
@@ -1660,7 +1707,7 @@ namespace Proto.Promises
         }
 
         [Obsolete("Prefer Promise<T>.New()"), EditorBrowsable(EditorBrowsableState.Never)]
-		public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
+        public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
         {
             return Promise<T>.New(resolver, synchronizationOption);
         }
@@ -1956,7 +2003,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that is already resolved.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-		public static Promise Resolved()
+        public static Promise Resolved()
         {
 #if PROMISE_DEBUG
             return Internal.CreateResolved(0);
@@ -1969,7 +2016,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that is already resolved with <paramref name="value"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-		public static Promise<T> Resolved<T>(T value)
+        public static Promise<T> Resolved<T>(T value)
         {
 #if PROMISE_DEBUG
             return Internal.CreateResolved(value, 0);

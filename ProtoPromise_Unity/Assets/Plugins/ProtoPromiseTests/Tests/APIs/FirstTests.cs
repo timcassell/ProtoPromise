@@ -784,7 +784,7 @@ namespace ProtoPromiseTests.APIs
             Assert.AreEqual(winIndex, resultIndex);
         }
 
-        private static void Swap<T>(ref Promise<T>.Deferred deferred1, ref Promise<T>.Deferred deferred2)
+        private static void Swap(ref Promise<int>.Deferred deferred1, ref Promise<int>.Deferred deferred2)
         {
             var temp = deferred1;
             deferred1 = deferred2;
