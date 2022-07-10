@@ -8,6 +8,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
@@ -17,7 +18,7 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal static class DelegateWrapper
             {
@@ -293,7 +294,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateResolvePassthrough : IAction, IFunc<Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise
             {
@@ -348,7 +349,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateResolvePassthrough<TResult> : IFunc<TResult, TResult>, IFunc<TResult, Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise
             {
@@ -394,7 +395,7 @@ namespace Proto.Promises
             #region Regular Delegates
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateVoidVoid : IAction, IFunc<Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
             {
@@ -466,7 +467,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateVoidResult<TResult> : IFunc<TResult>, IFunc<Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
             {
@@ -537,7 +538,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateArgVoid<TArg> : IAction<TArg>, IFunc<TArg, Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
             {
@@ -620,7 +621,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateArgResult<TArg, TResult> : IFunc<TArg, TResult>, IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
             {
@@ -702,7 +703,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegatePromiseVoidVoid : IFunc<Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
             {
@@ -743,7 +744,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegatePromiseVoidResult<TResult> : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
             {
@@ -784,7 +785,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegatePromiseArgVoid<TArg> : IFunc<TArg, Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
             {
@@ -834,7 +835,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegatePromiseArgResult<TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
             {
@@ -885,7 +886,7 @@ namespace Proto.Promises
 
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinueVoidVoid : IAction, IDelegateContinue
             {
@@ -921,7 +922,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinueVoidResult<TResult> : IFunc<TResult>, IDelegateContinue
             {
@@ -957,7 +958,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinueArgVoid<TArg> : IAction<TArg>, IDelegateContinue
             {
@@ -993,7 +994,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinueArgResult<TArg, TResult> : IFunc<TArg, TResult>, IDelegateContinue
             {
@@ -1029,7 +1030,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinuePromiseVoidVoid : IFunc<Promise>, IDelegateContinuePromise
             {
@@ -1069,7 +1070,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinuePromiseVoidResult<TResult> : IFunc<Promise<TResult>>, IDelegateContinuePromise
             {
@@ -1109,7 +1110,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinuePromiseArgVoid<TArg> : IFunc<TArg, Promise>, IDelegateContinuePromise
             {
@@ -1149,7 +1150,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinuePromiseArgResult<TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateContinuePromise
             {
@@ -1189,7 +1190,7 @@ namespace Proto.Promises
             }
 
 //#if !PROTO_PROMISE_DEVELOPER_MODE
-//            [System.Diagnostics.DebuggerNonUserCode]
+//            [DebuggerNonUserCode, StackTraceHidden]
 //#endif
 //            internal struct DelegateContinue<TArg, TResult> : IDelegateContinue
 //            {
@@ -1270,7 +1271,7 @@ namespace Proto.Promises
 //            }
 
 //#if !PROTO_PROMISE_DEVELOPER_MODE
-//            [System.Diagnostics.DebuggerNonUserCode]
+//            [DebuggerNonUserCode, StackTraceHidden]
 //#endif
 //            internal struct DelegateContinuePromise<TArg, TResult> : IDelegateContinuePromise
 //            {
@@ -1352,7 +1353,7 @@ namespace Proto.Promises
 
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateFinally : IAction
             {
@@ -1378,7 +1379,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCancel : IAction
             {
@@ -1398,7 +1399,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateProgress : IProgress<float>
             {
@@ -1421,7 +1422,7 @@ namespace Proto.Promises
             #region Delegates with capture value
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCaptureVoidVoid<TCapture> : IAction, IFunc<Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
             {
@@ -1499,7 +1500,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCaptureVoidResult<TCapture, TResult> : IFunc<TResult>, IFunc<Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
             {
@@ -1576,7 +1577,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCaptureArgVoid<TCapture, TArg> : IAction<TArg>, IFunc<TArg, Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
             {
@@ -1665,7 +1666,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, TResult>, IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
             {
@@ -1753,7 +1754,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCapturePromiseVoidVoid<TCapture> : IFunc<Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
             {
@@ -1800,7 +1801,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCapturePromiseVoidResult<TCapture, TResult> : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
             {
@@ -1847,7 +1848,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCapturePromiseArgVoid<TCapture, TArg> : IFunc<TArg, Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
             {
@@ -1903,7 +1904,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCapturePromiseArgResult<TCapture, TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
             {
@@ -1960,7 +1961,7 @@ namespace Proto.Promises
 
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinueCaptureVoidVoid<TCapture> : IAction, IDelegateContinue
             {
@@ -2002,7 +2003,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinueCaptureVoidResult<TCapture, TResult> : IFunc<TResult>, IDelegateContinue
             {
@@ -2044,7 +2045,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinueCaptureArgVoid<TCapture, TArg> : IAction<TArg>, IDelegateContinue
             {
@@ -2086,7 +2087,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinueCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, TResult>, IDelegateContinue
             {
@@ -2128,7 +2129,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinuePromiseCaptureVoidVoid<TCapture> : IFunc<Promise>, IDelegateContinuePromise
             {
@@ -2174,7 +2175,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinuePromiseCaptureVoidResult<TCapture, TResult> : IFunc<Promise<TResult>>, IDelegateContinuePromise
             {
@@ -2220,7 +2221,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinuePromiseCaptureArgVoid<TCapture, TArg> : IFunc<TArg, Promise>, IDelegateContinuePromise
             {
@@ -2266,7 +2267,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateContinuePromiseCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateContinuePromise
             {
@@ -2312,7 +2313,7 @@ namespace Proto.Promises
             }
 
 //#if !PROTO_PROMISE_DEVELOPER_MODE
-//            [System.Diagnostics.DebuggerNonUserCode]
+//            [DebuggerNonUserCode, StackTraceHidden]
 //#endif
 //            internal struct DelegateContinueCapture<TCapture, TArg, TResult> : IDelegateContinue
 //            {
@@ -2399,7 +2400,7 @@ namespace Proto.Promises
 //            }
 
 //#if !PROTO_PROMISE_DEVELOPER_MODE
-//            [System.Diagnostics.DebuggerNonUserCode]
+//            [DebuggerNonUserCode, StackTraceHidden]
 //#endif
 //            internal struct DelegateContinuePromiseCapture<TCapture, TArg, TResult> : IDelegateContinuePromise
 //            {
@@ -2487,7 +2488,7 @@ namespace Proto.Promises
 
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCaptureFinally<TCapture> : IAction
             {
@@ -2519,7 +2520,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCaptureCancel<TCapture> : IAction
             {
@@ -2545,7 +2546,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal struct DelegateCaptureProgress<TCapture> : IProgress<float>
             {

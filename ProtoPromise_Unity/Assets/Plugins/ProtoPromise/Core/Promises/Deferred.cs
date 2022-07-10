@@ -16,6 +16,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
@@ -27,7 +28,7 @@ namespace Proto.Promises
         /// <para/>You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to resolve the attached <see cref="Promise"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public
 #if CSHARP_7_3_OR_NEWER
@@ -317,7 +318,7 @@ namespace Proto.Promises
         /// An instance of this is used to report progress and resolve, reject, or cancel the attached <see cref="Promise"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public
 #if CSHARP_7_3_OR_NEWER
@@ -619,7 +620,7 @@ namespace Proto.Promises
         /// An instance of this is used to report progress and resolve, reject, or cancel the attached <see cref="Promise"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         public
 #if CSHARP_7_3_OR_NEWER

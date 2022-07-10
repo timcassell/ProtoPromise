@@ -12,13 +12,15 @@
 using System.Threading.Tasks;
 #endif
 
+using System.Diagnostics;
+
 namespace Proto.Promises
 {
     /// <summary>
     /// Helpful extensions to convert promises to and from other asynchronous types.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [System.Diagnostics.DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public static partial class Extensions
     {

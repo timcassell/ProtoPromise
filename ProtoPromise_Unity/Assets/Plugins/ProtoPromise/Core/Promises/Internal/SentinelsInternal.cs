@@ -15,6 +15,7 @@
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -25,7 +26,7 @@ namespace Proto.Promises
         internal abstract partial class PromiseRefBase : HandleablePromiseBase, ITraceable
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal sealed partial class PromiseCompletionSentinel : HandleablePromiseBase
             {
@@ -41,7 +42,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal sealed partial class PromiseForgetSentinel : HandleablePromiseBase
             {
@@ -58,7 +59,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal sealed partial class InvalidAwaitSentinel : PromiseRefBase
             {

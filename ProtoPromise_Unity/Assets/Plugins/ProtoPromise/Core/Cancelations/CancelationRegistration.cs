@@ -5,6 +5,7 @@
 #endif
 
 using System;
+using System.Diagnostics;
 
 namespace Proto.Promises
 {
@@ -12,7 +13,7 @@ namespace Proto.Promises
     /// Represents a callback delegate that has been registered with a <see cref="CancelationToken"/>.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [System.Diagnostics.DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public
 #if CSHARP_7_3_OR_NEWER

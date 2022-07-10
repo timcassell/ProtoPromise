@@ -23,7 +23,7 @@ namespace Proto.Promises
     internal static partial class Internal
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal abstract class RejectContainer : ITraceable
         {
@@ -88,7 +88,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal sealed class RejectionContainer : RejectContainer, IRejectValueContainer, IRejectionToContainer, ICantHandleException
         {
@@ -166,7 +166,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal sealed class RejectionContainerException : RejectContainer, IRejectValueContainer, IRejectionToContainer, ICantHandleException
         {
@@ -268,7 +268,7 @@ namespace Proto.Promises
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal sealed class RethrownRejectionContainer : RejectContainer, IRejectValueContainer, IRejectionToContainer, ICantHandleException
         {

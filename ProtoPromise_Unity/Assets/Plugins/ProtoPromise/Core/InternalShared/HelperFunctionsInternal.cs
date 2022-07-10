@@ -25,7 +25,7 @@ namespace Proto.Promises
     /// Members of this type are meant for INTERNAL USE ONLY! Do not use in user code! Use the documented public APIs.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
     internal static partial class Internal
     {
@@ -71,7 +71,7 @@ namespace Proto.Promises
         // This is used to facilitate stack unwinding in PromiseMultiAwaits to prevent StackOverflowExceptions in the case of very long promise chains.
         // Also used for synchronous progress invoke to prevent deadlocks.
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         private partial struct StackUnwindHelper
         {

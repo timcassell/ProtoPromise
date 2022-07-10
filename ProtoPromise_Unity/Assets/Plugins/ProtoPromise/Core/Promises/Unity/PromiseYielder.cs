@@ -9,6 +9,7 @@
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System.Collections;
+using System.Diagnostics;
 using UnityEngine;
 
 namespace Proto.Promises
@@ -17,7 +18,7 @@ namespace Proto.Promises
     /// Yielder used to wait for a yield instruction to complete in the form of a Promise, using Unity's coroutines.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [System.Diagnostics.DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public sealed class PromiseYielder : MonoBehaviour
     {
@@ -41,7 +42,7 @@ namespace Proto.Promises
         {
             if (_instance != this)
             {
-                Debug.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
+                UnityEngine.Debug.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
                 Destroy(this);
                 return;
             }
@@ -57,14 +58,14 @@ namespace Proto.Promises
             {
                 if (_instance == this)
                 {
-                    Debug.LogWarning("PromiseYielder destroyed! Any pending PromiseYielder.WaitFor promises will not be resolved!");
+                    UnityEngine.Debug.LogWarning("PromiseYielder destroyed! Any pending PromiseYielder.WaitFor promises will not be resolved!");
                     _instance = null;
                 }
             }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-        [System.Diagnostics.DebuggerNonUserCode]
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
         private class Routine : Internal.HandleablePromiseBase, IEnumerator, Internal.ILinked<Routine>
         {

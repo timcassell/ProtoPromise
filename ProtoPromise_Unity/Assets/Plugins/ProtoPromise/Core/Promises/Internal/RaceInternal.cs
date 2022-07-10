@@ -13,6 +13,7 @@
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -23,7 +24,7 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal sealed partial class RacePromise<TResult> : MultiHandleablePromiseBase<TResult>
             {

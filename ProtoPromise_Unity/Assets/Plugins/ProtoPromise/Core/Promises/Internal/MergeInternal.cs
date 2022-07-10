@@ -16,6 +16,7 @@
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 
 namespace Proto.Promises
@@ -25,7 +26,7 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
@@ -41,7 +42,7 @@ namespace Proto.Promises
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
-            [System.Diagnostics.DebuggerNonUserCode]
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal partial class MergePromise<TResult> : MultiHandleablePromiseBase<TResult>
             {
