@@ -26,9 +26,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class RacePromise<TResult> : MultiHandleablePromiseBase<TResult>
+            internal partial class RacePromise<TResult> : MultiHandleablePromiseBase<TResult>
             {
-                private RacePromise() { }
+                protected RacePromise() { }
 
                 protected override void MaybeDispose()
                 {
@@ -136,6 +136,471 @@ namespace Proto.Promises
                 }
             }
 #endif
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed partial class RacePromiseWithIndexVoid : RacePromise<int>
+            {
+                private RacePromiseWithIndexVoid() { }
+
+                protected override void MaybeDispose()
+                {
+                    if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                new internal static RacePromiseWithIndexVoid GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                {
+                    var promise = ObjectPool.TryTake<RacePromiseWithIndexVoid>()
+                        ?? new RacePromiseWithIndexVoid();
+
+                    promise._waitCount = pendingAwaits;
+                    unchecked
+                    {
+                        promise._retainCounter = pendingAwaits + 1;
+                    }
+                    promise.Reset(depth);
+
+                    while (promisePassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = promisePassThroughs.Pop();
+#if PROMISE_DEBUG
+                        lock (promise._previousPromises)
+                        {
+                            promise._previousPromises.Push(passThrough.Owner);
+                        }
+#endif
+                        passThrough.SetTargetAndAddToOwner(promise);
+                        if (promise._rejectContainer != null)
+                        {
+                            // This was completed potentially before all passthroughs were hooked up. Release all remaining passthroughs.
+                            int releaseCount = 0;
+                            while (promisePassThroughs.IsNotEmpty)
+                            {
+                                var p = promisePassThroughs.Pop();
+                                p.Owner.SuppressRejection = true;
+                                p.Owner.MaybeMarkAwaitedAndDispose(p.Id);
+                                p.Dispose();
+                                ++releaseCount;
+                            }
+                            if (releaseCount != 0 && InterlockedAddWithOverflowCheck(ref promise._retainCounter, -releaseCount, releaseCount - 1) == 0)
+                            {
+                                promise.Dispose();
+                            }
+                        }
+                    }
+
+                    return promise;
+                }
+
+                protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
+                {
+                    var handler = passThrough.Owner;
+                    nextHandler = null;
+                    var state = handler.State;
+                    if (state != Promise.State.Resolved) // Rejected/Canceled
+                    {
+                        handler.SuppressRejection = true;
+                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
+                            && Interlocked.CompareExchange(ref _rejectContainer, handler._rejectContainer, null) == null)
+                        {
+                            State = state;
+                            nextHandler = TakeOrHandleNextWaiter();
+                        }
+                    }
+                    else // Resolved
+                    {
+                        if (Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
+                        {
+                            SetResult(passThrough.Index);
+                            nextHandler = TakeOrHandleNextWaiter();
+                        }
+                        InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
+                    }
+                    MaybeDispose();
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed partial class RacePromiseWithIndex<TResult> : RacePromise<ValueTuple<int, TResult>>
+            {
+                private RacePromiseWithIndex() { }
+
+                protected override void MaybeDispose()
+                {
+                    if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                new internal static RacePromiseWithIndex<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                {
+                    var promise = ObjectPool.TryTake<RacePromiseWithIndex<TResult>>()
+                        ?? new RacePromiseWithIndex<TResult>();
+
+                    promise._waitCount = pendingAwaits;
+                    unchecked
+                    {
+                        promise._retainCounter = pendingAwaits + 1;
+                    }
+                    promise.Reset(depth);
+
+                    while (promisePassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = promisePassThroughs.Pop();
+#if PROMISE_DEBUG
+                        lock (promise._previousPromises)
+                        {
+                            promise._previousPromises.Push(passThrough.Owner);
+                        }
+#endif
+                        passThrough.SetTargetAndAddToOwner(promise);
+                        if (promise._rejectContainer != null)
+                        {
+                            // This was completed potentially before all passthroughs were hooked up. Release all remaining passthroughs.
+                            int releaseCount = 0;
+                            while (promisePassThroughs.IsNotEmpty)
+                            {
+                                var p = promisePassThroughs.Pop();
+                                p.Owner.SuppressRejection = true;
+                                p.Owner.MaybeMarkAwaitedAndDispose(p.Id);
+                                p.Dispose();
+                                ++releaseCount;
+                            }
+                            if (releaseCount != 0 && InterlockedAddWithOverflowCheck(ref promise._retainCounter, -releaseCount, releaseCount - 1) == 0)
+                            {
+                                promise.Dispose();
+                            }
+                        }
+                    }
+
+                    return promise;
+                }
+
+                protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
+                {
+                    var handler = passThrough.Owner;
+                    nextHandler = null;
+                    var state = handler.State;
+                    if (state != Promise.State.Resolved) // Rejected/Canceled
+                    {
+                        handler.SuppressRejection = true;
+                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
+                            && Interlocked.CompareExchange(ref _rejectContainer, handler._rejectContainer, null) == null)
+                        {
+                            State = state;
+                            nextHandler = TakeOrHandleNextWaiter();
+                        }
+                    }
+                    else // Resolved
+                    {
+                        if (Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
+                        {
+                            SetResult(new ValueTuple<int, TResult>(passThrough.Index, handler.GetResult<TResult>()));
+                            nextHandler = TakeOrHandleNextWaiter();
+                        }
+                        InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
+                    }
+                    MaybeDispose();
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal partial class FirstPromise<TResult> : RacePromise<TResult>
+            {
+                protected FirstPromise() { }
+
+                protected override void MaybeDispose()
+                {
+                    if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                new internal static FirstPromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                {
+                    var promise = ObjectPool.TryTake<FirstPromise<TResult>>()
+                        ?? new FirstPromise<TResult>();
+
+                    promise._waitCount = pendingAwaits;
+                    unchecked
+                    {
+                        promise._retainCounter = pendingAwaits + 1;
+                    }
+                    promise.Reset(depth);
+
+                    while (promisePassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = promisePassThroughs.Pop();
+#if PROMISE_DEBUG
+                        lock (promise._previousPromises)
+                        {
+                            promise._previousPromises.Push(passThrough.Owner);
+                        }
+#endif
+                        passThrough.SetTargetAndAddToOwner(promise);
+                        if (promise._rejectContainer != null)
+                        {
+                            // This was completed potentially before all passthroughs were hooked up. Release all remaining passthroughs.
+                            int releaseCount = 0;
+                            while (promisePassThroughs.IsNotEmpty)
+                            {
+                                var p = promisePassThroughs.Pop();
+                                p.Owner.SuppressRejection = true;
+                                p.Owner.MaybeMarkAwaitedAndDispose(p.Id);
+                                p.Dispose();
+                                ++releaseCount;
+                            }
+                            if (releaseCount != 0 && InterlockedAddWithOverflowCheck(ref promise._retainCounter, -releaseCount, releaseCount - 1) == 0)
+                            {
+                                promise.Dispose();
+                            }
+                        }
+                    }
+
+                    return promise;
+                }
+
+                protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
+                {
+                    var handler = passThrough.Owner;
+                    nextHandler = null;
+                    var state = handler.State;
+                    if (state != Promise.State.Resolved) // Rejected/Canceled
+                    {
+                        handler.SuppressRejection = true;
+                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
+                            && Interlocked.CompareExchange(ref _rejectContainer, handler._rejectContainer, null) == null)
+                        {
+                            State = state;
+                            nextHandler = TakeOrHandleNextWaiter();
+                        }
+                    }
+                    else // Resolved
+                    {
+                        if (Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
+                        {
+                            SetResult(handler.GetResult<TResult>());
+                            nextHandler = TakeOrHandleNextWaiter();
+                        }
+                        InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
+                    }
+                    MaybeDispose();
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed partial class FirstPromiseWithIndexVoid : FirstPromise<int>
+            {
+                private FirstPromiseWithIndexVoid() { }
+
+                protected override void MaybeDispose()
+                {
+                    if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                new internal static FirstPromiseWithIndexVoid GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                {
+                    var promise = ObjectPool.TryTake<FirstPromiseWithIndexVoid>()
+                        ?? new FirstPromiseWithIndexVoid();
+
+                    promise._waitCount = pendingAwaits;
+                    unchecked
+                    {
+                        promise._retainCounter = pendingAwaits + 1;
+                    }
+                    promise.Reset(depth);
+
+                    while (promisePassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = promisePassThroughs.Pop();
+#if PROMISE_DEBUG
+                        lock (promise._previousPromises)
+                        {
+                            promise._previousPromises.Push(passThrough.Owner);
+                        }
+#endif
+                        passThrough.SetTargetAndAddToOwner(promise);
+                        if (promise._rejectContainer != null)
+                        {
+                            // This was completed potentially before all passthroughs were hooked up. Release all remaining passthroughs.
+                            int releaseCount = 0;
+                            while (promisePassThroughs.IsNotEmpty)
+                            {
+                                var p = promisePassThroughs.Pop();
+                                p.Owner.SuppressRejection = true;
+                                p.Owner.MaybeMarkAwaitedAndDispose(p.Id);
+                                p.Dispose();
+                                ++releaseCount;
+                            }
+                            if (releaseCount != 0 && InterlockedAddWithOverflowCheck(ref promise._retainCounter, -releaseCount, releaseCount - 1) == 0)
+                            {
+                                promise.Dispose();
+                            }
+                        }
+                    }
+
+                    return promise;
+                }
+
+                protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
+                {
+                    var handler = passThrough.Owner;
+                    nextHandler = null;
+                    var state = handler.State;
+                    if (state != Promise.State.Resolved) // Rejected/Canceled
+                    {
+                        handler.SuppressRejection = true;
+                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
+                            && Interlocked.CompareExchange(ref _rejectContainer, handler._rejectContainer, null) == null)
+                        {
+                            State = state;
+                            nextHandler = TakeOrHandleNextWaiter();
+                        }
+                    }
+                    else // Resolved
+                    {
+                        if (Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
+                        {
+                            SetResult(passThrough.Index);
+                            nextHandler = TakeOrHandleNextWaiter();
+                        }
+                        InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
+                    }
+                    MaybeDispose();
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed partial class FirstPromiseWithIndex<TResult> : FirstPromise<ValueTuple<int, TResult>>
+            {
+                private FirstPromiseWithIndex() { }
+
+                protected override void MaybeDispose()
+                {
+                    if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                new internal static FirstPromiseWithIndex<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                {
+                    var promise = ObjectPool.TryTake<FirstPromiseWithIndex<TResult>>()
+                        ?? new FirstPromiseWithIndex<TResult>();
+
+                    promise._waitCount = pendingAwaits;
+                    unchecked
+                    {
+                        promise._retainCounter = pendingAwaits + 1;
+                    }
+                    promise.Reset(depth);
+
+                    while (promisePassThroughs.IsNotEmpty)
+                    {
+                        var passThrough = promisePassThroughs.Pop();
+#if PROMISE_DEBUG
+                        lock (promise._previousPromises)
+                        {
+                            promise._previousPromises.Push(passThrough.Owner);
+                        }
+#endif
+                        passThrough.SetTargetAndAddToOwner(promise);
+                        if (promise._rejectContainer != null)
+                        {
+                            // This was completed potentially before all passthroughs were hooked up. Release all remaining passthroughs.
+                            int releaseCount = 0;
+                            while (promisePassThroughs.IsNotEmpty)
+                            {
+                                var p = promisePassThroughs.Pop();
+                                p.Owner.SuppressRejection = true;
+                                p.Owner.MaybeMarkAwaitedAndDispose(p.Id);
+                                p.Dispose();
+                                ++releaseCount;
+                            }
+                            if (releaseCount != 0 && InterlockedAddWithOverflowCheck(ref promise._retainCounter, -releaseCount, releaseCount - 1) == 0)
+                            {
+                                promise.Dispose();
+                            }
+                        }
+                    }
+
+                    return promise;
+                }
+
+                protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
+                {
+                    var handler = passThrough.Owner;
+                    nextHandler = null;
+                    var state = handler.State;
+                    if (state != Promise.State.Resolved) // Rejected/Canceled
+                    {
+                        handler.SuppressRejection = true;
+                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
+                            && Interlocked.CompareExchange(ref _rejectContainer, handler._rejectContainer, null) == null)
+                        {
+                            State = state;
+                            nextHandler = TakeOrHandleNextWaiter();
+                        }
+                    }
+                    else // Resolved
+                    {
+                        if (Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
+                        {
+                            SetResult(new ValueTuple<int, TResult>(passThrough.Index, handler.GetResult<TResult>()));
+                            nextHandler = TakeOrHandleNextWaiter();
+                        }
+                        InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
+                    }
+                    MaybeDispose();
+                }
+            }
         }
     }
 }

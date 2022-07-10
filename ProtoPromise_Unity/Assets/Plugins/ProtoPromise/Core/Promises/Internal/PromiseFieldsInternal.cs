@@ -405,7 +405,15 @@ namespace Proto.Promises
             {
             }
 
-            partial class FirstPromise<TResult> : MultiHandleablePromiseBase<TResult>
+            partial class RacePromiseWithIndex<TResult> : RacePromise<ValueTuple<int, TResult>>
+            {
+            }
+
+            partial class FirstPromise<TResult> : RacePromise<TResult>
+            {
+            }
+
+            partial class FirstPromiseWithIndex<TResult> : FirstPromise<ValueTuple<int, TResult>>
             {
             }
 
