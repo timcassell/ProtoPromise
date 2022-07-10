@@ -1,8 +1,15 @@
-﻿For each new release, update the version in both `ProtoPromise.csproj` and `package.json`.
+﻿For each new release...
+
+
+VERY IMPORTANT - Before doing any of this, run unit tests locally on the IL2CPP player (standalone) to make sure no crashes occur and all tests pass. IL2CPP can be quite finnicky, and unfortunately, the tests cannot be run in CI.
+Also test the demo scene in Unity 5.5 to make sure it works (no need to run tests as the test runner didn't exist back then).
+
+
+Update the version in both `ProtoPromise.csproj` and `package.json`.
 
 To create the UnityPackage for releases:
 
-1. Edit `README.md` to remove the `## Package Installation` and `## Latest Updates` sections, then convert it to `README.pdf` (can use https://www.markdowntopdf.com/) and place it in the `ProtoPromise_Unity\Assets\Plugins\ProtoPromise` directory (discard the changes to `README.md` before git commit).
+1. Edit `README.md` to remove the `## Package Installation` and `## Latest Updates` sections, then convert it to `README.pdf` and place it in the `ProtoPromise_Unity\Assets\Plugins\ProtoPromise` directory (discard the changes to `README.md` before git commit).
 2. Repeat step 1 for `ReleaseNotes.md`.
 3. In the Unity editor, right-click the `ProtoPromise` folder and click `Export Package...`, uncheck `Include dependencies`, include everything, then click `Export...` and name the exported file `ProtoPromise.unitypackage`.
 4. Upload `ProtoPromise.unitypackage` with the release on GitHub.
@@ -13,3 +20,11 @@ Unity version may need to be updated to use the earliest version that the Asset 
 
 
 By default, ProtoPromise types are marked with the `DebuggerNonUserCodeAttribute`, making it impossible to step into the library code with Visual Studio's debugger. To disable this (or rather, to enable debugging), define the compiler symbol `PROTO_PROMISE_DEVELOPER_MODE` in Unity, or change `<DeveloperMode>` to `true` in the non-unity csproj.
+
+
+To convert markdown to pdf:
+
+1. grip README.md --export README.html
+2. Use browser to print html to pdf
+3. Merge the pages to a single page (can use an online tool).
+4. Crop the outline (including the title) that grip created.

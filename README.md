@@ -16,6 +16,7 @@ Robust and efficient library for management of asynchronous operations.
 - .Then API and async/await
 - Easily switch to foreground or background context
 - Combine async operations
+- Circular await detection
 - CLS compliant
 
 This library was built to work in all C#/.Net ecosystems, including Unity, Mono, .Net Framework, .Net Core, UI frameworks, and AOT compilation. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.
@@ -26,13 +27,17 @@ This library took inspiration from [ES6 Promises](https://developer.mozilla.org/
 
 ## Latest Updates
 
-## v 2.1.0 - June 19, 2022
+## v 2.2.0 - August 6, 2022
 
-- Added `AsyncLocal<T>` support in `async Promise` functions.
-- Added `ValueTask(<T>)` interoperability.
-- Added `System.Threading.CancellationToken` interoperability.
-- 2x - 3x performance improvement for promises and cancelation tokens.
-- Reduced memory consumption of pending promises.
+- Added `Promise(<T>).AwaitWithProgress(maxProgress)` API to use current progress instead of passing in minProgress.
+- Added `Promise(<T>).{RaceWithIndex, FirstWithIndex}` APIs to be able to tell which promise won the race.
+- Added `Promise(<T>).WaitAsync(CancelationToken)` APIs, and added optional `CancelationToken` arguments to existing `WaitAsync` APIs.
+- Added optional `bool forceAsync` arguments to existing `WaitAsync` and other APIs that allow changing context.
+- Fixed `CancelationToken` callbacks not being invoked after they are registered after the original `System.Threading.CancellationTokenSource` has been reset (.Net 6.0+).
+- Fixed a deadlock in `PromiseSynchronizationContext.Send` if the callback throws an exception. The exception is rethrown in .Net 4.5+.
+- Fixed `WaitAsync` and `Progress` if null `SynchronizationContext` is passed in.
+- Fixed compile errors in Unity 5.
+- Slightly increased performance and decreased memory.
 
 See [Release Notes](ReleaseNotes.md) for the full changelog.
 
@@ -504,6 +509,18 @@ async Promise Func()
 }
 ```
 
+or
+
+```cs
+async Promise Func()
+{
+    await Download("google.com").AwaitWithProgress(0.25f);      // <---- This will report 0.0f - 0.25f
+    await WaitForSeconds(1f).AwaitWithProgress(0.5f);           // <---- This will report 0.25f - 0.5f
+    await Download("bing.com").AwaitWithProgress(0.75f);        // <---- This will report 0.5f - 0.75f
+    await WaitForSeconds(1f).AwaitWithProgress(1f);             // <---- This will report 0.75f - 1.0f
+}
+```
+
 ## Combining Multiple Async Operations
 
 ### All Parallel
@@ -633,19 +650,25 @@ You can check whether the token is already canceled:
 public IEnumerator FuncEnumerator(CancelationToken token)
 {
     bool retained = token.TryRetain();
-    while (!token.IsCancelationRequested)
+    try
     {
-        Console.Log("Doing something");
-        if (DoSomething())
+        while (!token.IsCancelationRequested)
         {
-            yield break;
+            Console.Log("Doing something");
+            if (DoSomething())
+            {
+                yield break;
+            }
+            yield return null;
         }
-        yield return null;
+        Console.Log("token was canceled");
     }
-    Console.Log("token was canceled");
-    if (retained)
+    finally
     {
-        token.Release();
+        if (retained)
+        {
+            token.Release();
+        }
     }
 }
 ```
@@ -756,7 +779,7 @@ Normally, an `Exception` thrown in an `onResolved` or `onRejected` callback will
 
 ### Error Retries and Async Recursion
 
-What I especially love above this system is you can implement retries through a technique I call "Asynchronous Recursion".
+What I especially love above this system is you can implement retries through asynchronous recursion.
 
 ```cs
 public Promise<string> Download(string url, int maxRetries = 0)
@@ -797,7 +820,7 @@ public async Promise<string> Download(string url, int maxRetries = 0)
 }
 ```
 
-Async recursion is just as powerful as regular recursion, but it is also just as dangerous, if not more. If you mess up on regular recursion, your program will immediately crash from a `StackOverflowException`. Async recursion with this library will never crash from a stack overflow due to the iterative implementation, however if you don't do it right, it will eventually crash from an `OutOfMemoryException` due to each call waiting for the next and creating a new promise each time, consuming your heap space.
+Async recursion is just as powerful as regular recursion, but it is also just as dangerous. If you mess up on regular recursion, your program will immediately crash from a `StackOverflowException`. You may prevent stack overflows with async recursion by using a [context switching API](#switching-execution-context) with the `forceAsync` flag set to true. However, you should be aware that if your async recursion continues forever, your program will eventually crash from an `OutOfMemoryException` due to each call waiting for the next and creating a new promise each time, consuming your heap space.
 Because promises can remain pending for an indeterminate amount of time, this error can potentially take a long time to show itself and be difficult to track down. So be very careful when implementing async recursion, and remember to always have a base case!
 
 Of course, async functions are powerful enough where this retry behavior can be done in a loop without blowing up the heap.
@@ -826,7 +849,7 @@ Retry:
 
 Most promises can only be awaited once, and if they are not awaited, they must be returned or forgotten (see [Forget](#forget)).
 You can preserve a promise so that it can be awaited multiple times via the `promise.Preserve()` API. When you are finished with the promise, you must call `promise.Forget()`.
-Callbacks added to a preserved promise which will be invoked in the order that they are added.
+Callbacks added to a preserved promise will be invoked in the order that they are added.
 
 Note: a preserved promise should not be returned from a public API, because the consumer could immediately call `Forget()` and invalidate the promise. Instead, you should use `promise.Duplicate()` to get a promise that will adopt its state, but can only be awaited once.
 
@@ -853,7 +876,7 @@ public Promise<string> Download(string url, int maxRetries = 0)
 }
 ```
 
-When the C# compiler sees a lamda expression that does not capture/close any variables, it will cache the delegate statically, so there is only one instance in the program. If the lambda only captures `this`,  it's not quite as bad as capturing local variables, as the compiler will generate a cached delegate in the class. This means there is one delegate per instance. We can reduce that to one delegate in the program by passing `this` as the capture value.
+When the C# compiler sees a lamda expression that does not capture/close any variables, it will cache the delegate statically, so there is only one instance in the program, and no extra memory will be allocated every time it's used.
 
 Note: Visual Studio will tell you what variables are captured/closed if you hover the `=>`. You can use that information to optimize your delegates. In C# 9 and later, you can use the `static` modifier on your lambdas so that the compiler will not let you accidentally capture variables the expensive way.
 

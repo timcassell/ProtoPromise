@@ -9,6 +9,7 @@ Robust and efficient library for management of asynchronous operations.
 - .Then API and async/await
 - Easily switch to foreground or background context
 - Combine async operations
+- Circular await detection
 - CLS compliant
 
 This library was built to work in all C#/.Net ecosystems, including Unity, Mono, .Net Framework, .Net Core, UI frameworks, and AOT compilation. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.
