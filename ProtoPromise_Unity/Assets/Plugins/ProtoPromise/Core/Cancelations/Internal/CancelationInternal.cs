@@ -306,7 +306,7 @@ namespace Proto.Promises
                         if (!ts_isLinkingToBclToken)
                         {
                             // Hook up the node instead of invoking since it might throw, and we need all registered callbacks to be invoked.
-                            var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable);
+                            var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable, !_linkedToBclToken);
                             int oldNodeId = node.NodeId;
                             _registeredCallbacksHead.InsertPrevious(node);
 
@@ -323,7 +323,7 @@ namespace Proto.Promises
 #endif
 
                     {
-                        var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable);
+                        var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable, !_linkedToBclToken);
                         int oldNodeId = node.NodeId;
                         _registeredCallbacksHead.InsertPrevious(node);
                         _locker.Exit();
@@ -599,13 +599,14 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
-                    TCancelable cancelable)
+                    TCancelable cancelable, bool shouldCheckForDisposed)
                 {
                     var del = ObjectPool.TryTake<CallbackNodeImpl<TCancelable>>()
                         ?? new CallbackNodeImpl<TCancelable>();
                     del._cancelable = cancelable;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    del._disposed = false;
+                    // If the CancelationRef was attached to a BCL token, it is possible this will not be disposed, so we won't check for it.
+                    del._disposed = !shouldCheckForDisposed;
 #endif
                     SetCreatedStacktrace(del, 2);
                     return del;
@@ -904,7 +905,7 @@ namespace Proto.Promises
                         _bclSource = new CancellationTokenSource();
                         CancelationConverter.AttachCancelationRef(_bclSource, this);
                         var del = new CancelDelegateToken<CancellationTokenSource>(_bclSource, source => source.Cancel(false));
-                        var node = CallbackNodeImpl<CancelDelegateToken<CancellationTokenSource>>.GetOrCreate(del);
+                        var node = CallbackNodeImpl<CancelDelegateToken<CancellationTokenSource>>.GetOrCreate(del, true);
                         _registeredCallbacksHead.InsertPrevious(node);
                     }
                     return _bclSource.Token;
