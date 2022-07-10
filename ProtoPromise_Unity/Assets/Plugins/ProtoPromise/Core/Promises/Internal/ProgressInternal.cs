@@ -208,12 +208,12 @@ namespace Proto.Promises
                 {
                     get { return (ushort) ((_value & WholeMask) >> DecimalBits); }
                 }
+#endif
 
                 internal double DecimalPart
                 {
                     get { return (double) (_value & DecimalMask) / DecimalMax; }
                 }
-#endif
 
                 [MethodImpl(InlineOption)]
                 internal static ushort GetNextDepth(ushort depth)
@@ -1056,7 +1056,9 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                     _previous = waiter;
 #endif
-                    _minProgress = minProgress;
+                    _minProgress = float.IsNaN(minProgress)
+                        ? (float) _smallFields._currentProgress.DecimalPart
+                        : minProgress;
                     _maxProgress = maxProgress;
                 }
 
