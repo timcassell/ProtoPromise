@@ -168,22 +168,36 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Mark this as awaited and schedule the next continuation to execute on the context of the provided option. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
+        /// Mark this as awaited and schedule the next continuation to execute on the context of the provided <paramref name="continuationOption"/>.
+        /// Returns a new <see cref="Promise{T}"/> that inherits the state of this, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled before the continuation is invoked.
+        /// If the <paramref name="cancelationToken"/> is canceled before this is complete, the cancelation will propagate on the context of the provided <paramref name="continuationOption"/>.
         /// </summary>
-        public Promise<T> WaitAsync(SynchronizationOption continuationOption)
+        public Promise<T> WaitAsync(SynchronizationOption continuationOption, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(1);
-            return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, (Internal.SynchronizationOption) continuationOption, null);
+            return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, (Internal.SynchronizationOption) continuationOption, null, cancelationToken);
         }
 
         /// <summary>
-        /// Mark this as awaited and schedule the next continuation to execute on <paramref name="continuationContext"/>. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
+        /// Mark this as awaited and schedule the next continuation to execute on <paramref name="continuationContext"/>.
+        /// Returns a new <see cref="Promise{T}"/> that inherits the state of this, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled before the continuation is invoked.
+        /// If the <paramref name="cancelationToken"/> is canceled before this is complete, the cancelation will propagate on the <paramref name="continuationContext"/>.
         /// <para/>If <paramref name="continuationContext"/> is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.
         /// </summary>
-        public Promise<T> WaitAsync(SynchronizationContext continuationContext)
+        public Promise<T> WaitAsync(SynchronizationContext continuationContext, CancelationToken cancelationToken = default(CancelationToken))
         {
             ValidateOperation(1);
-            return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, Internal.SynchronizationOption.Explicit, continuationContext);
+            return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, Internal.SynchronizationOption.Explicit, continuationContext, cancelationToken);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}"/> that inherits the state of this, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled before the continuation is invoked.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise<T> WaitAsync(CancelationToken cancelationToken)
+        {
+            ValidateOperation(1);
+            return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, cancelationToken);
         }
 
         /// <summary>

@@ -68,7 +68,7 @@ namespace Proto.Promises
 
                 private InvalidAwaitSentinel()
                 {
-                    _next = this; // Set _waiter to this so that CompareExchangeWaiter will always fail.
+                    _next = this; // Set _next to this so that CompareExchangeWaiter will always fail.
                     _smallFields = new SmallFields(-5); // Set an id that is unlikely to match (though this should never be used in a Promise struct).
                 }
 
@@ -80,7 +80,6 @@ namespace Proto.Promises
                 protected override void MaybeDispose() { throw new System.InvalidOperationException(); }
                 protected override void OnForget(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsCompleted(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsValid(short promiseId) { throw new System.InvalidOperationException(); }

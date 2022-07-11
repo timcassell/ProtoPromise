@@ -1,4 +1,10 @@
-﻿#pragma warning disable IDE0034 // Simplify 'default' expression
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CA1507 // Use nameof to express symbol names
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
