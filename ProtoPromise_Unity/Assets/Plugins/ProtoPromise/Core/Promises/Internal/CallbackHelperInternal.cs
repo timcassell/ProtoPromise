@@ -788,11 +788,15 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
+                            synchronizationContext = Promise.Config.BackgroundContext;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
                         {
+                            if (synchronizationContext == null)
+                            {
+                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
+                            }
                             var newRef = _this._ref == null
                                 ? PromiseConfigured<VoidResult>.GetOrCreateFromResolved(synchronizationContext, new VoidResult(), _this.Depth, cancelationToken)
                                 : _this._ref.GetConfigured(_this._id, synchronizationContext, _this.Depth, cancelationToken);
@@ -823,11 +827,15 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
+                            synchronizationContext = Promise.Config.BackgroundContext;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
                         {
+                            if (synchronizationContext == null)
+                            {
+                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
+                            }
                             var newRef = _this._ref == null
                                 ? PromiseConfigured<TResult>.GetOrCreateFromResolved(synchronizationContext, _this._result, _this.Depth, cancelationToken)
                                 : _this._ref.GetConfiguredT(_this._id, synchronizationContext, _this.Depth, cancelationToken);
@@ -1105,11 +1113,15 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
+                            synchronizationContext = Promise.Config.BackgroundContext;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
                         {
+                            if (synchronizationContext == null)
+                            {
+                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
+                            }
                             if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                             {
                                 if (_this._ref != null)
@@ -1197,11 +1209,15 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
+                            synchronizationContext = Promise.Config.BackgroundContext;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
                         {
+                            if (synchronizationContext == null)
+                            {
+                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
+                            }
                             if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                             {
                                 TResult result = GetResultFromResolved(_this);
