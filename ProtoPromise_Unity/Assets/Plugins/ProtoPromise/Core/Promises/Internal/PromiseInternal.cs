@@ -935,6 +935,12 @@ namespace Proto.Promises
 
                 private static PromiseConfigured<TResult> GetOrCreateBase(SynchronizationContext synchronizationContext, ushort depth, CancelationToken cancelationToken)
                 {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    if (synchronizationContext == null)
+                    {
+                        throw new InvalidOperationException("synchronizationContext cannot be null");
+                    }
+#endif
                     var promise = ObjectPool.TryTake<PromiseConfigured<TResult>>()
                         ?? new PromiseConfigured<TResult>();
                     promise.Reset(depth);

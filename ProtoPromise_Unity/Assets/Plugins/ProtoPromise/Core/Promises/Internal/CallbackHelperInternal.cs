@@ -788,7 +788,7 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext;
+                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
@@ -823,7 +823,7 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext;
+                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
@@ -1105,7 +1105,7 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext;
+                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
@@ -1197,7 +1197,7 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext;
+                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
