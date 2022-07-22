@@ -129,7 +129,7 @@ namespace Proto.Promises
         /// <summary>Returns a value indicating whether two <see cref="CancelationRegistration"/> values are equal.</summary>
         public static bool operator ==(CancelationRegistration lhs, CancelationRegistration rhs)
         {
-            return lhs._node == rhs._node & lhs._nodeId == rhs._nodeId & lhs._tokenId == rhs._tokenId;
+            return lhs._ref == rhs._ref & lhs._node == rhs._node & lhs._nodeId == rhs._nodeId & lhs._tokenId == rhs._tokenId;
         }
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationRegistration"/> values are not equal.</summary>
