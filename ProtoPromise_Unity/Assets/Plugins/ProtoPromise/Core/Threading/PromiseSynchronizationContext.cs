@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 
+#pragma warning disable CA1507 // Use nameof to express symbol names
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 namespace Proto.Promises.Threading
 {
     /// <summary>
@@ -18,6 +21,9 @@ namespace Proto.Promises.Threading
 #endif
         private sealed class SyncCallback : Internal.HandleablePromiseBase
         {
+#if !NET_LEGACY
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo _capturedInfo;
+#endif
             private SendOrPostCallback _callback;
             private object _state;
             private bool _needsPulse;
@@ -44,15 +50,52 @@ namespace Proto.Promises.Threading
 
                 lock (this) // Normally not safe to lock on `this`, but it's safe here because the class is private and a reference will never be used elsewhere.
                 {
-                    InvokeWithoutDispose();
-                    Monitor.Pulse(this);
+                    try
+                    {
+                        InvokeWithoutDispose();
+                    }
+#if !NET_LEGACY
+                    catch (Exception e)
+                    {
+                        _capturedInfo = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(e);
+                    }
+#endif
+                    finally
+                    {
+                        Monitor.Pulse(this);
+                    }
                 }
-                Dispose(); // Dispose after pulse in case this object is re-used.
             }
 
             private void InvokeWithoutDispose()
             {
                 _callback.Invoke(_state);
+            }
+
+            internal void Send(PromiseSynchronizationContext parent)
+            {
+#if !NET_LEGACY
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo capturedInfo;
+#endif
+                lock (this)
+                {
+                    parent._syncLocker.Enter();
+                    parent._syncQueue.Enqueue(this);
+                    parent._syncLocker.Exit();
+
+                    Monitor.Wait(this);
+#if !NET_LEGACY
+                    capturedInfo = _capturedInfo;
+#endif
+                }
+
+                Dispose(); // Dispose after invoke.
+#if !NET_LEGACY
+                if (capturedInfo != null)
+                {
+                    capturedInfo.Throw();
+                }
+#endif
             }
 
             private void InvokeAndDispose()
@@ -65,6 +108,9 @@ namespace Proto.Promises.Threading
 
             private void Dispose()
             {
+#if !NET_LEGACY
+                _capturedInfo = null;
+#endif
                 _callback = null;
                 _state = null;
                 Internal.ObjectPool.MaybeRepool(this);
@@ -125,15 +171,7 @@ namespace Proto.Promises.Threading
                 return;
             }
 
-            SyncCallback syncCallback = SyncCallback.GetOrCreate(d, state, true);
-            lock (syncCallback)
-            {
-                _syncLocker.Enter();
-                _syncQueue.Enqueue(syncCallback);
-                _syncLocker.Exit();
-
-                Monitor.Wait(syncCallback);
-            }
+            SyncCallback.GetOrCreate(d, state, true).Send(this);
         }
 
         /// <summary>
