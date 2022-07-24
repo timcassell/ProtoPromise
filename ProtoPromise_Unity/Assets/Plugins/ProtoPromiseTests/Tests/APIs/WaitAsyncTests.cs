@@ -15,15 +15,34 @@ namespace ProtoPromiseTests.APIs
 {
     public class WaitAsyncTests
     {
+        public enum ConfigureAwaitCancelType
+        {
+            NoToken,
+            WithToken_NoCancel,
+            AlreadyCanceled,
+            CancelFirst,
+            CancelSecond
+        }
+
+        const string rejectValue = "Fail";
+        Action<UnhandledException> currentHandler;
+
         [SetUp]
         public void Setup()
         {
             TestHelper.Setup();
+
+            // When a promise is canceled, the previous rejected promise is unhandled, so its rejection is sent to the UncaughtRejectionHandler.
+            // So we need to suppress that here and make sure it's correct.
+            currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
         }
 
         [TearDown]
         public void Teardown()
         {
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
+
             TestHelper.Cleanup();
         }
 
@@ -60,6 +79,16 @@ namespace ProtoPromiseTests.APIs
 
             CompleteType[] secondCompleteTypes = new CompleteType[] { CompleteType.Resolve }; // Just use a single value to reduce number of tests.
 
+            ConfigureAwaitCancelType[] configureAwaitCancelTypes = new ConfigureAwaitCancelType[]
+            {
+                ConfigureAwaitCancelType.NoToken,
+                ConfigureAwaitCancelType.WithToken_NoCancel,
+                ConfigureAwaitCancelType.AlreadyCanceled,
+                ConfigureAwaitCancelType.CancelFirst,
+                ConfigureAwaitCancelType.CancelSecond
+            };
+
+            foreach (ConfigureAwaitCancelType configureAwaitCancelType in configureAwaitCancelTypes)
             foreach (CompleteType firstCompleteType in completeTypes)
             foreach (CompleteType secondCompleteType in secondCompleteTypes)
             foreach (bool isFirstComplete in alreadyCompletes)
@@ -80,7 +109,7 @@ namespace ProtoPromiseTests.APIs
                     };
                 foreach (SynchronizationType secondReportType in secondReportTypes)
                 {
-                    yield return new TestCaseData(firstCompleteType, secondCompleteType, firstWaitType, secondWaitType, firstReportType, secondReportType, isFirstComplete, isSecondComplete);
+                    yield return new TestCaseData(firstCompleteType, secondCompleteType, firstWaitType, secondWaitType, firstReportType, secondReportType, configureAwaitCancelType, isFirstComplete, isSecondComplete);
                 }
             }
         }
@@ -144,7 +173,6 @@ namespace ProtoPromiseTests.APIs
             });
         }
 
-
         private static IEnumerable<TestCaseData> GetArgs_Finally()
         {
             return GetArgs_CancelFinally(new CompleteType[]
@@ -155,7 +183,7 @@ namespace ProtoPromiseTests.APIs
                 CompleteType.CancelFromToken
             });
         }
-        private readonly TimeSpan timeout = TimeSpan.FromSeconds(20);
+        private readonly TimeSpan timeout = TimeSpan.FromSeconds(2);
 
         // promise
         //     .Then(() => otherPromise.WaitAsync(SynchronizationOption))
@@ -177,20 +205,28 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType secondWaitType,
             SynchronizationType firstReportType,
             SynchronizationType secondReportType,
+            ConfigureAwaitCancelType configureAwaitCancelType,
             bool isFirstAlreadyComplete,
             bool isSecondAlreadyComplete)
         {
-            Thread foregroundThread = Thread.CurrentThread;
-            ThreadHelper threadHelper = new ThreadHelper();
+            var foregroundThread = Thread.CurrentThread;
+            var threadHelper = new ThreadHelper();
 
-            string rejectReason = "Fail";
+            var configureAwaitCancelationSource1 = CancelationSource.New();
+            var configureAwaitCancelationToken1 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource1.Token;
+            var configureAwaitCancelationSource2 = CancelationSource.New();
+            var configureAwaitCancelationToken2 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource2.Token;
 
             CancelationSource firstCancelationSource;
             Promise.Deferred firstDeferred;
             CancelationSource secondCancelationSource;
             Promise<int>.Deferred secondDeferred;
-            Promise firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectReason, out firstDeferred, out firstCancelationSource);
-            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource);
+            Promise firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectValue, out firstDeferred, out firstCancelationSource);
+            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectValue, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();
@@ -203,7 +239,7 @@ namespace ProtoPromiseTests.APIs
 
             Action onFirstCallback = () =>
             {
-                TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                TestHelper.AssertCallbackContext(firstWaitType, configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? firstWaitType : firstReportType, foregroundThread);
                 Interlocked.Increment(ref firstInvokeCounter);
             };
             Action onSecondCallback = () =>
@@ -224,12 +260,15 @@ namespace ProtoPromiseTests.APIs
                 return promise.ContinueWith(_ => { onSecondCallback(); return 2; });
             };
 
+            bool isFirstCancelExpected = configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled
+                || (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst && (!isFirstAlreadyComplete || firstWaitType != SynchronizationType.Synchronous));
+
             if (firstCompleteType == CompleteType.Resolve)
             {
-                TestHelper.AddResolveCallbacks<int, string>(firstPromise,
+                TestHelper.AddResolveCallbacksWithCancelation<int, string>(firstPromise,
                     onResolve: () => onFirstCallback(),
-                    promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
-                    promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
+                    promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                    promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
                     onCallbackAdded: (ref Promise promise) =>
                     {
                         ++expectedFirstInvokes;
@@ -248,15 +287,24 @@ namespace ProtoPromiseTests.APIs
                     {
                         promise = HookupSecondT(promise);
                     },
-                    configureAwaitType: (ConfigureAwaitType) firstWaitType
+                    onCancel: () =>
+                    {
+                        if (isFirstCancelExpected)
+                        {
+                            // Don't assert the context due to a race condition between the cancelation propagating on another thread before the CatchCancelation is hooked up.
+                            Interlocked.Increment(ref firstInvokeCounter);
+                        }
+                    },
+                    configureAwaitType: (ConfigureAwaitType) firstWaitType,
+                    waitAsyncCancelationToken: configureAwaitCancelationToken1
                 );
             }
-            TestHelper.AddCallbacks<int, object, string>(firstPromise,
+            TestHelper.AddCallbacksWithCancelation<int, object, string>(firstPromise,
                 onResolve: () => onFirstCallback(),
                 onReject: r => onFirstCallback(),
                 onUnknownRejection: () => onFirstCallback(),
-                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
-                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
+                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
                 onDirectCallbackAdded: (ref Promise promise) =>
                 {
                     ++expectedFirstInvokes;
@@ -270,6 +318,11 @@ namespace ProtoPromiseTests.APIs
                 onDirectCallbackAddedCatch: (ref Promise promise) =>
                 {
                     if (firstCompleteType != CompleteType.Resolve)
+                    {
+                        ++expectedFirstInvokes;
+                    }
+                    // Don't expect cancelation invoke if it will continue on background, as that introduces a race condition.
+                    else if (isFirstCancelExpected && firstWaitType != TestHelper.backgroundType)
                     {
                         ++expectedFirstInvokes;
                     }
@@ -296,16 +349,37 @@ namespace ProtoPromiseTests.APIs
                     {
                         ++expectedFirstInvokes;
                     }
+                    // Don't expect cancelation invoke if it will continue on background, as that introduces a race condition.
+                    else if (isFirstCancelExpected && firstWaitType != TestHelper.backgroundType)
+                    {
+                        ++expectedFirstInvokes;
+                    }
                     if (firstCompleteType == CompleteType.Reject)
                     {
                         promise = HookupSecondVoid(promise);
                     }
                 },
-                configureAwaitType: (ConfigureAwaitType) firstWaitType
+                onCancel: () =>
+                {
+                    if (isFirstCancelExpected)
+                    {
+                        // Don't assert the context due to a race condition between the cancelation propagating on another thread before the CatchCancelation is hooked up.
+                        Interlocked.Increment(ref firstInvokeCounter);
+                    }
+                },
+                configureAwaitType: (ConfigureAwaitType) firstWaitType,
+                waitAsyncCancelationToken: configureAwaitCancelationToken1
             );
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterVoid(firstCompleteType, rejectReason).Invoke(firstDeferred, firstCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst)
+                    {
+                        configureAwaitCancelationSource1.Cancel();
+                    }
+                    TestHelper.GetTryCompleterVoid(firstCompleteType, rejectValue).Invoke(firstDeferred, firstCancelationSource);
+                },
                 firstReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -315,14 +389,22 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, timeout))
+                // We check >= instead of == because of race conditions
+                if (!SpinWait.SpinUntil(() => firstInvokeCounter >= expectedFirstInvokes, timeout))
                 {
                     Assert.Fail("Timed out after " + timeout + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
                 }
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterT(secondCompleteType, 1, rejectReason).Invoke(secondDeferred, secondCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelSecond)
+                    {
+                        configureAwaitCancelationSource2.Cancel();
+                    }
+                    TestHelper.GetTryCompleterT(secondCompleteType, 1, rejectValue).Invoke(secondDeferred, secondCancelationSource);
+                },
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -336,10 +418,16 @@ namespace ProtoPromiseTests.APIs
                 Assert.Fail("Timed out after " + timeout + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
             }
 
+            // Fix a race condition that causes forget to be called before ConfigureAwait.
+            TestHelper._backgroundContext.WaitForAllThreadsToComplete();
+            TestHelper.ExecuteForegroundCallbacks();
+
             firstPromise.Forget();
             secondPromise.Forget();
             firstCancelationSource.TryDispose();
             secondCancelationSource.TryDispose();
+            configureAwaitCancelationSource1.TryDispose();
+            configureAwaitCancelationSource2.TryDispose();
         }
 
         [Test, TestCaseSource("GetArgs_ResolveReject")]
@@ -350,20 +438,28 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType secondWaitType,
             SynchronizationType firstReportType,
             SynchronizationType secondReportType,
+            ConfigureAwaitCancelType configureAwaitCancelType,
             bool isFirstAlreadyComplete,
             bool isSecondAlreadyComplete)
         {
-            Thread foregroundThread = Thread.CurrentThread;
-            ThreadHelper threadHelper = new ThreadHelper();
+            var foregroundThread = Thread.CurrentThread;
+            var threadHelper = new ThreadHelper();
 
-            string rejectReason = "Fail";
+            var configureAwaitCancelationSource1 = CancelationSource.New();
+            var configureAwaitCancelationToken1 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource1.Token;
+            var configureAwaitCancelationSource2 = CancelationSource.New();
+            var configureAwaitCancelationToken2 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource2.Token;
 
             CancelationSource firstCancelationSource;
             Promise<int>.Deferred firstDeferred;
             CancelationSource secondCancelationSource;
             Promise<int>.Deferred secondDeferred;
-            Promise<int> firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectReason, out firstDeferred, out firstCancelationSource);
-            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource);
+            Promise<int> firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectValue, out firstDeferred, out firstCancelationSource);
+            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectValue, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();
@@ -376,7 +472,7 @@ namespace ProtoPromiseTests.APIs
 
             Action onFirstCallback = () =>
             {
-                TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                TestHelper.AssertCallbackContext(firstWaitType, configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? firstWaitType : firstReportType, foregroundThread);
                 Interlocked.Increment(ref firstInvokeCounter);
             };
             Action onSecondCallback = () =>
@@ -397,12 +493,15 @@ namespace ProtoPromiseTests.APIs
                 return promise.ContinueWith(_ => { onSecondCallback(); return 2; });
             };
 
+            bool isFirstCancelExpected = configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled
+                || (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst && (!isFirstAlreadyComplete || firstWaitType != SynchronizationType.Synchronous));
+
             if (firstCompleteType == CompleteType.Resolve)
             {
-                TestHelper.AddResolveCallbacks<int, int, string>(firstPromise,
+                TestHelper.AddResolveCallbacksWithCancelation<int, int, string>(firstPromise,
                     onResolve: v => onFirstCallback(),
-                    promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
-                    promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
+                    promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                    promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
                     onCallbackAdded: (ref Promise promise) =>
                     {
                         ++expectedFirstInvokes;
@@ -421,15 +520,24 @@ namespace ProtoPromiseTests.APIs
                     {
                         promise = HookupSecondT(promise);
                     },
-                    configureAwaitType: (ConfigureAwaitType) firstWaitType
+                    onCancel: () =>
+                    {
+                        if (isFirstCancelExpected)
+                        {
+                            // Don't assert the context due to a race condition between the cancelation propagating on another thread before the CatchCancelation is hooked up.
+                            Interlocked.Increment(ref firstInvokeCounter);
+                        }
+                    },
+                    configureAwaitType: (ConfigureAwaitType) firstWaitType,
+                    waitAsyncCancelationToken: configureAwaitCancelationToken1
                 );
             }
-            TestHelper.AddCallbacks<int, int, object, string>(firstPromise,
+            TestHelper.AddCallbacksWithCancelation<int, int, object, string>(firstPromise,
                 onResolve: v => onFirstCallback(),
                 onReject: r => onFirstCallback(),
                 onUnknownRejection: () => onFirstCallback(),
-                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
-                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
+                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
                 onDirectCallbackAdded: (ref Promise promise) =>
                 {
                     ++expectedFirstInvokes;
@@ -443,6 +551,11 @@ namespace ProtoPromiseTests.APIs
                 onDirectCallbackAddedT: (ref Promise<int> promise) =>
                 {
                     if (firstCompleteType != CompleteType.Resolve)
+                    {
+                        ++expectedFirstInvokes;
+                    }
+                    // Don't expect cancelation invoke if it will continue on background, as that introduces a race condition.
+                    else if (isFirstCancelExpected && firstWaitType != TestHelper.backgroundType)
                     {
                         ++expectedFirstInvokes;
                     }
@@ -469,16 +582,37 @@ namespace ProtoPromiseTests.APIs
                     {
                         ++expectedFirstInvokes;
                     }
+                    // Don't expect cancelation invoke if it will continue on background, as that introduces a race condition.
+                    else if (isFirstCancelExpected && firstWaitType != TestHelper.backgroundType)
+                    {
+                        ++expectedFirstInvokes;
+                    }
                     if (firstCompleteType == CompleteType.Reject)
                     {
                         promise = HookupSecondT(promise);
                     }
                 },
-                configureAwaitType: (ConfigureAwaitType) firstWaitType
+                onCancel: () =>
+                {
+                    if (isFirstCancelExpected)
+                    {
+                        // Don't assert the context due to a race condition between the cancelation propagating on another thread before the CatchCancelation is hooked up.
+                        Interlocked.Increment(ref firstInvokeCounter);
+                    }
+                },
+                configureAwaitType: (ConfigureAwaitType) firstWaitType,
+                waitAsyncCancelationToken: configureAwaitCancelationToken1
             );
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterT(firstCompleteType, 1, rejectReason).Invoke(firstDeferred, firstCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst)
+                    {
+                        configureAwaitCancelationSource1.Cancel();
+                    }
+                    TestHelper.GetTryCompleterT(firstCompleteType, 1, rejectValue).Invoke(firstDeferred, firstCancelationSource);
+                },
                 firstReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -488,14 +622,22 @@ namespace ProtoPromiseTests.APIs
             }
             else
             {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, timeout))
+                // We check >= instead of == because of race conditions
+                if (!SpinWait.SpinUntil(() => firstInvokeCounter >= expectedFirstInvokes, timeout))
                 {
                     Assert.Fail("Timed out after " + timeout + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
                 }
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterT(secondCompleteType, 1, rejectReason).Invoke(secondDeferred, secondCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelSecond)
+                    {
+                        configureAwaitCancelationSource2.Cancel();
+                    }
+                    TestHelper.GetTryCompleterT(secondCompleteType, 1, rejectValue).Invoke(secondDeferred, secondCancelationSource);
+                },
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -509,10 +651,16 @@ namespace ProtoPromiseTests.APIs
                 Assert.Fail("Timed out after " + timeout + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
             }
 
+            // Fix a race condition that causes forget to be called before ConfigureAwait.
+            TestHelper._backgroundContext.WaitForAllThreadsToComplete();
+            TestHelper.ExecuteForegroundCallbacks();
+
             firstPromise.Forget();
             secondPromise.Forget();
             firstCancelationSource.TryDispose();
             secondCancelationSource.TryDispose();
+            configureAwaitCancelationSource1.TryDispose();
+            configureAwaitCancelationSource2.TryDispose();
         }
 
         [Test, TestCaseSource("GetArgs_ContinueWith")]
@@ -523,20 +671,28 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType secondWaitType,
             SynchronizationType firstReportType,
             SynchronizationType secondReportType,
+            ConfigureAwaitCancelType configureAwaitCancelType,
             bool isFirstAlreadyComplete,
             bool isSecondAlreadyComplete)
         {
-            Thread foregroundThread = Thread.CurrentThread;
-            ThreadHelper threadHelper = new ThreadHelper();
+            var foregroundThread = Thread.CurrentThread;
+            var threadHelper = new ThreadHelper();
 
-            string rejectReason = "Fail";
+            var configureAwaitCancelationSource1 = CancelationSource.New();
+            var configureAwaitCancelationToken1 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource1.Token;
+            var configureAwaitCancelationSource2 = CancelationSource.New();
+            var configureAwaitCancelationToken2 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource2.Token;
 
             CancelationSource firstCancelationSource;
             Promise.Deferred firstDeferred;
             CancelationSource secondCancelationSource;
             Promise<int>.Deferred secondDeferred;
-            Promise firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectReason, out firstDeferred, out firstCancelationSource);
-            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource);
+            Promise firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectValue, out firstDeferred, out firstCancelationSource);
+            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectValue, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();
@@ -549,7 +705,7 @@ namespace ProtoPromiseTests.APIs
 
             Action onFirstCallback = () =>
             {
-                TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                TestHelper.AssertCallbackContext(firstWaitType, configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? firstWaitType : firstReportType, foregroundThread);
                 Interlocked.Increment(ref firstInvokeCounter);
             };
             Action onSecondCallback = () =>
@@ -558,10 +714,10 @@ namespace ProtoPromiseTests.APIs
                 Interlocked.Increment(ref secondInvokeCounter);
             };
 
-            TestHelper.AddContinueCallbacks<int, string>(firstPromise,
+            TestHelper.AddContinueCallbacksWithCancelation<int, string>(firstPromise,
                 onContinue: _ => onFirstCallback(),
-                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
-                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
+                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
                 onCallbackAdded: (ref Promise promise) =>
                 {
                     ++expectedFirstInvokes;
@@ -582,11 +738,19 @@ namespace ProtoPromiseTests.APIs
                     ++expectedSecondInvokes;
                     promise = promise.ContinueWith(_ => { onSecondCallback(); return 2; });
                 },
-                configureAwaitType: (ConfigureAwaitType) firstWaitType
+                configureAwaitType: (ConfigureAwaitType) firstWaitType,
+                waitAsyncCancelationToken: configureAwaitCancelationToken1
             );
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterVoid(firstCompleteType, rejectReason).Invoke(firstDeferred, firstCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst)
+                    {
+                        configureAwaitCancelationSource1.Cancel();
+                    }
+                    TestHelper.GetTryCompleterVoid(firstCompleteType, rejectValue).Invoke(firstDeferred, firstCancelationSource);
+                },
                 firstReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -603,7 +767,14 @@ namespace ProtoPromiseTests.APIs
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterT(secondCompleteType, 1, rejectReason).Invoke(secondDeferred, secondCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelSecond)
+                    {
+                        configureAwaitCancelationSource2.Cancel();
+                    }
+                    TestHelper.GetTryCompleterT(secondCompleteType, 1, rejectValue).Invoke(secondDeferred, secondCancelationSource);
+                },
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -621,6 +792,8 @@ namespace ProtoPromiseTests.APIs
             secondPromise.Forget();
             firstCancelationSource.TryDispose();
             secondCancelationSource.TryDispose();
+            configureAwaitCancelationSource1.TryDispose();
+            configureAwaitCancelationSource2.TryDispose();
         }
 
         [Test, TestCaseSource("GetArgs_ContinueWith")]
@@ -631,20 +804,28 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType secondWaitType,
             SynchronizationType firstReportType,
             SynchronizationType secondReportType,
+            ConfigureAwaitCancelType configureAwaitCancelType,
             bool isFirstAlreadyComplete,
             bool isSecondAlreadyComplete)
         {
-            Thread foregroundThread = Thread.CurrentThread;
-            ThreadHelper threadHelper = new ThreadHelper();
+            var foregroundThread = Thread.CurrentThread;
+            var threadHelper = new ThreadHelper();
 
-            string rejectReason = "Fail";
+            var configureAwaitCancelationSource1 = CancelationSource.New();
+            var configureAwaitCancelationToken1 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource1.Token;
+            var configureAwaitCancelationSource2 = CancelationSource.New();
+            var configureAwaitCancelationToken2 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource2.Token;
 
             CancelationSource firstCancelationSource;
             Promise<int>.Deferred firstDeferred;
             CancelationSource secondCancelationSource;
             Promise<int>.Deferred secondDeferred;
-            Promise<int> firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectReason, out firstDeferred, out firstCancelationSource);
-            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource);
+            Promise<int> firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectValue, out firstDeferred, out firstCancelationSource);
+            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectValue, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();
@@ -657,7 +838,7 @@ namespace ProtoPromiseTests.APIs
 
             Action onFirstCallback = () =>
             {
-                TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                TestHelper.AssertCallbackContext(firstWaitType, configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? firstWaitType : firstReportType, foregroundThread);
                 Interlocked.Increment(ref firstInvokeCounter);
             };
             Action onSecondCallback = () =>
@@ -666,10 +847,10 @@ namespace ProtoPromiseTests.APIs
                 Interlocked.Increment(ref secondInvokeCounter);
             };
 
-            TestHelper.AddContinueCallbacks<int, int, string>(firstPromise,
+            TestHelper.AddContinueCallbacksWithCancelation<int, int, string>(firstPromise,
                 onContinue: _ => onFirstCallback(),
-                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
-                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType),
+                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
                 onCallbackAdded: (ref Promise promise) =>
                 {
                     ++expectedFirstInvokes;
@@ -690,11 +871,19 @@ namespace ProtoPromiseTests.APIs
                     ++expectedSecondInvokes;
                     promise = promise.ContinueWith(_ => { onSecondCallback(); return 2; });
                 },
-                configureAwaitType: (ConfigureAwaitType) firstWaitType
+                configureAwaitType: (ConfigureAwaitType) firstWaitType,
+                waitAsyncCancelationToken: configureAwaitCancelationToken1
             );
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterT(firstCompleteType, 1, rejectReason).Invoke(firstDeferred, firstCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst)
+                    {
+                        configureAwaitCancelationSource1.Cancel();
+                    }
+                    TestHelper.GetTryCompleterT(firstCompleteType, 1, rejectValue).Invoke(firstDeferred, firstCancelationSource);
+                },
                 firstReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -711,7 +900,14 @@ namespace ProtoPromiseTests.APIs
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterT(secondCompleteType, 1, rejectReason).Invoke(secondDeferred, secondCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelSecond)
+                    {
+                        configureAwaitCancelationSource2.Cancel();
+                    }
+                    TestHelper.GetTryCompleterT(secondCompleteType, 1, rejectValue).Invoke(secondDeferred, secondCancelationSource);
+                },
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -729,6 +925,8 @@ namespace ProtoPromiseTests.APIs
             secondPromise.Forget();
             firstCancelationSource.TryDispose();
             secondCancelationSource.TryDispose();
+            configureAwaitCancelationSource1.TryDispose();
+            configureAwaitCancelationSource2.TryDispose();
         }
 
         [Test, TestCaseSource("GetArgs_Cancel")]
@@ -738,14 +936,12 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType reportType,
             bool isAlreadyComplete)
         {
-            Thread foregroundThread = Thread.CurrentThread;
-            ThreadHelper threadHelper = new ThreadHelper();
-
-            string rejectReason = "Fail";
+            var foregroundThread = Thread.CurrentThread;
+            var threadHelper = new ThreadHelper();
 
             CancelationSource cancelationSource;
             Promise.Deferred deferred;
-            Promise promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejectReason, out deferred, out cancelationSource);
+            Promise promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejectValue, out deferred, out cancelationSource);
 
             promise = promise.Preserve();
 
@@ -776,7 +972,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterVoid(completeType, rejectReason).Invoke(deferred, cancelationSource),
+                () => TestHelper.GetTryCompleterVoid(completeType, rejectValue).Invoke(deferred, cancelationSource),
                 reportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -803,14 +999,12 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType reportType,
             bool isAlreadyComplete)
         {
-            Thread foregroundThread = Thread.CurrentThread;
-            ThreadHelper threadHelper = new ThreadHelper();
-
-            string rejectReason = "Fail";
+            var foregroundThread = Thread.CurrentThread;
+            var threadHelper = new ThreadHelper();
 
             CancelationSource cancelationSource;
             Promise<int>.Deferred deferred;
-            Promise<int> promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, 1, rejectReason, out deferred, out cancelationSource);
+            Promise<int> promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, 1, rejectValue, out deferred, out cancelationSource);
 
             promise = promise.Preserve();
 
@@ -841,7 +1035,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterT(completeType, 1, rejectReason).Invoke(deferred, cancelationSource),
+                () => TestHelper.GetTryCompleterT(completeType, 1, rejectValue).Invoke(deferred, cancelationSource),
                 reportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -868,14 +1062,12 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType reportType,
             bool isAlreadyComplete)
         {
-            Thread foregroundThread = Thread.CurrentThread;
-            ThreadHelper threadHelper = new ThreadHelper();
-
-            string rejectReason = "Fail";
+            var foregroundThread = Thread.CurrentThread;
+            var threadHelper = new ThreadHelper();
 
             CancelationSource cancelationSource;
             Promise.Deferred deferred;
-            Promise promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejectReason, out deferred, out cancelationSource);
+            Promise promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejectValue, out deferred, out cancelationSource);
 
             promise = promise.Preserve();
 
@@ -908,7 +1100,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterVoid(completeType, rejectReason).Invoke(deferred, cancelationSource),
+                () => TestHelper.GetTryCompleterVoid(completeType, rejectValue).Invoke(deferred, cancelationSource),
                 reportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -935,14 +1127,12 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType reportType,
             bool isAlreadyComplete)
         {
-            Thread foregroundThread = Thread.CurrentThread;
-            ThreadHelper threadHelper = new ThreadHelper();
-
-            string rejectReason = "Fail";
+            var foregroundThread = Thread.CurrentThread;
+            var threadHelper = new ThreadHelper();
 
             CancelationSource cancelationSource;
             Promise<int>.Deferred deferred;
-            Promise<int> promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, 1, rejectReason, out deferred, out cancelationSource);
+            Promise<int> promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, 1, rejectValue, out deferred, out cancelationSource);
 
             promise = promise.Preserve();
 
@@ -975,7 +1165,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterT(completeType, 1, rejectReason).Invoke(deferred, cancelationSource),
+                () => TestHelper.GetTryCompleterT(completeType, 1, rejectValue).Invoke(deferred, cancelationSource),
                 reportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -1004,20 +1194,28 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType secondWaitType,
             SynchronizationType firstReportType,
             SynchronizationType secondReportType,
+            ConfigureAwaitCancelType configureAwaitCancelType,
             bool isFirstAlreadyComplete,
             bool isSecondAlreadyComplete)
         {
-            Thread foregroundThread = Thread.CurrentThread;
-            ThreadHelper threadHelper = new ThreadHelper();
+            var foregroundThread = Thread.CurrentThread;
+            var threadHelper = new ThreadHelper();
 
-            string rejectReason = "Fail";
+            var configureAwaitCancelationSource1 = CancelationSource.New();
+            var configureAwaitCancelationToken1 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource1.Token;
+            var configureAwaitCancelationSource2 = CancelationSource.New();
+            var configureAwaitCancelationToken2 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource2.Token;
 
             CancelationSource firstCancelationSource;
             Promise.Deferred firstDeferred;
             CancelationSource secondCancelationSource;
             Promise.Deferred secondDeferred;
-            Promise firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectReason, out firstDeferred, out firstCancelationSource);
-            Promise secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, rejectReason, out secondDeferred, out secondCancelationSource);
+            Promise firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectValue, out firstDeferred, out firstCancelationSource);
+            Promise secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, rejectValue, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();
@@ -1043,18 +1241,18 @@ namespace ProtoPromiseTests.APIs
             {
                 try
                 {
-                    await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType);
+                    await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, configureAwaitCancelationToken1);
                 }
                 catch { }
                 finally
                 {
-                    TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                    TestHelper.AssertCallbackContext(firstWaitType, configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? firstWaitType : firstReportType, foregroundThread);
                     Interlocked.Increment(ref firstInvokeCounter);
                 }
 
                 try
                 {
-                    await p2.ConfigureAwait((ConfigureAwaitType) secondWaitType);
+                    await p2.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2);
                 }
                 catch { }
                 finally
@@ -1063,14 +1261,21 @@ namespace ProtoPromiseTests.APIs
                     // This only matters for SynchronizationOption.Synchronous, for which the caller does not care on what context it executes.
                     if (!hasRaceCondition)
                     {
-                        TestHelper.AssertCallbackContext(secondWaitType, secondReportType, foregroundThread);
+                        TestHelper.AssertCallbackContext(secondWaitType, configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? secondWaitType : secondReportType, foregroundThread);
                     }
                     Interlocked.Increment(ref secondInvokeCounter);
                 }
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterVoid(firstCompleteType, rejectReason).Invoke(firstDeferred, firstCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst)
+                    {
+                        configureAwaitCancelationSource1.Cancel();
+                    }
+                    TestHelper.GetTryCompleterVoid(firstCompleteType, rejectValue).Invoke(firstDeferred, firstCancelationSource);
+                },
                 firstReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -1087,7 +1292,14 @@ namespace ProtoPromiseTests.APIs
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterVoid(secondCompleteType, rejectReason).Invoke(secondDeferred, secondCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelSecond)
+                    {
+                        configureAwaitCancelationSource2.Cancel();
+                    }
+                    TestHelper.GetTryCompleterVoid(secondCompleteType, rejectValue).Invoke(secondDeferred, secondCancelationSource);
+                },
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -1105,6 +1317,8 @@ namespace ProtoPromiseTests.APIs
             secondPromise.Forget();
             firstCancelationSource.TryDispose();
             secondCancelationSource.TryDispose();
+            configureAwaitCancelationSource1.TryDispose();
+            configureAwaitCancelationSource2.TryDispose();
         }
 
         [Test, TestCaseSource("GetArgs_ContinueWith")]
@@ -1115,20 +1329,28 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType secondWaitType,
             SynchronizationType firstReportType,
             SynchronizationType secondReportType,
+            ConfigureAwaitCancelType configureAwaitCancelType,
             bool isFirstAlreadyComplete,
             bool isSecondAlreadyComplete)
         {
-            Thread foregroundThread = Thread.CurrentThread;
-            ThreadHelper threadHelper = new ThreadHelper();
+            var foregroundThread = Thread.CurrentThread;
+            var threadHelper = new ThreadHelper();
 
-            string rejectReason = "Fail";
+            var configureAwaitCancelationSource1 = CancelationSource.New();
+            var configureAwaitCancelationToken1 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource1.Token;
+            var configureAwaitCancelationSource2 = CancelationSource.New();
+            var configureAwaitCancelationToken2 = configureAwaitCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : configureAwaitCancelationSource2.Token;
 
             CancelationSource firstCancelationSource;
             Promise<int>.Deferred firstDeferred;
             CancelationSource secondCancelationSource;
             Promise<int>.Deferred secondDeferred;
-            Promise<int> firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectReason, out firstDeferred, out firstCancelationSource);
-            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectReason, out secondDeferred, out secondCancelationSource);
+            Promise<int> firstPromise = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectValue, out firstDeferred, out firstCancelationSource);
+            Promise<int> secondPromise = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectValue, out secondDeferred, out secondCancelationSource);
 
             firstPromise = firstPromise.Preserve();
             secondPromise = secondPromise.Preserve();
@@ -1154,18 +1376,18 @@ namespace ProtoPromiseTests.APIs
             {
                 try
                 {
-                    _ = await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType);
+                    _ = await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, configureAwaitCancelationToken1);
                 }
                 catch { }
                 finally
                 {
-                    TestHelper.AssertCallbackContext(firstWaitType, firstReportType, foregroundThread);
+                    TestHelper.AssertCallbackContext(firstWaitType, configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? firstWaitType : firstReportType, foregroundThread);
                     Interlocked.Increment(ref firstInvokeCounter);
                 }
 
                 try
                 {
-                    _ = await p2.ConfigureAwait((ConfigureAwaitType) secondWaitType);
+                    _ = await p2.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2);
                 }
                 catch { }
                 finally
@@ -1174,14 +1396,21 @@ namespace ProtoPromiseTests.APIs
                     // This only matters for SynchronizationOption.Synchronous, for which the caller does not care on what context it executes.
                     if (!hasRaceCondition)
                     {
-                        TestHelper.AssertCallbackContext(secondWaitType, secondReportType, foregroundThread);
+                        TestHelper.AssertCallbackContext(secondWaitType, configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? secondWaitType : secondReportType, foregroundThread);
                     }
                     Interlocked.Increment(ref secondInvokeCounter);
                 }
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterT(firstCompleteType, 1, rejectReason).Invoke(firstDeferred, firstCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst)
+                    {
+                        configureAwaitCancelationSource1.Cancel();
+                    }
+                    TestHelper.GetTryCompleterT(firstCompleteType, 1, rejectValue).Invoke(firstDeferred, firstCancelationSource);
+                },
                 firstReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -1198,7 +1427,14 @@ namespace ProtoPromiseTests.APIs
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
-                () => TestHelper.GetTryCompleterT(secondCompleteType, 1, rejectReason).Invoke(secondDeferred, secondCancelationSource),
+                () =>
+                {
+                    if (configureAwaitCancelType == ConfigureAwaitCancelType.CancelSecond)
+                    {
+                        configureAwaitCancelationSource2.Cancel();
+                    }
+                    TestHelper.GetTryCompleterT(secondCompleteType, 1, rejectValue).Invoke(secondDeferred, secondCancelationSource);
+                },
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
@@ -1216,7 +1452,165 @@ namespace ProtoPromiseTests.APIs
             secondPromise.Forget();
             firstCancelationSource.TryDispose();
             secondCancelationSource.TryDispose();
+            configureAwaitCancelationSource1.TryDispose();
+            configureAwaitCancelationSource2.TryDispose();
         }
 #endif
+
+        [Test]
+        public void WaitAsyncWithCancelationTokenWillBeCompletedProperly_void(
+            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values(ConfigureAwaitCancelType.NoToken, ConfigureAwaitCancelType.WithToken_NoCancel, ConfigureAwaitCancelType.AlreadyCanceled, ConfigureAwaitCancelType.CancelFirst)] ConfigureAwaitCancelType waitAsyncCancelType,
+            [Values] bool isAlreadyComplete)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            var waitAsyncCancelationSource = CancelationSource.New();
+            var waitAsyncCancelationToken = waitAsyncCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : waitAsyncCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : waitAsyncCancelationSource.Token;
+
+            CancelationSource cancelationSource;
+            Promise.Deferred deferred;
+            Promise promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejectValue, out deferred, out cancelationSource);
+
+            promise = promise.Preserve();
+
+            int invokeCounter = 0;
+            int expectedInvokes = 0;
+            bool cancelationExpected = waitAsyncCancelType == ConfigureAwaitCancelType.AlreadyCanceled || (waitAsyncCancelType == ConfigureAwaitCancelType.CancelFirst && !isAlreadyComplete);
+            var expectedCompleteState = cancelationExpected ? Promise.State.Canceled : (Promise.State) completeType;
+
+            foreach (var p in TestHelper.GetTestablePromises(promise))
+            {
+                ++expectedInvokes;
+                p.WaitAsync(waitAsyncCancelationToken)
+                    .ContinueWith(container =>
+                    {
+                        Assert.AreEqual(expectedCompleteState, container.State);
+                        Interlocked.Increment(ref invokeCounter);
+                    })
+                    .Forget();
+            }
+
+#if CSHARP_7_3_OR_NEWER
+            foreach (var p in TestHelper.GetTestablePromises(promise))
+            {
+                ++expectedInvokes;
+                RunAsync(p).Forget();
+            }
+
+            async Promise RunAsync(Promise p)
+            {
+                var actualCompleteState = Promise.State.Pending;
+                try
+                {
+                    await p.WaitAsync(waitAsyncCancelationToken);
+                    actualCompleteState = Promise.State.Resolved;
+                }
+                catch (OperationCanceledException)
+                {
+                    actualCompleteState = Promise.State.Canceled;
+                }
+                catch (Exception)
+                {
+                    actualCompleteState = Promise.State.Rejected;
+                }
+
+                Assert.AreEqual(expectedCompleteState, actualCompleteState);
+                Interlocked.Increment(ref invokeCounter);
+            }
+#endif
+
+            if (waitAsyncCancelType == ConfigureAwaitCancelType.CancelFirst)
+            {
+                waitAsyncCancelationSource.Cancel();
+            }
+            TestHelper.GetTryCompleterVoid(completeType, rejectValue).Invoke(deferred, cancelationSource);
+
+            Assert.AreEqual(expectedInvokes, invokeCounter);
+
+            promise.Forget();
+            cancelationSource.TryDispose();
+            waitAsyncCancelationSource.TryDispose();
+        }
+
+        [Test]
+        public void WaitAsyncWithCancelationTokenWillBeCompletedProperly_T(
+            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values(ConfigureAwaitCancelType.NoToken, ConfigureAwaitCancelType.WithToken_NoCancel, ConfigureAwaitCancelType.AlreadyCanceled, ConfigureAwaitCancelType.CancelFirst)] ConfigureAwaitCancelType waitAsyncCancelType,
+            [Values] bool isAlreadyComplete)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            var waitAsyncCancelationSource = CancelationSource.New();
+            var waitAsyncCancelationToken = waitAsyncCancelType == ConfigureAwaitCancelType.NoToken ? default(CancelationToken)
+                : waitAsyncCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
+                : waitAsyncCancelationSource.Token;
+
+            CancelationSource cancelationSource;
+            Promise<int>.Deferred deferred;
+            Promise<int> promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, 1, rejectValue, out deferred, out cancelationSource);
+
+            promise = promise.Preserve();
+
+            int invokeCounter = 0;
+            int expectedInvokes = 0;
+            bool cancelationExpected = waitAsyncCancelType == ConfigureAwaitCancelType.AlreadyCanceled || (waitAsyncCancelType == ConfigureAwaitCancelType.CancelFirst && !isAlreadyComplete);
+            var expectedCompleteState = cancelationExpected ? Promise.State.Canceled : (Promise.State) completeType;
+
+            foreach (var p in TestHelper.GetTestablePromises(promise))
+            {
+                ++expectedInvokes;
+                p.WaitAsync(waitAsyncCancelationToken)
+                    .ContinueWith(container =>
+                    {
+                        Assert.AreEqual(expectedCompleteState, container.State);
+                        Interlocked.Increment(ref invokeCounter);
+                    })
+                    .Forget();
+            }
+
+#if CSHARP_7_3_OR_NEWER
+            foreach (var p in TestHelper.GetTestablePromises(promise))
+            {
+                ++expectedInvokes;
+                RunAsync(p).Forget();
+            }
+
+            async Promise RunAsync(Promise<int> p)
+            {
+                var actualCompleteState = Promise.State.Pending;
+                try
+                {
+                    _ = await p.WaitAsync(waitAsyncCancelationToken);
+                    actualCompleteState = Promise.State.Resolved;
+                }
+                catch (OperationCanceledException)
+                {
+                    actualCompleteState = Promise.State.Canceled;
+                }
+                catch (Exception)
+                {
+                    actualCompleteState = Promise.State.Rejected;
+                }
+
+                Assert.AreEqual(expectedCompleteState, actualCompleteState);
+                Interlocked.Increment(ref invokeCounter);
+            }
+#endif
+
+            if (waitAsyncCancelType == ConfigureAwaitCancelType.CancelFirst)
+            {
+                waitAsyncCancelationSource.Cancel();
+            }
+            TestHelper.GetTryCompleterT(completeType, 1, rejectValue).Invoke(deferred, cancelationSource);
+
+            Assert.AreEqual(expectedInvokes, invokeCounter);
+
+            promise.Forget();
+            cancelationSource.TryDispose();
+            waitAsyncCancelationSource.TryDispose();
+        }
     }
 }

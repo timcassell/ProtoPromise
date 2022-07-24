@@ -746,10 +746,17 @@ namespace Proto.Promises
                             ? Canceled(_this._ref, _this._id, _this.Depth)
                             : _this;
                     }
-                    var newRef = cancelationToken.CanBeCanceled
-                        ? PromiseDuplicateCancel<VoidResult>.GetOrCreate(_this.Depth, cancelationToken)
-                        : _this._ref.GetDuplicate(_this._id, _this.Depth);
-                    return new Promise(newRef, newRef.Id, _this.Depth);
+                    PromiseRefBase promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        promise = PromiseDuplicateCancel<VoidResult>.GetOrCreate(_this.Depth, cancelationToken);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    else
+                    {
+                        promise = _this._ref.GetDuplicate(_this._id, _this.Depth);
+                    }
+                    return new Promise(promise, promise.Id, _this.Depth);
                 }
 
                 internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, CancelationToken cancelationToken)
@@ -760,10 +767,17 @@ namespace Proto.Promises
                             ? CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id, _this.Depth)
                             : _this;
                     }
-                    var newRef = cancelationToken.CanBeCanceled
-                        ? PromiseDuplicateCancel<TResult>.GetOrCreate(_this.Depth, cancelationToken)
-                        : _this._ref.GetDuplicateT(_this._id, _this.Depth);
-                    return new Promise<TResult>(newRef, newRef.Id, _this.Depth, _this._result);
+                    PromiseRef<TResult> promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        promise = PromiseDuplicateCancel<TResult>.GetOrCreate(_this.Depth, cancelationToken);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    else
+                    {
+                        promise = _this._ref.GetDuplicateT(_this._id, _this.Depth);
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth, _this._result);
                 }
 
                 internal static Promise WaitAsync(Promise _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext, CancelationToken cancelationToken)
@@ -797,10 +811,21 @@ namespace Proto.Promises
                             {
                                 synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
                             }
-                            var newRef = _this._ref == null
-                                ? PromiseConfigured<VoidResult>.GetOrCreateFromResolved(synchronizationContext, new VoidResult(), _this.Depth, cancelationToken)
-                                : _this._ref.GetConfigured(_this._id, synchronizationContext, _this.Depth, cancelationToken);
-                            return new Promise(newRef, newRef.Id, _this.Depth);
+                            PromiseRefBase promise;
+                            if (_this._ref == null)
+                            {
+                                promise = PromiseConfigured<VoidResult>.GetOrCreateFromResolved(synchronizationContext, new VoidResult(), _this.Depth, cancelationToken);
+                            }
+                            else if (cancelationToken.CanBeCanceled)
+                            {
+                                promise = PromiseConfigured<VoidResult>.GetOrCreate(synchronizationContext, _this.Depth, cancelationToken);
+                                _this._ref.HookupNewPromise(_this._id, promise);
+                            }
+                            else
+                            {
+                                promise = _this._ref.GetConfigured(_this._id, synchronizationContext, _this.Depth, cancelationToken);
+                            }
+                            return new Promise(promise, promise.Id, _this.Depth);
                         }
                     }
                 }
@@ -836,10 +861,21 @@ namespace Proto.Promises
                             {
                                 synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
                             }
-                            var newRef = _this._ref == null
-                                ? PromiseConfigured<TResult>.GetOrCreateFromResolved(synchronizationContext, _this._result, _this.Depth, cancelationToken)
-                                : _this._ref.GetConfiguredT(_this._id, synchronizationContext, _this.Depth, cancelationToken);
-                            return new Promise<TResult>(newRef, newRef.Id, _this.Depth, _this._result);
+                            PromiseRef<TResult> promise;
+                            if (_this._ref == null)
+                            {
+                                promise = PromiseConfigured<TResult>.GetOrCreateFromResolved(synchronizationContext, _this._result, _this.Depth, cancelationToken);
+                            }
+                            else if (cancelationToken.CanBeCanceled)
+                            {
+                                promise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, _this.Depth, cancelationToken);
+                                _this._ref.HookupNewPromise(_this._id, promise);
+                            }
+                            else
+                            {
+                                promise = _this._ref.GetConfiguredT(_this._id, synchronizationContext, _this.Depth, cancelationToken);
+                            }
+                            return new Promise<TResult>(promise, promise.Id, _this.Depth, _this._result);
                         }
                     }
                 }

@@ -974,6 +974,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private bool ShouldContinueSynchronous()
                 {
+                    // TODO: add forceAsync flag.
                     return _synchronizationContext == ts_currentContext;
                 }
 
@@ -989,7 +990,7 @@ namespace Proto.Promises
 #endif
                     {
                         handler.MaybeDispose();
-                        _cancelationHelper.TryRelease();
+                        MaybeDispose();
                         return;
                     }
 
@@ -1028,16 +1029,20 @@ namespace Proto.Promises
                     }
 
                     _rejectContainer = RejectContainer.s_completionSentinel;
+                    _previousState = Promise.State.Canceled;
 
-                    if (!ShouldContinueSynchronous())
+                    // Leave pending until this is awaited.
+                    if (CompareExchangeWaiter(PromiseCompletionSentinel.s_instance, null) != null)
                     {
-                        _previousState = Promise.State.Canceled;
-                        ScheduleForHandle(this, _synchronizationContext);
-                        return;
-                    }
+                        if (!ShouldContinueSynchronous())
+                        {
+                            ScheduleForHandle(this, _synchronizationContext);
+                            return;
+                        }
 
-                    State = Promise.State.Canceled;
-                    HandleNextInternal();
+                        State = Promise.State.Canceled;
+                        HandleNextInternal();
+                    }
                 }
 
                 private void SetCompletionState()
