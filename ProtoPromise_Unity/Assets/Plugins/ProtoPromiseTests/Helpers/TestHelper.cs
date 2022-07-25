@@ -72,6 +72,7 @@ namespace ProtoPromiseTests
         public static readonly PromiseSynchronizationContext _foregroundContext = new PromiseSynchronizationContext();
         public static readonly BackgroundSynchronizationContext _backgroundContext = new BackgroundSynchronizationContext();
         private static readonly List<Exception> _uncaughtExceptions = new List<Exception>();
+        public static object s_expectedUncaughtRejectValue;
 
         private static Stopwatch _stopwatch;
 
@@ -94,6 +95,18 @@ namespace ProtoPromiseTests
                 {
                     lock (_uncaughtExceptions)
                     {
+                        if (s_expectedUncaughtRejectValue != null)
+                        {
+                            try
+                            {
+                                Assert.AreEqual(s_expectedUncaughtRejectValue, e.Value);
+                            }
+                            catch (Exception ex)
+                            {
+                                _uncaughtExceptions.Add(ex);
+                            }
+                            return;
+                        }
                         _uncaughtExceptions.Add(e);
                     }
                 };
@@ -134,13 +147,6 @@ namespace ProtoPromiseTests
 #endif
 
             TestContext.Progress.WriteLine("Success time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
-        }
-
-        public static void WaitForAllThreadsAndReplaceRejectionHandler(Action<UnhandledException> oldhandler)
-        {
-            // Force wait for all threads to complete and report unhandled rejections before replacing the original rejection handler.
-            WaitForAllThreadsToCompleteAndGcCollect();
-            Promise.Config.UncaughtRejectionHandler = oldhandler;
         }
 
         private static void WaitForAllThreadsToCompleteAndGcCollect()

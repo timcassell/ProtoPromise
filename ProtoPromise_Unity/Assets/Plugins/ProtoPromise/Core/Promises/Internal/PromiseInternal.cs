@@ -945,7 +945,6 @@ namespace Proto.Promises
                         ?? new PromiseConfigured<TResult>();
                     promise.Reset(depth);
                     promise._synchronizationContext = synchronizationContext;
-                    promise._isScheduling = 0;
                     promise._wasCanceled = false;
                     return promise;
                 }
@@ -953,6 +952,7 @@ namespace Proto.Promises
                 internal static PromiseConfigured<TResult> GetOrCreate(SynchronizationContext synchronizationContext, ushort depth, CancelationToken cancelationToken)
                 {
                     var promise = GetOrCreateBase(synchronizationContext, depth, cancelationToken);
+                    promise._isScheduling = 0;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
                 }
@@ -964,6 +964,7 @@ namespace Proto.Promises
                     TResult result, ushort depth, CancelationToken cancelationToken)
                 {
                     var promise = GetOrCreateBase(synchronizationContext, depth, cancelationToken);
+                    promise._isScheduling = 1;
                     promise._result = result;
                     promise._previousState = Promise.State.Resolved;
                     promise._next = PromiseCompletionSentinel.s_instance;

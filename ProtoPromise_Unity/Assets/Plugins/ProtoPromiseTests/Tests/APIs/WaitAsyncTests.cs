@@ -25,25 +25,23 @@ namespace ProtoPromiseTests.APIs
         }
 
         const string rejectValue = "Fail";
-        Action<UnhandledException> currentHandler;
 
         [SetUp]
         public void Setup()
         {
-            TestHelper.Setup();
-
             // When a promise is canceled, the previous rejected promise is unhandled, so its rejection is sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+            // So we set the expected uncaught reject value.
+            TestHelper.s_expectedUncaughtRejectValue = rejectValue;
+
+            TestHelper.Setup();
         }
 
         [TearDown]
         public void Teardown()
         {
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
-
             TestHelper.Cleanup();
+
+            TestHelper.s_expectedUncaughtRejectValue = null;
         }
 
         private static IEnumerable<TestCaseData> GetArgs(CompleteType[] completeTypes)

@@ -1,4 +1,6 @@
-﻿using NUnit.Framework;
+﻿#if !UNITY_WEBGL
+
+using NUnit.Framework;
 using Proto.Promises;
 using System;
 using System.Collections.Generic;
@@ -337,3 +339,5 @@ namespace ProtoPromiseTests.Threading
         }
     }
 }
+
+#endif // !UNITY_WEBGL

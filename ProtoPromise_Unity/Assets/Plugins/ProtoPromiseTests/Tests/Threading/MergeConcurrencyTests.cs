@@ -16,25 +16,23 @@ namespace ProtoPromiseTests.Threading
     public class MergeConcurrencyTests
     {
         const string rejectValue = "Fail";
-        Action<UnhandledException> currentHandler;
 
         [SetUp]
         public void Setup()
         {
-            TestHelper.Setup();
-
             // When 2 or more promises are rejected, the remaining rejects are sent to the UncaughtRejectionHandler.
-            // So we need to suppress that here and make sure it's correct.
-            currentHandler = Promise.Config.UncaughtRejectionHandler;
-            Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(rejectValue, e.Value);
+            // So we set the expected uncaught reject value.
+            TestHelper.s_expectedUncaughtRejectValue = rejectValue;
+
+            TestHelper.Setup();
         }
 
         [TearDown]
         public void Teardown()
         {
-            TestHelper.WaitForAllThreadsAndReplaceRejectionHandler(currentHandler);
-
             TestHelper.Cleanup();
+
+            TestHelper.s_expectedUncaughtRejectValue = null;
         }
 
         [Test]

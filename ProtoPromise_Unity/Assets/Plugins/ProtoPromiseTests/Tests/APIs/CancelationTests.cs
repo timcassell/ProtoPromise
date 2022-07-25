@@ -892,8 +892,10 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Dispose();
             }
 
-// Nulled out fields aren't garbage collected in Debug mode until the end of the scope.
-#if !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE && !DEBUG
+            // Nulled out fields aren't garbage collected in Debug mode until the end of the scope.
+            // Github's test runners also aren't collecting properly even in RELEASE mode, causing the tests to fail.
+            // So these GC tests will only run locally when the PROTO_PROMISE_TEST_SOURCE_GC symbol exists.
+#if !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE && !DEBUG && PROTO_PROMISE_TEST_SOURCE_GC
             [MethodImpl(MethodImplOptions.NoInlining)]
             void ConvertToken(CancellationTokenSource source)
             {
@@ -978,9 +980,39 @@ namespace ProtoPromiseTests.APIs
             }
 #endif // NET6_0_OR_GREATER
 
-#endif // !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE
+#endif // !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE && !DEBUG && PROTO_PROMISE_TEST_SOURCE_GC
 
 #endif // !NET_LEGACY || NET40
+
+#if NET6_0_OR_GREATER
+            [Test]
+            public void ToCancelationTokenIsCanceledWhenSourceIsResetThenCanceled()
+            {
+                int canceledCount = 0;
+
+                var cancelationSource = new CancellationTokenSource();
+                var token = cancelationSource.Token.ToCancelationToken();
+
+                token.Register(() => ++canceledCount);
+
+                Assert.AreEqual(0, canceledCount);
+
+                cancelationSource.TryReset();
+                
+                token.Register(() => ++canceledCount);
+                cancelationSource.Token.ToCancelationToken().Register(() => ++canceledCount);
+                Assert.AreEqual(0, canceledCount);
+
+                cancelationSource.Cancel();
+                Assert.AreEqual(2, canceledCount);
+
+                token.Register(() => ++canceledCount);
+                cancelationSource.Token.ToCancelationToken().Register(() => ++canceledCount);
+                Assert.AreEqual(4, canceledCount);
+
+                cancelationSource.Dispose();
+            }
+#endif // NET6_0_OR_GREATER
         }
 
         public class Registration
