@@ -212,9 +212,21 @@ namespace Proto.Promises
             {
             }
 
+            partial class PromiseDuplicate<TResult> : PromiseSingleAwait<TResult>
+            {
+            }
+
+            partial class PromiseDuplicateCancel<TResult> : PromiseSingleAwait<TResult>
+            {
+                private CancelationHelper _cancelationHelper;
+            }
+
             partial class PromiseConfigured<TResult> : PromiseSingleAwait<TResult>
             {
                 private SynchronizationContext _synchronizationContext;
+                private CancelationHelper _cancelationHelper;
+                private int _isScheduling; // Flag used so that only Cancel() or Handle() will call CompareExchangeWaiter and schedule the continuation. Int for Interlocked.
+                volatile private bool _wasCanceled;
                 volatile private Promise.State _previousState;
             }
 

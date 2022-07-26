@@ -506,6 +506,12 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                [MethodImpl(InlineOption)]
+                private bool ShouldInvokeSynchronous()
+                {
+                    return _isSynchronous | _synchronizationContext == ts_currentContext;
+                }
+
                 protected override void MaybeDispose()
                 {
                     if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
@@ -552,7 +558,7 @@ namespace Proto.Promises
                     }
                     InterlockedAddWithOverflowCheck(ref _retainCounter, 1, -1);
                     // Even though it's scheduled synchronous, we still have to let the stack unwind to prevent a deadlock in case user code tries to complete the promise.
-                    if (_isSynchronous | _synchronizationContext == ts_currentContext)
+                    if (ShouldInvokeSynchronous())
                     {
                         StackUnwindHelper.AddProgressor(this);
                         return;
@@ -594,7 +600,7 @@ namespace Proto.Promises
                     var state = handler.State;
                     _previousState = state;
 
-                    if (_isSynchronous | _synchronizationContext == ts_currentContext)
+                    if (ShouldInvokeSynchronous())
                     {
                         handler = this;
                         Invoke1(state, out nextHandler);
@@ -630,7 +636,7 @@ namespace Proto.Promises
 
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
                 {
-                    if (_isSynchronous | _synchronizationContext == ts_currentContext)
+                    if (ShouldInvokeSynchronous())
                     {
                         return AddWaiterImpl(promiseId, waiter, out previousWaiter, Depth);
                     }
@@ -678,7 +684,7 @@ namespace Proto.Promises
                         ThrowIfInPool(_this);
                         _this.State = _this._previousState;
                         // We don't need to synchronize access here because this is only called when the waiter is added after Invoke1 has completed, so there are no race conditions.
-                        // _this._waiter is guaranteed to be non-null here, so we can call HandleNext instead of MaybeHandleNext.
+                        // _this._next is guaranteed to be non-null here, so we can call HandleNext instead of MaybeHandleNext.
                         _this.HandleNext(_this._next);
                     }
                     catch (Exception e)
@@ -693,7 +699,7 @@ namespace Proto.Promises
                     ValidateId(promiseId, this, 2);
                     ThrowIfInPool(this);
                     // Make sure the continuation happens on the synchronization context.
-                    if ((_isSynchronous | _synchronizationContext == ts_currentContext)
+                    if ((ShouldInvokeSynchronous())
                         && CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance)
                     {
                         WasAwaitedOrForgotten = true;

@@ -210,16 +210,9 @@ namespace Proto.Promises
                 }
 
                 internal abstract PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth);
-                internal virtual PromiseRef<TResult> GetConfiguredT(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
+                internal PromiseRef<TResult> GetConfiguredT(short promiseId, SynchronizationContext synchronizationContext, ushort depth, CancelationToken cancelationToken)
                 {
-                    var newPromise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, depth);
-                    HookupNewPromise(promiseId, newPromise);
-                    return newPromise;
-                }
-
-                internal override PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
-                {
-                    var newPromise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, depth);
+                    var newPromise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, depth, cancelationToken);
                     HookupNewPromise(promiseId, newPromise);
                     return newPromise;
                 }
@@ -245,7 +238,6 @@ namespace Proto.Promises
             internal abstract PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter);
             internal abstract bool GetIsValid(short promiseId);
             internal abstract PromiseRefBase GetPreserved(short promiseId, ushort depth);
-            internal abstract PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth);
 
             internal short Id
             {
@@ -306,6 +298,12 @@ namespace Proto.Promises
                     // This should never happen.
                     ReportRejection(e, this);
                 }
+            }
+            internal PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth, CancelationToken cancelationToken)
+            {
+                var newPromise = PromiseConfigured<VoidResult>.GetOrCreate(synchronizationContext, depth, cancelationToken);
+                HookupNewPromise(promiseId, newPromise);
+                return newPromise;
             }
 
             internal void Forget(short promiseId)
@@ -447,7 +445,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private HandleablePromiseBase CompareExchangeWaiter(HandleablePromiseBase waiter, HandleablePromiseBase comparand)
             {
-                Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _waiter.
+                Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _next.
                 return Interlocked.CompareExchange(ref _next, waiter, comparand);
             }
 
@@ -717,7 +715,9 @@ namespace Proto.Promises
 
                 internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth)
                 {
-                    return GetDuplicateT(promiseId, depth);
+                    var newPromise = PromiseDuplicate<VoidResult>.GetOrCreate(depth);
+                    HookupNewPromise(promiseId, newPromise);
+                    return newPromise;
                 }
 
                 internal override PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth)
@@ -844,7 +844,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class PromiseDuplicate<TResult> : PromiseSingleAwait<TResult>
+            internal sealed partial class PromiseDuplicate<TResult> : PromiseSingleAwait<TResult>
             {
                 private PromiseDuplicate() { }
 
@@ -873,18 +873,67 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseConfigured<TResult> : PromiseSingleAwait<TResult>
+            internal sealed partial class PromiseDuplicateCancel<TResult> : PromiseSingleAwait<TResult>, ICancelable
+            {
+                private PromiseDuplicateCancel() { }
+
+                protected override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                        ObjectPool.MaybeRepool(this);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static PromiseDuplicateCancel<TResult> GetOrCreate(ushort depth, CancelationToken cancelationToken)
+                {
+                    var promise = ObjectPool.TryTake<PromiseDuplicateCancel<TResult>>()
+                        ?? new PromiseDuplicateCancel<TResult>();
+                    promise.Reset(depth);
+                    promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
+                    return promise;
+                }
+
+                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                {
+                    ThrowIfInPool(this);
+                    if (_cancelationHelper.TryUnregister(this))
+                    {
+                        _cancelationHelper.TryRelease();
+                        HandleSelf(ref handler, out nextHandler);
+                    }
+                    else
+                    {
+                        MaybeDispose();
+                        CancelationHelper.SetNextAfterCanceled(ref handler, out nextHandler);
+                    }
+                }
+
+                void ICancelable.Cancel()
+                {
+                    HandleFromCancelation();
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed partial class PromiseConfigured<TResult> : PromiseSingleAwait<TResult>, ICancelable
             {
                 private PromiseConfigured() { }
 
                 protected override void MaybeDispose()
                 {
-                    // TODO: handle properly when Promise.WaitAsync(CancelationToken) is added.
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                        ObjectPool.MaybeRepool(this);
+                    }
                 }
 
-                internal static PromiseConfigured<TResult> GetOrCreate(SynchronizationContext synchronizationContext, ushort depth)
+                private static PromiseConfigured<TResult> GetOrCreateBase(SynchronizationContext synchronizationContext, ushort depth, CancelationToken cancelationToken)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (synchronizationContext == null)
@@ -896,63 +945,123 @@ namespace Proto.Promises
                         ?? new PromiseConfigured<TResult>();
                     promise.Reset(depth);
                     promise._synchronizationContext = synchronizationContext;
+                    promise._wasCanceled = false;
                     return promise;
                 }
 
-                [MethodImpl(InlineOption)]
+                internal static PromiseConfigured<TResult> GetOrCreate(SynchronizationContext synchronizationContext, ushort depth, CancelationToken cancelationToken)
+                {
+                    var promise = GetOrCreateBase(synchronizationContext, depth, cancelationToken);
+                    promise._isScheduling = 0;
+                    promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
+                    return promise;
+                }
+
                 internal static PromiseConfigured<TResult> GetOrCreateFromResolved(SynchronizationContext synchronizationContext,
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
-                    TResult result, ushort depth)
+                    TResult result, ushort depth, CancelationToken cancelationToken)
                 {
-                    var promise = GetOrCreate(synchronizationContext, depth);
+                    var promise = GetOrCreateBase(synchronizationContext, depth, cancelationToken);
+                    promise._isScheduling = 1;
                     promise._result = result;
                     promise._previousState = Promise.State.Resolved;
                     promise._next = PromiseCompletionSentinel.s_instance;
+                    promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
                 }
 
-                internal override PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
+                [MethodImpl(InlineOption)]
+                private bool ShouldContinueSynchronous()
                 {
-                    return GetConfiguredT(promiseId, synchronizationContext, depth);
-                }
-
-                internal override PromiseRef<TResult> GetConfiguredT(short promiseId, SynchronizationContext synchronizationContext, ushort depth)
-                {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (synchronizationContext == null)
-                    {
-                        throw new InvalidOperationException("synchronizationContext cannot be null");
-                    }
-#endif
-                    // This isn't strictly thread-safe, but when the next promise is awaited, the CompareExchange should catch it if this is used improperly.
-                    ValidateIdAndNotAwaited(promiseId);
-                    _smallFields.IncrementPromiseId();
-                    _synchronizationContext = synchronizationContext;
-                    return this;
+                    // TODO: add forceAsync flag.
+                    return _synchronizationContext == ts_currentContext;
                 }
 
                 internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
                 {
                     ThrowIfInPool(this);
-                    // TODO: when cancelations are added, don't suppress rejection if this is canceled.
+                    nextHandler = null;
+
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
+                    if (Interlocked.CompareExchange(ref _isScheduling, 1, 0) != 0)
+#else
+                    if (Interlocked.Exchange(ref _isScheduling, 1) != 0)
+#endif
+                    {
+                        handler.MaybeDispose();
+                        MaybeDispose();
+                        return;
+                    }
+
                     handler.SuppressRejection = true;
                     _result = handler.GetResult<TResult>();
                     _rejectContainer = handler._rejectContainer;
                     _previousState = handler.State;
                     handler.MaybeDispose();
-                    nextHandler = null;
+
                     // Leave pending until this is awaited.
                     if (CompareExchangeWaiter(PromiseCompletionSentinel.s_instance, null) != null)
                     {
-                        if (_synchronizationContext == ts_currentContext)
+                        if (!ShouldContinueSynchronous())
                         {
-                            State = _previousState;
-                            nextHandler = _next;
+                            ScheduleForHandle(this, _synchronizationContext);
                             return;
                         }
-                        ScheduleForHandle(this, _synchronizationContext);
+
+                        SetCompletionState();
+                        handler = this;
+                        nextHandler = _next;
+                    }
+                }
+
+                void ICancelable.Cancel()
+                {
+                    _wasCanceled = true;
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
+                    if (Interlocked.CompareExchange(ref _isScheduling, 1, 0) != 0)
+#else
+                    if (Interlocked.Exchange(ref _isScheduling, 1) != 0)
+#endif
+                    {
+                        MaybeDispose();
+                        return;
+                    }
+
+                    _rejectContainer = RejectContainer.s_completionSentinel;
+                    _previousState = Promise.State.Canceled;
+
+                    // Leave pending until this is awaited.
+                    if (CompareExchangeWaiter(PromiseCompletionSentinel.s_instance, null) != null)
+                    {
+                        if (!ShouldContinueSynchronous())
+                        {
+                            ScheduleForHandle(this, _synchronizationContext);
+                            return;
+                        }
+
+                        State = Promise.State.Canceled;
+                        HandleNextInternal();
+                    }
+                }
+
+                private void SetCompletionState()
+                {
+                    if (_cancelationHelper.TryUnregister(this) & !_wasCanceled)
+                    {
+                        _cancelationHelper.TryRelease();
+                        State = _previousState;
+                    }
+                    else
+                    {
+                        var rejectContainer = _rejectContainer;
+                        if (rejectContainer != null)
+                        {
+                            rejectContainer.AddToUnhandledStack();
+                        }
+                        _rejectContainer = RejectContainer.s_completionSentinel;
+                        State = Promise.State.Canceled;
                     }
                 }
 
@@ -961,9 +1070,9 @@ namespace Proto.Promises
                     var currentContext = ts_currentContext;
                     ts_currentContext = _synchronizationContext;
 
-                    State = _previousState;
-                    // We don't need to synchronize access here because this is only called when the previous promise completed and the waiter has already been added, so there are no race conditions.
-                    // _waiter is guaranteed to be non-null here, so we can call HandleNext instead of MaybeHandleNext.
+                    SetCompletionState();
+                    // We don't need to synchronize access here because this is only called when the previous promise completed or the token canceled, and the waiter has already been added, so there are no race conditions.
+                    // _next is guaranteed to be non-null here, so we can call HandleNext instead of MaybeHandleNext.
                     HandleNext(_next);
 
                     ts_currentContext = currentContext;
@@ -989,16 +1098,16 @@ namespace Proto.Promises
                             return InvalidAwaitSentinel.s_instance;
                         }
 
-                        if (_synchronizationContext == ts_currentContext)
+                        if (ShouldContinueSynchronous())
                         {
-                            State = _previousState;
+                            SetCompletionState();
                             previousWaiter = waiter;
                             return null;
                         }
                         ScheduleForHandle(this, _synchronizationContext);
                     }
                     previousWaiter = null;
-                    return this; // It doesn't matter what we return since previousWaiter is set to null.
+                    return null; // It doesn't matter what we return since previousWaiter is set to null.
                 }
 
                 internal override bool GetIsCompleted(short promiseId)
@@ -1006,11 +1115,11 @@ namespace Proto.Promises
                     ValidateId(promiseId, this, 2);
                     ThrowIfInPool(this);
                     // Make sure the continuation happens on the synchronization context.
-                    if (_synchronizationContext == ts_currentContext
+                    if (ShouldContinueSynchronous()
                         && CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance)
                     {
                         WasAwaitedOrForgotten = true;
-                        State = _previousState;
+                        SetCompletionState();
                         return true;
                     }
                     return false;
@@ -1670,9 +1779,9 @@ namespace Proto.Promises
             {
                 if (promise != null)
                 {
-                    // TODO: suppress rejection before dispose.
-                    promise.MaybeMarkAwaitedAndDispose(id);
+                    // Suppress rejection before dispose, since the dispose checks the flag. This may still set the flag if the id doesn't match, but that's not a big deal if it happens.
                     promise.SuppressRejection = suppressRejection;
+                    promise.MaybeMarkAwaitedAndDispose(id);
                 }
             }
         } // PromiseRefBase

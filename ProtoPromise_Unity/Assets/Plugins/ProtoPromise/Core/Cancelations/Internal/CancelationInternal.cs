@@ -119,12 +119,12 @@ namespace Proto.Promises
             private readonly CancelationCallbackNode _registeredCallbacksHead = CancelationCallbackNode.CreateLinkedListSentinel();
             internal SpinLocker _locker = new SpinLocker();
             // Start with Id 1 instead of 0 to reduce risk of false positives.
-            private int _sourceId = 1;
-            private int _tokenId = 1;
+            volatile private int _sourceId = 1;
+            volatile private int _tokenId = 1;
             private uint _userRetainCounter;
             private byte _internalRetainCounter;
             private bool _linkedToBclToken;
-            internal State _state;
+            volatile internal State _state;
 
             internal int SourceId
             {

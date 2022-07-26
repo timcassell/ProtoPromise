@@ -738,13 +738,55 @@ namespace Proto.Promises
                     return new Promise<TResult>(newRef, newRef.Id, _this.Depth, _this._result);
                 }
 
-                internal static Promise WaitAsync(Promise _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext)
+                internal static Promise WaitAsync(Promise _this, CancelationToken cancelationToken)
+                {
+                    if (_this._ref == null)
+                    {
+                        return cancelationToken.IsCancelationRequested
+                            ? Canceled(_this._ref, _this._id, _this.Depth)
+                            : _this;
+                    }
+                    PromiseRefBase promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        promise = PromiseDuplicateCancel<VoidResult>.GetOrCreate(_this.Depth, cancelationToken);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    else
+                    {
+                        promise = _this._ref.GetDuplicate(_this._id, _this.Depth);
+                    }
+                    return new Promise(promise, promise.Id, _this.Depth);
+                }
+
+                internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, CancelationToken cancelationToken)
+                {
+                    if (_this._ref == null)
+                    {
+                        return cancelationToken.IsCancelationRequested
+                            ? CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id, _this.Depth)
+                            : _this;
+                    }
+                    PromiseRef<TResult> promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        promise = PromiseDuplicateCancel<TResult>.GetOrCreate(_this.Depth, cancelationToken);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    else
+                    {
+                        promise = _this._ref.GetDuplicateT(_this._id, _this.Depth);
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this.Depth, _this._result);
+                }
+
+                internal static Promise WaitAsync(Promise _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext, CancelationToken cancelationToken)
                 {
                     switch (continuationOption)
                     {
                         case SynchronizationOption.Synchronous:
                         {
-                            return Duplicate(_this);
+                            return WaitAsync(_this, cancelationToken);
                         }
                         case SynchronizationOption.Foreground:
                         {
@@ -760,26 +802,41 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
+                            synchronizationContext = Promise.Config.BackgroundContext;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
                         {
-                            var newRef = _this._ref == null
-                                ? PromiseConfigured<VoidResult>.GetOrCreateFromResolved(synchronizationContext, new VoidResult(), _this.Depth)
-                                : _this._ref.GetConfigured(_this._id, synchronizationContext, _this.Depth);
-                            return new Promise(newRef, newRef.Id, _this.Depth);
+                            if (synchronizationContext == null)
+                            {
+                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
+                            }
+                            PromiseRefBase promise;
+                            if (_this._ref == null)
+                            {
+                                promise = PromiseConfigured<VoidResult>.GetOrCreateFromResolved(synchronizationContext, new VoidResult(), _this.Depth, cancelationToken);
+                            }
+                            else if (cancelationToken.CanBeCanceled)
+                            {
+                                promise = PromiseConfigured<VoidResult>.GetOrCreate(synchronizationContext, _this.Depth, cancelationToken);
+                                _this._ref.HookupNewPromise(_this._id, promise);
+                            }
+                            else
+                            {
+                                promise = _this._ref.GetConfigured(_this._id, synchronizationContext, _this.Depth, cancelationToken);
+                            }
+                            return new Promise(promise, promise.Id, _this.Depth);
                         }
                     }
                 }
 
-                internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext)
+                internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext, CancelationToken cancelationToken)
                 {
                     switch (continuationOption)
                     {
                         case SynchronizationOption.Synchronous:
                         {
-                            return Duplicate(_this);
+                            return WaitAsync(_this, cancelationToken);
                         }
                         case SynchronizationOption.Foreground:
                         {
@@ -795,15 +852,30 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
+                            synchronizationContext = Promise.Config.BackgroundContext;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
                         {
-                            var newRef = _this._ref == null
-                                ? PromiseConfigured<TResult>.GetOrCreateFromResolved(synchronizationContext, _this._result, _this.Depth)
-                                : _this._ref.GetConfiguredT(_this._id, synchronizationContext, _this.Depth);
-                            return new Promise<TResult>(newRef, newRef.Id, _this.Depth, _this._result);
+                            if (synchronizationContext == null)
+                            {
+                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
+                            }
+                            PromiseRef<TResult> promise;
+                            if (_this._ref == null)
+                            {
+                                promise = PromiseConfigured<TResult>.GetOrCreateFromResolved(synchronizationContext, _this._result, _this.Depth, cancelationToken);
+                            }
+                            else if (cancelationToken.CanBeCanceled)
+                            {
+                                promise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, _this.Depth, cancelationToken);
+                                _this._ref.HookupNewPromise(_this._id, promise);
+                            }
+                            else
+                            {
+                                promise = _this._ref.GetConfiguredT(_this._id, synchronizationContext, _this.Depth, cancelationToken);
+                            }
+                            return new Promise<TResult>(promise, promise.Id, _this.Depth, _this._result);
                         }
                     }
                 }
@@ -1043,7 +1115,8 @@ namespace Proto.Promises
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
-                        return WaitAsync(_this, invokeOption, synchronizationContext);
+                        // The token only stops the progress from being invoked, it doesn't cancel the promise.
+                        return WaitAsync(_this, invokeOption, synchronizationContext, default(CancelationToken));
                     }
 
                     PromiseProgress<VoidResult, TProgress> promise;
@@ -1076,11 +1149,15 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
+                            synchronizationContext = Promise.Config.BackgroundContext;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
                         {
+                            if (synchronizationContext == null)
+                            {
+                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
+                            }
                             if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                             {
                                 if (_this._ref != null)
@@ -1137,7 +1214,8 @@ namespace Proto.Promises
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
-                        return WaitAsync(_this, invokeOption, synchronizationContext);
+                        // The token only stops the progress from being invoked, it doesn't cancel the promise.
+                        return WaitAsync(_this, invokeOption, synchronizationContext, default(CancelationToken));
                     }
 
                     PromiseProgress<TResult, TProgress> promise;
@@ -1167,11 +1245,15 @@ namespace Proto.Promises
                         }
                         case SynchronizationOption.Background:
                         {
-                            synchronizationContext = Promise.Config.BackgroundContext ?? BackgroundSynchronizationContextSentinel.s_instance;
+                            synchronizationContext = Promise.Config.BackgroundContext;
                             goto default;
                         }
                         default: // SynchronizationOption.Explicit
                         {
+                            if (synchronizationContext == null)
+                            {
+                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
+                            }
                             if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                             {
                                 TResult result = GetResultFromResolved(_this);

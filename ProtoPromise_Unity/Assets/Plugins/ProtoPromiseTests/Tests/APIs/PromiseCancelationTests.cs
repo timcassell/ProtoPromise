@@ -1970,166 +1970,150 @@ namespace ProtoPromiseTests.APIs
                 promise.Forget();
             }
 
-            private const string expectedRejection = "Reject";
-            private Action<UnhandledException> previousRejectionHandler;
-
-            private void SetupExpectedUncaughtRejections()
+            public class Reject
             {
-                // When a callback is canceled and the previous promise is rejected, the rejection is unhandled.
-                // So we need to suppress that here and make sure it's correct.
-                previousRejectionHandler = Promise.Config.UncaughtRejectionHandler;
-                Promise.Config.UncaughtRejectionHandler = e => Assert.AreEqual(expectedRejection, e.Value);
-            }
 
-            private void CleanupExpectedUncaughtRejections()
-            {
-                Promise.Config.UncaughtRejectionHandler = previousRejectionHandler;
-            }
+                private const string expectedRejection = "Reject";
 
-            [Test]
-            public void OnRejectedIsNotInvokedIfTokenIsCanceled_void()
-            {
-                SetupExpectedUncaughtRejections();
+                [SetUp]
+                public void Setup()
+                {
+                    // When a callback is canceled and the previous promise is rejected, the rejection is unhandled.
+                    // So we set the expected uncaught reject value.
+                    TestHelper.s_expectedUncaughtRejectValue = expectedRejection;
 
-                CancelationSource cancelationSource = CancelationSource.New();
+                    TestHelper.Setup();
+                }
 
-                var deferred = Promise.NewDeferred();
+                [TearDown]
+                public void Teardown()
+                {
+                    TestHelper.Cleanup();
 
-                TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    deferred.Promise,
-                    onReject: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
-                    onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    TestHelper.s_expectedUncaughtRejectValue = null;
+                }
 
-                cancelationSource.Cancel();
-                deferred.Reject(expectedRejection);
+                [Test]
+                public void OnRejectedIsNotInvokedIfTokenIsCanceled_void()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
 
-                cancelationSource.Dispose();
+                    var deferred = Promise.NewDeferred();
 
-                CleanupExpectedUncaughtRejections();
-            }
+                    TestHelper.AddCallbacksWithCancelation<float, object, string>(
+                        deferred.Promise,
+                        onReject: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
+                        onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
 
-            [Test]
-            public void OnRejectedIsNotInvokedIfTokenIsCanceled_T()
-            {
-                SetupExpectedUncaughtRejections();
+                    cancelationSource.Cancel();
+                    deferred.Reject(expectedRejection);
 
-                CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Dispose();
+                }
 
-                var deferred = Promise.NewDeferred<int>();
+                [Test]
+                public void OnRejectedIsNotInvokedIfTokenIsCanceled_T()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
 
-                TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    deferred.Promise,
-                    onReject: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
-                    onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    var deferred = Promise.NewDeferred<int>();
 
-                cancelationSource.Cancel();
-                deferred.Reject(expectedRejection);
+                    TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
+                        deferred.Promise,
+                        onReject: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
+                        onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
 
-                cancelationSource.Dispose();
+                    cancelationSource.Cancel();
+                    deferred.Reject(expectedRejection);
 
-                CleanupExpectedUncaughtRejections();
-            }
+                    cancelationSource.Dispose();
+                }
 
-            [Test]
-            public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_void0()
-            {
-                SetupExpectedUncaughtRejections();
+                [Test]
+                public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_void0()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel();
 
-                CancelationSource cancelationSource = CancelationSource.New();
-                cancelationSource.Cancel();
+                    var deferred = Promise.NewDeferred();
 
-                var deferred = Promise.NewDeferred();
+                    TestHelper.AddCallbacksWithCancelation<float, object, string>(
+                        deferred.Promise,
+                        onReject: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
+                        onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
 
-                TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    deferred.Promise,
-                    onReject: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
-                    onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
+                    deferred.Reject(expectedRejection);
 
-                deferred.Reject(expectedRejection);
+                    cancelationSource.Dispose();
+                }
 
-                cancelationSource.Dispose();
+                [Test]
+                public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_void1()
+                {
+                    var deferred = Promise.NewDeferred();
 
-                CleanupExpectedUncaughtRejections();
-            }
+                    TestHelper.AddCallbacksWithCancelation<float, object, string>(
+                        deferred.Promise,
+                        onReject: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
+                        onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        cancelationToken: Proto.Promises.CancelationToken.Canceled()
+                    );
 
-            [Test]
-            public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_void1()
-            {
-                SetupExpectedUncaughtRejections();
+                    deferred.Reject(expectedRejection);
+                }
 
-                var deferred = Promise.NewDeferred();
+                [Test]
+                public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_T0()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    cancelationSource.Cancel();
 
-                TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    deferred.Promise,
-                    onReject: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
-                    onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    cancelationToken: Proto.Promises.CancelationToken.Canceled()
-                );
+                    var deferred = Promise.NewDeferred<int>();
 
-                deferred.Reject(expectedRejection);
+                    TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
+                        deferred.Promise,
+                        onReject: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
+                        onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        cancelationToken: cancelationSource.Token
+                    );
 
-                CleanupExpectedUncaughtRejections();
-            }
+                    deferred.Reject(expectedRejection);
 
-            [Test]
-            public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_T0()
-            {
-                SetupExpectedUncaughtRejections();
+                    cancelationSource.Dispose();
+                }
 
-                CancelationSource cancelationSource = CancelationSource.New();
-                cancelationSource.Cancel();
+                [Test]
+                public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_T1()
+                {
+                    var deferred = Promise.NewDeferred<int>();
 
-                var deferred = Promise.NewDeferred<int>();
+                    TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
+                        deferred.Promise,
+                        onReject: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
+                        onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
+                        cancelationToken: Proto.Promises.CancelationToken.Canceled()
+                    );
 
-                TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    deferred.Promise,
-                    onReject: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
-                    onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    cancelationToken: cancelationSource.Token
-                );
-
-                deferred.Reject(expectedRejection);
-
-                cancelationSource.Dispose();
-
-                CleanupExpectedUncaughtRejections();
-            }
-
-            [Test]
-            public void OnRejectedIsNotInvokedIfTokenIsAlreadyCanceled_T1()
-            {
-                SetupExpectedUncaughtRejections();
-
-                var deferred = Promise.NewDeferred<int>();
-
-                TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    deferred.Promise,
-                    onReject: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejection: () => Assert.Fail("OnRejected was invoked."),
-                    onRejectCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    onUnknownRejectionCapture: _ => Assert.Fail("OnRejected was invoked."),
-                    cancelationToken: Proto.Promises.CancelationToken.Canceled()
-                );
-
-                deferred.Reject(expectedRejection);
-
-                CleanupExpectedUncaughtRejections();
+                    deferred.Reject(expectedRejection);
+                }
             }
 
             [Test]
