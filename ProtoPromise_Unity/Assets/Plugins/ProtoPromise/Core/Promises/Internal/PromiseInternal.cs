@@ -210,12 +210,6 @@ namespace Proto.Promises
                 }
 
                 internal abstract PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth);
-                internal PromiseRef<TResult> GetConfiguredT(short promiseId, SynchronizationContext synchronizationContext, ushort depth, CancelationToken cancelationToken)
-                {
-                    var newPromise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, depth, cancelationToken);
-                    HookupNewPromise(promiseId, newPromise);
-                    return newPromise;
-                }
 
                 internal sealed override PromiseRefBase GetPreserved(short promiseId, ushort depth)
                 {
@@ -298,12 +292,6 @@ namespace Proto.Promises
                     // This should never happen.
                     ReportRejection(e, this);
                 }
-            }
-            internal PromiseRefBase GetConfigured(short promiseId, SynchronizationContext synchronizationContext, ushort depth, CancelationToken cancelationToken)
-            {
-                var newPromise = PromiseConfigured<VoidResult>.GetOrCreate(synchronizationContext, depth, cancelationToken);
-                HookupNewPromise(promiseId, newPromise);
-                return newPromise;
             }
 
             internal void Forget(short promiseId)
@@ -933,7 +921,7 @@ namespace Proto.Promises
                     }
                 }
 
-                private static PromiseConfigured<TResult> GetOrCreateBase(SynchronizationContext synchronizationContext, ushort depth, CancelationToken cancelationToken)
+                private static PromiseConfigured<TResult> GetOrCreateBase(SynchronizationContext synchronizationContext, ushort depth, bool forceAsync, CancelationToken cancelationToken)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (synchronizationContext == null)
@@ -946,12 +934,13 @@ namespace Proto.Promises
                     promise.Reset(depth);
                     promise._synchronizationContext = synchronizationContext;
                     promise._wasCanceled = false;
+                    promise._forceAsync = forceAsync;
                     return promise;
                 }
 
-                internal static PromiseConfigured<TResult> GetOrCreate(SynchronizationContext synchronizationContext, ushort depth, CancelationToken cancelationToken)
+                internal static PromiseConfigured<TResult> GetOrCreate(SynchronizationContext synchronizationContext, ushort depth, bool forceAsync, CancelationToken cancelationToken)
                 {
-                    var promise = GetOrCreateBase(synchronizationContext, depth, cancelationToken);
+                    var promise = GetOrCreateBase(synchronizationContext, depth, forceAsync, cancelationToken);
                     promise._isScheduling = 0;
                     promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                     return promise;
@@ -961,9 +950,9 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
-                    TResult result, ushort depth, CancelationToken cancelationToken)
+                    TResult result, ushort depth, bool forceAsync, CancelationToken cancelationToken)
                 {
-                    var promise = GetOrCreateBase(synchronizationContext, depth, cancelationToken);
+                    var promise = GetOrCreateBase(synchronizationContext, depth, forceAsync, cancelationToken);
                     promise._isScheduling = 1;
                     promise._result = result;
                     promise._previousState = Promise.State.Resolved;
@@ -975,8 +964,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private bool ShouldContinueSynchronous()
                 {
-                    // TODO: add forceAsync flag.
-                    return _synchronizationContext == ts_currentContext;
+                    return !_forceAsync & _synchronizationContext == ts_currentContext;
                 }
 
                 internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
@@ -1780,7 +1768,8 @@ namespace Proto.Promises
                 if (promise != null)
                 {
                     // Suppress rejection before dispose, since the dispose checks the flag. This may still set the flag if the id doesn't match, but that's not a big deal if it happens.
-                    promise.SuppressRejection = suppressRejection;
+                    // We only enable SuppressRejection, never disable.
+                    promise.SuppressRejection |= suppressRejection;
                     promise.MaybeMarkAwaitedAndDispose(id);
                 }
             }

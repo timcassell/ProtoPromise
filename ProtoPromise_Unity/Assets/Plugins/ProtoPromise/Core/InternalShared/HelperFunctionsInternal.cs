@@ -31,7 +31,7 @@ namespace Proto.Promises
     {
         // This is used to detect if we're currently executing on the context we're going to schedule to, so we can just invoke synchronously instead.
         [ThreadStatic]
-        private static SynchronizationContext ts_currentContext;
+        internal static SynchronizationContext ts_currentContext;
 
         private static readonly SendOrPostCallback s_synchronizationContextHandleCallback = HandleFromContext;
         private static readonly WaitCallback s_threadPoolHandleCallback = HandleFromContext;

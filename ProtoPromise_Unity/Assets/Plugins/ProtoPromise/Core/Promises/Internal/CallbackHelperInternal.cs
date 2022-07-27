@@ -780,7 +780,7 @@ namespace Proto.Promises
                     return new Promise<TResult>(promise, promise.Id, _this.Depth, _this._result);
                 }
 
-                internal static Promise WaitAsync(Promise _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext, CancelationToken cancelationToken)
+                internal static Promise WaitAsync(Promise _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext, bool forceAsync, CancelationToken cancelationToken)
                 {
                     switch (continuationOption)
                     {
@@ -814,23 +814,19 @@ namespace Proto.Promises
                             PromiseRefBase promise;
                             if (_this._ref == null)
                             {
-                                promise = PromiseConfigured<VoidResult>.GetOrCreateFromResolved(synchronizationContext, new VoidResult(), _this.Depth, cancelationToken);
-                            }
-                            else if (cancelationToken.CanBeCanceled)
-                            {
-                                promise = PromiseConfigured<VoidResult>.GetOrCreate(synchronizationContext, _this.Depth, cancelationToken);
-                                _this._ref.HookupNewPromise(_this._id, promise);
+                                promise = PromiseConfigured<VoidResult>.GetOrCreateFromResolved(synchronizationContext, new VoidResult(), _this.Depth, forceAsync, cancelationToken);
                             }
                             else
                             {
-                                promise = _this._ref.GetConfigured(_this._id, synchronizationContext, _this.Depth, cancelationToken);
+                                promise = PromiseConfigured<VoidResult>.GetOrCreate(synchronizationContext, _this.Depth, forceAsync, cancelationToken);
+                                _this._ref.HookupNewPromise(_this._id, promise);
                             }
                             return new Promise(promise, promise.Id, _this.Depth);
                         }
                     }
                 }
 
-                internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext, CancelationToken cancelationToken)
+                internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext, bool forceAsync, CancelationToken cancelationToken)
                 {
                     switch (continuationOption)
                     {
@@ -864,16 +860,12 @@ namespace Proto.Promises
                             PromiseRef<TResult> promise;
                             if (_this._ref == null)
                             {
-                                promise = PromiseConfigured<TResult>.GetOrCreateFromResolved(synchronizationContext, _this._result, _this.Depth, cancelationToken);
-                            }
-                            else if (cancelationToken.CanBeCanceled)
-                            {
-                                promise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, _this.Depth, cancelationToken);
-                                _this._ref.HookupNewPromise(_this._id, promise);
+                                promise = PromiseConfigured<TResult>.GetOrCreateFromResolved(synchronizationContext, _this._result, _this.Depth, forceAsync, cancelationToken);
                             }
                             else
                             {
-                                promise = _this._ref.GetConfiguredT(_this._id, synchronizationContext, _this.Depth, cancelationToken);
+                                promise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, _this.Depth, forceAsync, cancelationToken);
+                                _this._ref.HookupNewPromise(_this._id, promise);
                             }
                             return new Promise<TResult>(promise, promise.Id, _this.Depth, _this._result);
                         }
@@ -1108,15 +1100,16 @@ namespace Proto.Promises
                     in
 #endif
                     TProgress progress,
-                    CancelationToken cancelationToken,
                     SynchronizationOption invokeOption,
-                    SynchronizationContext synchronizationContext)
+                    SynchronizationContext synchronizationContext,
+                    bool forceAsync,
+                    CancelationToken cancelationToken)
                     where TProgress : IProgress<float>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
                         // The token only stops the progress from being invoked, it doesn't cancel the promise.
-                        return WaitAsync(_this, invokeOption, synchronizationContext, default(CancelationToken));
+                        return WaitAsync(_this, invokeOption, synchronizationContext, forceAsync, default(CancelationToken));
                     }
 
                     PromiseProgress<VoidResult, TProgress> promise;
@@ -1164,7 +1157,7 @@ namespace Proto.Promises
                                 {
                                     _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
                                 }
-                                promise = PromiseProgress<VoidResult, TProgress>.GetOrCreateFromResolved(progress, cancelationToken, _this.Depth, synchronizationContext, new VoidResult());
+                                promise = PromiseProgress<VoidResult, TProgress>.GetOrCreateFromResolved(progress, new VoidResult(), _this.Depth, synchronizationContext, forceAsync, cancelationToken);
                                 ScheduleForHandle(promise, synchronizationContext);
                                 return new Promise(promise, promise.Id, _this.Depth);
                             }
@@ -1172,7 +1165,7 @@ namespace Proto.Promises
                         }
                     }
 
-                    promise = PromiseProgress<VoidResult, TProgress>.GetOrCreate(progress, cancelationToken, _this.Depth, invokeOption == SynchronizationOption.Synchronous, synchronizationContext);
+                    promise = PromiseProgress<VoidResult, TProgress>.GetOrCreate(progress, _this.Depth, invokeOption == SynchronizationOption.Synchronous, synchronizationContext, forceAsync, cancelationToken);
 #if PROMISE_DEBUG
                     promise._previous = _this._ref;
 #endif
@@ -1207,15 +1200,16 @@ namespace Proto.Promises
                     in
 #endif
                     TProgress progress,
-                    CancelationToken cancelationToken,
                     SynchronizationOption invokeOption,
-                    SynchronizationContext synchronizationContext)
+                    SynchronizationContext synchronizationContext,
+                    bool forceAsync,
+                    CancelationToken cancelationToken)
                     where TProgress : IProgress<float>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
                         // The token only stops the progress from being invoked, it doesn't cancel the promise.
-                        return WaitAsync(_this, invokeOption, synchronizationContext, default(CancelationToken));
+                        return WaitAsync(_this, invokeOption, synchronizationContext, forceAsync, default(CancelationToken));
                     }
 
                     PromiseProgress<TResult, TProgress> promise;
@@ -1257,7 +1251,7 @@ namespace Proto.Promises
                             if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                             {
                                 TResult result = GetResultFromResolved(_this);
-                                promise = PromiseProgress<TResult, TProgress>.GetOrCreateFromResolved(progress, cancelationToken, _this.Depth, synchronizationContext, result);
+                                promise = PromiseProgress<TResult, TProgress>.GetOrCreateFromResolved(progress, result, _this.Depth, synchronizationContext, forceAsync, cancelationToken);
                                 ScheduleForHandle(promise, synchronizationContext);
                                 return new Promise<TResult>(promise, promise.Id, _this.Depth);
                             }
@@ -1265,7 +1259,7 @@ namespace Proto.Promises
                         }
                     }
 
-                    promise = PromiseProgress<TResult, TProgress>.GetOrCreate(progress, cancelationToken, _this.Depth, invokeOption == SynchronizationOption.Synchronous, synchronizationContext);
+                    promise = PromiseProgress<TResult, TProgress>.GetOrCreate(progress, _this.Depth, invokeOption == SynchronizationOption.Synchronous, synchronizationContext, forceAsync, cancelationToken);
 #if PROMISE_DEBUG
                     promise._previous = _this._ref;
 #endif

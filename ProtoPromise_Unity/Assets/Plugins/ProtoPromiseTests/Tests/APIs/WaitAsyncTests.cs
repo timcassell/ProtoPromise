@@ -265,8 +265,8 @@ namespace ProtoPromiseTests.APIs
             {
                 TestHelper.AddResolveCallbacksWithCancelation<int, string>(firstPromise,
                     onResolve: () => onFirstCallback(),
-                    promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
-                    promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                    promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
+                    promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
                     onCallbackAdded: (ref Promise promise) =>
                     {
                         ++expectedFirstInvokes;
@@ -301,8 +301,8 @@ namespace ProtoPromiseTests.APIs
                 onResolve: () => onFirstCallback(),
                 onReject: r => onFirstCallback(),
                 onUnknownRejection: () => onFirstCallback(),
-                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
-                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
+                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
                 onDirectCallbackAdded: (ref Promise promise) =>
                 {
                     ++expectedFirstInvokes;
@@ -498,8 +498,8 @@ namespace ProtoPromiseTests.APIs
             {
                 TestHelper.AddResolveCallbacksWithCancelation<int, int, string>(firstPromise,
                     onResolve: v => onFirstCallback(),
-                    promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
-                    promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                    promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
+                    promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
                     onCallbackAdded: (ref Promise promise) =>
                     {
                         ++expectedFirstInvokes;
@@ -534,8 +534,8 @@ namespace ProtoPromiseTests.APIs
                 onResolve: v => onFirstCallback(),
                 onReject: r => onFirstCallback(),
                 onUnknownRejection: () => onFirstCallback(),
-                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
-                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
+                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
                 onDirectCallbackAdded: (ref Promise promise) =>
                 {
                     ++expectedFirstInvokes;
@@ -714,8 +714,8 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.AddContinueCallbacksWithCancelation<int, string>(firstPromise,
                 onContinue: _ => onFirstCallback(),
-                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
-                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
+                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
                 onCallbackAdded: (ref Promise promise) =>
                 {
                     ++expectedFirstInvokes;
@@ -847,8 +847,8 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.AddContinueCallbacksWithCancelation<int, int, string>(firstPromise,
                 onContinue: _ => onFirstCallback(),
-                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
-                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2),
+                promiseToPromise: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
+                promiseToPromiseConvert: p => secondPromise.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2),
                 onCallbackAdded: (ref Promise promise) =>
                 {
                     ++expectedFirstInvokes;
@@ -1183,6 +1183,120 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.TryDispose();
         }
 
+        [Test]
+        public void WaitAsyncForceAsync_CallbacksWillBeInvokedProperly_Then_void(
+            [Values(ConfigureAwaitType.Foreground, ConfigureAwaitType.Explicit
+#if !UNITY_WEBGL
+                , ConfigureAwaitType.Background
+#endif
+            )] ConfigureAwaitType waitType,
+            [Values] bool forceAsync,
+            [Values] bool isAlreadyComplete)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            // We're testing an implementation detail that if forceAsync is false, the continuation is invoked synchronously if the current context is the same.
+            // It may still be executed asynchronously if forceAsync is false. But if it's true, it is guaranteed to be invoked asynchronously.
+            // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.
+            var lockObj = new object();
+            bool didInvoke = false;
+
+            Action action = () =>
+            {
+                lock (lockObj)
+                {
+                    CancelationSource cancelationSource;
+                    Promise.Deferred deferred;
+                    TestHelper.BuildPromise(CompleteType.Resolve, isAlreadyComplete, rejectValue, out deferred, out cancelationSource)
+                        .ConfigureAwait(waitType, forceAsync)
+                        .ContinueWith(_ =>
+                        {
+                            TestHelper.AssertCallbackContext((SynchronizationType) waitType, (SynchronizationType) waitType, foregroundThread);
+                            lock (lockObj)
+                            {
+                                didInvoke = true;
+                            }
+                        })
+                        .Forget();
+                    TestHelper.GetTryCompleterVoid(CompleteType.Resolve, rejectValue).Invoke(deferred, cancelationSource);
+                    Assert.AreNotEqual(forceAsync, didInvoke);
+                }
+            };
+
+            if (waitType == ConfigureAwaitType.Explicit)
+            {
+                Promise.Run(action, TestHelper._foregroundContext).Forget();
+            }
+            else
+            {
+                Promise.Run(action, (SynchronizationOption) waitType).Forget();
+            }
+
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+
+            if (!SpinWait.SpinUntil(() => didInvoke, timeout))
+            {
+                Assert.Fail("Timed out after " + timeout + ", didInvoke: " + didInvoke);
+            }
+        }
+
+        [Test]
+        public void WaitAsyncForceAsync_CallbacksWillBeInvokedProperly_Then_T(
+            [Values(ConfigureAwaitType.Foreground, ConfigureAwaitType.Explicit
+#if !UNITY_WEBGL
+                , ConfigureAwaitType.Background
+#endif
+            )] ConfigureAwaitType waitType,
+            [Values] bool forceAsync,
+            [Values] bool isAlreadyComplete)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            // We're testing an implementation detail that if forceAsync is false, the continuation is invoked synchronously if the current context is the same.
+            // It may still be executed asynchronously if forceAsync is false. But if it's true, it is guaranteed to be invoked asynchronously.
+            // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.
+            var lockObj = new object();
+            bool didInvoke = false;
+
+            Action action = () =>
+            {
+                lock (lockObj)
+                {
+                    CancelationSource cancelationSource;
+                    Promise<int>.Deferred deferred;
+                    TestHelper.BuildPromise(CompleteType.Resolve, isAlreadyComplete, 1, rejectValue, out deferred, out cancelationSource)
+                        .ConfigureAwait(waitType, forceAsync)
+                        .ContinueWith(_ =>
+                        {
+                            TestHelper.AssertCallbackContext((SynchronizationType) waitType, (SynchronizationType) waitType, foregroundThread);
+                            lock (lockObj)
+                            {
+                                didInvoke = true;
+                            }
+                        })
+                        .Forget();
+                    TestHelper.GetTryCompleterT(CompleteType.Resolve, 1, rejectValue).Invoke(deferred, cancelationSource);
+                    Assert.AreNotEqual(forceAsync, didInvoke);
+                }
+            };
+
+            if (waitType == ConfigureAwaitType.Explicit)
+            {
+                Promise.Run(action, TestHelper._foregroundContext).Forget();
+            }
+            else
+            {
+                Promise.Run(action, (SynchronizationOption) waitType).Forget();
+            }
+
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+
+            if (!SpinWait.SpinUntil(() => didInvoke, timeout))
+            {
+                Assert.Fail("Timed out after " + timeout + ", didInvoke: " + didInvoke);
+            }
+        }
+
 #if CSHARP_7_3_OR_NEWER
         [Test, TestCaseSource("GetArgs_ContinueWith")]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Await_void(
@@ -1239,7 +1353,7 @@ namespace ProtoPromiseTests.APIs
             {
                 try
                 {
-                    await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, configureAwaitCancelationToken1);
+                    await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, false, configureAwaitCancelationToken1);
                 }
                 catch { }
                 finally
@@ -1250,7 +1364,7 @@ namespace ProtoPromiseTests.APIs
 
                 try
                 {
-                    await p2.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2);
+                    await p2.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2);
                 }
                 catch { }
                 finally
@@ -1374,7 +1488,7 @@ namespace ProtoPromiseTests.APIs
             {
                 try
                 {
-                    _ = await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, configureAwaitCancelationToken1);
+                    _ = await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, false, configureAwaitCancelationToken1);
                 }
                 catch { }
                 finally
@@ -1385,7 +1499,7 @@ namespace ProtoPromiseTests.APIs
 
                 try
                 {
-                    _ = await p2.ConfigureAwait((ConfigureAwaitType) secondWaitType, configureAwaitCancelationToken2);
+                    _ = await p2.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2);
                 }
                 catch { }
                 finally
@@ -1453,7 +1567,129 @@ namespace ProtoPromiseTests.APIs
             configureAwaitCancelationSource1.TryDispose();
             configureAwaitCancelationSource2.TryDispose();
         }
+
+        [Test]
+        public void WaitAsyncForceAsync_CallbacksWillBeInvokedProperly_await_void(
+            [Values(ConfigureAwaitType.Foreground, ConfigureAwaitType.Explicit
+#if !UNITY_WEBGL
+                , ConfigureAwaitType.Background
 #endif
+            )] ConfigureAwaitType waitType,
+            [Values] bool forceAsync,
+            [Values] bool isAlreadyComplete)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            // We're testing an implementation detail that if forceAsync is false, the continuation is invoked synchronously if the current context is the same.
+            // It may still be executed asynchronously if forceAsync is false. But if it's true, it is guaranteed to be invoked asynchronously.
+            // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.
+            var lockObj = new object();
+            bool didInvoke = false;
+
+            Action action = () =>
+            {
+                lock (lockObj)
+                {
+                    CancelationSource cancelationSource;
+                    Promise.Deferred deferred;
+                    var promise = TestHelper.BuildPromise(CompleteType.Resolve, isAlreadyComplete, rejectValue, out deferred, out cancelationSource);
+
+                    Await().Forget();
+
+                    async Promise Await()
+                    {
+                        await promise.ConfigureAwait(waitType, forceAsync);
+
+                        TestHelper.AssertCallbackContext((SynchronizationType) waitType, (SynchronizationType) waitType, foregroundThread);
+                        lock (lockObj)
+                        {
+                            didInvoke = true;
+                        }
+                    }
+
+                    TestHelper.GetTryCompleterVoid(CompleteType.Resolve, rejectValue).Invoke(deferred, cancelationSource);
+                    Assert.AreNotEqual(forceAsync, didInvoke);
+                }
+            };
+
+            if (waitType == ConfigureAwaitType.Explicit)
+            {
+                Promise.Run(action, TestHelper._foregroundContext).Forget();
+            }
+            else
+            {
+                Promise.Run(action, (SynchronizationOption) waitType).Forget();
+            }
+
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+
+            if (!SpinWait.SpinUntil(() => didInvoke, timeout))
+            {
+                Assert.Fail("Timed out after " + timeout + ", didInvoke: " + didInvoke);
+            }
+        }
+
+        [Test]
+        public void WaitAsyncForceAsync_CallbacksWillBeInvokedProperly_await_T(
+            [Values(ConfigureAwaitType.Foreground, ConfigureAwaitType.Explicit
+#if !UNITY_WEBGL
+                , ConfigureAwaitType.Background
+#endif
+            )] ConfigureAwaitType waitType,
+            [Values] bool forceAsync,
+            [Values] bool isAlreadyComplete)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            // We're testing an implementation detail that if forceAsync is false, the continuation is invoked synchronously if the current context is the same.
+            // It may still be executed asynchronously if forceAsync is false. But if it's true, it is guaranteed to be invoked asynchronously.
+            // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.
+            var lockObj = new object();
+            bool didInvoke = false;
+
+            Action action = () =>
+            {
+                lock (lockObj)
+                {
+                    CancelationSource cancelationSource;
+                    Promise<int>.Deferred deferred;
+                    var promise = TestHelper.BuildPromise(CompleteType.Resolve, isAlreadyComplete, 1, rejectValue, out deferred, out cancelationSource);
+
+                    Await().Forget();
+
+                    async Promise Await()
+                    {
+                        _ = await promise.ConfigureAwait(waitType, forceAsync);
+
+                        TestHelper.AssertCallbackContext((SynchronizationType) waitType, (SynchronizationType) waitType, foregroundThread);
+                        lock (lockObj)
+                        {
+                            didInvoke = true;
+                        }
+                    }
+
+                    TestHelper.GetTryCompleterT(CompleteType.Resolve, 1, rejectValue).Invoke(deferred, cancelationSource);
+                    Assert.AreNotEqual(forceAsync, didInvoke);
+                }
+            };
+
+            if (waitType == ConfigureAwaitType.Explicit)
+            {
+                Promise.Run(action, TestHelper._foregroundContext).Forget();
+            }
+            else
+            {
+                Promise.Run(action, (SynchronizationOption) waitType).Forget();
+            }
+
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+
+            if (!SpinWait.SpinUntil(() => didInvoke, timeout))
+            {
+                Assert.Fail("Timed out after " + timeout + ", didInvoke: " + didInvoke);
+            }
+        }
+#endif // CSHARP_7_3_OR_NEWER
 
         [Test]
         public void WaitAsyncWithCancelationTokenWillBeCompletedProperly_void(

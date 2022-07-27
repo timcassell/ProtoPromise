@@ -228,6 +228,7 @@ namespace Proto.Promises
                 private int _isScheduling; // Flag used so that only Cancel() or Handle() will call CompareExchangeWaiter and schedule the continuation. Int for Interlocked.
                 volatile private bool _wasCanceled;
                 volatile private Promise.State _previousState;
+                private bool _forceAsync;
             }
 
             partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
@@ -476,6 +477,7 @@ namespace Proto.Promises
                 volatile private bool _canceled;
                 volatile private Promise.State _previousState;
                 private bool _isSynchronous;
+                private bool _forceAsync;
             }
 #endif
 
