@@ -153,13 +153,13 @@ namespace ProtoPromiseTests.Threading
             {
                 parallelActions.Add(() =>
                 {
-                    promise = promise.ConfigureAwait(waitType, cancelationToken);
+                    promise = promise.ConfigureAwait(waitType, false, cancelationToken);
                     SubscribeContinuation();
                 });
             }
             else if (waitAsyncSubscribePlace == ActionPlace.Parallel)
             {
-                parallelActions.Add(() => promise = promise.ConfigureAwait(waitType, cancelationToken));
+                parallelActions.Add(() => promise = promise.ConfigureAwait(waitType, false, cancelationToken));
             }
             else if (continuePlace == ActionPlace.Parallel)
             {
@@ -180,7 +180,7 @@ namespace ProtoPromiseTests.Threading
                     promise = deferred.Promise;
                     if (waitAsyncSubscribePlace == ActionPlace.InSetup)
                     {
-                        promise = promise.ConfigureAwait(waitType, cancelationToken);
+                        promise = promise.ConfigureAwait(waitType, false, cancelationToken);
                     }
                     if (continuePlace == ActionPlace.InSetup)
                     {
@@ -191,7 +191,7 @@ namespace ProtoPromiseTests.Threading
                 {
                     if (waitAsyncSubscribePlace == ActionPlace.InTeardown)
                     {
-                        promise = promise.ConfigureAwait(waitType, cancelationToken);
+                        promise = promise.ConfigureAwait(waitType, false, cancelationToken);
                     }
                     if (continuePlace == ActionPlace.InTeardown)
                     {
@@ -282,13 +282,13 @@ namespace ProtoPromiseTests.Threading
             {
                 parallelActions.Add(() =>
                 {
-                    promise = promise.ConfigureAwait(waitType, cancelationToken);
+                    promise = promise.ConfigureAwait(waitType, false, cancelationToken);
                     SubscribeContinuation();
                 });
             }
             else if (waitAsyncSubscribePlace == ActionPlace.Parallel)
             {
-                parallelActions.Add(() => promise = promise.ConfigureAwait(waitType, cancelationToken));
+                parallelActions.Add(() => promise = promise.ConfigureAwait(waitType, false, cancelationToken));
             }
             else if (continuePlace == ActionPlace.Parallel)
             {
@@ -309,7 +309,7 @@ namespace ProtoPromiseTests.Threading
                     promise = deferred.Promise;
                     if (waitAsyncSubscribePlace == ActionPlace.InSetup)
                     {
-                        promise = promise.ConfigureAwait(waitType, cancelationToken);
+                        promise = promise.ConfigureAwait(waitType, false, cancelationToken);
                     }
                     if (continuePlace == ActionPlace.InSetup)
                     {
@@ -320,7 +320,7 @@ namespace ProtoPromiseTests.Threading
                 {
                     if (waitAsyncSubscribePlace == ActionPlace.InTeardown)
                     {
-                        promise = promise.ConfigureAwait(waitType, cancelationToken);
+                        promise = promise.ConfigureAwait(waitType, false, cancelationToken);
                     }
                     if (continuePlace == ActionPlace.InTeardown)
                     {

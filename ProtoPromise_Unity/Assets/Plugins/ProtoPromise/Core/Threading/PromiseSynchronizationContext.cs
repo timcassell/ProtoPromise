@@ -121,6 +121,7 @@ namespace Proto.Promises.Threading
         // These must not be readonly.
         private Internal.ValueLinkedQueue<Internal.HandleablePromiseBase> _syncQueue = new Internal.ValueLinkedQueue<Internal.HandleablePromiseBase>();
         private Internal.SpinLocker _syncLocker;
+        private bool _isInvoking;
 
         /// <summary>
         /// Create a new <see cref="PromiseSynchronizationContext"/> affiliated with the current thread.
@@ -177,48 +178,62 @@ namespace Proto.Promises.Threading
         /// <summary>
         /// Execute all callbacks that have been scheduled to run on this thread.
         /// </summary>
-        /// <exception cref="System.InvalidOperationException">If this is called on a different thread than this was created on.</exception>
+        /// <exception cref="System.InvalidOperationException">If this is called on a different thread than this was created on, or if this is called recursively.</exception>
         /// <exception cref="AggregateException">If one or more callbacks throw an exception, they will be wrapped and rethrown as <see cref="AggregateException"/>.</exception>
         public void Execute()
         {
-            if (Thread.CurrentThread != _thread)
+            if (Thread.CurrentThread != _thread | _isInvoking)
             {
-                throw new System.InvalidOperationException("Execute may only be called from the thread on which the PromiseSynchronizationContext was created.");
+                throw new System.InvalidOperationException(_isInvoking
+                    ? "Execute invoked recursively. This is not supported."
+                    : "Execute may only be called from the thread on which the PromiseSynchronizationContext was created.");
             }
 
-            while (true)
+            var currentContext = Internal.ts_currentContext;
+            try
             {
-                _syncLocker.Enter();
-                var syncStack = _syncQueue.MoveElementsToStack();
-                _syncLocker.Exit();
+                Internal.ts_currentContext = this;
+                _isInvoking = true;
 
-                if (syncStack.IsEmpty)
+                while (true)
                 {
-                    break;
-                }
+                    _syncLocker.Enter();
+                    var syncStack = _syncQueue.MoveElementsToStack();
+                    _syncLocker.Exit();
 
-                // Catch all exceptions and continue executing callbacks until all are exhausted, then if there are any, throw all exceptions wrapped in AggregateException.
-                List<Exception> exceptions = null;
-                do
-                {
-                    try
+                    if (syncStack.IsEmpty)
                     {
-                        syncStack.Pop().UnsafeAs<SyncCallback>().Invoke();
+                        break;
                     }
-                    catch (Exception e)
+
+                    // Catch all exceptions and continue executing callbacks until all are exhausted, then if there are any, throw all exceptions wrapped in AggregateException.
+                    List<Exception> exceptions = null;
+                    do
                     {
-                        if (exceptions == null)
+                        try
                         {
-                            exceptions = new List<Exception>();
+                            syncStack.Pop().UnsafeAs<SyncCallback>().Invoke();
                         }
-                        exceptions.Add(e);
-                    }
-                } while (syncStack.IsNotEmpty);
+                        catch (Exception e)
+                        {
+                            if (exceptions == null)
+                            {
+                                exceptions = new List<Exception>();
+                            }
+                            exceptions.Add(e);
+                        }
+                    } while (syncStack.IsNotEmpty);
 
-                if (exceptions != null)
-                {
-                    throw new AggregateException(exceptions);
+                    if (exceptions != null)
+                    {
+                        throw new AggregateException(exceptions);
+                    }
                 }
+            }
+            finally
+            {
+                _isInvoking = false;
+                Internal.ts_currentContext = currentContext;
             }
         }
     }

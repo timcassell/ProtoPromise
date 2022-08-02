@@ -1100,7 +1100,10 @@ namespace Proto.Promises
         /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
         /// or rejected with that <see cref="Exception"/>
         /// </summary>
-        public static Promise<T> New(Action<Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
+        /// <param name="resolver">The resolver delegate that will control the completion of the returned <see cref="Promise"/> via the passed in <see cref="Deferred"/>.</param>
+        /// <param name="synchronizationOption">Indicates on which context the <paramref name="resolver"/> will be invoked.</param>
+        /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
+        public static Promise<T> New(Action<Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous, bool forceAsync = false)
         {
             ValidateArgument(resolver, "resolver", 1);
 
@@ -1120,7 +1123,7 @@ namespace Proto.Promises
                 {
                     if (!def.TryReject(e)) throw;
                 }
-            }, synchronizationOption)
+            }, synchronizationOption, forceAsync)
                 .Forget();
             return deferred.Promise;
         }
@@ -1131,7 +1134,11 @@ namespace Proto.Promises
         /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
         /// or rejected with that <see cref="Exception"/>
         /// </summary>
-        public static Promise<T> New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous)
+        /// <param name="captureValue">The value that will be passed to <paramref name="resolver"/>.</param>
+        /// <param name="resolver">The resolver delegate that will control the completion of the returned <see cref="Promise"/> via the passed in <see cref="Deferred"/>.</param>
+        /// <param name="synchronizationOption">Indicates on which context the <paramref name="resolver"/> will be invoked.</param>
+        /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
+        public static Promise<T> New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous, bool forceAsync = false)
         {
             ValidateArgument(resolver, "resolver", 1);
 
@@ -1151,7 +1158,7 @@ namespace Proto.Promises
                 {
                     if (!def.TryReject(e)) throw;
                 }
-            }, synchronizationOption)
+            }, synchronizationOption, forceAsync)
                 .Forget();
             return deferred.Promise;
         }
@@ -1161,7 +1168,10 @@ namespace Proto.Promises
         /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
         /// or rejected with that <see cref="Exception"/>
         /// </summary>
-		public static Promise<T> New(Action<Deferred> resolver, SynchronizationContext synchronizationContext)
+        /// <param name="resolver">The resolver delegate that will control the completion of the returned <see cref="Promise"/> via the passed in <see cref="Deferred"/>.</param>
+        /// <param name="synchronizationContext">The context on which the <paramref name="resolver"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
+        /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously.</param>
+		public static Promise<T> New(Action<Deferred> resolver, SynchronizationContext synchronizationContext, bool forceAsync = false)
         {
             ValidateArgument(resolver, "resolver", 1);
 
@@ -1181,7 +1191,7 @@ namespace Proto.Promises
                 {
                     if (!def.TryReject(e)) throw;
                 }
-            }, synchronizationContext)
+            }, synchronizationContext, forceAsync)
                 .Forget();
             return deferred.Promise;
         }
@@ -1191,7 +1201,11 @@ namespace Proto.Promises
         /// <para/>If <paramref name="resolver"/> throws an <see cref="Exception"/> and the <see cref="Deferred"/> is still pending, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>,
         /// or rejected with that <see cref="Exception"/>
         /// </summary>
-        public static Promise<T> New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationContext synchronizationContext)
+        /// <param name="captureValue">The value that will be passed to <paramref name="resolver"/>.</param>
+        /// <param name="resolver">The resolver delegate that will control the completion of the returned <see cref="Promise"/> via the passed in <see cref="Deferred"/>.</param>
+        /// <param name="synchronizationContext">The context on which the <paramref name="resolver"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
+        /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously.</param>
+        public static Promise<T> New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationContext synchronizationContext, bool forceAsync = false)
         {
             ValidateArgument(resolver, "resolver", 1);
 
@@ -1211,7 +1225,7 @@ namespace Proto.Promises
                 {
                     if (!def.TryReject(e)) throw;
                 }
-            }, synchronizationContext)
+            }, synchronizationContext, forceAsync)
                 .Forget();
             return deferred.Promise;
         }

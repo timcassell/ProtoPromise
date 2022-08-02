@@ -465,7 +465,7 @@ namespace Proto.Promises
                     _retainCounter = 2;
                 }
 
-                internal static PromiseProgress<TResult, TProgress> GetOrCreate(TProgress progress, CancelationToken cancelationToken, ushort depth, bool isSynchronous, SynchronizationContext synchronizationContext)
+                internal static PromiseProgress<TResult, TProgress> GetOrCreate(TProgress progress, ushort depth, bool isSynchronous, SynchronizationContext synchronizationContext, bool forceAsync, CancelationToken cancelationToken)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (!isSynchronous && synchronizationContext == null)
@@ -481,11 +481,12 @@ namespace Proto.Promises
                     promise._isSynchronous = isSynchronous;
                     promise._previousState = Promise.State.Pending;
                     promise._synchronizationContext = synchronizationContext;
+                    promise._forceAsync = forceAsync;
                     cancelationToken.TryRegister(promise, out promise._cancelationRegistration); // Very important, must register after promise is fully setup.
                     return promise;
                 }
 
-                internal static PromiseProgress<TResult, TProgress> GetOrCreateFromResolved(TProgress progress, CancelationToken cancelationToken, ushort depth, SynchronizationContext synchronizationContext, TResult result)
+                internal static PromiseProgress<TResult, TProgress> GetOrCreateFromResolved(TProgress progress, TResult result, ushort depth, SynchronizationContext synchronizationContext, bool forceAsync, CancelationToken cancelationToken)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (synchronizationContext == null)
@@ -502,6 +503,7 @@ namespace Proto.Promises
                     promise._previousState = Promise.State.Resolved;
                     promise._synchronizationContext = synchronizationContext;
                     promise._result = result;
+                    promise._forceAsync = forceAsync;
                     cancelationToken.TryRegister(promise, out promise._cancelationRegistration); // Very important, must register after promise is fully setup.
                     return promise;
                 }
@@ -509,7 +511,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private bool ShouldInvokeSynchronous()
                 {
-                    return _isSynchronous | _synchronizationContext == ts_currentContext;
+                    return _isSynchronous | (!_forceAsync & _synchronizationContext == ts_currentContext);
                 }
 
                 protected override void MaybeDispose()
