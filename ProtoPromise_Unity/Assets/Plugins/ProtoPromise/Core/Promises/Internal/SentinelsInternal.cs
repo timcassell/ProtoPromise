@@ -16,7 +16,6 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -35,7 +34,7 @@ namespace Proto.Promises
 
                 private PromiseCompletionSentinel() { }
 
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                internal override void Handle(PromiseRefBase handler)
                 {
                     throw new System.InvalidOperationException("PromiseCompletionSentinel handled from " + handler);
                 }
@@ -51,9 +50,8 @@ namespace Proto.Promises
 
                 private PromiseForgetSentinel() { }
 
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                internal override void Handle(PromiseRefBase handler)
                 {
-                    nextHandler = null;
                     handler.MaybeDispose();
                 }
             }
@@ -72,7 +70,7 @@ namespace Proto.Promises
                     _smallFields = new SmallFields(-5); // Set an id that is unlikely to match (though this should never be used in a Promise struct).
                 }
 
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                internal override void Handle(PromiseRefBase handler)
                 {
                     throw new System.InvalidOperationException("InvalidAwaitSentinel handled from " + handler);
                 }

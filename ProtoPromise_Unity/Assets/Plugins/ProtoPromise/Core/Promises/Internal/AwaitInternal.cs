@@ -145,9 +145,8 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                internal override void Handle(PromiseRefBase handler)
                 {
-                    nextHandler = null;
                     Invoke();
                 }
 

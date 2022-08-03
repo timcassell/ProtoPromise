@@ -400,7 +400,6 @@ namespace Proto.Promises
 
                 SetPrevious(awaiter);
 
-                // TODO: detect if this is being called from another promise higher in the stack, and call AddWaiter and allow the stack to unwind instead of calling HookupExistingWaiter.
                 awaiter.HookupExistingWaiter(promiseId, this);
             }
 
@@ -440,15 +439,6 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                [MethodImpl(InlineOption)]
-                private void MaybeHandleCompletion()
-                {
-                    // We let the stack unwind here instead of immediately handling next.
-                    // If this is completed from another promise, the other promise will schedule the continuation.
-                    // If this is completed from a different type of awaiter, next will be handled from the move next higher in the stack.
-                    _nextForComplete = TakeOrHandleNextWaiter();
-                }
-
                 internal void SetException(Exception exception)
                 {
                     if (exception is OperationCanceledException)
@@ -459,7 +449,7 @@ namespace Proto.Promises
                     {
                         SetRejectOrCancel(CreateRejectContainer(exception, int.MinValue, this), Promise.State.Rejected);
                     }
-                    MaybeHandleCompletion();
+                    HandleNextInternal();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -467,7 +457,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     State = Promise.State.Resolved;
-                    MaybeHandleCompletion();
+                    HandleNextInternal();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -479,7 +469,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     SetResult(result);
-                    MaybeHandleCompletion();
+                    HandleNextInternal();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -572,7 +562,6 @@ namespace Proto.Promises
                             throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(2));
                         }
 
-                        // TODO: detect if this is being called from another promise higher in the stack, allow the stack to unwind instead of calling HandleNext.
                         awaiter.HandleNext(this);
                     }
                 }
@@ -620,8 +609,6 @@ namespace Proto.Promises
                         return continuer;
                     }
 
-                    internal abstract void MoveNextWithoutHandle();
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
                     [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -655,7 +642,7 @@ namespace Proto.Promises
                             state.UnsafeAs<Continuer<TStateMachine>>()._stateMachine.MoveNext();
                         }
 
-                        private void InvokeMoveNext()
+                        private void ContinueMethod()
                         {
                             SetCurrentInvoker(_owner);
                             try
@@ -673,17 +660,6 @@ namespace Proto.Promises
                             {
                                 ClearCurrentInvoker();
                             }
-                        }
-
-                        private void ContinueMethod()
-                        {
-                            InvokeMoveNext();
-                            _owner.MaybeHandleNext(Interlocked.Exchange(ref _owner._nextForComplete, null));
-                        }
-
-                        internal override void MoveNextWithoutHandle()
-                        {
-                            InvokeMoveNext();
                         }
                     }
                 }
@@ -715,15 +691,12 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                internal override void Handle(PromiseRefBase handler)
                 {
                     ThrowIfInPool(this);
                     SetAwaitedComplete(handler);
 
-                    _continuer.MoveNextWithoutHandle();
-
-                    handler = this;
-                    nextHandler = Interlocked.Exchange(ref _nextForComplete, null);
+                    _continuer.MoveNext.Invoke();
                 }
             } // class AsyncPromiseRef
 
@@ -767,7 +740,7 @@ namespace Proto.Promises
                     }
 
                     [MethodImpl(InlineOption)]
-                    private void InvokeMoveNext()
+                    private void ContinueMethod()
                     {
                         if (_executionContext != null)
                         {
@@ -779,22 +752,12 @@ namespace Proto.Promises
                         }
                     }
 
-                    [MethodImpl(InlineOption)]
-                    private void ContinueMethod()
-                    {
-                        InvokeMoveNext();
-                        MaybeHandleNext(Interlocked.Exchange(ref _nextForComplete, null));
-                    }
-
-                    internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                    internal override void Handle(PromiseRefBase handler)
                     {
                         ThrowIfInPool(this);
                         SetAwaitedComplete(handler);
 
-                        InvokeMoveNext();
-
-                        handler = this;
-                        nextHandler = Interlocked.Exchange(ref _nextForComplete, null);
+                        ContinueMethod();
                     }
                 }
 
