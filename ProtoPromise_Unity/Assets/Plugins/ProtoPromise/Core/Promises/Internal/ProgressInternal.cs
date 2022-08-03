@@ -585,14 +585,12 @@ namespace Proto.Promises
                     var currentContext = ts_currentContext;
                     ts_currentContext = _synchronizationContext;
 
-                    HandleablePromiseBase nextHandler;
-                    Invoke1(_previousState, out nextHandler);
-                    MaybeHandleNext(nextHandler);
+                    Invoke1(_previousState);
 
                     ts_currentContext = currentContext;
                 }
 
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler)
+                internal override void Handle(PromiseRefBase handler)
                 {
                     ThrowIfInPool(this);
                     handler.SuppressRejection = true;
@@ -604,16 +602,14 @@ namespace Proto.Promises
 
                     if (ShouldInvokeSynchronous())
                     {
-                        handler = this;
-                        Invoke1(state, out nextHandler);
+                        Invoke1(state);
                         return;
                     }
 
-                    nextHandler = null;
                     ScheduleForHandle(this, _synchronizationContext);
                 }
 
-                private void Invoke1(Promise.State state, out HandleablePromiseBase nextHandler)
+                private void Invoke1(Promise.State state)
                 {
                     if (TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !IsCanceled)
                     {
@@ -626,7 +622,7 @@ namespace Proto.Promises
                     }
 
                     State = state;
-                    nextHandler = TakeOrHandleNextWaiter();
+                    HandleNextInternal();
                 }
 
                 void ICancelable.Cancel()

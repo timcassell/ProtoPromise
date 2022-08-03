@@ -11,9 +11,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!--Set true to help debug internal promise code (allows the debugger to step into the code and includes internal stacktraces).-->
     <DeveloperMode>false</DeveloperMode>
-    <!--If true, the stack will unwind before invoking the next continuation. If false, stack traces will be longer, but it could cause a StackOverflowException if the promise chain is very long.
-        This value is ignored if DeveloperMode is false, and will default to true.-->
-    <AllowStackToUnwind>true</AllowStackToUnwind>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,10 +22,6 @@
   <!--Unity uses NET_LEGACY for old runtime prior to .Net 4.6, so we will do the same here.-->
   <PropertyGroup Condition="'$(TargetFramework)'=='net35' OR '$(TargetFramework)'=='net40'">
     <DefineConstants>$(DefineConstants);NET_LEGACY</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(AllowStackToUnwind)'=='false'">
-    <DefineConstants>$(DefineConstants);PROTO_PROMISE_STACK_UNWIND_DISABLE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoProgress|AnyCPU'">

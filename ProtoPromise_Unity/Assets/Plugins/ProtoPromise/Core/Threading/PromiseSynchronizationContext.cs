@@ -189,10 +189,12 @@ namespace Proto.Promises.Threading
                     : "Execute may only be called from the thread on which the PromiseSynchronizationContext was created.");
             }
 
-            var currentContext = Internal.ts_currentContext;
+            var currentContextInternal = Internal.ts_currentContext;
+            var currentContextGlobal = Current;
             try
             {
                 Internal.ts_currentContext = this;
+                SetSynchronizationContext(this);
                 _isInvoking = true;
 
                 while (true)
@@ -233,7 +235,8 @@ namespace Proto.Promises.Threading
             finally
             {
                 _isInvoking = false;
-                Internal.ts_currentContext = currentContext;
+                Internal.ts_currentContext = currentContextInternal;
+                SetSynchronizationContext(currentContextGlobal);
             }
         }
     }

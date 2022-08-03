@@ -13,9 +13,9 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
-using System;
 using System.Diagnostics;
 using System.Threading;
 
@@ -30,7 +30,7 @@ namespace Proto.Promises
 #endif
             internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
-                internal override void Handle(ref PromiseRefBase handler, out HandleablePromiseBase nextHandler) { throw new System.InvalidOperationException(); }
+                internal override void Handle(PromiseRefBase handler) { throw new System.InvalidOperationException(); }
 
                 new protected void Reset(ushort depth)
                 {
@@ -119,10 +119,9 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
+                protected override void Handle(PromisePassThrough passThrough)
                 {
                     var handler = passThrough.Owner;
-                    nextHandler = null;
                     var state = handler.State;
                     if (state != Promise.State.Resolved) // Rejected/Canceled
                     {
@@ -130,7 +129,7 @@ namespace Proto.Promises
                         {
                             handler.SuppressRejection = true;
                             State = state;
-                            nextHandler = TakeOrHandleNextWaiter();
+                            HandleNextInternal();
                         }
                         InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                     }
@@ -141,7 +140,7 @@ namespace Proto.Promises
                             && Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
                         {
                             State = state;
-                            nextHandler = TakeOrHandleNextWaiter();
+                            HandleNextInternal();
                         }
                     }
                     MaybeDisposeNonVirt();
@@ -177,10 +176,9 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    protected override void Handle(PromisePassThrough passThrough, out HandleablePromiseBase nextHandler)
+                    protected override void Handle(PromisePassThrough passThrough)
                     {
                         var handler = passThrough.Owner;
-                        nextHandler = null;
                         var state = handler.State;
                         if (state != Promise.State.Resolved) // Rejected/Canceled
                         {
@@ -188,7 +186,7 @@ namespace Proto.Promises
                             {
                                 handler.SuppressRejection = true;
                                 State = state;
-                                nextHandler = TakeOrHandleNextWaiter();
+                                HandleNextInternal();
                             }
                             InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
                         }
@@ -200,7 +198,7 @@ namespace Proto.Promises
                                 && Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
                             {
                                 State = state;
-                                nextHandler = TakeOrHandleNextWaiter();
+                                HandleNextInternal();
                             }
                         }
                         MaybeDispose();
