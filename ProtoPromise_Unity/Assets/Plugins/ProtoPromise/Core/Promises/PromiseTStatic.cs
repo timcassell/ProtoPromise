@@ -220,7 +220,11 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
+#if CSHARP_7_3_OR_NEWER
+        public static Promise<(int winIndex, T result)> RaceWithIndex(Promise<T> promise1, Promise<T> promise2)
+#else
         public static Promise<ValueTuple<int, T>> RaceWithIndex(Promise<T> promise1, Promise<T> promise2)
+#endif
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
@@ -251,7 +255,11 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
+#if CSHARP_7_3_OR_NEWER
+        public static Promise<(int winIndex, T result)> RaceWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
+#else
         public static Promise<ValueTuple<int, T>> RaceWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
+#endif
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
@@ -293,7 +301,11 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
+#if CSHARP_7_3_OR_NEWER
+        public static Promise<(int winIndex, T result)> RaceWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
+#else
         public static Promise<ValueTuple<int, T>> RaceWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
+#endif
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
@@ -348,7 +360,11 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
+#if CSHARP_7_3_OR_NEWER
+        public static Promise<(int winIndex, T result)> RaceWithIndex(params Promise<T>[] promises)
+#else
         public static Promise<ValueTuple<int, T>> RaceWithIndex(params Promise<T>[] promises)
+#endif
         {
             return RaceWithIndex(promises.GetGenericEnumerator());
         }
@@ -357,7 +373,11 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
         /// </summary>
+#if CSHARP_7_3_OR_NEWER
+        public static Promise<(int winIndex, T result)> RaceWithIndex(IEnumerable<Promise<T>> promises)
+#else
         public static Promise<ValueTuple<int, T>> RaceWithIndex(IEnumerable<Promise<T>> promises)
+#endif
         {
             return RaceWithIndex(promises.GetEnumerator());
         }
@@ -618,7 +638,11 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+#if CSHARP_7_3_OR_NEWER
+        public static Promise<(int winIndex, T result)> FirstWithIndex(Promise<T> promise1, Promise<T> promise2)
+#else
         public static Promise<ValueTuple<int, T>> FirstWithIndex(Promise<T> promise1, Promise<T> promise2)
+#endif
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
@@ -649,7 +673,11 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+#if CSHARP_7_3_OR_NEWER
+        public static Promise<(int winIndex, T result)> FirstWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
+#else
         public static Promise<ValueTuple<int, T>> FirstWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
+#endif
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
@@ -691,7 +719,11 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+#if CSHARP_7_3_OR_NEWER
+        public static Promise<(int winIndex, T result)> FirstWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
+#else
         public static Promise<ValueTuple<int, T>> FirstWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
+#endif
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
@@ -746,7 +778,11 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+#if CSHARP_7_3_OR_NEWER
+        public static Promise<(int winIndex, T result)> FirstWithIndex(params Promise<T>[] promises)
+#else
         public static Promise<ValueTuple<int, T>> FirstWithIndex(params Promise<T>[] promises)
+#endif
         {
             return FirstWithIndex(promises.GetGenericEnumerator());
         }
@@ -755,7 +791,11 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+#if CSHARP_7_3_OR_NEWER
+        public static Promise<(int winIndex, T result)> FirstWithIndex(IEnumerable<Promise<T>> promises)
+#else
         public static Promise<ValueTuple<int, T>> FirstWithIndex(IEnumerable<Promise<T>> promises)
+#endif
         {
             return FirstWithIndex(promises.GetEnumerator());
         }
