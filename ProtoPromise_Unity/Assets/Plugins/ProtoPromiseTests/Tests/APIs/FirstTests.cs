@@ -800,7 +800,7 @@ namespace ProtoPromiseTests.APIs
             int resultIndex = -1;
             int result = -1;
 
-            Promise<int>.FirstWithIndex(deferred1.Promise, deferred2.Promise)
+            Promise.FirstWithIndex(deferred1.Promise, deferred2.Promise)
                 .Then(cv =>
                 {
                     resultIndex = cv.Item1;
@@ -829,7 +829,7 @@ namespace ProtoPromiseTests.APIs
             int resultIndex = -1;
             int result = -1;
 
-            Promise<int>.FirstWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise)
+            Promise.FirstWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise)
                 .Then(cv =>
                 {
                     resultIndex = cv.Item1;
@@ -864,7 +864,7 @@ namespace ProtoPromiseTests.APIs
             int resultIndex = -1;
             int result = -1;
 
-            Promise<int>.FirstWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise)
+            Promise.FirstWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise)
                 .Then(cv =>
                 {
                     resultIndex = cv.Item1;
@@ -904,7 +904,7 @@ namespace ProtoPromiseTests.APIs
             int resultIndex = -1;
             int result = -1;
 
-            Promise<int>.FirstWithIndex(new Promise<int>[] { deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise })
+            Promise.FirstWithIndex(new Promise<int>[] { deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise })
                 .Then(cv =>
                 {
                     resultIndex = cv.Item1;
