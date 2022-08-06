@@ -1,5 +1,30 @@
 # Release Notes
 
+## v 2.2.0 - August 6, 2022
+
+Enhancements:
+
+- Added `Promise(<T>).AwaitWithProgress(maxProgress)` API to use current progress instead of passing in minProgress.
+- Added `Promise(<T>).{RaceWithIndex, FirstWithIndex}` APIs to be able to tell which promise won the race.
+- Added `Promise(<T>).WaitAsync(CancelationToken)` APIs, and added optional `CancelationToken` arguments to existing `WaitAsync` APIs.
+- Added optional `bool forceAsync` arguments to existing `WaitAsync` and other APIs that allow changing context.
+
+Fixes:
+
+- Fixed `CancelationToken` callbacks not being invoked after they are registered after the original `System.Threading.CancellationTokenSource` has been reset (.Net 6.0+).
+- Fixed a deadlock in `PromiseSynchronizationContext.Send` if the callback throws an exception. The exception is rethrown in .Net 4.5+.
+- Fixed `WaitAsync` and `Progress` if null `SynchronizationContext` is passed in.
+- Fixed compile errors in Unity 5.
+
+Optimizations:
+
+- Slightly increased performance and decreased memory (at the cost of no longer unwinding the stack, which users can now do with the `forceAsync` flag).
+
+Misc:
+
+- Completely removed internal stacktraces in .Net 6 or later.
+- Added net6.0 build target.
+
 ## v 2.1.0 - June 19, 2022
 
 Enhancements:
@@ -70,7 +95,6 @@ Enhancements:
 - Added `CancelationToken.(Try)Register<TCancelable>(TCancelable cancelable) where TCancelable : ICancelable`.
 - Added static `CancelationToken.Canceled()` to get a token already in the canceled state without allocating.
 - Added `Promise(<T>).Progress<TProgress>(TProgress progressListener, ...) where TProgress : IProgress<float>)` overload.
-- Added `Promise.Config.IsProgressEnabled`.
 - Added `Promise(<T>).WaitAsync(SynchronizationOption)` and `Promise(<T>).WaitAsync(SynchronizationContext)` to schedule the next callback/await on the desired context. (Continuations now execute synchronously without `WaitAsync`.)
 - Added `Promise.Config.ForegroundContext` and `Promise.Config.BackgroundContext` to compliment `SynchronizationOption`s.
 - Added `Promise.Run` static functions.
@@ -137,9 +161,8 @@ Misc:
 - Added support for installing from a git url in Unity's package manager. https://github.com/timcassell/ProtoPromise.git?path=ProtoPromise_Unity/Assets/Plugins/ProtoPromise
 - Added `InvalidArgumentException`.
 - Fixed FormatStacktrace in Unity when a stack frame is captured that it can't inspect.
-- Added version `2.0.0` to csproj with appending `.0` without progress or `.1` with progress.
 - Added `PromiseSynchronizationContext` and updated `PromiseBehaviour` to utilize it.
-- Change `UnreleasedObjectException` to `UnobservedPromiseException` when a promise is garbage collected without being awaited or forgotten.
+- Changed `UnreleasedObjectException` to `UnobservedPromiseException` when a promise is garbage collected without being awaited or forgotten.
 
 ## v 1.0.3 - December 11, 2021
 
