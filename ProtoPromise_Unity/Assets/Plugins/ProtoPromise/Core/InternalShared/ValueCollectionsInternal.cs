@@ -448,12 +448,16 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void Add(T item)
             {
-                if (_storage.Length <= _count)
+                var count = _count;
+                if (_storage.Length <= count)
                 {
-                    Array.Resize(ref _storage, _count * 2);
+                    Array.Resize(ref _storage, count * 2);
                 }
-                _storage[_count] = item;
-                ++_count;
+                _storage[count] = item;
+                // Prevent the CPU from moving the increment to before the array resize and assign.
+                // This is necessary so when another thread copies this struct, Count will never be larger than the array length.
+                Thread.MemoryBarrier();
+                _count = count + 1;
             }
 
             [MethodImpl(InlineOption)]
