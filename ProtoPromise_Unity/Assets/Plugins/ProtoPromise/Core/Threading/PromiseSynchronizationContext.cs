@@ -1,4 +1,8 @@
-﻿using System;
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
