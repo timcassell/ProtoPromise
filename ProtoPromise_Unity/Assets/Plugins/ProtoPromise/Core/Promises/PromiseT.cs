@@ -47,7 +47,7 @@ namespace Proto.Promises
             var r = _ref;
             return r == null
                 ? new System.Threading.Tasks.ValueTask<T>(_result)
-                : new System.Threading.Tasks.ValueTask<T>(_ref, _id);
+                : new System.Threading.Tasks.ValueTask<T>(r, _id);
         }
 
         /// <summary>
