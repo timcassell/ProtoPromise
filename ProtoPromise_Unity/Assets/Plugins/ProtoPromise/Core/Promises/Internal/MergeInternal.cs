@@ -48,7 +48,7 @@ namespace Proto.Promises
             {
                 private MergePromise() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     MaybeDisposeNonVirt();
                 }
@@ -153,7 +153,7 @@ namespace Proto.Promises
                 {
                     private MergePromiseT() { }
 
-                    protected override void MaybeDispose()
+                    internal override void MaybeDispose()
                     {
                         if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
                         {

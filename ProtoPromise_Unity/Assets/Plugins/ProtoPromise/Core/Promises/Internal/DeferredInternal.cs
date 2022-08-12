@@ -118,7 +118,7 @@ namespace Proto.Promises
             {
                 protected DeferredPromise() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
@@ -185,7 +185,7 @@ namespace Proto.Promises
             {
                 private DeferredPromiseCancel() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     _cancelationRegistration = default(CancelationRegistration);

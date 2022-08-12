@@ -117,6 +117,40 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
+        internal sealed partial class PromiseSynchronousWaiter : HandleablePromiseBase
+        {
+            private PromiseSynchronousWaiter() { }
+
+            internal static void WaitForCompletion(PromiseRefBase promise, short promiseId)
+            {
+                var waiter = ObjectPool.TryTake<PromiseSynchronousWaiter>()
+                    ?? new PromiseSynchronousWaiter();
+                lock (waiter)
+                {
+                    waiter._isComplete = false;
+                    promise.HookupExistingWaiter(promiseId, waiter);
+                    // Check the flag in case Handle is invoked synchronously.
+                    if (!waiter._isComplete)
+                    {
+                        Monitor.Wait(waiter);
+                    }
+                }
+                ObjectPool.MaybeRepool(waiter);
+            }
+
+            internal override void Handle(PromiseRefBase handler)
+            {
+                lock (this)
+                {
+                    _isComplete = true;
+                    Monitor.Pulse(this);
+                }
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal abstract partial class PromiseRefBase : HandleablePromiseBase, ITraceable
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -220,7 +254,7 @@ namespace Proto.Promises
             }
 
             internal abstract void MaybeMarkAwaitedAndDispose(short promiseId);
-            protected abstract void MaybeDispose();
+            internal abstract void MaybeDispose();
             internal abstract bool GetIsCompleted(short promiseId);
             protected abstract void OnForget(short promiseId);
             internal abstract PromiseRefBase GetDuplicate(short promiseId, ushort depth);
@@ -354,7 +388,7 @@ namespace Proto.Promises
                 }
             }
 
-            private void HookupExistingWaiter(short promiseId, HandleablePromiseBase newWaiter)
+            internal void HookupExistingWaiter(short promiseId, HandleablePromiseBase newWaiter)
             {
                 HandleablePromiseBase previousWaiter;
                 PromiseRefBase promiseSingleAwait = AddWaiter(promiseId, newWaiter, out previousWaiter);
@@ -644,7 +678,7 @@ namespace Proto.Promises
                     InterlockedAddWithOverflowCheck(ref _retainCounter, 1, -1);
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     lock (this)
                     {
@@ -810,7 +844,7 @@ namespace Proto.Promises
             {
                 private PromiseDuplicate() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
@@ -839,7 +873,7 @@ namespace Proto.Promises
             {
                 private PromiseDuplicateCancel() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (_cancelationHelper.TryRelease())
                     {
@@ -886,7 +920,7 @@ namespace Proto.Promises
             {
                 private PromiseConfigured() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (_cancelationHelper.TryRelease())
                     {
@@ -1172,7 +1206,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
@@ -1211,7 +1245,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
@@ -1260,7 +1294,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
@@ -1311,7 +1345,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
@@ -1368,7 +1402,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
@@ -1402,7 +1436,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
@@ -1443,7 +1477,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
@@ -1490,7 +1524,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
@@ -1529,7 +1563,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);

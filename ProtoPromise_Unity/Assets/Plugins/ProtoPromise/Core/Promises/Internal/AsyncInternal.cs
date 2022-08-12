@@ -679,7 +679,7 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     if (_continuer != null)
@@ -726,7 +726,7 @@ namespace Proto.Promises
                         promise._stateMachine = stateMachine;
                     }
 
-                    protected override void MaybeDispose()
+                    internal override void MaybeDispose()
                     {
                         Dispose();
                         _stateMachine = default(TStateMachine);
@@ -782,7 +782,7 @@ namespace Proto.Promises
                     }
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     Dispose();
                     _executionContext = null;

@@ -113,6 +113,33 @@ namespace Proto.Promises
             }
         }
 
+        /// <summary>
+        /// Mark this as awaited and wait for the operation to complete.
+        /// If the operation was rejected or canceled, the appropriate exception will be thrown.
+        /// </summary>
+        /// <remarks>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!</remarks>
+        public void Wait()
+        {
+            ValidateOperation(1);
+            var r = _ref;
+            if (r == null)
+            {
+                return;
+            }
+            Internal.PromiseSynchronousWaiter.WaitForCompletion(r, _id);
+            var state = r.State;
+            if (state == State.Resolved)
+            {
+                r.MaybeDispose();
+                return;
+            }
+#if NET_LEGACY
+            r.Throw(state, _id);
+#else
+            r.GetExceptionDispatchInfo(state, _id).Throw();
+#endif
+        }
+
 
         /// <summary>
         /// Mark this as awaited and get a new <see cref="Promise"/> that inherits the state of this and can be awaited once.

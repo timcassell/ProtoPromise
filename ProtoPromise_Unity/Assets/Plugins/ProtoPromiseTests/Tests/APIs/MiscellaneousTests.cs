@@ -963,5 +963,220 @@ namespace ProtoPromiseTests.APIs
                 .Forget();
             deferred.Resolve(expected);
         }
+
+#if !UNITY_WEBGL
+        private static readonly System.TimeSpan sleepTime = System.TimeSpan.FromSeconds(0.5);
+
+        [Test]
+        public void PromiseWait_AlreadyCompleted_ReturnsSuccessfullyOrThrowsCorrectException(
+            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType)
+        {
+            var expectedException = completeType == CompleteType.Reject
+                ? new InvalidOperationException("Test")
+                : (System.Exception) Promise.CancelException();
+            var promise = completeType == CompleteType.Resolve ? Promise.Resolved()
+                : completeType == CompleteType.Reject ? Promise.Rejected(expectedException)
+                : Promise.Canceled();
+            bool didCatch = false;
+            try
+            {
+                promise.Wait();
+            }
+            // The original exception is thrown in .Net 4.5+, but UnhandledException is thrown in old runtimes in order to preserve stack traces.
+            catch (UnhandledException e)
+            {
+                didCatch = e.Value == expectedException;
+            }
+            catch (System.Exception e)
+            {
+                didCatch = completeType == CompleteType.Reject
+                    ? e == expectedException
+                    : e is CanceledException;
+            }
+            Assert.AreNotEqual(completeType == CompleteType.Resolve, didCatch);
+        }
+
+        [Test]
+        public void PromiseWait_DoesNotReturnUntilOperationIsComplete([Values] bool alreadyComplete)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            promise.Wait();
+            Assert.IsTrue(isComplete);
+        }
+
+        [Test]
+        public void PromiseWait_DoesNotReturnUntilOperationIsComplete_AndThrowsCorrectException(
+            [Values(CompleteType.Reject, CompleteType.Cancel)] CompleteType throwType,
+            [Values] bool alreadyComplete)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+            var expectedException = throwType == CompleteType.Reject
+                ? new InvalidOperationException("Test")
+                : (System.Exception) Promise.CancelException();
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+                throw expectedException;
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            bool didCatch = false;
+            try
+            {
+                promise.Wait();
+            }
+            // The original exception is thrown in .Net 4.5+, but UnhandledException is thrown in old runtimes in order to preserve stack traces.
+            catch (UnhandledException e)
+            {
+                didCatch = e.Value == expectedException;
+            }
+            catch (System.Exception e)
+            {
+                didCatch = throwType == CompleteType.Reject
+                    ? e == expectedException
+                    : e is CanceledException;
+            }
+            Assert.IsTrue(isComplete);
+            Assert.IsTrue(didCatch);
+        }
+
+        [Test]
+        public void PromiseGetResult_AlreadyCompleted_ReturnsSuccessfullyOrThrowsCorrectException(
+            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType)
+        {
+            var expectedException = completeType == CompleteType.Reject
+                ? new InvalidOperationException("Test")
+                : (System.Exception) Promise.CancelException();
+            int expectedResult = 42;
+            var promise = completeType == CompleteType.Resolve ? Promise<int>.Resolved(expectedResult)
+                : completeType == CompleteType.Reject ? Promise<int>.Rejected(expectedException)
+                : Promise<int>.Canceled();
+            bool didCatch = false;
+            int result = -1;
+            try
+            {
+                result = promise.WaitForResult();
+            }
+            // The original exception is thrown in .Net 4.5+, but UnhandledException is thrown in old runtimes in order to preserve stack traces.
+            catch (UnhandledException e)
+            {
+                didCatch = e.Value == expectedException;
+            }
+            catch (System.Exception e)
+            {
+                didCatch = completeType == CompleteType.Reject
+                    ? e == expectedException
+                    : e is CanceledException;
+            }
+            if (completeType == CompleteType.Resolve)
+            {
+                Assert.AreEqual(expectedResult, result);
+            }
+            else
+            {
+                Assert.IsTrue(didCatch);
+            }
+        }
+
+        [Test]
+        public void PromiseGetResult_DoesNotReturnUntilOperationIsComplete_AndReturnsWithCorrectResult([Values] bool alreadyComplete)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+            int expected = 42;
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+                return expected;
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            int result = promise.WaitForResult();
+            Assert.IsTrue(isComplete);
+            Assert.AreEqual(expected, result);
+        }
+
+        [Test]
+        public void PromiseGetResult_DoesNotReturnUntilOperationIsComplete_AndThrowsCorrectException(
+            [Values(CompleteType.Reject, CompleteType.Cancel)] CompleteType throwType,
+            [Values] bool alreadyComplete)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+            var expectedException = throwType == CompleteType.Reject
+                ? new InvalidOperationException("Test")
+                : (System.Exception) Promise.CancelException();
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+                throw expectedException;
+                return 42;
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            bool didCatch = false;
+            try
+            {
+                promise.WaitForResult();
+            }
+            // The original exception is thrown in .Net 4.5+, but UnhandledException is thrown in old runtimes in order to preserve stack traces.
+            catch (UnhandledException e)
+            {
+                didCatch = e.Value == expectedException;
+            }
+            catch (System.Exception e)
+            {
+                didCatch = throwType == CompleteType.Reject
+                    ? e == expectedException
+                    : e is CanceledException;
+            }
+            Assert.IsTrue(isComplete);
+            Assert.IsTrue(didCatch);
+        }
+#endif
     }
 }

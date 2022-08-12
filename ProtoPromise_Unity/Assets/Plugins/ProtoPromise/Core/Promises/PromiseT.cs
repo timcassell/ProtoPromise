@@ -155,6 +155,33 @@ namespace Proto.Promises
             }
         }
 
+        /// <summary>
+        /// Mark this as awaited and wait for the operation to complete. Returns the result of the operation.
+        /// If the operation was rejected or canceled, the appropriate exception will be thrown.
+        /// </summary>
+        /// <remarks>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!</remarks>
+        public T WaitForResult()
+        {
+            ValidateOperation(1);
+            var r = _ref;
+            if (r == null)
+            {
+                return _result;
+            }
+            Internal.PromiseSynchronousWaiter.WaitForCompletion(r, _id);
+            var state = r.State;
+            if (state == Promise.State.Resolved)
+            {
+                return r.GetResultAndMaybeDispose();
+            }
+#if NET_LEGACY
+            r.Throw(state, _id);
+#else
+            r.GetExceptionDispatchInfo(state, _id).Throw();
+#endif
+            throw null; // This will never be reached, but the compiler needs help understanding that.
+        }
+
 
         /// <summary>
         /// Mark this as awaited and get a new <see cref="Promise{T}"/> of <typeparamref name="T"/> that inherits the state of this and can be awaited once.
