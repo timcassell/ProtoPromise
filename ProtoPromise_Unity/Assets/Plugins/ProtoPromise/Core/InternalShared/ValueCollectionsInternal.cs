@@ -428,8 +428,7 @@ namespace Proto.Promises
             internal int Count
             {
                 [MethodImpl(InlineOption)]
-                // _storage will be null if this is default.
-                get { return _storage == null ? 0 : _count; }
+                get { return _count; }
             }
 
             internal T this[int index]
@@ -454,9 +453,6 @@ namespace Proto.Promises
                     Array.Resize(ref _storage, count * 2);
                 }
                 _storage[count] = item;
-                // Prevent the CPU from moving the increment to before the array resize and assign.
-                // This is necessary so when another thread copies this struct, Count will never be larger than the array length.
-                Thread.MemoryBarrier();
                 _count = count + 1;
             }
 
