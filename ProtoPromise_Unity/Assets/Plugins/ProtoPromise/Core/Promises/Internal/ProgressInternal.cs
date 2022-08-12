@@ -787,11 +787,15 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     InterlockedIncrementProgressReportingCount();
-                    Thread.MemoryBarrier(); // Make sure we're reading fresh progress (since the field cannot be marked volatile).
-                    var progress = _smallFields._currentProgress;
-                    _isProgressScheduled = false;
-                    // cache _nextBranches in a local because another thread can nullify it in Handle.
-                    var branches = _nextBranches;
+                    Fixed32 progress;
+                    ValueList<HandleablePromiseBase> branches;
+                    lock (this)
+                    {
+                        progress = _smallFields._currentProgress;
+                        _isProgressScheduled = false;
+                        // cache _nextBranches in a local because another thread can modify it in Handle.
+                        branches = _nextBranches;
+                    }
                     if (State != Promise.State.Pending | branches.Count == 0)
                     {
                         InterlockedDecrementProgressReportingCount();
