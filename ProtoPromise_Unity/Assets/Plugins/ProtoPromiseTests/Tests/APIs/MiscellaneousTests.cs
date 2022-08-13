@@ -28,6 +28,8 @@ namespace ProtoPromiseTests.APIs
         public void Teardown()
         {
             TestHelper.Cleanup();
+
+            TestHelper.s_expectedUncaughtRejectValue = null;
         }
 
         [Test]
@@ -963,5 +965,274 @@ namespace ProtoPromiseTests.APIs
                 .Forget();
             deferred.Resolve(expected);
         }
+
+#if !UNITY_WEBGL
+        private static readonly System.TimeSpan sleepTime = System.TimeSpan.FromSeconds(0.5);
+
+        private static bool Wait(Promise promise, bool withTimeout)
+        {
+            if (withTimeout)
+            {
+                return promise.Wait(System.TimeSpan.Zero);
+            }
+            promise.Wait();
+            return true;
+        }
+
+        private static bool Wait<T>(Promise<T> promise, out T result, bool withTimeout)
+        {
+            if (withTimeout)
+            {
+                return promise.WaitForResult(System.TimeSpan.Zero, out result);
+            }
+            result = promise.WaitForResult();
+            return true;
+        }
+
+        [Test]
+        public void PromiseWait_AlreadyCompleted_ReturnsSuccessfullyOrThrowsCorrectException(
+            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] bool withTimeout)
+        {
+            var expectedException = completeType == CompleteType.Reject
+                ? new InvalidOperationException("Test")
+                : (System.Exception) Promise.CancelException();
+            var promise = completeType == CompleteType.Resolve ? Promise.Resolved()
+                : completeType == CompleteType.Reject ? Promise.Rejected(expectedException)
+                : Promise.Canceled();
+            bool didCatch = false;
+            bool didNotTimeout = false;
+            try
+            {
+                didNotTimeout = Wait(promise, withTimeout);
+            }
+            // The original exception is thrown in .Net 4.5+, but UnhandledException is thrown in old runtimes in order to preserve stack traces.
+            catch (UnhandledException e)
+            {
+                didCatch = e.Value == expectedException;
+            }
+            catch (System.Exception e)
+            {
+                didCatch = completeType == CompleteType.Reject
+                    ? e == expectedException
+                    : e is CanceledException;
+            }
+            if (completeType == CompleteType.Resolve)
+            {
+                Assert.IsTrue(didNotTimeout);
+            }
+            Assert.AreNotEqual(completeType == CompleteType.Resolve, didCatch);
+        }
+
+        [Test]
+        public void PromiseWait_DoesNotReturnUntilOperationIsComplete(
+            [Values] bool alreadyComplete,
+            [Values] bool withTimeout)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            bool didNotTimeout = Wait(promise, withTimeout);
+            bool expectedTimeout = withTimeout && !alreadyComplete;
+            Assert.AreNotEqual(expectedTimeout, didNotTimeout);
+            Assert.AreNotEqual(expectedTimeout, isComplete);
+        }
+
+        [Test]
+        public void PromiseWait_DoesNotReturnUntilOperationIsComplete_AndThrowsCorrectException(
+            [Values(CompleteType.Reject, CompleteType.Cancel)] CompleteType throwType,
+            [Values] bool alreadyComplete,
+            [Values] bool withTimeout)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+            var expectedException = throwType == CompleteType.Reject
+                ? new InvalidOperationException("Test")
+                : (System.Exception) Promise.CancelException();
+
+            TestHelper.s_expectedUncaughtRejectValue = expectedException;
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+                throw expectedException;
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            bool didCatch = false;
+            bool didNotTimeout = false;
+            try
+            {
+                didNotTimeout = Wait(promise, withTimeout);
+            }
+            // The original exception is thrown in .Net 4.5+, but UnhandledException is thrown in old runtimes in order to preserve stack traces.
+            catch (UnhandledException e)
+            {
+                didCatch = e.Value == expectedException;
+            }
+            catch (System.Exception e)
+            {
+                didCatch = throwType == CompleteType.Reject
+                    ? e == expectedException
+                    : e is CanceledException;
+            }
+            bool expectedTimeout = withTimeout && !alreadyComplete;
+            Assert.IsFalse(didNotTimeout);
+            Assert.AreNotEqual(expectedTimeout, isComplete);
+            Assert.AreNotEqual(expectedTimeout, didCatch);
+        }
+
+        [Test]
+        public void PromiseWaitForResult_AlreadyCompleted_ReturnsSuccessfullyOrThrowsCorrectException(
+            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] bool withTimeout)
+        {
+            var expectedException = completeType == CompleteType.Reject
+                ? new InvalidOperationException("Test")
+                : (System.Exception) Promise.CancelException();
+            int expectedResult = 42;
+            var promise = completeType == CompleteType.Resolve ? Promise<int>.Resolved(expectedResult)
+                : completeType == CompleteType.Reject ? Promise<int>.Rejected(expectedException)
+                : Promise<int>.Canceled();
+            bool didCatch = false;
+            int result = -1;
+            bool didNotTimeout = false;
+            try
+            {
+                didNotTimeout = Wait(promise, out result, withTimeout);
+            }
+            // The original exception is thrown in .Net 4.5+, but UnhandledException is thrown in old runtimes in order to preserve stack traces.
+            catch (UnhandledException e)
+            {
+                didCatch = e.Value == expectedException;
+            }
+            catch (System.Exception e)
+            {
+                didCatch = completeType == CompleteType.Reject
+                    ? e == expectedException
+                    : e is CanceledException;
+            }
+            if (completeType == CompleteType.Resolve)
+            {
+                Assert.IsTrue(didNotTimeout);
+                Assert.AreEqual(expectedResult, result);
+            }
+            else
+            {
+                Assert.IsTrue(didCatch);
+            }
+        }
+
+        [Test]
+        public void PromiseWaitForResult_DoesNotReturnUntilOperationIsComplete_AndReturnsWithCorrectResult(
+            [Values] bool alreadyComplete,
+            [Values] bool withTimeout)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+            int expected = 42;
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+                return expected;
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            int result = -1;
+            bool didNotTimeout = Wait(promise, out result, withTimeout);
+            bool expectedTimeout = withTimeout && !alreadyComplete;
+            Assert.AreNotEqual(expectedTimeout, didNotTimeout);
+            Assert.AreNotEqual(expectedTimeout, isComplete);
+            if (!expectedTimeout)
+            {
+                Assert.AreEqual(expected, result);
+            }
+        }
+
+        [Test]
+        public void PromiseWaitForResult_DoesNotReturnUntilOperationIsComplete_AndThrowsCorrectException(
+            [Values(CompleteType.Reject, CompleteType.Cancel)] CompleteType throwType,
+            [Values] bool alreadyComplete,
+            [Values] bool withTimeout)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+            var expectedException = throwType == CompleteType.Reject
+                ? new InvalidOperationException("Test")
+                : (System.Exception) Promise.CancelException();
+
+            TestHelper.s_expectedUncaughtRejectValue = expectedException;
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+                throw expectedException;
+                return 42;
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            bool didCatch = false;
+            int result = -1;
+            bool didNotTimeout = false;
+            try
+            {
+                didNotTimeout = Wait(promise, out result, withTimeout);
+            }
+            // The original exception is thrown in .Net 4.5+, but UnhandledException is thrown in old runtimes in order to preserve stack traces.
+            catch (UnhandledException e)
+            {
+                didCatch = e.Value == expectedException;
+            }
+            catch (System.Exception e)
+            {
+                didCatch = throwType == CompleteType.Reject
+                    ? e == expectedException
+                    : e is CanceledException;
+            }
+            bool expectedTimeout = withTimeout && !alreadyComplete;
+            Assert.IsFalse(didNotTimeout);
+            Assert.AreNotEqual(expectedTimeout, isComplete);
+            Assert.AreNotEqual(expectedTimeout, didCatch);
+        }
+#endif
     }
 }

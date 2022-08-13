@@ -77,7 +77,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (_cancelationHelper.TryRelease())
                     {
@@ -139,7 +139,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (_cancelationHelper.TryRelease())
                     {
@@ -212,7 +212,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (_cancelationHelper.TryRelease())
                     {
@@ -287,7 +287,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (_cancelationHelper.TryRelease())
                     {
@@ -369,7 +369,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (_cancelationHelper.TryRelease())
                     {
@@ -426,7 +426,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (_cancelationHelper.TryRelease())
                     {
@@ -492,7 +492,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (_cancelationHelper.TryRelease())
                     {
@@ -554,7 +554,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (_cancelationHelper.TryRelease())
                     {

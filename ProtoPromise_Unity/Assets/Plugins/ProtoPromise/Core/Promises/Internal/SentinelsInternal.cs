@@ -75,7 +75,7 @@ namespace Proto.Promises
                     throw new System.InvalidOperationException("InvalidAwaitSentinel handled from " + handler);
                 }
 
-                protected override void MaybeDispose() { throw new System.InvalidOperationException(); }
+                internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
                 protected override void OnForget(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }

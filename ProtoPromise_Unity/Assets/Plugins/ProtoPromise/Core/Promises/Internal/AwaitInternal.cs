@@ -85,6 +85,12 @@ namespace Proto.Promises
                 internal TResult GetResultForAwaiter(short promiseId)
                 {
                     ValidateId(promiseId, this, 2);
+                    return GetResultAndMaybeDispose();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal TResult GetResultAndMaybeDispose()
+                {
                     TResult result = _result;
                     MaybeDispose();
                     return result;

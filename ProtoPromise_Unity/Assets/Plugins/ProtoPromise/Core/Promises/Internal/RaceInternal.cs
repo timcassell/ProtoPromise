@@ -30,7 +30,7 @@ namespace Proto.Promises
             {
                 protected RacePromise() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
                     {
@@ -140,7 +140,7 @@ namespace Proto.Promises
             {
                 private RacePromiseWithIndexVoid() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
                     {
@@ -232,7 +232,7 @@ namespace Proto.Promises
             {
                 private RacePromiseWithIndex() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
                     {
@@ -324,7 +324,7 @@ namespace Proto.Promises
             {
                 protected FirstPromise() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
                     {
@@ -416,7 +416,7 @@ namespace Proto.Promises
             {
                 private FirstPromiseWithIndexVoid() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
                     {
@@ -508,7 +508,7 @@ namespace Proto.Promises
             {
                 private FirstPromiseWithIndex() { }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
                     {

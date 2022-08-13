@@ -102,6 +102,14 @@ namespace Proto.Promises
             }
         }
 
+        partial class PromiseSynchronousWaiter : HandleablePromiseBase
+        {
+            internal override PromiseRefBase SetProgress(ref PromiseRefBase.Fixed32 progress, ref ushort depth)
+            {
+                return null;
+            }
+        }
+
 #endif // !PROMISE_PROGRESS
 
         partial class PromiseRefBase
@@ -514,7 +522,7 @@ namespace Proto.Promises
                     return _isSynchronous | (!_forceAsync & _synchronizationContext == ts_currentContext);
                 }
 
-                protected override void MaybeDispose()
+                internal override void MaybeDispose()
                 {
                     if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
                     {

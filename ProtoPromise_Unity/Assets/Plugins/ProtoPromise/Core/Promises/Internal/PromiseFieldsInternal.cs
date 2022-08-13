@@ -156,6 +156,13 @@ namespace Proto.Promises
             volatile internal HandleablePromiseBase _next;
         }
 
+        partial class PromiseSynchronousWaiter : HandleablePromiseBase
+        {
+            private bool _isHookingUp;
+            private bool _didWaitSuccessfully;
+            private bool _didWait;
+        }
+
         partial class PromiseRefBase : HandleablePromiseBase
         {
             [StructLayout(LayoutKind.Explicit)]

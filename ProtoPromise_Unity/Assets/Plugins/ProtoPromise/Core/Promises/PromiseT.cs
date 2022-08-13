@@ -155,6 +155,70 @@ namespace Proto.Promises
             }
         }
 
+        /// <summary>
+        /// Mark this as awaited and wait for the operation to complete. Returns the result of the operation.
+        /// If the operation was rejected or canceled, the appropriate exception will be thrown.
+        /// </summary>
+        /// <remarks>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!</remarks>
+        public T WaitForResult()
+        {
+            ValidateOperation(1);
+            var r = _ref;
+            if (r == null)
+            {
+                return _result;
+            }
+            Internal.PromiseSynchronousWaiter.TryWaitForCompletion(r, _id, TimeSpan.FromMilliseconds(Timeout.Infinite));
+            var state = r.State;
+            if (state == Promise.State.Resolved)
+            {
+                return r.GetResultAndMaybeDispose();
+            }
+#if NET_LEGACY
+            r.Throw(state, _id);
+#else
+            r.GetExceptionDispatchInfo(state, _id).Throw();
+#endif
+            throw null; // This will never be reached, but the compiler needs help understanding that.
+        }
+
+        /// <summary>
+        /// Mark this as awaited and wait for the operation to complete with a specified timeout.
+        /// <para/>If the operation completed successfully before the timeout expired, this will return true and <paramref name="result"/> will be assigned from the result of the operation. Otherwise, this will return false.
+        /// If the operation was rejected or canceled, the appropriate exception will be thrown.
+        /// </summary>
+        /// <remarks>
+        /// If a <see cref="TimeSpan"/> representing -1 millisecond is specified for the timeout parameter, this method blocks indefinitely until the operation is complete.
+        /// <para/>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!
+        /// </remarks>
+        public bool WaitForResult(TimeSpan timeout, out T result)
+        {
+            ValidateOperation(1);
+            var r = _ref;
+            if (r == null)
+            {
+                result = _result;
+                return true;
+            }
+            if (!Internal.PromiseSynchronousWaiter.TryWaitForCompletion(r, _id, timeout))
+            {
+                result = default(T);
+                return false;
+            }
+            var state = r.State;
+            if (state == Promise.State.Resolved)
+            {
+                result = r.GetResultAndMaybeDispose();
+                return true;
+            }
+#if NET_LEGACY
+            r.Throw(state, _id);
+#else
+            r.GetExceptionDispatchInfo(state, _id).Throw();
+#endif
+            throw null; // This will never be reached, but the compiler needs help understanding that.
+        }
+
 
         /// <summary>
         /// Mark this as awaited and get a new <see cref="Promise{T}"/> of <typeparamref name="T"/> that inherits the state of this and can be awaited once.
