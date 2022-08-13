@@ -126,7 +126,7 @@ namespace Proto.Promises
             {
                 return;
             }
-            Internal.PromiseSynchronousWaiter.WaitForCompletion(r, _id);
+            Internal.PromiseSynchronousWaiter.TryWaitForCompletion(r, _id, TimeSpan.FromMilliseconds(Timeout.Infinite));
             var state = r.State;
             if (state == State.Resolved)
             {
@@ -138,6 +138,41 @@ namespace Proto.Promises
 #else
             r.GetExceptionDispatchInfo(state, _id).Throw();
 #endif
+        }
+
+        /// <summary>
+        /// Mark this as awaited and wait for the operation to complete with a specified timeout.
+        /// <para/>This will return true if the operation completed successfully before the timeout expired, false otherwise.
+        /// If the operation was rejected or canceled, the appropriate exception will be thrown.
+        /// </summary>
+        /// <remarks>
+        /// If a <see cref="TimeSpan"/> representing -1 millisecond is specified for the timeout parameter, this method blocks indefinitely until the operation is complete.
+        /// <para/>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!
+        /// </remarks>
+        public bool Wait(TimeSpan timeout)
+        {
+            ValidateOperation(1);
+            var r = _ref;
+            if (r == null)
+            {
+                return true;
+            }
+            if (!Internal.PromiseSynchronousWaiter.TryWaitForCompletion(r, _id, timeout))
+            {
+                return false;
+            }
+            var state = r.State;
+            if (state == State.Resolved)
+            {
+                r.MaybeDispose();
+                return true;
+            }
+#if NET_LEGACY
+            r.Throw(state, _id);
+#else
+            r.GetExceptionDispatchInfo(state, _id).Throw();
+#endif
+            throw null; // This will never be reached, but the compiler needs help understanding that.
         }
 
 

@@ -158,7 +158,9 @@ namespace Proto.Promises
 
         partial class PromiseSynchronousWaiter : HandleablePromiseBase
         {
-            private bool _isComplete;
+            private bool _isHookingUp;
+            private bool _didWaitSuccessfully;
+            private bool _didWait;
         }
 
         partial class PromiseRefBase : HandleablePromiseBase

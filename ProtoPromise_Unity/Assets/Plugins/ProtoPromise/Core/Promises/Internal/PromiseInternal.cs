@@ -121,30 +121,61 @@ namespace Proto.Promises
         {
             private PromiseSynchronousWaiter() { }
 
-            internal static void WaitForCompletion(PromiseRefBase promise, short promiseId)
+            internal static bool TryWaitForCompletion(PromiseRefBase promise, short promiseId, TimeSpan timeout)
             {
                 var waiter = ObjectPool.TryTake<PromiseSynchronousWaiter>()
                     ?? new PromiseSynchronousWaiter();
                 lock (waiter)
                 {
-                    waiter._isComplete = false;
+                    waiter._didWaitSuccessfully = false;
+                    waiter._didWait = false;
+                    waiter._isHookingUp = true;
                     promise.HookupExistingWaiter(promiseId, waiter);
                     // Check the flag in case Handle is invoked synchronously.
-                    if (!waiter._isComplete)
+                    if (waiter._isHookingUp)
                     {
-                        Monitor.Wait(waiter);
+                        waiter._isHookingUp = false;
+                        waiter._didWaitSuccessfully = Monitor.Wait(waiter, timeout);
+                        waiter._didWait = true;
+                        return waiter._didWaitSuccessfully;
                     }
                 }
                 ObjectPool.MaybeRepool(waiter);
+                return true;
             }
 
             internal override void Handle(PromiseRefBase handler)
             {
+                bool didWaitSuccessfully;
                 lock (this)
                 {
-                    _isComplete = true;
+                    if (_isHookingUp)
+                    {
+                        _isHookingUp = false;
+                        return;
+                    }
+
                     Monitor.Pulse(this);
+                    // Wait with timeout 0 so the pulse will wake the other thread before continuing.
+                    // We start with 0 timeout, but it will sometimes still continue before the other thread, in which case we try again.
+                    // If it fails a second time, we increase the timeout to 1 and keep trying until it succeeds.
+                    Monitor.Wait(this, 0);
+                    if (!_didWait)
+                    {
+                        Monitor.Wait(this, 0);
+                        while (!_didWait)
+                        {
+                            Monitor.Wait(this, 1);
+                        }
+                    }
+                    didWaitSuccessfully = _didWaitSuccessfully;
                 }
+                // If the timeout expired before completion, we dispose the handler here. Otherwise, the original caller will dispose it.
+                if (!didWaitSuccessfully)
+                {
+                    handler.MaybeDispose();
+                }
+                ObjectPool.MaybeRepool(this);
             }
         }
 
