@@ -110,13 +110,9 @@ namespace Proto.Promises
             }
         }
 
-        internal static RejectContainer CreateRejectContainer<TReject>(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TReject reason, int rejectSkipFrames, ITraceable traceable)
+        internal static IRejectContainer CreateRejectContainer(object reason, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
         {
-            return RejectContainer.Create(reason, rejectSkipFrames, traceable);
+            return RejectContainer.Create(reason, rejectSkipFrames, exceptionWithStacktrace, traceable);
         }
 
         internal static void ReportRejection(object unhandledValue, ITraceable traceable)
@@ -124,7 +120,7 @@ namespace Proto.Promises
             ICantHandleException ex = unhandledValue as ICantHandleException;
             if (ex != null)
             {
-                ex.AddToUnhandledStack(traceable);
+                ex.ReportUnhandled(traceable);
                 return;
             }
 

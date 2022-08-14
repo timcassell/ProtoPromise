@@ -447,7 +447,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        SetRejectOrCancel(CreateRejectContainer(exception, int.MinValue, this), Promise.State.Rejected);
+                        SetRejectOrCancel(CreateRejectContainer(exception, int.MinValue, null, this), Promise.State.Rejected);
                     }
                     HandleNextInternal();
                 }

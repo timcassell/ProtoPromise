@@ -680,7 +680,7 @@ namespace Proto.Promises
         /// </summary>
         public static RejectException RejectException<T>(T value)
         {
-            return new Internal.RejectExceptionInternal<T>(value);
+            return new Internal.RejectExceptionInternal(value);
         }
     }
 }

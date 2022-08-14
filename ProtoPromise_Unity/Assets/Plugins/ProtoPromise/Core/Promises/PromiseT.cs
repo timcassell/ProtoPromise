@@ -174,11 +174,7 @@ namespace Proto.Promises
             {
                 return r.GetResultAndMaybeDispose();
             }
-#if NET_LEGACY
-            r.Throw(state, _id);
-#else
             r.GetExceptionDispatchInfo(state, _id).Throw();
-#endif
             throw null; // This will never be reached, but the compiler needs help understanding that.
         }
 
@@ -211,11 +207,7 @@ namespace Proto.Promises
                 result = r.GetResultAndMaybeDispose();
                 return true;
             }
-#if NET_LEGACY
-            r.Throw(state, _id);
-#else
             r.GetExceptionDispatchInfo(state, _id).Throw();
-#endif
             throw null; // This will never be reached, but the compiler needs help understanding that.
         }
 
@@ -973,6 +965,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
         /// </summary>
+        /// <param name="progressCaptureValue">The value that will be passed to <paramref name="onProgress"/>.</param>
         /// <param name="onProgress">Will be invoked with progress that is normalized between 0 and 1 on the context of the provided option.</param>
         /// <param name="invokeOption">Indicates on which context <paramref name="onProgress"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
@@ -996,6 +989,7 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
         /// </summary>
+        /// <param name="progressCaptureValue">The value that will be passed to <paramref name="onProgress"/>.</param>
         /// <param name="onProgress">Will be invoked with progress that is normalized between 0 and 1 on the context of the provided option.</param>
         /// <param name="invokeContext">The context on which <paramref name="onProgress"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously.</param>

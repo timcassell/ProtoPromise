@@ -133,11 +133,7 @@ namespace Proto.Promises
                 r.MaybeDispose();
                 return;
             }
-#if NET_LEGACY
-            r.Throw(state, _id);
-#else
             r.GetExceptionDispatchInfo(state, _id).Throw();
-#endif
         }
 
         /// <summary>
@@ -167,11 +163,7 @@ namespace Proto.Promises
                 r.MaybeDispose();
                 return true;
             }
-#if NET_LEGACY
-            r.Throw(state, _id);
-#else
             r.GetExceptionDispatchInfo(state, _id).Throw();
-#endif
             throw null; // This will never be reached, but the compiler needs help understanding that.
         }
 

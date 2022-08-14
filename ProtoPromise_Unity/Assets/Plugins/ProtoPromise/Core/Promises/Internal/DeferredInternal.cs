@@ -20,7 +20,7 @@ namespace Proto.Promises
         {
             int DeferredId { get; }
             bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId);
-            void RejectDirect(RejectContainer reasonContainer);
+            void RejectDirect(IRejectContainer reasonContainer);
             void CancelDirect();
 #if PROMISE_PROGRESS
             bool TryReportProgress(int deferredId, float progress);
@@ -94,7 +94,7 @@ namespace Proto.Promises
                     }
                 }
 
-                public void RejectDirect(RejectContainer reasonContainer)
+                public void RejectDirect(IRejectContainer reasonContainer)
                 {
                     SetRejectOrCancel(reasonContainer, Promise.State.Rejected);
                     HandleNextInternal();
