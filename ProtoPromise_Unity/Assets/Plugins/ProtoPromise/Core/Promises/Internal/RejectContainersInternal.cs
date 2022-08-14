@@ -17,15 +17,36 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises
 {
     internal static partial class Internal
     {
+        // Extension method instead of including on the interface, since old IL2CPP compiler does not support virtual generics with structs.
+        internal static bool TryGetValue<TValue>(this IRejectContainer rejectContainer, out TValue converted)
+        {
+            // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
+            if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
+            {
+                converted = default(TValue);
+                return true;
+            }
+
+            object value = rejectContainer.Value;
+            if (value is TValue)
+            {
+                converted = (TValue) value;
+                return true;
+            }
+            converted = default(TValue);
+            return false;
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class RejectContainer : ITraceable
+        internal abstract class RejectContainer : IRejectContainer, ITraceable
         {
             // This is used with Interlocked in Merge/Race/First to handle completion race conditions.
             // It's also used as a placeholder for cancelations.
@@ -33,7 +54,8 @@ namespace Proto.Promises
 
             private class CompletionSentinel : RejectContainer
             {
-                internal override void AddToUnhandledStack() { }
+                public override void ReportUnhandled() { }
+                public override ExceptionDispatchInfo GetExceptionDispatchInfo() { throw new System.InvalidOperationException(); }
             }
 
 #if PROMISE_DEBUG
@@ -41,14 +63,15 @@ namespace Proto.Promises
 #endif
 
             protected object _value;
-            internal object Value
+            public object Value
             {
                 get { return _value; }
             }
 
-            internal abstract void AddToUnhandledStack();
+            public abstract void ReportUnhandled();
+            public abstract ExceptionDispatchInfo GetExceptionDispatchInfo();
 
-            internal static RejectContainer Create(object reason, int rejectSkipFrames, ITraceable traceable)
+            internal static IRejectContainer Create(object reason, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
             {
                 IRejectionToContainer internalRejection = reason as IRejectionToContainer;
                 if (internalRejection != null)
@@ -60,107 +83,75 @@ namespace Proto.Promises
                 // If reason is null, behave the same way .Net behaves if you throw null.
                 reason = reason ?? new NullReferenceException();
                 Exception e = reason as Exception;
-                RejectContainer valueContainer = e != null
-                    ? RejectionContainerException.Create(e)
+                return e != null
+                    ? RejectionContainerException.Create(e, rejectSkipFrames + 1, exceptionWithStacktrace, traceable)
                     // Only need to create one object pool for reference types.
-                    : (RejectContainer) RejectionContainer.Create(reason);
-                SetCreatedAndRejectedStacktrace(valueContainer.UnsafeAs<IRejectValueContainer>(), rejectSkipFrames + 1, traceable);
-                return valueContainer;
-            }
-
-            internal bool TryGetValue<TValue>(out TValue converted)
-            {
-                // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
-                if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
-                {
-                    converted = default(TValue);
-                    return true;
-                }
-
-                if (Value is TValue)
-                {
-                    converted = (TValue) Value;
-                    return true;
-                }
-                converted = default(TValue);
-                return false;
+                    : (IRejectContainer) RejectionContainer.Create(reason, rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
             }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class RejectionContainer : RejectContainer, IRejectValueContainer, IRejectionToContainer, ICantHandleException
+        internal sealed partial class RejectionContainer : RejectContainer, IRejectionToContainer, ICantHandleException
         {
+            partial void SetCreatedAndRejectedStacktrace(int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable);
 #if PROMISE_DEBUG
             private StackTrace _rejectedStackTrace;
             // Stack traces of recursive callbacks.
             private CausalityTrace _stackTraces;
 
-            public void SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces)
+            partial void SetCreatedAndRejectedStacktrace(int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
             {
-                ThrowIfInPool(this);
-                _rejectedStackTrace = rejectedStacktrace;
-                _stackTraces = createdStacktraces;
+                _stackTraces = traceable.Trace;
+                _rejectedStackTrace = exceptionWithStacktrace != null ? new StackTrace(exceptionWithStacktrace, true)
+                    : rejectSkipFrames > 0 & Promise.Config.DebugCausalityTracer != Promise.TraceLevel.None ? GetStackTrace(rejectSkipFrames + 1)
+                    : null;
             }
 #endif
 
             private RejectionContainer() { }
 
-            internal static RejectionContainer Create(object value)
+            new internal static RejectionContainer Create(object value, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
             {
                 var container = new RejectionContainer();
                 container._value = value;
                 SetCreatedStacktrace(container, 2);
+                container.SetCreatedAndRejectedStacktrace(rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
                 return container;
             }
 
-            internal override void AddToUnhandledStack()
+            public override void ReportUnhandled()
             {
                 ReportUnhandledException(ToException());
             }
 
             private UnhandledException ToException()
             {
-                ThrowIfInPool(this);
 #if PROMISE_DEBUG
                 string innerStacktrace = _rejectedStackTrace == null ? null : FormatStackTrace(new StackTrace[1] { _rejectedStackTrace });
+                string outerStacktrace = _stackTraces.ToString();
 #else
                 string innerStacktrace = null;
+                string outerStacktrace = null;
 #endif
                 string message = "A rejected value was not handled, type: " + Value.GetType() + ", Value: " + Value.ToString();
                 Exception innerException = new RejectionException(message, innerStacktrace, null);
-#if PROMISE_DEBUG
-                string outerStacktrace = _stackTraces.ToString();
-#else
-                string outerStacktrace = null;
-#endif
                 return new UnhandledExceptionInternal(Value, message + CausalityTraceMessage, outerStacktrace, innerException);
             }
 
-#if !NET_LEGACY
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo IRejectValueContainer.GetExceptionDispatchInfo()
+            public override ExceptionDispatchInfo GetExceptionDispatchInfo()
             {
-                ThrowIfInPool(this);
-                return System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ToException());
+                return ExceptionDispatchInfo.Capture(ToException());
             }
-#else
-            Exception IRejectValueContainer.GetException()
-            {
-                ThrowIfInPool(this);
-                return ToException();
-            }
-#endif
 
-            RejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+            IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
             {
-                ThrowIfInPool(this);
                 return this;
             }
 
-            void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
+            void ICantHandleException.ReportUnhandled(ITraceable traceable)
             {
-                ThrowIfInPool(this);
                 ReportUnhandledException(ToException());
             }
         }
@@ -168,25 +159,26 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class RejectionContainerException : RejectContainer, IRejectValueContainer, IRejectionToContainer, ICantHandleException
+        internal sealed partial class RejectionContainerException : RejectContainer, IRejectionToContainer, ICantHandleException
         {
 #if PROMISE_DEBUG && !NET_LEGACY
             // This is used to reconstruct the rejection causality trace when the original exception is rethrown from await in an async function, and this container is lost.
             private static readonly ConditionalWeakTable<object, RejectionException> s_rejectExceptionsForTrace = new ConditionalWeakTable<object, RejectionException>();
 #endif
 
-#if !NET_LEGACY
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo _capturedInfo;
-#endif
+            ExceptionDispatchInfo _capturedInfo;
+            partial void SetCreatedAndRejectedStacktrace(int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable);
 #if PROMISE_DEBUG
             private RejectionException _rejectException;
             // Stack traces of recursive callbacks.
             private CausalityTrace _stackTraces;
 
-            public void SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces)
+            partial void SetCreatedAndRejectedStacktrace(int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
             {
-                ThrowIfInPool(this);
-                _stackTraces = createdStacktraces;
+                _stackTraces = traceable.Trace;
+                StackTrace rejectedStacktrace = exceptionWithStacktrace != null ? new StackTrace(exceptionWithStacktrace, true)
+                    : rejectSkipFrames > 0 & Promise.Config.DebugCausalityTracer != Promise.TraceLevel.None ? GetStackTrace(rejectSkipFrames + 1)
+                    : null;
                 // rejectedStacktrace will only be non-null when this is created from Deferred.Reject and causality traces are enabled.
                 // Otherwise, _rejectException will have been gotten from s_rejectExceptionsForTrace in Create.
                 if (rejectedStacktrace != null)
@@ -211,28 +203,26 @@ namespace Proto.Promises
 
             private RejectionContainerException() { }
 
-            internal static RejectionContainerException Create(Exception value)
+            internal static RejectionContainerException Create(Exception value, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
             {
                 var container = new RejectionContainerException();
                 container._value = value;
-#if !NET_LEGACY
-                container._capturedInfo = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(value);
-#if PROMISE_DEBUG
+                container._capturedInfo = ExceptionDispatchInfo.Capture(value);
+#if PROMISE_DEBUG && !NET_LEGACY
                 s_rejectExceptionsForTrace.TryGetValue(value, out container._rejectException);
 #endif
-#endif
                 SetCreatedStacktrace(container, 2);
+                container.SetCreatedAndRejectedStacktrace(rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
                 return container;
             }
 
-            internal override void AddToUnhandledStack()
+            public override void ReportUnhandled()
             {
                 ReportUnhandledException(ToException());
             }
 
             private UnhandledException ToException()
             {
-                ThrowIfInPool(this);
 #if PROMISE_DEBUG
                 return new UnhandledExceptionInternal(Value, "An exception was not handled." + CausalityTraceMessage, _stackTraces.ToString(), _rejectException ?? (Exception) Value);
 #else
@@ -240,29 +230,18 @@ namespace Proto.Promises
 #endif
             }
 
-#if !NET_LEGACY
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo IRejectValueContainer.GetExceptionDispatchInfo()
+            public override ExceptionDispatchInfo GetExceptionDispatchInfo()
             {
-                ThrowIfInPool(this);
                 return _capturedInfo;
             }
-#else
-            Exception IRejectValueContainer.GetException()
-            {
-                ThrowIfInPool(this);
-                return ToException();
-            }
-#endif
 
-            RejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+            IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
             {
-                ThrowIfInPool(this);
                 return this;
             }
 
-            void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
+            void ICantHandleException.ReportUnhandled(ITraceable traceable)
             {
-                ThrowIfInPool(this);
                 ReportUnhandledException(ToException());
             }
         }
@@ -270,16 +249,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class RethrownRejectionContainer : RejectContainer, IRejectValueContainer, IRejectionToContainer, ICantHandleException
+        internal sealed class RethrownRejectionContainer : RejectContainer, IRejectionToContainer, ICantHandleException
         {
             private UnhandledExceptionInternal _exception;
-
-#if PROMISE_DEBUG
-            public void SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces)
-            {
-                ThrowIfInPool(this);
-            }
-#endif
 
             private RethrownRejectionContainer() { }
 
@@ -292,40 +264,28 @@ namespace Proto.Promises
                 return container;
             }
 
-            internal override void AddToUnhandledStack()
+            public override void ReportUnhandled()
             {
                 ReportUnhandledException(ToException());
             }
 
             private UnhandledException ToException()
             {
-                ThrowIfInPool(this);
                 return _exception;
             }
 
-#if !NET_LEGACY
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo IRejectValueContainer.GetExceptionDispatchInfo()
+            public override ExceptionDispatchInfo GetExceptionDispatchInfo()
             {
-                ThrowIfInPool(this);
-                return System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(Value as Exception ?? ToException());
+                return ExceptionDispatchInfo.Capture(Value as Exception ?? ToException());
             }
-#else
-            Exception IRejectValueContainer.GetException()
-            {
-                ThrowIfInPool(this);
-                return ToException();
-            }
-#endif
 
-            RejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+            IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
             {
-                ThrowIfInPool(this);
                 return this;
             }
 
-            void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
+            void ICantHandleException.ReportUnhandled(ITraceable traceable)
             {
-                ThrowIfInPool(this);
                 ReportUnhandledException(ToException());
             }
         }

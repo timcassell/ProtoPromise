@@ -76,9 +76,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        if (!resultContainer.RejectContainer.TryGetValueAs(out System.Exception exception))
+                        if (resultContainer.RejectReason is not System.Exception exception)
                         {
-                            exception = Promise.RejectException(resultContainer.RejectContainer.Value);
+                            exception = Promise.RejectException(resultContainer.RejectReason);
                         }
                         source.SetException(exception);
                     }
@@ -106,9 +106,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        if (!resultContainer.RejectContainer.TryGetValueAs(out System.Exception exception))
+                        if (resultContainer.RejectReason is not System.Exception exception)
                         {
-                            exception = Promise.RejectException(resultContainer.RejectContainer.Value);
+                            exception = Promise.RejectException(resultContainer.RejectReason);
                         }
                         source.SetException(exception);
                     }

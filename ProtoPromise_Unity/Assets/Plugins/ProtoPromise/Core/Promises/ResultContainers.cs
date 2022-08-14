@@ -21,13 +21,14 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
+    [Obsolete("Promise.ResultContainer.RejectContainer is deprected, use RejectReason instead (returns object)", false), EditorBrowsable(EditorBrowsableState.Never)]
     public
 #if CSHARP_7_3_OR_NEWER
         readonly ref
 #endif
         partial struct ReasonContainer
     {
-        private readonly Internal.RejectContainer _rejectContainer;
+        private readonly Internal.IRejectContainer _rejectContainer;
 #if PROMISE_DEBUG
         private readonly long _id;
 #endif
@@ -35,7 +36,7 @@ namespace Proto.Promises
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal ReasonContainer(Internal.RejectContainer valueContainer, long id)
+        internal ReasonContainer(Internal.IRejectContainer valueContainer, long id)
         {
             _rejectContainer = valueContainer;
 #if PROMISE_DEBUG
@@ -104,7 +105,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly ref
 #endif
-            partial struct ResultContainer
+            struct ResultContainer
         {
             /// <summary>
             /// FOR INTERNAL USE ONLY!
@@ -115,9 +116,17 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.PromiseRefBase target)
+            internal ResultContainer(Internal.IRejectContainer rejectContainer, State state)
             {
-                _target = new Promise<Internal.VoidResult>.ResultContainer(target);
+                _target = new Promise<Internal.VoidResult>.ResultContainer(default(Internal.VoidResult), rejectContainer, state);
+            }
+
+            /// <summary>
+            /// FOR INTERNAL USE ONLY!
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            internal ResultContainer(Internal.PromiseRefBase source) : this(source._rejectContainer, source.State)
+            {
             }
 
             /// <summary>
@@ -161,11 +170,17 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// If the <see cref="Promise"/> is rejected, get a container of the reason.
+            /// Gets the reason of the rejected <see cref="Promise{T}"/>.
             /// </summary>
-            public ReasonContainer RejectContainer
+            public object RejectReason
             {
                 [MethodImpl(Internal.InlineOption)]
+                get { return _target.RejectReason; }
+            }
+
+            [Obsolete("Prefer RejectReason", false), EditorBrowsable(EditorBrowsableState.Never)]
+            public ReasonContainer RejectContainer
+            {
                 get { return _target.RejectContainer; }
             }
 
@@ -195,7 +210,8 @@ namespace Proto.Promises
             /// <summary>
             /// FOR INTERNAL USE ONLY!
             /// </summary>
-            internal readonly Internal.PromiseRefBase _target;
+            internal readonly Internal.IRejectContainer _rejectContainer;
+            private readonly Promise.State _state;
             private readonly T _result;
 #if PROMISE_DEBUG
             private readonly long _id;
@@ -220,9 +236,10 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
-                T result)
+                T result, Internal.IRejectContainer rejectContainer, Promise.State state)
             {
-                _target = null;
+                _rejectContainer = rejectContainer;
+                _state = state;
                 _result = result;
 #if PROMISE_DEBUG
                 _id = Internal.InvokeId;
@@ -233,20 +250,14 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.PromiseRefBase target)
+            internal ResultContainer(Internal.PromiseRefBase source) : this(source.GetResult<T>(), source._rejectContainer, source.State)
             {
-                _target = target;
-                _result = default(T);
-#if PROMISE_DEBUG
-                _id = Internal.InvokeId;
-#endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            private ResultContainer(Internal.PromiseRefBase target, long id, T result = default(T))
+            private ResultContainer(Internal.IRejectContainer rejectContainer, Promise.State state, long id)
+                : this(default(T), rejectContainer, state)
             {
-                _target = target;
-                _result = result;
 #if PROMISE_DEBUG
                 _id = id;
 #endif
@@ -282,36 +293,43 @@ namespace Proto.Promises
                 get
                 {
                     ValidateCall();
-                    var target = _target;
-                    return target != null ? target.State : Promise.State.Resolved;
+                    return _state;
                 }
             }
 
             /// <summary>
-            /// If the <see cref="Promise{T}"/> is resolved, get its result.
+            /// Gets the result of the resolved <see cref="Promise{T}"/>.
             /// </summary>
             public T Result
             {
                 get
                 {
                     ValidateCall();
-                    ValidateResolved();
-                    var target = _target;
-                    return target != null ? target.GetResult<T>() : _result;
+                    return _result;
                 }
             }
 
             /// <summary>
-            /// If the <see cref="Promise{T}"/> is rejected, get a container of the reason.
+            /// Gets the reason of the rejected <see cref="Promise{T}"/>.
             /// </summary>
-            public ReasonContainer RejectContainer
+            public object RejectReason
             {
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
                     ValidateCall();
+                    return _rejectContainer.Value;
+                }
+            }
+
+            [Obsolete("Prefer RejectReason", false), EditorBrowsable(EditorBrowsableState.Never)]
+            public ReasonContainer RejectContainer
+            {
+                get
+                {
+                    ValidateCall();
                     ValidateRejected();
-                    return new ReasonContainer(_target._rejectContainer, Id);
+                    return new ReasonContainer(_rejectContainer, Id);
                 }
             }
 
@@ -321,12 +339,11 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public static implicit operator Promise.ResultContainer(ResultContainer rhs)
             {
-                var newContainer = new Promise<Internal.VoidResult>.ResultContainer(rhs._target, rhs.Id);
+                var newContainer = new Promise<Internal.VoidResult>.ResultContainer(rhs._rejectContainer, rhs._state, rhs.Id);
                 return new Promise.ResultContainer(newContainer);
             }
 
             partial void ValidateCall();
-            partial void ValidateResolved();
             partial void ValidateRejected();
 #if PROMISE_DEBUG
             partial void ValidateCall()
@@ -334,14 +351,6 @@ namespace Proto.Promises
                 if (Id != Internal.InvokeId)
                 {
                     throw new InvalidOperationException("An instance of ResultContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
-                }
-            }
-
-            partial void ValidateResolved()
-            {
-                if (State != Promise.State.Resolved)
-                {
-                    throw new InvalidOperationException("Promise must be resolved in order to access Result.", Internal.GetFormattedStacktrace(2));
                 }
             }
 

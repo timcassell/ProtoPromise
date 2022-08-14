@@ -155,7 +155,7 @@ namespace Proto.Promises
                 {
                     throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
                 }
-                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
+                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
 
             /// <summary>
@@ -168,7 +168,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (Internal.DeferredPromiseHelper.TryIncrementDeferredIdAndUnregisterCancelation(_this, _deferredId))
                 {
-                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
+                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
                     return true;
                 }
                 return false;
@@ -436,7 +436,7 @@ namespace Proto.Promises
                 {
                     throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
                 }
-                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
+                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
 
             /// <summary>
@@ -449,7 +449,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
+                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
                     return true;
                 }
                 return false;
@@ -736,7 +736,7 @@ namespace Proto.Promises
                 {
                     throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
                 }
-                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
+                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
 
             /// <summary>
@@ -749,7 +749,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, _this));
+                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
                     return true;
                 }
                 return false;

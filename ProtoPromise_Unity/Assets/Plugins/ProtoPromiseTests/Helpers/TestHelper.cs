@@ -486,7 +486,7 @@ namespace ProtoPromiseTests
                     }
                     else
                     {
-                        d.Reject(result.RejectContainer.Value);
+                        d.Reject(result.RejectReason);
                     }
                 })
                 .Forget();
@@ -518,7 +518,7 @@ namespace ProtoPromiseTests
                     }
                     else
                     {
-                        d.Reject(result.RejectContainer.Value);
+                        d.Reject(result.RejectReason);
                     }
                 })
                 .Forget();

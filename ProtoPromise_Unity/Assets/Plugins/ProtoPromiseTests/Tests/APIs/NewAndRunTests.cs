@@ -108,7 +108,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }
@@ -189,7 +189,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }
@@ -269,7 +269,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }
@@ -352,7 +352,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }
@@ -465,7 +465,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }
@@ -535,7 +535,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }
@@ -605,7 +605,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }
@@ -678,7 +678,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }
@@ -813,7 +813,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }
@@ -925,7 +925,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }
@@ -1036,7 +1036,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }
@@ -1150,7 +1150,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectContainer.Value);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
                         invoked = true;
                         return;
                     }

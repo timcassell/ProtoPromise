@@ -3,6 +3,7 @@
 #endif
 
 using System;
+using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises
 {
@@ -17,21 +18,19 @@ namespace Proto.Promises
 
         internal interface IRejectionToContainer
         {
-            RejectContainer ToContainer(ITraceable traceable);
+            IRejectContainer ToContainer(ITraceable traceable);
         }
 
         internal interface ICantHandleException
         {
-            void AddToUnhandledStack(ITraceable traceable);
+            void ReportUnhandled(ITraceable traceable);
         }
 
-        internal partial interface IRejectValueContainer
+        internal interface IRejectContainer
         {
-#if !NET_LEGACY
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo GetExceptionDispatchInfo();
-#else
-            Exception GetException();
-#endif
+            void ReportUnhandled();
+            ExceptionDispatchInfo GetExceptionDispatchInfo();
+            object Value { get; }
         }
 
         internal interface IAction

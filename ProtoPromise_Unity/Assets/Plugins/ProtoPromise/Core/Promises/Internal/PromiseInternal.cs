@@ -344,7 +344,7 @@ namespace Proto.Promises
                     if (_rejectContainer != null & State == Promise.State.Rejected & !SuppressRejection)
                     {
                         // Rejection maybe wasn't caught. Just add to unhandled stack without dispose.
-                        _rejectContainer.AddToUnhandledStack();
+                        _rejectContainer.ReportUnhandled();
                     }
                 }
                 catch (Exception e)
@@ -389,7 +389,7 @@ namespace Proto.Promises
                 // Rejection maybe wasn't caught.
                 if (_rejectContainer != null & !SuppressRejection)
                 {
-                    _rejectContainer.AddToUnhandledStack();
+                    _rejectContainer.ReportUnhandled();
                 }
                 _rejectContainer = null;
             }
@@ -434,7 +434,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private void SetRejectOrCancel(RejectContainer rejectOrCancelContainer, Promise.State state)
+            private void SetRejectOrCancel(IRejectContainer rejectOrCancelContainer, Promise.State state)
             {
                 _rejectContainer = rejectOrCancelContainer;
                 // Very important, write State must come after write _rejectContainer. This is a volatile write, so we don't need a full memory barrier.
@@ -613,11 +613,11 @@ namespace Proto.Promises
                     }
                     catch (RethrowException e)
                     {
-                        RejectContainer valueContainer;
+                        IRejectContainer valueContainer;
                         bool isAcceptableRethrow = invokingRejected || (e is ForcedRethrowException && previousState != Promise.State.Resolved);
                         if (!isAcceptableRethrow)
                         {
-                            valueContainer = CreateRejectContainer(e, int.MinValue, this);
+                            valueContainer = CreateRejectContainer(e, int.MinValue, null, this);
                             previousState = Promise.State.Rejected;
                         }
                         else
@@ -635,14 +635,14 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         MaybeDisposePreviousFromCatch(handler, handlerDisposedAfterCallback);
-                        var valueContainer = CreateRejectContainer(e, int.MinValue, this);
+                        var valueContainer = CreateRejectContainer(e, int.MinValue, null, this);
                         SetRejectAndHandleNext(valueContainer, Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
                 }
 
                 [MethodImpl(MethodImplOptions.NoInlining)]
-                private void SetRejectAndHandleNext(RejectContainer valueContainer, Promise.State state)
+                private void SetRejectAndHandleNext(IRejectContainer valueContainer, Promise.State state)
                 {
                     ThrowIfInPool(this);
                     _rejectContainer = valueContainer;
@@ -1084,7 +1084,7 @@ namespace Proto.Promises
                         var rejectContainer = _rejectContainer;
                         if (rejectContainer != null)
                         {
-                            rejectContainer.AddToUnhandledStack();
+                            rejectContainer.ReportUnhandled();
                         }
                         _rejectContainer = RejectContainer.s_completionSentinel;
                         State = Promise.State.Canceled;
@@ -1528,7 +1528,7 @@ namespace Proto.Promises
                         // Unlike normal finally clauses, we won't swallow the previous rejection. Instead, we send it to the uncaught rejection handler.
                         if (handler._rejectContainer != null)
                         {
-                            handler._rejectContainer.AddToUnhandledStack();
+                            handler._rejectContainer.ReportUnhandled();
                         }
                         handler.MaybeDispose();
                         throw;

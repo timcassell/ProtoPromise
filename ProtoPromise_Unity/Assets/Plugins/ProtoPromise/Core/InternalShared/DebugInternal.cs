@@ -63,7 +63,6 @@ namespace Proto.Promises
         }
 
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames);
-        static partial void SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable);
         static partial void SetCurrentInvoker(ITraceable current);
         static partial void ClearCurrentInvoker();
         static partial void IncrementInvokeId();
@@ -76,14 +75,6 @@ namespace Proto.Promises
             traceable.Trace = new CausalityTrace(stackTrace, ts_currentTrace);
         }
 
-        static partial void SetCreatedAndRejectedStacktrace(IRejectValueContainer unhandledException, int rejectSkipFrames, ITraceable traceable)
-        {
-            StackTrace stackTrace = rejectSkipFrames > 0 & Promise.Config.DebugCausalityTracer != Promise.TraceLevel.None
-                ? GetStackTrace(rejectSkipFrames + 1)
-                : null;
-            unhandledException.SetCreatedAndRejectedStacktrace(stackTrace, traceable.Trace);
-        }
-
 #if !CSHARP_7_3_OR_NEWER
         // This is only needed in older language versions that don't support ref structs.
         [ThreadStatic]
@@ -92,7 +83,10 @@ namespace Proto.Promises
 
         static partial void IncrementInvokeId()
         {
-            ++ts_invokeId;
+            unchecked
+            {
+                ++ts_invokeId;
+            }
         }
 #else
         internal static long InvokeId { get { return ValidIdFromApi; } }
@@ -213,11 +207,6 @@ namespace Proto.Promises
             CausalityTrace Trace { get; set; }
         }
 
-        partial interface IRejectValueContainer
-        {
-            void SetCreatedAndRejectedStacktrace(StackTrace rejectedStacktrace, CausalityTrace createdStacktraces);
-        }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -238,16 +227,19 @@ namespace Proto.Promises
                 {
                     return null;
                 }
-                var stackTraces = new List<StackTrace>();
+                return FormatStackTrace(GetStackTraces());
+            }
+
+            private IEnumerable<StackTrace> GetStackTraces()
+            {
                 for (CausalityTrace current = this; current != null; current = current._next)
                 {
                     if (current._stackTrace == null)
                     {
-                        break;
+                        yield break;
                     }
-                    stackTraces.Add(current._stackTrace);
+                    yield return current._stackTrace;
                 }
-                return FormatStackTrace(stackTraces);
             }
         }
 

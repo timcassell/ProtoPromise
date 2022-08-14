@@ -6,6 +6,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises
 {
@@ -14,20 +15,30 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class UnhandledExceptionInternal : UnhandledException, IRejectionToContainer, ICantHandleException
+        internal sealed class UnhandledExceptionInternal : UnhandledException, IRejectContainer, IRejectionToContainer, ICantHandleException
         {
             internal UnhandledExceptionInternal(object value, string message, string stackTrace, Exception innerException) :
                 base(value, message, stackTrace, innerException)
             { }
 
-            void ICantHandleException.AddToUnhandledStack(ITraceable traceable)
+            void ICantHandleException.ReportUnhandled(ITraceable traceable)
             {
                 ReportUnhandledException(this);
             }
 
-            RejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+            void IRejectContainer.ReportUnhandled()
             {
-                return RethrownRejectionContainer.Create(this);
+                ReportUnhandledException(this);
+            }
+
+            ExceptionDispatchInfo IRejectContainer.GetExceptionDispatchInfo()
+            {
+                return ExceptionDispatchInfo.Capture(Value as Exception ?? this);
+            }
+
+            IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+            {
+                return this;
             }
         }
 
@@ -70,27 +81,23 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class RejectExceptionInternal<T> : RejectException, IRejectionToContainer, ICantHandleException
+        internal sealed class RejectExceptionInternal : RejectException, IRejectionToContainer, ICantHandleException
         {
-            public T Value { get; private set; }
+            private object _value;
 
-            internal RejectExceptionInternal(T value)
+            internal RejectExceptionInternal(object value)
             {
-                Value = value;
+                _value = value;
             }
 
-            public RejectContainer ToContainer(ITraceable traceable)
+            IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
             {
-                var rejection = CreateRejectContainer(Value, int.MinValue, traceable);
-#if PROMISE_DEBUG
-                rejection.UnsafeAs<IRejectValueContainer>().SetCreatedAndRejectedStacktrace(new StackTrace(this, true), traceable.Trace);
-#endif
-                return rejection;
+                return CreateRejectContainer(_value, int.MinValue, this, traceable);
             }
 
-            public void AddToUnhandledStack(ITraceable traceable)
+            void ICantHandleException.ReportUnhandled(ITraceable traceable)
             {
-                ReportRejection(Value, traceable);
+                ReportRejection(_value, traceable);
             }
         }
 

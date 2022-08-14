@@ -886,7 +886,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke()
                 {
-                    Invoke(new Promise.ResultContainer(null));
+                    Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -921,7 +921,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public TResult Invoke()
                 {
-                    return Invoke(new Promise.ResultContainer(null));
+                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -956,7 +956,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(TArg arg)
                 {
-                    Invoke(new Promise<TArg>.ResultContainer(arg));
+                    Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -991,7 +991,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public TResult Invoke(TArg arg)
                 {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg));
+                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1032,7 +1032,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public Promise Invoke()
                 {
-                    return Invoke(new Promise.ResultContainer(null));
+                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1072,7 +1072,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public Promise<TResult> Invoke()
                 {
-                    return Invoke(new Promise.ResultContainer(null));
+                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1112,7 +1112,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public Promise Invoke(TArg arg)
                 {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg));
+                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1152,7 +1152,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public Promise<TResult> Invoke(TArg arg)
                 {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg));
+                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1787,7 +1787,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke()
                 {
-                    Invoke(new Promise.ResultContainer(null));
+                    Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1828,7 +1828,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public TResult Invoke()
                 {
-                    return Invoke(new Promise.ResultContainer(null));
+                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1869,7 +1869,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(TArg arg)
                 {
-                    Invoke(new Promise<TArg>.ResultContainer(arg));
+                    Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1910,7 +1910,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public TResult Invoke(TArg arg)
                 {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg));
+                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1957,7 +1957,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public Promise Invoke()
                 {
-                    return Invoke(new Promise.ResultContainer(null));
+                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2003,7 +2003,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public Promise<TResult> Invoke()
                 {
-                    return Invoke(new Promise.ResultContainer(null));
+                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2049,7 +2049,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public Promise Invoke(TArg arg)
                 {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg));
+                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2095,7 +2095,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public Promise<TResult> Invoke(TArg arg)
                 {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg));
+                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
                 }
 
                 [MethodImpl(InlineOption)]

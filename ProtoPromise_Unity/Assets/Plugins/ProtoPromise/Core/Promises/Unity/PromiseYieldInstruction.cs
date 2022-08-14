@@ -92,12 +92,8 @@ namespace Proto.Promises
                 }
                 case Promise.State.Rejected:
                 {
-#if !NET_LEGACY
-                    ((Internal.IRejectValueContainer) _rejectContainer).GetExceptionDispatchInfo().Throw();
+                    ((Internal.IRejectContainer) _rejectContainer).GetExceptionDispatchInfo().Throw();
                     throw null; // This point will never be reached, but the C# compiler thinks it might.
-#else
-                    throw ((Internal.IRejectValueContainer) _rejectContainer).GetException();
-#endif
                 }
                 default:
                 {
@@ -150,32 +146,8 @@ namespace Proto.Promises
         /// </summary>
         public new T GetResult()
         {
-            ValidateOperation();
-
-            switch (_state)
-            {
-                case Promise.State.Resolved:
-                {
-                    return _result;
-                }
-                case Promise.State.Canceled:
-                {
-                    throw Internal.CanceledExceptionInternal.GetOrCreate();
-                }
-                case Promise.State.Rejected:
-                {
-#if !NET_LEGACY
-                    ((Internal.IRejectValueContainer) _rejectContainer).GetExceptionDispatchInfo().Throw();
-                    throw null; // This point will never be reached, but the C# compiler thinks it might.
-#else
-                    throw ((Internal.IRejectValueContainer) _rejectContainer).GetException();
-#endif
-                }
-                default:
-                {
-                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
-                }
-            }
+            base.GetResult();
+            return _result;
         }
     }
 
@@ -214,7 +186,7 @@ namespace Proto.Promises
                         var state = resultContainer.State;
                         if (state != Promise.State.Resolved)
                         {
-                            yi._rejectContainer = resultContainer._target._target._rejectContainer;
+                            yi._rejectContainer = resultContainer._target._rejectContainer;
                         }
                         yi._state = state;
                         yi.MaybeDispose();
@@ -290,7 +262,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            yi._rejectContainer = resultContainer._target._rejectContainer;
+                            yi._rejectContainer = resultContainer._rejectContainer;
                         }
                         yi._state = state;
                         yi.MaybeDispose();

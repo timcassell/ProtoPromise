@@ -18,6 +18,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using Proto.Promises.Async.CompilerServices;
 
 namespace Proto.Promises
@@ -33,9 +34,8 @@ namespace Proto.Promises
                 MaybeDispose();
             }
 
-#if NET_LEGACY
             [MethodImpl(MethodImplOptions.NoInlining)]
-            internal void Throw(Promise.State state, short promiseId)
+            internal ExceptionDispatchInfo GetExceptionDispatchInfo(Promise.State state, short promiseId)
             {
                 ValidateId(promiseId, this, 2);
                 if (state == Promise.State.Canceled)
@@ -46,32 +46,12 @@ namespace Proto.Promises
                 if (state == Promise.State.Rejected)
                 {
                     SuppressRejection = true;
-                    var exception = _rejectContainer.UnsafeAs<IRejectValueContainer>().GetException();
-                    MaybeDispose();
-                    throw exception;
-                }
-                throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
-            }
-#else
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            internal System.Runtime.ExceptionServices.ExceptionDispatchInfo GetExceptionDispatchInfo(Promise.State state, short promiseId)
-            {
-                ValidateId(promiseId, this, 2);
-                if (state == Promise.State.Canceled)
-                {
-                    MaybeDispose();
-                    throw CanceledExceptionInternal.GetOrCreate();
-                }
-                if (state == Promise.State.Rejected)
-                {
-                    SuppressRejection = true;
-                    var exceptionDispatchInfo = _rejectContainer.UnsafeAs<IRejectValueContainer>().GetExceptionDispatchInfo();
+                    var exceptionDispatchInfo = _rejectContainer.GetExceptionDispatchInfo();
                     MaybeDispose();
                     return exceptionDispatchInfo;
                 }
                 throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
             }
-#endif
 
             [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, short promiseId)
@@ -409,11 +389,7 @@ namespace Proto.Promises
                     _ref.GetResultForAwaiterVoid(_promise._id);
                     return;
                 }
-#if NET_LEGACY
-                _ref.Throw(state, _promise._id);
-#else
                 _ref.GetExceptionDispatchInfo(state, _promise._id).Throw();
-#endif
             }
 
             /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
@@ -519,11 +495,7 @@ namespace Proto.Promises
                 {
                     return _ref.GetResultForAwaiter(_promise._id);
                 }
-#if NET_LEGACY
-                _ref.Throw(state, _promise._id);
-#else
                 _ref.GetExceptionDispatchInfo(state, _promise._id).Throw();
-#endif
                 throw null; // This will never be reached, but the compiler needs help understanding that.
             }
 
@@ -643,11 +615,7 @@ namespace Proto.Promises
                     _ref.GetResultForAwaiterVoid(_promise._id);
                     return;
                 }
-#if NET_LEGACY
-                _ref.Throw(state, _promise._id);
-#else
                 _ref.GetExceptionDispatchInfo(state, _promise._id).Throw();
-#endif
             }
 
             /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseProgressAwaiterVoid"/>.</summary>
@@ -766,11 +734,7 @@ namespace Proto.Promises
                 {
                     return _ref.GetResultForAwaiter(_promise._id);
                 }
-#if NET_LEGACY
-                _ref.Throw(state, _promise._id);
-#else
                 _ref.GetExceptionDispatchInfo(state, _promise._id).Throw();
-#endif
                 throw null; // This will never be reached, but the compiler needs help understanding that.
             }
 
