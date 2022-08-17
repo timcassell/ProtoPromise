@@ -53,17 +53,27 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return new Promise((Internal.PromiseRefBase) _ref, _promiseId, 0);
+                    var _this = _ref;
+#if PROMISE_DEBUG // If the reference is null, this is invalid. We only check in DEBUG mode for performance.
+                    if (_this == null)
+                    {
+                        throw new InvalidOperationException("DeferredBase.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    }
+#endif
+                    return new Promise((Internal.PromiseRefBase) _this, _promiseId, 0);
                 }
             }
 
-            [Obsolete("Use IsValidAndPending.", false), EditorBrowsable(EditorBrowsableState.Never)]
+            /// <summary>
+            /// Get whether or not this instance and the attached <see cref="Promise"/> are valid.
+            /// </summary>
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return IsValidAndPending;
+                    var _this = _ref as Internal.PromiseRefBase;
+                    return _this != null && _this.GetIsValid(_promiseId);
                 }
             }
 
@@ -109,11 +119,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public Deferred AsDeferred()
             {
-                // If the cast fails, the new _promiseId must not == Internal.ValidIdFromApi, or Deferred.Promise will return a valid, resolved promise.
-                var deferred = _ref as Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>;
-                return deferred != null
-                    ? new Deferred(deferred, _promiseId, _deferredId)
-                    : default(Deferred);
+                return new Deferred(_ref as Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>, _promiseId, _deferredId);
             }
 
             /// <summary>
@@ -135,12 +141,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public Promise<T>.Deferred AsDeferred<T>()
             {
-                // If the cast fails, the new _promiseId must not == Internal.ValidIdFromApi, or Deferred.Promise will return a valid, resolved promise.
-                var deferred = _ref as Internal.PromiseRefBase.DeferredPromise<T>;
-                return new Promise<T>.Deferred(
-                    deferred,
-                    deferred != null ? _promiseId : (short) 0,
-                    _deferredId);
+                return new Promise<T>.Deferred(_ref as Internal.PromiseRefBase.DeferredPromise<T>, _promiseId, _deferredId);
             }
 
             /// <summary>
@@ -153,7 +154,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (_this == null || !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("DeferredBase.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
@@ -188,7 +189,7 @@ namespace Proto.Promises
 #endif
                     !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("DeferredBase.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.CancelDirect();
             }
@@ -222,7 +223,7 @@ namespace Proto.Promises
             {
                 if (!TryReportProgress(progress))
                 {
-                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("DeferredBase.ReportProgress: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
             }
 
@@ -344,17 +345,27 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return new Promise(_ref, _promiseId, 0);
+                    var _this = _ref;
+#if PROMISE_DEBUG // If the reference is null, this is invalid. We only check in DEBUG mode for performance.
+                    if (_this == null)
+                    {
+                        throw new InvalidOperationException("Deferred.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    }
+#endif
+                    return new Promise(_this, _promiseId, 0);
                 }
             }
 
-            [Obsolete("Use IsValidAndPending.", false), EditorBrowsable(EditorBrowsableState.Never)]
+            /// <summary>
+            /// Get whether or not this instance and the attached <see cref="Promise"/> are valid.
+            /// </summary>
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return IsValidAndPending;
+                    var _this = _ref;
+                    return _this != null && _this.GetIsValid(_promiseId);
                 }
             }
 
@@ -409,7 +420,7 @@ namespace Proto.Promises
 #endif
                     !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.ResolveDirectVoid();
             }
@@ -434,7 +445,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (_this == null || !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
@@ -469,7 +480,7 @@ namespace Proto.Promises
 #endif
                     !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.CancelDirect();
             }
@@ -503,7 +514,7 @@ namespace Proto.Promises
             {
                 if (!TryReportProgress(progress))
                 {
-                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
             }
 
@@ -645,17 +656,27 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return new Promise<T>(_ref, _promiseId, 0);
+                    var _this = _ref;
+#if PROMISE_DEBUG // If the reference is null, this is invalid. We only check in DEBUG mode for performance.
+                    if (_this == null)
+                    {
+                        throw new InvalidOperationException("Deferred.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    }
+#endif
+                    return new Promise<T>(_this, _promiseId, 0);
                 }
             }
 
-            [Obsolete("Use IsValidAndPending.", false), EditorBrowsable(EditorBrowsableState.Never)]
+            /// <summary>
+            /// Get whether or not this instance and the attached <see cref="Promise"/> are valid.
+            /// </summary>
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return IsValidAndPending;
+                    var _this = _ref;
+                    return _this != null && _this.GetIsValid(_promiseId);
                 }
             }
 
@@ -709,7 +730,7 @@ namespace Proto.Promises
 #endif
                     !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.ResolveDirect(value);
             }
@@ -734,7 +755,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (_this == null || !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
@@ -769,7 +790,7 @@ namespace Proto.Promises
 #endif
                     !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.CancelDirect();
             }
@@ -803,7 +824,7 @@ namespace Proto.Promises
             {
                 if (!TryReportProgress(progress))
                 {
-                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
             }
 
