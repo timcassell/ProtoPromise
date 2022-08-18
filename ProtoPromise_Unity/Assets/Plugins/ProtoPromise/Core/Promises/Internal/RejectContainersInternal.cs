@@ -166,7 +166,9 @@ namespace Proto.Promises
             private static readonly ConditionalWeakTable<object, RejectionException> s_rejectExceptionsForTrace = new ConditionalWeakTable<object, RejectionException>();
 #endif
 
+#if !NET_LEGACY
             ExceptionDispatchInfo _capturedInfo;
+#endif
             partial void SetCreatedAndRejectedStacktrace(int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable);
 #if PROMISE_DEBUG
             private RejectionException _rejectException;
@@ -179,25 +181,28 @@ namespace Proto.Promises
                 StackTrace rejectedStacktrace = exceptionWithStacktrace != null ? new StackTrace(exceptionWithStacktrace, true)
                     : rejectSkipFrames > 0 & Promise.Config.DebugCausalityTracer != Promise.TraceLevel.None ? GetStackTrace(rejectSkipFrames + 1)
                     : null;
-                // rejectedStacktrace will only be non-null when this is created from Deferred.Reject and causality traces are enabled.
-                // Otherwise, _rejectException will have been gotten from s_rejectExceptionsForTrace in Create.
                 if (rejectedStacktrace != null)
                 {
+                    const string message = "This exception contains the stacktrace of where Deferred.Reject was called, or Promise.RejectException() was thrown.";
 #if !NET_LEGACY
                     lock (s_rejectExceptionsForTrace)
                     {
                         if (!s_rejectExceptionsForTrace.TryGetValue(Value, out _rejectException))
                         {
-                            _rejectException = new RejectionException("This exception contains the stacktrace of the Deferred.Reject for the uncaught exception.",
-                                FormatStackTrace(new StackTrace[1] { rejectedStacktrace }), (Exception) Value);
+                            _rejectException = new RejectionException(message, FormatStackTrace(new StackTrace[1] { rejectedStacktrace }), (Exception) Value);
                             s_rejectExceptionsForTrace.Add(Value, _rejectException);
                         }
                     }
 #else
-                    _rejectException = new RejectionException("This exception contains the stacktrace of the Deferred.Reject for the uncaught exception.",
-                        FormatStackTrace(new StackTrace[1] { rejectedStacktrace }), (Exception) Value);
+                    _rejectException = new RejectionException(message, FormatStackTrace(new StackTrace[1] { rejectedStacktrace }), (Exception) Value);
 #endif
                 }
+#if !NET_LEGACY
+                else
+                {
+                    s_rejectExceptionsForTrace.TryGetValue(Value, out _rejectException);
+                }
+#endif
             }
 #endif
 
@@ -207,9 +212,8 @@ namespace Proto.Promises
             {
                 var container = new RejectionContainerException();
                 container._value = value;
+#if !NET_LEGACY
                 container._capturedInfo = ExceptionDispatchInfo.Capture(value);
-#if PROMISE_DEBUG && !NET_LEGACY
-                s_rejectExceptionsForTrace.TryGetValue(value, out container._rejectException);
 #endif
                 SetCreatedStacktrace(container, 2);
                 container.SetCreatedAndRejectedStacktrace(rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
@@ -232,51 +236,12 @@ namespace Proto.Promises
 
             public override ExceptionDispatchInfo GetExceptionDispatchInfo()
             {
+#if NET_LEGACY
+                // Old runtimes don't support preserving stacktrace, so we wrap it in UnhandledException.
+                return ExceptionDispatchInfo.Capture(ToException());
+#else
                 return _capturedInfo;
-            }
-
-            IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
-            {
-                return this;
-            }
-
-            void ICantHandleException.ReportUnhandled(ITraceable traceable)
-            {
-                ReportUnhandledException(ToException());
-            }
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class RethrownRejectionContainer : RejectContainer, IRejectionToContainer, ICantHandleException
-        {
-            private UnhandledExceptionInternal _exception;
-
-            private RethrownRejectionContainer() { }
-
-            internal static RethrownRejectionContainer Create(UnhandledExceptionInternal exception)
-            {
-                var container = new RethrownRejectionContainer();
-                container._value = exception.Value;
-                container._exception = exception;
-                SetCreatedStacktrace(container, 2);
-                return container;
-            }
-
-            public override void ReportUnhandled()
-            {
-                ReportUnhandledException(ToException());
-            }
-
-            private UnhandledException ToException()
-            {
-                return _exception;
-            }
-
-            public override ExceptionDispatchInfo GetExceptionDispatchInfo()
-            {
-                return ExceptionDispatchInfo.Capture(Value as Exception ?? ToException());
             }
 
             IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
