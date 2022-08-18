@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 # endif
 
+#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
@@ -318,7 +319,8 @@ namespace Proto.Promises
                 get
                 {
                     ValidateCall();
-                    return _rejectContainer.Value;
+                    var container = _rejectContainer;
+                    return container == null ? null : container.Value;
                 }
             }
 
