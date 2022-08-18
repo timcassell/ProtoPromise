@@ -80,9 +80,9 @@ namespace ProtoPromiseTests
                     {
                         if (waitTimeout <= TimeSpan.Zero)
                         {
-                            waitTimeout = TimeSpan.FromSeconds(1);
+                            waitTimeout = TimeSpan.FromSeconds(2);
                         }
-                        if (!Monitor.Wait(_locker, waitTimeout))
+                        if (!Monitor.Wait(_locker, waitTimeout) && !_wasInvoked)
                         {
                             throw new TimeoutException("Progress was not invoked after " + waitTimeout + ", _currentProgress: " + _currentProgress + ", current thread is background: " + Thread.CurrentThread.IsBackground);
                         }
@@ -135,7 +135,7 @@ namespace ProtoPromiseTests
 
             if (timeout <= TimeSpan.Zero)
             {
-                timeout = TimeSpan.FromSeconds(1);
+                timeout = TimeSpan.FromSeconds(2);
             }
             float current = float.NaN;
             if (!SpinWait.SpinUntil(() => { current = _currentProgress; return current == expectedProgress; }, timeout))
