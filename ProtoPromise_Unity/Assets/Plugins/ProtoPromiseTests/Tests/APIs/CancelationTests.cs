@@ -470,7 +470,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource2 = CancelationSource.New();
                 cancelationSource2.Cancel();
                 CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token });
-                cancelationSource3.Token.Register(()  =>
+                cancelationSource3.Token.Register(() =>
                 {
                     invoked = true;
                 });
@@ -602,9 +602,9 @@ namespace ProtoPromiseTests.APIs
             public void CancelationTokenInvalidOperations()
             {
                 CancelationToken cancelationToken = new CancelationToken();
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationToken.Register(() => { }); });
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationToken.Register(1, i => { }); });
+#pragma warning disable CS0618 // Type or member is obsolete
                 Assert.Throws<Proto.Promises.InvalidOperationException>(cancelationToken.Retain);
+#pragma warning restore CS0618 // Type or member is obsolete
                 Assert.Throws<Proto.Promises.InvalidOperationException>(cancelationToken.Release);
             }
 
@@ -650,7 +650,7 @@ namespace ProtoPromiseTests.APIs
             public void CancelationTokenCanceledMaybeBeRetainedAndReleased0()
             {
                 CancelationToken cancelationToken = CancelationToken.Canceled();
-                cancelationToken.Retain();
+                cancelationToken.TryRetain();
                 cancelationToken.Release();
             }
 
@@ -667,7 +667,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationToken.Retain();
+                cancelationToken.TryRetain();
                 cancelationSource.Dispose();
                 Assert.IsTrue(cancelationToken.CanBeCanceled);
                 cancelationToken.Release();
@@ -678,7 +678,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationToken.Retain();
+                cancelationToken.TryRetain();
                 cancelationSource.Dispose();
                 cancelationToken.Release();
                 Assert.IsFalse(cancelationToken.CanBeCanceled);
@@ -690,7 +690,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 cancelationSource.Cancel();
-                cancelationToken.Retain();
+                cancelationToken.TryRetain();
                 cancelationSource.Dispose();
                 Assert.IsTrue(cancelationToken.IsCancelationRequested);
                 cancelationToken.Release();
@@ -702,7 +702,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 cancelationSource.Cancel();
-                cancelationToken.Retain();
+                cancelationToken.TryRetain();
                 cancelationSource.Dispose();
                 cancelationToken.Release();
                 Assert.IsFalse(cancelationToken.IsCancelationRequested);
@@ -1177,56 +1177,54 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationRegistrationTryUnregisterCallbackIsInvoked2()
+            public void CancelationRegistrationTryUnregisterCallbackIsNotInvoked_0()
             {
+                // This is testing an implementation detail that a callback can be unregistered if it hasn't yet been invoked, even if the token is in the process of canceling.
+                // Callbacks are invoked in reverse order.
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 bool invoked = false;
-                CancelationRegistration cancelationRegistration = new CancelationRegistration();
-                // Can't unregister cancelation after token is canceled.
-                cancelationToken.Register(() => Assert.IsFalse(cancelationRegistration.TryUnregister()));
-                cancelationRegistration = cancelationToken.Register(() => invoked = true);
-                cancelationSource.Cancel();
-                Assert.IsTrue(invoked);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationRegistrationTryUnregisterCallbackIsInvoked3()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                bool invoked = false;
-                CancelationRegistration cancelationRegistration = new CancelationRegistration();
-                // Can't unregister cancelation after token is canceled.
-                cancelationToken.Register(() => Assert.IsFalse(cancelationRegistration.TryUnregister()));
-                cancelationRegistration = cancelationToken.Register(0, i => invoked = true);
-                cancelationSource.Cancel();
-                Assert.IsTrue(invoked);
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void CancelationRegistrationUnregisterCallbackIsNotInvoked0()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                CancelationToken cancelationToken = cancelationSource.Token;
-                bool invoked = false;
-                CancelationRegistration cancelationRegistration = cancelationToken.Register(() => invoked = true);
-                cancelationRegistration.Unregister();
+                var cancelationRegistration = cancelationToken.Register(() => invoked = true);
+                cancelationToken.Register(() => Assert.IsTrue(cancelationRegistration.TryUnregister()));
                 cancelationSource.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource.Dispose();
             }
 
             [Test]
-            public void CancelationRegistrationUnregisterCallbackIsNotInvoked1()
+            public void CancelationRegistrationTryUnregisterCallbackIsNotInvoked_1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                var cancelationRegistration = cancelationToken.Register(0, i => invoked = true);
+                cancelationToken.Register(() => Assert.IsTrue(cancelationRegistration.TryUnregister()));
+                cancelationSource.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationRegistrationTryUnregisterCallbackIsNotInvoked0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(() => invoked = true);
+                Assert.IsTrue(cancelationRegistration.TryUnregister());
+                cancelationSource.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationRegistrationTryUnregisterCallbackIsNotInvoked1()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 bool invoked = false;
                 CancelationRegistration cancelationRegistration = cancelationToken.Register(0, i => invoked = true);
-                cancelationRegistration.Unregister();
+                Assert.IsTrue(cancelationRegistration.TryUnregister());
                 cancelationSource.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource.Dispose();
@@ -1257,15 +1255,16 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void RegisteredCallbackIsNotRegisteredDuringInvocation()
+            public void RegisteredCallbackIsRegisteredDuringInvocationOfOtherCallback()
             {
+                // This is testing an implementation detail that a callback is still registered if it hasn't yet been invoked, even if the token is in the process of canceling.
+                // Callbacks are invoked in reverse order.
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                CancelationRegistration cancelationRegistration = new CancelationRegistration();
-                cancelationToken.Register(() => Assert.IsFalse(cancelationRegistration.IsRegistered));
-                cancelationRegistration = cancelationToken.Register(() => { });
+                var cancelationRegistration = cancelationToken.Register(() => { });
+                cancelationToken.Register(() => Assert.IsTrue(cancelationRegistration.IsRegistered));
                 cancelationSource.Cancel();
-                    cancelationSource.Dispose();
+                cancelationSource.Dispose();
             }
 
             [Test]
@@ -1308,7 +1307,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationToken.Retain();
+                cancelationToken.TryRetain();
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
                 cancelationToken.Register(() => { });
@@ -1320,17 +1319,19 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void RetainedCancelationTokenMayNotBeRegisteredToAfterCancelationSourceIsDisposedWithoutCancel()
+            public void RetainedCancelationTokenAfterCancelationSourceIsDisposedWithoutCancel_RegisterDoesNothing()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
-                cancelationToken.Retain();
+                cancelationToken.TryRetain();
                 cancelationSource.Dispose();
+                bool wasInvoked = false;
+                Assert.IsFalse(cancelationToken.Register(() => wasInvoked = true).IsRegistered);
+                Assert.IsFalse(cancelationToken.Register(1, cv => wasInvoked = true).IsRegistered);
                 CancelationRegistration cancelationRegistration;
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationToken.Register(() => { }));
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationToken.Register(1, cv => { }));
-                Assert.IsFalse(cancelationToken.TryRegister(() => { }, out cancelationRegistration));
-                Assert.IsFalse(cancelationToken.TryRegister(1, cv => { }, out cancelationRegistration));
+                Assert.IsFalse(cancelationToken.TryRegister(() => wasInvoked = true, out cancelationRegistration));
+                Assert.IsFalse(cancelationToken.TryRegister(1, cv => wasInvoked = true, out cancelationRegistration));
+                Assert.IsFalse(wasInvoked);
                 cancelationToken.Release();
             }
 
@@ -1399,6 +1400,75 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
             }
+
+            [Test]
+            public void CancelationRegistrationDisposeUnregistersCallback_0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(() => invoked = true);
+                cancelationRegistration.Dispose();
+                cancelationSource.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationRegistrationDisposeUnregistersCallback_1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                using (cancelationToken.Register(1, cv => invoked = true)) { }
+                cancelationSource.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource.Dispose();
+            }
+
+#if !UNITY_WEBGL
+
+            [Test]
+            public void CancelationRegistrationDisposeWaitsForCallbackToComplete_0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool startedInvoke = false;
+                bool invoked = false;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(() =>
+                {
+                    startedInvoke = true;
+                    Thread.Sleep(TimeSpan.FromSeconds(1));
+                    invoked = true;
+                });
+                Promise.Run(() => cancelationSource.Cancel()).Forget();
+                SpinWait.SpinUntil(() => startedInvoke);
+                cancelationRegistration.Dispose();
+                Assert.IsTrue(invoked);
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationRegistrationDisposeWaitsForCallbackToComplete_1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool startedInvoke = false;
+                bool invoked = false;
+                using (cancelationToken.Register(() =>
+                    {
+                        startedInvoke = true;
+                        Thread.Sleep(TimeSpan.FromSeconds(1));
+                        invoked = true;
+                    }))
+                {
+                    Promise.Run(() => cancelationSource.Cancel()).Forget();
+                    SpinWait.SpinUntil(() => startedInvoke);
+                }
+                Assert.IsTrue(invoked);
+                cancelationSource.Dispose();
+            }
+#endif // !UNITY_WEBGL
         }
     }
 }

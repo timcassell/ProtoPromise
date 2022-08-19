@@ -331,7 +331,7 @@ namespace ProtoPromiseTests.Threading
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
-                () => cancelationToken.Retain()
+                () => cancelationToken.TryRetain()
             );
             cancelationSource.Dispose();
             Assert.IsTrue(cancelationToken.CanBeCanceled);
@@ -350,7 +350,7 @@ namespace ProtoPromiseTests.Threading
 
             for (int i = 0; i < ThreadHelper.multiExecutionCount; ++i)
             {
-                cancelationToken.Retain();
+                cancelationToken.TryRetain();
             }
             cancelationSource.Dispose();
             Assert.IsTrue(cancelationToken.CanBeCanceled);
@@ -362,65 +362,7 @@ namespace ProtoPromiseTests.Threading
         }
 
         [Test]
-        public void CancelationRegistrationMayOnlyBeUnregisteredOnce0()
-        {
-            var cancelationSource = CancelationSource.New();
-            var cancelationToken = cancelationSource.Token;
-            var registration = cancelationToken.Register(() => { });
-
-            int successCount = 0, invalidCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    try
-                    {
-                        registration.Unregister();
-                        Interlocked.Increment(ref successCount);
-                    }
-                    catch (Proto.Promises.InvalidOperationException)
-                    {
-                        Interlocked.Increment(ref invalidCount);
-                    }
-                }
-            );
-            Assert.AreEqual(1, successCount);
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void CancelationRegistrationMayOnlyBeUnregisteredOnce1()
-        {
-            var cancelationSource = CancelationSource.New();
-            var cancelationToken = cancelationSource.Token;
-            var registration = cancelationToken.Register(1, cv => { });
-
-            int successCount = 0, invalidCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(
-                () =>
-                {
-                    try
-                    {
-                        registration.Unregister();
-                        Interlocked.Increment(ref successCount);
-                    }
-                    catch (Proto.Promises.InvalidOperationException)
-                    {
-                        Interlocked.Increment(ref invalidCount);
-                    }
-                }
-            );
-            Assert.AreEqual(1, successCount);
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void CancelationRegistrationMayOnlyBeUnregisteredOnce2()
+        public void CancelationRegistrationMayOnlyBeUnregisteredOnce_0()
         {
             var cancelationSource = CancelationSource.New();
             var cancelationToken = cancelationSource.Token;
@@ -448,7 +390,7 @@ namespace ProtoPromiseTests.Threading
         }
 
         [Test]
-        public void CancelationRegistrationMayOnlyBeUnregisteredOnce3()
+        public void CancelationRegistrationMayOnlyBeUnregisteredOnce_1()
         {
             var cancelationSource = CancelationSource.New();
             var cancelationToken = cancelationSource.Token;
@@ -556,7 +498,7 @@ namespace ProtoPromiseTests.Threading
         }
 
         [Test]
-        public void CancelationTokenMayBeCanceledAndUnRegisteredFromConcurrently()
+        public void CancelationTokenMayBeCanceledAndRegistrationUnRegisteredConcurrently()
         {
             var cancelationSource = default(CancelationSource);
             var cancelationToken = default(CancelationToken);
@@ -592,7 +534,43 @@ namespace ProtoPromiseTests.Threading
         }
 
         [Test]
-        public void CancelationTokenMayBeDisposedAndUnRegisteredFromConcurrently()
+        public void CancelationTokenMayBeCanceledAndRegistrationDisposedConcurrently()
+        {
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+            var cancelationRegistrations = default(CancelationRegistration[]);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                 // Setup
+                 () =>
+                 {
+                     cancelationSource = CancelationSource.New();
+                     cancelationToken = cancelationSource.Token;
+                     cancelationRegistrations = new CancelationRegistration[4]
+                     {
+                         cancelationToken.Register(() => { }),
+                         cancelationToken.Register(() => { }),
+                         cancelationToken.Register(1, cv => { }),
+                         cancelationToken.Register(1, cv => { })
+                     };
+                 },
+                 // Teardown
+                 () =>
+                 {
+                     cancelationSource.Dispose();
+                 },
+                 // Parallel actions
+                 () => cancelationSource.TryCancel(),
+                 () => cancelationRegistrations[0].Dispose(),
+                 () => cancelationRegistrations[1].Dispose(),
+                 () => cancelationRegistrations[2].Dispose(),
+                 () => cancelationRegistrations[3].Dispose()
+             );
+        }
+
+        [Test]
+        public void CancelationTokenMayBeDisposedAndRegistrationUnRegisteredConcurrently()
         {
             var cancelationSource = default(CancelationSource);
             var cancelationToken = default(CancelationToken);
@@ -621,6 +599,39 @@ namespace ProtoPromiseTests.Threading
                  () => cancelationRegistrations[1].TryUnregister(),
                  () => cancelationRegistrations[2].TryUnregister(),
                  () => cancelationRegistrations[3].TryUnregister()
+             );
+        }
+
+        [Test]
+        public void CancelationTokenMayBeDisposedAndRegistrationDisposedConcurrently()
+        {
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+            var cancelationRegistrations = default(CancelationRegistration[]);
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                 // Setup
+                 () =>
+                 {
+                     cancelationSource = CancelationSource.New();
+                     cancelationToken = cancelationSource.Token;
+                     cancelationRegistrations = new CancelationRegistration[4]
+                     {
+                         cancelationToken.Register(() => { }),
+                         cancelationToken.Register(() => { }),
+                         cancelationToken.Register(1, cv => { }),
+                         cancelationToken.Register(1, cv => { })
+                     };
+                 },
+                 // Teardown
+                 () => { },
+                 // Parallel actions
+                 () => cancelationSource.TryDispose(),
+                 () => cancelationRegistrations[0].Dispose(),
+                 () => cancelationRegistrations[1].Dispose(),
+                 () => cancelationRegistrations[2].Dispose(),
+                 () => cancelationRegistrations[3].Dispose()
              );
         }
 
@@ -1080,10 +1091,12 @@ namespace ProtoPromiseTests.Threading
                  () => { bool _ = cancelationRegistration1.IsRegistered; },
                  () => { bool _1, _2; cancelationRegistration1.GetIsRegisteredAndIsCancelationRequested(out _1, out _2); },
                  () => cancelationRegistration1.TryUnregister(),
+                 () => cancelationRegistration1.Dispose(),
                  () => { bool _; cancelationRegistration1.TryUnregister(out _); },
                  () => { bool _ = cancelationRegistration2.IsRegistered; },
                  () => { bool _1, _2; cancelationRegistration2.GetIsRegisteredAndIsCancelationRequested(out _1, out _2); },
                  () => cancelationRegistration2.TryUnregister(),
+                 () => cancelationRegistration2.Dispose(),
                  () => { bool _; cancelationRegistration2.TryUnregister(out _); }
              );
         }

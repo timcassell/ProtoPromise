@@ -4,7 +4,11 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
+
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 
 namespace Proto.Promises
@@ -19,7 +23,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
         readonly
 #endif
-        struct CancelationRegistration : IEquatable<CancelationRegistration>
+        struct CancelationRegistration : IEquatable<CancelationRegistration>, IDisposable
     {
         private readonly Internal.CancelationRef _ref;
         private readonly Internal.CancelationCallbackNode _node;
@@ -55,9 +59,7 @@ namespace Proto.Promises
         {
             get
             {
-                bool isRegistered, _;
-                GetIsRegisteredAndIsCancelationRequested(out isRegistered, out _);
-                return isRegistered;
+                return Internal.CancelationCallbackNode.GetIsRegistered(_ref, _node, _nodeId, _tokenId);
             }
         }
 
@@ -71,10 +73,7 @@ namespace Proto.Promises
             isRegistered = Internal.CancelationCallbackNode.GetIsRegisteredAndIsCanceled(_ref, _node, _nodeId, _tokenId, out isTokenCancelationRequested);
         }
 
-        /// <summary>
-        /// Unregister the callback from the associated <see cref="CancelationToken"/>.
-        /// </summary>
-        /// <exception cref="InvalidOperationException"/>
+        [Obsolete("Use TryUnregister or Dispose.", false), EditorBrowsable(EditorBrowsableState.Never)]
         public void Unregister()
         {
             if (!TryUnregister())
@@ -89,8 +88,7 @@ namespace Proto.Promises
         /// <returns>true if the callback was previously registered and the associated <see cref="CancelationToken"/> not yet canceled and the associated <see cref="CancelationSource"/> not yet disposed, false otherwise</returns>
         public bool TryUnregister()
         {
-            bool _;
-            return TryUnregister(out _);
+            return Internal.CancelationCallbackNode.TryUnregister(_ref, _node, _nodeId, _tokenId);
         }
 
         /// <summary>
@@ -102,6 +100,16 @@ namespace Proto.Promises
         public bool TryUnregister(out bool isTokenCancelationRequested)
         {
             return Internal.CancelationCallbackNode.TryUnregister(_ref, _node, _nodeId, _tokenId, out isTokenCancelationRequested);
+        }
+
+        /// <summary>
+        /// Try to unregister the callback from the associated <see cref="CancelationToken"/>.
+        /// If the callback is currently executing, this method will wait until it completes,
+        /// except in the degenerate cases where a callback method unregisters itself.
+        /// </summary>
+        public void Dispose()
+        {
+            Internal.CancelationCallbackNode.TryUnregisterOrWaitForCallbackToComplete(_ref, _node, _nodeId, _tokenId);
         }
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationRegistration"/>.</summary>
