@@ -23,7 +23,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
         readonly
 #endif
-        struct CancelationRegistration : IEquatable<CancelationRegistration>, IDisposable
+        partial struct CancelationRegistration : IEquatable<CancelationRegistration>, IDisposable
     {
         private readonly Internal.CancelationRef _ref;
         private readonly Internal.CancelationCallbackNode _node;
@@ -53,7 +53,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Get whether the callback is registered and the associated <see cref="CancelationToken"/> has not been canceled and the associated <see cref="CancelationSource"/> has not been disposed.
+        /// Get whether the callback is registered.
         /// </summary>
         public bool IsRegistered
         {
@@ -64,7 +64,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Get whether this is registered and whether the associated <see cref="CancelationToken"/> is requesting cancelation as an atomic operation.
+        /// Get whether the callback is registered and whether the associated <see cref="CancelationToken"/> is requesting cancelation as an atomic operation.
         /// </summary>
         /// <param name="isRegistered">true if this is registered, false otherwise</param>
         /// <param name="isTokenCancelationRequested">true if the associated <see cref="CancelationToken"/> is requesting cancelation, false otherwise</param>
@@ -146,4 +146,20 @@ namespace Proto.Promises
             return !(lhs == rhs);
         }
     }
+
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP2_1_OR_GREATER || UNITY_2021_2_OR_NEWER
+    partial struct CancelationRegistration : IAsyncDisposable
+    {
+        /// <summary>
+        /// Try to unregister the callback from the associated <see cref="CancelationToken"/>.
+        /// The returned <see cref="System.Threading.Tasks.ValueTask"/> will complete once the associated callback
+        /// is unregistered without having executed or once it's finished executing, except
+        /// in the degenerate case where the callback itself is unregistering itself.
+        /// </summary>
+        public System.Threading.Tasks.ValueTask DisposeAsync()
+        {
+            return Internal.CancelationCallbackNode.TryUnregisterOrWaitForCallbackToCompleteAsync(_ref, _node, _nodeId, _tokenId);
+        }
+    }
+#endif
 }

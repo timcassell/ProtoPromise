@@ -1426,6 +1426,43 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Dispose();
             }
 
+#if NET6_0_OR_GREATER || UNITY_2021_2_OR_NEWER
+
+            [Test]
+            public void CancelationRegistrationDisposeAsyncUnregistersCallback_0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool invoked = false;
+                CancelationRegistration cancelationRegistration = cancelationToken.Register(() => invoked = true);
+                cancelationRegistration.DisposeAsync();
+                cancelationSource.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationRegistrationDisposeAsyncUnregistersCallback_1()
+            {
+                bool completedAsync = false;
+                RunAsync().Wait(TimeSpan.FromSeconds(5));
+                Assert.IsTrue(completedAsync);
+
+                async Promise RunAsync()
+                {
+                    CancelationSource cancelationSource = CancelationSource.New();
+                    CancelationToken cancelationToken = cancelationSource.Token;
+                    bool invoked = false;
+                    await using (cancelationToken.Register(1, cv => invoked = true)) { }
+                    cancelationSource.Cancel();
+                    Assert.IsFalse(invoked);
+                    cancelationSource.Dispose();
+                    completedAsync = true;
+                }
+            }
+
+#endif // NET6_0_OR_GREATER || UNITY_2021_2_OR_NEWER
+
 #if !UNITY_WEBGL
 
             [Test]
@@ -1468,6 +1505,70 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
             }
+
+#if NET6_0_OR_GREATER || UNITY_2021_2_OR_NEWER
+
+            [Test]
+            public void CancelationRegistrationDisposeAsyncWaitsForCallbackToComplete_0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool startedInvoke = false;
+                bool invoked = false;
+                bool asyncComplete = false;
+
+                async Promise RunAsync()
+                {
+                    CancelationRegistration cancelationRegistration = cancelationToken.Register(() =>
+                    {
+                        startedInvoke = true;
+                        Thread.Sleep(TimeSpan.FromSeconds(1));
+                        invoked = true;
+                    });
+                    Promise.Run(() => cancelationSource.Cancel()).Forget();
+                    SpinWait.SpinUntil(() => startedInvoke);
+                    await cancelationRegistration.DisposeAsync();
+                    Assert.IsTrue(invoked);
+                    asyncComplete = true;
+                }
+
+                RunAsync().Wait(TimeSpan.FromSeconds(5));
+                Assert.IsTrue(asyncComplete);
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationRegistrationDisposeAsyncWaitsForCallbackToComplete_1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                bool startedInvoke = false;
+                bool invoked = false;
+                bool asyncComplete = false;
+
+                async Promise RunAsync()
+                {
+                    await using (cancelationToken.Register(() =>
+                        {
+                            startedInvoke = true;
+                            Thread.Sleep(TimeSpan.FromSeconds(1));
+                            invoked = true;
+                        }))
+                    {
+                        Promise.Run(() => cancelationSource.Cancel()).Forget();
+                        SpinWait.SpinUntil(() => startedInvoke);
+                    }
+                    Assert.IsTrue(invoked);
+                    asyncComplete = true;
+                }
+
+                RunAsync().Wait(TimeSpan.FromSeconds(5));
+                Assert.IsTrue(asyncComplete);
+                cancelationSource.Dispose();
+            }
+
+#endif // NET6_0_OR_GREATER || UNITY_2021_2_OR_NEWER
+
 #endif // !UNITY_WEBGL
         }
     }

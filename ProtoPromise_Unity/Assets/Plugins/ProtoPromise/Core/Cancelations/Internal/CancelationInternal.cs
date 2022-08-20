@@ -843,10 +843,10 @@ namespace Proto.Promises
                     return;
                 }
 
+                bool parentIsCanceling = parent._state == CancelationRef.State.Canceled;
                 parent._smallFields._locker.Exit();
                 // If the source is executing callbacks on another thread, we must wait until this callback is complete.
-                if (idsMatch
-                    & parent._state == CancelationRef.State.Canceled
+                if (idsMatch & parentIsCanceling
                     & parent._executingThread != Thread.CurrentThread)
                 {
                     var spinner = new SpinWait();
@@ -859,6 +859,55 @@ namespace Proto.Promises
                     }
                 }
             }
+
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP2_1_OR_GREATER || UNITY_2021_2_OR_NEWER
+            [MethodImpl(InlineOption)]
+            internal static System.Threading.Tasks.ValueTask TryUnregisterOrWaitForCallbackToCompleteAsync(CancelationRef parent, CancelationCallbackNode _this, int nodeId, int tokenId)
+            {
+                if (_this == null | parent == null)
+                {
+                    return new System.Threading.Tasks.ValueTask();
+                }
+
+                parent._smallFields._locker.Enter();
+                bool idsMatch = parent._smallFields._instanceId == _this._parentId
+                    & tokenId == parent.TokenId
+                    & nodeId == _this._nodeId;
+                if (idsMatch & _this._previous != null)
+                {
+                    _this.RemoveFromLinkedList();
+                    parent._smallFields._locker.Exit();
+                    _this.Dispose();
+                    return new System.Threading.Tasks.ValueTask();
+                }
+
+                bool parentIsCanceling = parent._state == CancelationRef.State.Canceled;
+                parent._smallFields._locker.Exit();
+                // If the source is executing callbacks on another thread, we must wait until this callback is complete.
+                if (idsMatch & parentIsCanceling
+                    & parent._executingThread != Thread.CurrentThread)
+                {
+                    // The specified callback is actually running: queue an async loop that'll poll for the currently executing
+                    // callback to complete. While such polling isn't ideal, we expect this to be a rare case (disposing while
+                    // the associated callback is running), and brief when it happens (so the polling will be minimal), and making
+                    // this work with a callback mechanism will add additional cost to other more common cases.
+                    return Promise.Run((parent, _this, nodeId, tokenId), static async cv =>
+                    {
+                        var (source, node, nId, sId) = cv;
+                        // _this._nodeId will be incremented when the callback is complete and this is disposed.
+                        // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
+                        // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.
+                        while (nId == node._nodeId & sId == source.TokenId)
+                        {
+                            // Yield the thread and queue the continuation asynchronously.
+                            // This is nearly equivalent to Task.Yield(), except it uses the background context in the config.
+                            await Promise.SwitchToBackground(true);
+                        }
+                    }, forceAsync: true);
+                }
+                return new System.Threading.Tasks.ValueTask();
+            }
+#endif
         } // class CancelationCallbackNode
 
         partial class CancelationRef
