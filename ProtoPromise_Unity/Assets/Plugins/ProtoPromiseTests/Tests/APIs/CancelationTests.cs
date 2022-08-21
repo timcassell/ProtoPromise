@@ -618,10 +618,20 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationTokenFromSourceCannotBeCanceledAfterSourceIsDisposed()
+            public void CancelationTokenFromSourceCannotBeCanceledAfterSourceIsDisposed_0()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Dispose();
+                Assert.IsFalse(cancelationToken.CanBeCanceled);
+            }
+
+            [Test]
+            public void CancelationTokenFromSourceCannotBeCanceledAfterSourceIsDisposed_1()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationSource.Cancel();
                 cancelationSource.Dispose();
                 Assert.IsFalse(cancelationToken.CanBeCanceled);
             }
@@ -647,15 +657,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationTokenCanceledMaybeBeRetainedAndReleased0()
-            {
-                CancelationToken cancelationToken = CancelationToken.Canceled();
-                cancelationToken.TryRetain();
-                cancelationToken.Release();
-            }
-
-            [Test]
-            public void CancelationTokenCanceledMaybeBeRetainedAndReleased1()
+            public void CancelationTokenCanceledMaybeBeRetainedAndReleased()
             {
                 CancelationToken cancelationToken = CancelationToken.Canceled();
                 Assert.IsTrue(cancelationToken.TryRetain());
@@ -663,11 +665,23 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void RetainedCancelationTokenFromSourceCanBeCanceledAfterSourceIsDisposed()
+            public void RetainedCancelationTokenFromSourceCanNotBeCanceledAfterSourceIsDisposedWithoutCancel()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
                 cancelationToken.TryRetain();
+                cancelationSource.Dispose();
+                Assert.IsFalse(cancelationToken.CanBeCanceled);
+                cancelationToken.Release();
+            }
+
+            [Test]
+            public void RetainedCancelationTokenFromSourceCanBeCanceledAfterSourceIsCanceledThenDisposed()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+                cancelationToken.TryRetain();
+                cancelationSource.Cancel();
                 cancelationSource.Dispose();
                 Assert.IsTrue(cancelationToken.CanBeCanceled);
                 cancelationToken.Release();

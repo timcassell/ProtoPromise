@@ -58,7 +58,10 @@ namespace Proto.Promises
         /// <summary>
         /// Gets whether this token is capable of being in the canceled state.
         /// </summary>
-        /// <remarks>A <see cref="CancelationToken"/> is capable of being in the canceled state when the <see cref="CancelationSource"/> it is attached to is valid, or if the token has been retained and not yet released.</remarks>
+        /// <remarks>
+        /// A <see cref="CancelationToken"/> is capable of being in the canceled state when the <see cref="CancelationSource"/> it is attached to has not been disposed,
+        /// or if the token is already canceled and it has been retained and not yet released.
+        /// </remarks>
         public bool CanBeCanceled
         {
             get

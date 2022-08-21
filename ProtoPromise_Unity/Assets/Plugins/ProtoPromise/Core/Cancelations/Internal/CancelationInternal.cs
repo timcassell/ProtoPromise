@@ -205,7 +205,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal static bool CanTokenBeCanceled(CancelationRef _this, int tokenId)
             {
-                return _this != null && _this.TokenId == tokenId;
+                return _this != null && (_this.TokenId == tokenId & _this._state != State.Disposed);
             }
 
             [MethodImpl(InlineOption)]
@@ -810,8 +810,7 @@ namespace Proto.Promises
                 }
 
                 parent._smallFields._locker.Enter();
-                bool isRegistered = _this.GetIsRegisteredAndIsCanceled(parent, nodeId, tokenId, out isCanceled);
-                if (!isRegistered)
+                if (!_this.GetIsRegisteredAndIsCanceled(parent, nodeId, tokenId, out isCanceled))
                 {
                     parent._smallFields._locker.Exit();
                     return false;
@@ -820,7 +819,7 @@ namespace Proto.Promises
                 _this.RemoveFromLinkedList();
                 parent._smallFields._locker.Exit();
                 _this.Dispose();
-                return isRegistered;
+                return true;
             }
 
             [MethodImpl(InlineOption)]

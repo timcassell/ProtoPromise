@@ -324,10 +324,49 @@ namespace ProtoPromiseTests.Threading
         }
 
         [Test]
-        public void CancelationTokenMayBeRetainedConcurrently()
+        public void CancelationTokenMayBeRetainedConcurrentlyWithoutCancel()
         {
             var cancelationSource = CancelationSource.New();
             var cancelationToken = cancelationSource.Token;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteMultiActionParallel(
+                () => cancelationToken.TryRetain()
+            );
+            Assert.IsTrue(cancelationToken.CanBeCanceled);
+            cancelationSource.Dispose();
+            for (int i = 0; i < ThreadHelper.multiExecutionCount; ++i)
+            {
+                cancelationToken.Release();
+            }
+            Assert.IsFalse(cancelationToken.CanBeCanceled);
+        }
+
+        [Test]
+        public void CancelationTokenMayBeReleasedConcurrentlyWithoutCancel()
+        {
+            var cancelationSource = CancelationSource.New();
+            var cancelationToken = cancelationSource.Token;
+
+            for (int i = 0; i < ThreadHelper.multiExecutionCount; ++i)
+            {
+                cancelationToken.TryRetain();
+            }
+            Assert.IsTrue(cancelationToken.CanBeCanceled);
+            cancelationSource.Dispose();
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteMultiActionParallel(
+                () => cancelationToken.Release()
+            );
+            Assert.IsFalse(cancelationToken.CanBeCanceled);
+        }
+
+        [Test]
+        public void CancelationTokenMayBeRetainedConcurrentlyAfterCanceled()
+        {
+            var cancelationSource = CancelationSource.New();
+            var cancelationToken = cancelationSource.Token;
+            cancelationSource.Cancel();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
@@ -343,10 +382,11 @@ namespace ProtoPromiseTests.Threading
         }
 
         [Test]
-        public void CancelationTokenMayBeReleasedConcurrently()
+        public void CancelationTokenMayBeReleasedConcurrentlyAfterCanceled()
         {
             var cancelationSource = CancelationSource.New();
             var cancelationToken = cancelationSource.Token;
+            cancelationSource.Cancel();
 
             for (int i = 0; i < ThreadHelper.multiExecutionCount; ++i)
             {
