@@ -58,7 +58,10 @@ namespace Proto.Promises
         /// <summary>
         /// Gets whether this token is capable of being in the canceled state.
         /// </summary>
-        /// <remarks>A <see cref="CancelationToken"/> is capable of being in the canceled state when the <see cref="CancelationSource"/> it is attached to is valid, or if the token has been retained and not yet released.</remarks>
+        /// <remarks>
+        /// A <see cref="CancelationToken"/> is capable of being in the canceled state when the <see cref="CancelationSource"/> it is attached to has not been disposed,
+        /// or if the token is already canceled and it has been retained and not yet released.
+        /// </remarks>
         public bool CanBeCanceled
         {
             get
@@ -84,12 +87,15 @@ namespace Proto.Promises
         /// <exception cref="CanceledException"/>
         public void ThrowIfCancelationRequested()
         {
-            Internal.CancelationRef.ThrowIfCanceled(_ref, _id);
+            if (IsCancelationRequested)
+            {
+                throw Internal.CanceledExceptionInternal.GetOrCreate();
+            }
         }
 
         /// <summary>
         /// Try to register a delegate that will be invoked when this <see cref="CancelationToken"/> is canceled.
-        /// If this is already canceled, the callback will be invoked immediately. If the associated <see cref="CancelationSource"/> was disposed (and this was not retained and canceled), the delegate will not be registered.
+        /// If this is already canceled, the callback will be invoked immediately and this will return true.
         /// </summary>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
         /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</param>
@@ -102,7 +108,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Try to capture a value and register a delegate that will be invoked with the captured value when this <see cref="CancelationToken"/> is canceled.
-        /// If this is already canceled, the callback will be invoked immediately. If the associated <see cref="CancelationSource"/> was disposed (and this was not retained and canceled), the delegate will not be registered.
+        /// If this is already canceled, the callback will be invoked immediately and this will return true.
         /// </summary>
         /// <param name="captureValue">The value to pass into <paramref name="callback"/>.</param>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
@@ -116,7 +122,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Try to register a cancelable that will be canceled when this <see cref="CancelationToken"/> is canceled.
-        /// If this is already canceled, it will be canceled immediately. If the associated <see cref="CancelationSource"/> was disposed (and this was not retained and canceled), it will not be registered.
+        /// If this is already canceled, it will be canceled immediately and this will return true.
         /// </summary>
         /// <param name="cancelable">The cancelable to be canceled when the <see cref="CancelationToken"/> is canceled.</param>
         /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</param>
@@ -133,15 +139,11 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
-        /// <exception cref="InvalidOperationException"/>
         public CancelationRegistration Register(Action callback)
         {
             CancelationRegistration registration;
-            if (TryRegister(callback, out registration))
-            {
-                return registration;
-            }
-            throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
+            TryRegister(callback, out registration);
+            return registration;
         }
 
         /// <summary>
@@ -151,15 +153,11 @@ namespace Proto.Promises
         /// <param name="captureValue">The value to pass into <paramref name="callback"/>.</param>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
-        /// <exception cref="InvalidOperationException"/>
         public CancelationRegistration Register<TCapture>(TCapture captureValue, Action<TCapture> callback)
         {
             CancelationRegistration registration;
-            if (TryRegister(captureValue, callback, out registration))
-            {
-                return registration;
-            }
-            throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
+            TryRegister(captureValue, callback, out registration);
+            return registration;
         }
 
         /// <summary>
@@ -168,15 +166,11 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="cancelable">The cancelable to be canceled when the <see cref="CancelationToken"/> is canceled.</param>
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
-        /// <exception cref="InvalidOperationException"/>
         public CancelationRegistration Register<TCancelable>(TCancelable cancelable) where TCancelable : ICancelable
         {
             CancelationRegistration registration;
-            if (TryRegister(cancelable, out registration))
-            {
-                return registration;
-            }
-            throw new InvalidOperationException("CancelationToken.Register: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
+            TryRegister(cancelable, out registration);
+            return registration;
         }
 
         /// <summary>
@@ -189,11 +183,7 @@ namespace Proto.Promises
             return Internal.CancelationRef.TryRetainUser(_ref, _id);
         }
 
-        /// <summary>
-        /// Retain this instance. Allows continued use of this instance, even after the associated <see cref="CancelationSource"/> has been disposed, until this is released.
-        /// <para/>This should always be paired with a call to <see cref="Release"/>.
-        /// </summary>
-        /// <exception cref="InvalidOperationException"/>
+        [Obsolete("Use TryRetain.", false), EditorBrowsable(EditorBrowsableState.Never)]
         public void Retain()
         {
             if (!TryRetain())
