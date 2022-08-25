@@ -5,6 +5,10 @@ name: Unity Builds
 
 on: [pull_request]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   unity-build:
     runs-on: ubuntu-latest
