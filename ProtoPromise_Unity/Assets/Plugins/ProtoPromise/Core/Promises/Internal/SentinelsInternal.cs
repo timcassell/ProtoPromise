@@ -68,6 +68,8 @@ namespace Proto.Promises
                 {
                     _next = this; // Set _next to this so that CompareExchangeWaiter will always fail.
                     _smallFields = new SmallFields(-5); // Set an id that is unlikely to match (though this should never be used in a Promise struct).
+                    // If we don't suppress, the finalizer can run when the ApplicationDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
+                    System.GC.SuppressFinalize(this);
                 }
 
                 internal override void Handle(PromiseRefBase handler)

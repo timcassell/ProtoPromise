@@ -1,7 +1,9 @@
-﻿using Proto.Promises.Threading;
-using System;
+﻿#pragma warning disable IDE0051 // Remove unused private members
+
+using Proto.Promises.Threading;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using UnityEngine;
@@ -10,8 +12,12 @@ namespace Proto.Promises
 {
     partial struct Promise
     {
-        // Promise is backed by Promise<Internal.VoidResult>, so we don't need a static constructor for it.
-        public static partial class Config
+        static Promise()
+        {
+            Unity.PromiseBehaviour.Init();
+        }
+
+        partial class Config
         {
             // Static constructor on Config to make sure the ForegroundContext is set (in case users want to copy it to the BackgroundContext for WebGL).
             // This also prevents the PromiseBehaviour from overwriting it in case users set their own ForegroundContext before the Promise<T> static constructor is ran.
@@ -19,7 +25,6 @@ namespace Proto.Promises
             {
                 Unity.PromiseBehaviour.Init();
             }
-
         }
     }
 
@@ -31,11 +36,15 @@ namespace Proto.Promises
         }
     }
 
-    namespace Unity // I would have nested this within Internal, but you can only change the execution order of public, un-nested behaviours, so add a nested namespace instead.
+    namespace Unity
     {
+        // I would have nested this within Internal, but it had to be public for old versions, and I don't want to cause a compile error if for some strange reason a user is relying on this type.
+        // So I added the EditorBrowsableAttribute to hide it in the IDE, and AddComponentMenuAttribute to hide it in the editor instead.
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        [AddComponentMenu("")]
         public sealed class PromiseBehaviour : MonoBehaviour
         {
             // Dummy class is to prevent error:
@@ -49,6 +58,9 @@ namespace Proto.Promises
                 // NoInlining is to ensure that the static constructor runs.
                 [MethodImpl(MethodImplOptions.NoInlining)]
                 public static void Init() { }
+#if UNITY_EDITOR
+                private static readonly System.Threading.SynchronizationContext s_unityContext;
+#endif
 
                 static Dummy()
                 {
@@ -58,20 +70,35 @@ namespace Proto.Promises
 #pragma warning restore 0612 // Type or member is obsolete
 
 #if UNITY_EDITOR
-                    // TODO: make foreground context work in edit mode also.
-                    if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
-#endif
+                    if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
                     {
-                        // Create a PromiseBehaviour instance before any promise actions are made.
-                        // Unity will throw if this is not ran on the main thread.
-                        new GameObject("Proto.Promises.Unity.PromiseBehaviour")
-                            .AddComponent<PromiseBehaviour>()
-                            .SetSynchronizationContext();
+                        // If we're in edit mode, just use Unity's synchronization context instead of ours.
+                        // It may not exist in older Unity versions, in which case we just warn the user.
+                        s_unityContext = System.Threading.SynchronizationContext.Current;
+                        if (s_unityContext == null)
+                        {
+                            Promise.Config.UncaughtRejectionHandler = UnityEngine.Debug.LogException;
+                            UnityEngine.Debug.LogWarning("There is no current SynchronizationContext, scheduling continuations on the foreground context may not work in edit mode. Set Promise.Config.ForegroundContext to enable foreground scheduling.");
+                            return;
+                        }
+                        Promise.Config.ForegroundContext = s_unityContext;
+                        Promise.Config.UncaughtRejectionHandler = e =>
+                        {
+                            // Route the exception through the context to avoid extra stack traces in the log.
+                            s_unityContext.Post(ex => UnityEngine.Debug.LogException(ex as System.Exception), e);
+                        };
+                        return;
                     }
+#endif
+                    // Create a PromiseBehaviour instance before any promise actions are made.
+                    // Unity will throw if this is not ran on the main thread.
+                    new GameObject("Proto.Promises.Unity.PromiseBehaviour")
+                        .AddComponent<PromiseBehaviour>()
+                        .SetSynchronizationContext();
                 }
             }
 
-            private static PromiseBehaviour _instance;
+            private static PromiseBehaviour s_instance;
 
             private readonly PromiseSynchronizationContext _syncContext = new PromiseSynchronizationContext();
             private Queue<UnhandledException> _currentlyReportingExceptions = new Queue<UnhandledException>();
@@ -85,10 +112,10 @@ namespace Proto.Promises
 
             private void SetSynchronizationContext()
             {
-                if (_instance == null)
+                if (s_instance == null)
                 {
                     Promise.Config.ForegroundContext = _syncContext;
-                    // Intercept uncaught rejections and report them in UpdateRoutine instead of directly sending them to UnityEngine.Debug.LogException
+                    // Intercept uncaught rejections and report them in Update instead of directly sending them to UnityEngine.Debug.LogException
                     // so that we can minimize the extra stack frames in the logs that we don't care about.
                     Promise.Config.UncaughtRejectionHandler = HandleRejection;
                 }
@@ -96,7 +123,7 @@ namespace Proto.Promises
 
             private void Start()
             {
-                if (_instance != null)
+                if (s_instance != null)
                 {
                     UnityEngine.Debug.LogWarning("There can only be one instance of PromiseBehaviour. Destroying new instance.");
                     Destroy(this);
@@ -104,7 +131,7 @@ namespace Proto.Promises
                 }
                 DontDestroyOnLoad(gameObject);
                 gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
-                _instance = this;
+                s_instance = this;
                 StartCoroutine(UpdateRoutine());
             }
 
@@ -116,10 +143,10 @@ namespace Proto.Promises
                 if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
 #endif
                 {
-                    if (_instance == this)
+                    if (s_instance == this)
                     {
                         UnityEngine.Debug.LogWarning("PromiseBehaviour destroyed! Removing PromiseSynchronizationContext from Promise.Config.ForegroundContext.");
-                        _instance = null;
+                        s_instance = null;
                         if (Promise.Config.ForegroundContext == _syncContext)
                         {
                             Promise.Config.ForegroundContext = null;
