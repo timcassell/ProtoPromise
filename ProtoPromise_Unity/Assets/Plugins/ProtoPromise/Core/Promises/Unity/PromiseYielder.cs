@@ -5,9 +5,9 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
+#pragma warning disable IDE0051 // Remove unused private members
 
+using System;
 using System.Collections;
 using System.Diagnostics;
 using UnityEngine;
@@ -20,19 +20,20 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
+    [AddComponentMenu("")] // Hide this in the add component menu.
     public sealed class PromiseYielder : MonoBehaviour
     {
-        static PromiseYielder _instance;
+        private static PromiseYielder s_instance;
 
         static PromiseYielder Instance
         {
             get
             {
-                if (_instance == null)
+                if (s_instance == null)
                 {
-                    _instance = new GameObject("Proto.Promises.PromiseYielder").AddComponent<PromiseYielder>();
+                    s_instance = new GameObject("Proto.Promises.PromiseYielder").AddComponent<PromiseYielder>();
                 }
-                return _instance;
+                return s_instance;
             }
         }
 
@@ -40,7 +41,7 @@ namespace Proto.Promises
 
         private void Start()
         {
-            if (_instance != this)
+            if (s_instance != this)
             {
                 UnityEngine.Debug.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
                 Destroy(this);
@@ -56,10 +57,10 @@ namespace Proto.Promises
             if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
 #endif
             {
-                if (_instance == this)
+                if (s_instance == this)
                 {
                     UnityEngine.Debug.LogWarning("PromiseYielder destroyed! Any pending PromiseYielder.WaitFor promises will not be resolved!");
-                    _instance = null;
+                    s_instance = null;
                 }
             }
         }
@@ -67,63 +68,68 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private class Routine : Internal.HandleablePromiseBase, IEnumerator, Internal.ILinked<Routine>
+        private class Routine : Internal.HandleablePromiseBase, IEnumerator
         {
-            private MonoBehaviour _currentRunner;
+            // WeakReference so we aren't creating a memory leak of MonoBehaviours while this is in the pool.
+            private readonly WeakReference _currentRunnerRef = new WeakReference(null, false);
             private Promise.Deferred _deferred;
-            private bool _continue;
+            private bool _isInvokingComplete;
+            private bool _isYieldInstructionComplete;
+            private bool _shouldContinueCoroutine;
 
             public object Current { get; private set; }
-            Routine Internal.ILinked<Routine>.Next { get; set; }
 
             private Routine() { }
 
-            public static void WaitForInstruction(Promise.Deferred deferred, object yieldInstruction, MonoBehaviour runner)
+            internal static Promise WaitForInstruction(object yieldInstruction, MonoBehaviour runner)
             {
                 var routine = Internal.ObjectPool.TryTake<Routine>()
                     ?? new Routine();
-                bool sameRunner = routine._currentRunner == runner & runner != null;
-                routine._currentRunner = runner != null ? runner : Instance;
-                routine._deferred = deferred;
+                routine._deferred = Promise.NewDeferred();
+                bool validRunner = runner != null;
+                runner = validRunner ? runner : Instance;
+                bool sameRunner = ReferenceEquals(runner, routine._currentRunnerRef.Target);
+                routine._currentRunnerRef.Target = runner;
                 routine.Current = yieldInstruction;
-                if (routine._continue & sameRunner)
+
+                if (routine._isInvokingComplete & sameRunner)
                 {
                     // The routine is already running, so don't start a new one, just set the continue flag. This prevents extra GC allocations from Unity's Coroutine.
-                    routine._continue = false;
+                    routine._shouldContinueCoroutine = true;
                 }
                 else
                 {
-                    routine._currentRunner.StartCoroutine(routine);
+                    runner.StartCoroutine(routine);
                 }
+                return routine._deferred.Promise;
             }
 
             public bool MoveNext()
             {
                 // As a coroutine, this will wait for the Current's yield, then execute this once, then stop.
-                if (_continue)
+                if (!_isYieldInstructionComplete)
                 {
-                    Complete();
+                    _isYieldInstructionComplete = true;
+                    return true;
                 }
-                return _continue = !_continue; // If the continue flag is flipped from the callback, this will continue to run.
+
+                Complete();
+                return _shouldContinueCoroutine; // This is usually false, it only gets set to true when this is re-used from the continuation.
             }
 
-            void Complete()
+            private void Complete()
             {
                 var deferred = _deferred;
                 _deferred = default(Promise.Deferred);
                 Current = null;
+                _shouldContinueCoroutine = false;
+                _isYieldInstructionComplete = false;
                 // Place this back in the pool before invoking in case the invocation will re-use this.
                 Internal.ObjectPool.MaybeRepool(this);
-                try
-                {
-                    deferred.Resolve();
-                }
-                catch
-                {
-                    // Reset the flag if there was an error. This should never happen.
-                    _continue = false;
-                    throw;
-                }
+
+                _isInvokingComplete = true;
+                deferred.Resolve();
+                _isInvokingComplete = false;
             }
 
             void IEnumerator.Reset() { }
@@ -136,9 +142,7 @@ namespace Proto.Promises
         /// <param name="yieldInstruction">The yield instruction to wait for.</param>
         public static Promise WaitFor(object yieldInstruction, MonoBehaviour runner = null)
         {
-            var deferred = Promise.NewDeferred();
-            Routine.WaitForInstruction(deferred, yieldInstruction, runner);
-            return deferred.Promise;
+            return Routine.WaitForInstruction(yieldInstruction, runner);
         }
 
         /// <summary>
@@ -147,7 +151,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise WaitOneFrame(MonoBehaviour runner = null)
         {
-            return WaitFor(null, runner);
+            return Routine.WaitForInstruction(null, runner);
         }
     }
 }
