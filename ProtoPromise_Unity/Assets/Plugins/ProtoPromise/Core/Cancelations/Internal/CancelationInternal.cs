@@ -75,11 +75,22 @@ namespace Proto.Promises
 #endif
         internal sealed partial class CancelationRef : HandleablePromiseBase, ICancelable, ITraceable
         {
-            internal static readonly CancelationRef s_canceledSentinel = new CancelationRef() { _state = State.CanceledComplete, _internalRetainCounter = 1, _tokenId = -1 };
+            internal static readonly CancelationRef s_canceledSentinel;
 
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
 #endif
+
+            static CancelationRef()
+            {
+                s_canceledSentinel = new CancelationRef() { _state = State.CanceledComplete, _internalRetainCounter = 1, _tokenId = -1 };
+#pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
+                // If we don't suppress, the finalizer can run when the ApplicationDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
+                GC.SuppressFinalize(s_canceledSentinel);
+#pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
+            }
+
+            private CancelationRef() { }
 
             ~CancelationRef()
             {
