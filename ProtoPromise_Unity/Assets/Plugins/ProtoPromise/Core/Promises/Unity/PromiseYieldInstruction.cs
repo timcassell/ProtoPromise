@@ -166,6 +166,11 @@ namespace Proto.Promises
 
             YieldInstructionVoid ILinked<YieldInstructionVoid>.Next { get; set; }
 
+            static YieldInstructionVoid()
+            {
+                OnClearPool += () => s_pool = new ValueLinkedStack<YieldInstructionVoid>();
+            }
+
             private YieldInstructionVoid() { }
 
             public static YieldInstructionVoid GetOrCreate(Promise promise)
@@ -237,6 +242,11 @@ namespace Proto.Promises
             private int _disposeChecker; // To detect if Dispose is called from multiple threads.
 
             YieldInstruction<T> ILinked<YieldInstruction<T>>.Next { get; set; }
+
+            static YieldInstruction()
+            {
+                OnClearPool += () => s_pool = new ValueLinkedStack<YieldInstruction<T>>();
+            }
 
             private YieldInstruction() { }
 
