@@ -136,6 +136,7 @@ namespace Proto.Promises
                     {
                         waiter._isHookingUp = false;
                         waiter._didWaitSuccessfully = Monitor.Wait(waiter, timeout);
+                        Thread.MemoryBarrier(); // Make sure _didWait is written last.
                         waiter._didWait = true;
                         return waiter._didWaitSuccessfully;
                     }
@@ -146,7 +147,6 @@ namespace Proto.Promises
 
             internal override void Handle(PromiseRefBase handler)
             {
-                bool didWaitSuccessfully;
                 lock (this)
                 {
                     if (_isHookingUp)
@@ -155,23 +155,19 @@ namespace Proto.Promises
                         return;
                     }
 
+                    // Wake the other thread.
                     Monitor.Pulse(this);
-                    // Wait with timeout 0 so the pulse will wake the other thread before continuing.
-                    // We start with 0 timeout, but it will sometimes still continue before the other thread, in which case we try again.
-                    // If it fails a second time, we increase the timeout to 1 and keep trying until it succeeds.
-                    Monitor.Wait(this, 0);
-                    if (!_didWait)
-                    {
-                        Monitor.Wait(this, 0);
-                        while (!_didWait)
-                        {
-                            Monitor.Wait(this, 1);
-                        }
-                    }
-                    didWaitSuccessfully = _didWaitSuccessfully;
                 }
+
+                // Wait until we're sure the other thread has continued.
+                var spinner = new SpinWait();
+                while (!_didWait)
+                {
+                    spinner.SpinOnce();
+                }
+
                 // If the timeout expired before completion, we dispose the handler here. Otherwise, the original caller will dispose it.
-                if (!didWaitSuccessfully)
+                if (!_didWaitSuccessfully)
                 {
                     handler.MaybeDispose();
                 }
