@@ -83,14 +83,20 @@ namespace Proto.Promises
 
             static CancelationRef()
             {
-                s_canceledSentinel = new CancelationRef() { _state = State.CanceledComplete, _internalRetainCounter = 1, _tokenId = -1 };
+                // Set _userRetainIncrementor to 0 so _userRetainCounter will never overflow.
+                s_canceledSentinel = new CancelationRef(0) { _state = State.CanceledComplete, _internalRetainCounter = 1, _tokenId = -1 };
 #pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
                 // If we don't suppress, the finalizer can run when the ApplicationDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
                 GC.SuppressFinalize(s_canceledSentinel);
 #pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
             }
 
-            private CancelationRef() { }
+            private CancelationRef() : this(1) { }
+
+            private CancelationRef(byte userRetainIncrementor)
+            {
+                _userRetainIncrementor = userRetainIncrementor;
+            }
 
             ~CancelationRef()
             {
@@ -162,6 +168,7 @@ namespace Proto.Promises
             volatile private int _sourceId = 1;
             volatile private int _tokenId = 1;
             private uint _userRetainCounter;
+            private readonly byte _userRetainIncrementor; // 0 for s_canceledSentinel, 1 for all others.
             private byte _internalRetainCounter;
             internal bool _linkedToBclToken;
             volatile internal State _state;
@@ -523,7 +530,7 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
                 checked
                 {
-                    ++_userRetainCounter;
+                    _userRetainCounter += _userRetainIncrementor;
                 }
                 _smallFields._locker.Exit();
                 return true;
@@ -546,7 +553,7 @@ namespace Proto.Promises
                 }
                 checked
                 {
-                    if (--_userRetainCounter == 0 & _internalRetainCounter == 0)
+                    if ((_userRetainCounter -= _userRetainIncrementor) == 0 & _internalRetainCounter == 0)
                     {
                         unchecked
                         {
