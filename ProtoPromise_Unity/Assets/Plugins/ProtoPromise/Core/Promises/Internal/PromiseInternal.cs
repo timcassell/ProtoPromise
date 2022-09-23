@@ -458,9 +458,9 @@ namespace Proto.Promises
             // This can be called instead of MaybeHandleNext when we know the nextHandler is not null.
             internal void HandleNext(HandleablePromiseBase nextHandler)
             {
-                WaitWhileProgressReporting();
                 // Set the waiter to InvalidAwaitSentinel to break the chain to stop progress reports.
                 _next = InvalidAwaitSentinel.s_instance;
+                WaitWhileProgressReporting();
                 nextHandler.Handle(this);
             }
 
