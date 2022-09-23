@@ -14,13 +14,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("ProtoPromiseTests")]
-
 namespace Proto.Promises
 {
     partial class Internal
     {
-        private static event Action OnClearPool;
+        internal static event Action OnClearPool;
 
         internal static void ClearPool()
         {

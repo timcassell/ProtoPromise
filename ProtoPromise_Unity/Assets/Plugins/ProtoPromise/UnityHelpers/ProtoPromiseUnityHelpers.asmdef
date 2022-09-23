@@ -1,12 +1,9 @@
 {
-    "name": "ProtoPromiseTests",
+    "name": "ProtoPromiseUnityHelpers",
     "references": [
-        "ProtoPromise",
-        "ProtoPromiseUnityHelpers"
+        "ProtoPromise"
     ],
-    "optionalUnityReferences": [
-        "TestAssemblies"
-    ],
+    "optionalUnityReferences": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

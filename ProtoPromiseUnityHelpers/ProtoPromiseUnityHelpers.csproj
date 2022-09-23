@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--We target .Net Framework 3.5 to support old Unity versions, and we also target .Net Standard 2.1 to support new Unity versions, even after it drops old Framework support.-->
+    <TargetFrameworks>net35;netstandard2.1</TargetFrameworks>
+    <Configurations>Release;Debug;</Configurations>
+    <Version>2.2.0</Version>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <!--The newest language version Unity 5.5 supports (by default).-->
+    <LangVersion>4</LangVersion>
+  </PropertyGroup>
+
+  <!--Unity uses NET_LEGACY for old runtime prior to .Net 4.6, so we will do the same here.-->
+  <PropertyGroup Condition="'$(TargetFramework)'=='net35'">
+    <DefineConstants>$(DefineConstants);NET_LEGACY</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\UnityHelpers\**/*.cs" />
+    <Compile Remove="nuget\**" />
+    <EmbeddedResource Remove="nuget\**" />
+    <None Remove="nuget\**" />
+    <None Remove="UnityEngine.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProtoPromise\ProtoPromise.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="UnityEngine">
+      <HintPath>UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

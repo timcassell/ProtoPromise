@@ -2,13 +2,8 @@
 #define NET_LEGACY
 #endif
 
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
-#define PROMISE_DEBUG
-#else
-#undef PROMISE_DEBUG
-#endif
-
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.Diagnostics;
@@ -17,19 +12,27 @@ using UnityEngine;
 
 namespace Proto.Promises
 {
-    partial class Extensions
+    /// <summary>
+    /// Extensions to convert Promises to Yield Instructions for Coroutines.
+    /// </summary>
+    public static class UnityHelperExtensions
     {
+        /// <summary>
+        /// Convert the <paramref name="promise"/> to a <see cref="PromiseYieldInstruction"/>.
+        /// </summary>
         public static PromiseYieldInstruction ToYieldInstruction(this Promise promise)
         {
-            return Internal.YieldInstructionVoid.GetOrCreate(promise);
+            return InternalHelper.YieldInstructionVoid.GetOrCreate(promise);
         }
 
+        /// <summary>
+        /// Convert the <paramref name="promise"/> to a <see cref="PromiseYieldInstruction{T}"/>.
+        /// </summary>
         public static PromiseYieldInstruction<T> ToYieldInstruction<T>(this Promise<T> promise)
         {
-            return Internal.YieldInstruction<T>.GetOrCreate(promise);
+            return InternalHelper.YieldInstruction<T>.GetOrCreate(promise);
         }
     }
-
 
     /// <summary>
     /// Yield instruction that can be yielded in a coroutine to wait until the <see cref="Promise"/> it came from has settled.
@@ -42,7 +45,6 @@ namespace Proto.Promises
         volatile protected object _rejectContainer;
         volatile protected Promise.State _state;
         volatile protected int _retainCounter;
-
 
         internal PromiseYieldInstruction() { }
 
@@ -151,24 +153,24 @@ namespace Proto.Promises
         }
     }
 
-    partial class Internal
+    partial class InternalHelper
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class YieldInstructionVoid : PromiseYieldInstruction, ILinked<YieldInstructionVoid>
+        internal sealed class YieldInstructionVoid : PromiseYieldInstruction, Internal.ILinked<YieldInstructionVoid>
         {
             // These must not be readonly.
-            private static ValueLinkedStack<YieldInstructionVoid> s_pool;
-            private static SpinLocker s_spinLocker;
+            private static Internal.ValueLinkedStack<YieldInstructionVoid> s_pool;
+            private static Internal.SpinLocker s_spinLocker;
 
             private int _disposeChecker; // To detect if Dispose is called from multiple threads.
 
-            YieldInstructionVoid ILinked<YieldInstructionVoid>.Next { get; set; }
+            YieldInstructionVoid Internal.ILinked<YieldInstructionVoid>.Next { get; set; }
 
             static YieldInstructionVoid()
             {
-                OnClearPool += () => s_pool = new ValueLinkedStack<YieldInstructionVoid>();
+                Internal.OnClearPool += () => s_pool = new Internal.ValueLinkedStack<YieldInstructionVoid>();
             }
 
             private YieldInstructionVoid() { }
@@ -208,7 +210,7 @@ namespace Proto.Promises
                 if (Interlocked.Exchange(ref _disposeChecker, 1) == 1)
 #endif
                 {
-                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
                 }
                 MaybeDispose();
             }
@@ -218,14 +220,12 @@ namespace Proto.Promises
                 if (Interlocked.Decrement(ref _retainCounter) == 0)
                 {
                     _rejectContainer = null;
-#if !PROMISE_DEBUG // Don't repool in DEBUG mode.
                     if (Promise.Config.ObjectPoolingEnabled)
                     {
                         s_spinLocker.Enter();
                         s_pool.Push(this);
                         s_spinLocker.Exit();
                     }
-#endif
                 }
             }
         }
@@ -233,19 +233,19 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class YieldInstruction<T> : PromiseYieldInstruction<T>, ILinked<YieldInstruction<T>>
+        internal sealed class YieldInstruction<T> : PromiseYieldInstruction<T>, Internal.ILinked<YieldInstruction<T>>
         {
             // These must not be readonly.
-            private static ValueLinkedStack<YieldInstruction<T>> s_pool;
-            private static SpinLocker s_spinLocker;
+            private static Internal.ValueLinkedStack<YieldInstruction<T>> s_pool;
+            private static Internal.SpinLocker s_spinLocker;
 
             private int _disposeChecker; // To detect if Dispose is called from multiple threads.
 
-            YieldInstruction<T> ILinked<YieldInstruction<T>>.Next { get; set; }
+            YieldInstruction<T> Internal.ILinked<YieldInstruction<T>>.Next { get; set; }
 
             static YieldInstruction()
             {
-                OnClearPool += () => s_pool = new ValueLinkedStack<YieldInstruction<T>>();
+                Internal.OnClearPool += () => s_pool = new Internal.ValueLinkedStack<YieldInstruction<T>>();
             }
 
             private YieldInstruction() { }
@@ -289,7 +289,7 @@ namespace Proto.Promises
                 if (Interlocked.Exchange(ref _disposeChecker, 1) == 1)
 #endif
                 {
-                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
                 }
                 MaybeDispose();
             }
@@ -299,14 +299,12 @@ namespace Proto.Promises
                 if (Interlocked.Decrement(ref _retainCounter) == 0)
                 {
                     _rejectContainer = null;
-#if !PROMISE_DEBUG // Don't repool in DEBUG mode.
                     if (Promise.Config.ObjectPoolingEnabled)
                     {
                         s_spinLocker.Enter();
                         s_pool.Push(this);
                         s_spinLocker.Exit();
                     }
-#endif
                 }
             }
         }

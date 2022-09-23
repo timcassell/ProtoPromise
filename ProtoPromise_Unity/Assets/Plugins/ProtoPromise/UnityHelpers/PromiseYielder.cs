@@ -1,10 +1,4 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
-#define PROMISE_DEBUG
-#else
-#undef PROMISE_DEBUG
-#endif
-
-#pragma warning disable IDE0034 // Simplify 'default' expression
+﻿#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0051 // Remove unused private members
 
 using System;
@@ -20,46 +14,51 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    [AddComponentMenu("")] // Hide this in the add component menu.
-    public sealed class PromiseYielder : MonoBehaviour
+    public static class PromiseYielder
     {
-        private static PromiseYielder s_instance;
-
-        static PromiseYielder Instance
-        {
-            get
-            {
-                if (s_instance == null)
-                {
-                    s_instance = new GameObject("Proto.Promises.PromiseYielder").AddComponent<PromiseYielder>();
-                }
-                return s_instance;
-            }
-        }
-
-        private PromiseYielder() { }
-
-        private void Start()
-        {
-            if (s_instance != this)
-            {
-                UnityEngine.Debug.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
-                Destroy(this);
-                return;
-            }
-            DontDestroyOnLoad(gameObject);
-            gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
-        }
-
-        private void OnDestroy()
-        {
-#if UNITY_EDITOR
-            if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
 #endif
+        [AddComponentMenu("")] // Hide this in the add component menu.
+        private sealed class PromiseYielderBehaviour : MonoBehaviour
+        {
+            private static PromiseYielderBehaviour s_instance;
+
+            internal static MonoBehaviour Instance
             {
+                get
+                {
+                    if (s_instance == null)
+                    {
+                        s_instance = new GameObject("Proto.Promises.PromiseYielderBehaviour").AddComponent<PromiseYielderBehaviour>();
+                    }
+                    return s_instance;
+                }
+            }
+
+            private PromiseYielderBehaviour() { }
+
+            private void Start()
+            {
+                if (s_instance != this)
+                {
+                    UnityEngine.Debug.LogWarning("There can only be one instance of PromiseYielder. Destroying new instance.");
+                    Destroy(this);
+                    return;
+                }
+                DontDestroyOnLoad(gameObject);
+                gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
+            }
+
+            private void OnDestroy()
+            {
+                if (InternalHelper.PromiseBehaviour.s_isApplicationQuitting)
+                {
+                    return;
+                }
                 if (s_instance == this)
                 {
-                    UnityEngine.Debug.LogWarning("PromiseYielder destroyed! Any pending PromiseYielder.WaitFor promises will not be resolved!");
+                    UnityEngine.Debug.LogWarning("PromiseYielderBehaviour destroyed! Any pending PromiseYielder.WaitFor promises running on the default MonoBehaviour will not be resolved!");
                     s_instance = null;
                 }
             }
@@ -87,7 +86,7 @@ namespace Proto.Promises
                     ?? new Routine();
                 routine._deferred = Promise.NewDeferred();
                 bool validRunner = runner != null;
-                runner = validRunner ? runner : Instance;
+                runner = validRunner ? runner : PromiseYielderBehaviour.Instance;
                 bool sameRunner = ReferenceEquals(runner, routine._currentRunnerRef.Target);
                 routine._currentRunnerRef.Target = runner;
                 routine.Current = yieldInstruction;
@@ -140,6 +139,7 @@ namespace Proto.Promises
         /// If <paramref name="runner"/> is provided, the coroutine will be ran on it, otherwise it will be ran on the singleton PromiseYielder instance.
         /// </summary>
         /// <param name="yieldInstruction">The yield instruction to wait for.</param>
+        /// <param name="runner">The object on which the <paramref name="yieldInstruction"/> will be ran.</param>
         public static Promise WaitFor(object yieldInstruction, MonoBehaviour runner = null)
         {
             return Routine.WaitForInstruction(yieldInstruction, runner);
@@ -149,6 +149,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve after 1 frame.
         /// If <paramref name="runner"/> is provided, the coroutine will be ran on it, otherwise it will be ran on the singleton PromiseYielder instance.
         /// </summary>
+        /// <param name="runner">The object on which the wait will be ran.</param>
         public static Promise WaitOneFrame(MonoBehaviour runner = null)
         {
             return Routine.WaitForInstruction(null, runner);

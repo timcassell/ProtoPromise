@@ -5,7 +5,7 @@ VERY IMPORTANT - Before doing any of this, run unit tests locally on the IL2CPP 
 Also test the demo scene in Unity 5.5 to make sure it works (no need to run tests as the test runner didn't exist back then).
 
 
-Update the version in both `ProtoPromise.csproj` and `package.json`.
+Update the version in `ProtoPromise.csproj`, `ProtoPromiseUnityHelpers.csproj`, and `package.json`.
 
 To create the UnityPackage for releases:
 
