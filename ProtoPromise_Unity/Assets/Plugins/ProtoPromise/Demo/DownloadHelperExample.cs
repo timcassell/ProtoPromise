@@ -13,15 +13,13 @@ namespace Proto.Promises.Examples
 #if UNITY_2017_2_OR_NEWER
         private static IEnumerator WaitForWebRequestWithProgress(Promise.DeferredBase deferred, UnityWebRequestAsyncOperation asyncOp, CancelationToken cancelationToken)
         {
-            bool retained = cancelationToken.TryRetain(); // Retain the token so it will still be valid after yield return.
-            while (!cancelationToken.IsCancelationRequested && !asyncOp.isDone)
+            using (cancelationToken.GetRetainer()) // Retain the token for the duration of the coroutine.
             {
-                deferred.ReportProgress(asyncOp.progress);
-                yield return null;
-            }
-            if (retained)
-            {
-                cancelationToken.Release(); // Must release the token when we are finished with it.
+                while (!cancelationToken.IsCancelationRequested && !asyncOp.isDone)
+                {
+                    deferred.ReportProgress(asyncOp.progress);
+                    yield return null;
+                }
             }
         }
 
@@ -41,13 +39,11 @@ namespace Proto.Promises.Examples
 #endif
                     {
                         string error = webRequest.error;
-                        webRequest.Dispose();
                         def.Reject(error);
                     }
                     else
                     {
                         Texture2D result = ((DownloadHandlerTexture) webRequest.downloadHandler).texture;
-                        webRequest.Dispose();
                         def.Resolve(result);
                     }
                 }, cancelationToken) // CancelationToken will prevent the .Then callback from being invoked if it is canceled before the webrequest completes.
@@ -58,15 +54,13 @@ namespace Proto.Promises.Examples
 #else
         private static IEnumerator WaitForWebRequestWithProgress(Promise.DeferredBase deferred, WWW asyncOp, CancelationToken cancelationToken)
         {
-            bool retained = cancelationToken.TryRetain(); // Retain the token so it will still be valid after yield return.
-            while (!cancelationToken.IsCancelationRequested && !asyncOp.isDone)
+            using (cancelationToken.GetRetainer()) // Retain the token for the duration of the coroutine.
             {
-                deferred.ReportProgress(asyncOp.progress);
-                yield return null;
-            }
-            if (retained)
-            {
-                cancelationToken.Release(); // Must release the token when we are finished with it.
+                while (!cancelationToken.IsCancelationRequested && !asyncOp.isDone)
+                {
+                    deferred.ReportProgress(asyncOp.progress);
+                    yield return null;
+                }
             }
         }
 
@@ -82,13 +76,11 @@ namespace Proto.Promises.Examples
                     if (!string.IsNullOrEmpty(webRequest.error))
                     {
                         string error = webRequest.error;
-                        webRequest.Dispose();
                         def.Reject(error);
                     }
                     else
                     {
                         Texture2D result = webRequest.texture;
-                        webRequest.Dispose();
                         def.Resolve(result);
                     }
                 }, cancelationToken) // CancelationToken will prevent the .Then callback from being invoked if it is canceled before the webrequest completes.
