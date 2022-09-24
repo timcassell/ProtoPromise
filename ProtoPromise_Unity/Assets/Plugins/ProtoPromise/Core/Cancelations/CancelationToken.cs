@@ -15,6 +15,7 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
@@ -205,6 +206,15 @@ namespace Proto.Promises
             }
         }
 
+        /// <summary>
+        /// Gets a retainer that facilitates retaining and releasing this instance. This is intended to be used with a using block `using (token.GetRetainer()) { ... }`.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        public Retainer GetRetainer()
+        {
+            return new Retainer(this);
+        }
+
 #if !NET_LEGACY || NET40
         /// <summary>
         /// Convert this to a <see cref="System.Threading.CancellationToken"/>.
@@ -281,6 +291,39 @@ namespace Proto.Promises
         public bool TryGetCancelationValueAs<T>(out T value)
         {
             throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
+        }
+
+        /// <summary>
+        /// A helper type that facilitates retaining and releasing <see cref="CancelationToken"/>s with a using statement.
+        /// This is intended to be used instead of <see cref="TryRetain"/> and <see cref="Release"/> to reduce boilerplate code.
+        /// </summary>
+        public
+#if CSHARP_7_3_OR_NEWER
+            readonly
+#endif
+            struct Retainer : IDisposable
+        {
+            public readonly CancelationToken token;
+            public readonly bool isRetained;
+
+            [MethodImpl(Internal.InlineOption)]
+            internal Retainer(CancelationToken cancelationToken)
+            {
+                token = cancelationToken;
+                isRetained = cancelationToken.TryRetain();
+            }
+
+            /// <summary>
+            /// Releases the token if it was retained. This instance is no longer valid after it has been disposed, and should not continue to be used.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            public void Dispose()
+            {
+                if (isRetained)
+                {
+                    token.Release();
+                }
+            }
         }
     }
 

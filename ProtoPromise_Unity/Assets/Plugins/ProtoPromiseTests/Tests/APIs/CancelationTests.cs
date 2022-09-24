@@ -723,6 +723,60 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
+            public void CancelationTokenPending_RetainerIsRetained()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                using (var retainer = cancelationSource.Token.GetRetainer())
+                {
+                    Assert.IsTrue(retainer.isRetained);
+                }
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationTokenCanceled_RetainerIsRetained()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                cancelationSource.Cancel();
+                using (var retainer = cancelationSource.Token.GetRetainer())
+                {
+                    Assert.IsTrue(retainer.isRetained);
+                }
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationTokenAlreadyCanceled_RetainerIsRetained()
+            {
+                CancelationToken cancelationToken = CancelationToken.Canceled();
+                using (var retainer = cancelationToken.GetRetainer())
+                {
+                    Assert.IsTrue(retainer.isRetained);
+                }
+            }
+
+            [Test]
+            public void CancelationTokenDisposed_RetainerIsNotRetained()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                cancelationSource.Dispose();
+                using (var retainer = cancelationSource.Token.GetRetainer())
+                {
+                    Assert.IsFalse(retainer.isRetained);
+                }
+            }
+
+            [Test]
+            public void CancelationTokenDefault_RetainerIsNotRetained()
+            {
+                CancelationToken cancelationToken = default(CancelationToken);
+                using (var retainer = cancelationToken.GetRetainer())
+                {
+                    Assert.IsFalse(retainer.isRetained);
+                }
+            }
+
+            [Test]
             public void CancelationTokenCanceledThrowIfCancelationRequested()
             {
                 CancelationToken cancelationToken = CancelationToken.Canceled();
