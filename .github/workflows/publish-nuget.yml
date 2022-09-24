@@ -30,6 +30,10 @@ jobs:
             echo "version ${VERSION} not found in ProtoPromise.csproj"
             exit 1
           fi
+          if ! grep -q "<Version>${VERSION}</Version>" ProtoPromiseUnityHelpers/ProtoPromiseUnityHelpers.csproj; then
+            echo "version ${VERSION} not found in ProtoPromiseUnityHelpers.csproj"
+            exit 1
+          fi
           if ! grep -q "\"version\": \"${VERSION}\"" ProtoPromise_Unity/Assets/Plugins/ProtoPromise/package.json; then
             echo "version ${VERSION} not found in package.json"
             exit 1
@@ -43,17 +47,22 @@ jobs:
         with:
           tag: v${{ steps.set_tag.outputs.version }}
 
-      - name: Overwrite nuspec version
+      - name: Overwrite ProtoPromise nuspec version
         run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromise/nuget/ProtoPromise.nuspec
 
-      - name: Overwrite nuspec release notes
+      - name: Overwrite ProtoPromiseUnityHelpers nuspec version
+        run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromiseUnityHelpers/nuget/ProtoPromiseUnityHelpers.nuspec
+
+      - name: Overwrite ProtoPromise nuspec release notes
         run: |
           RELEASE_NOTES='${{ steps.get_release.outputs.body }}'
-          export REPLACE_RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed -e ':a' -e 'N' -e '$!ba' -e 's|\n|\n      |g; s/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g')
+          export REPLACE_RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed -e ':a' -e 'N' -e '$!ba' -e 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g')
           perl -l -p -i -e 's/{RELEASE_NOTES}/$ENV{REPLACE_RELEASE_NOTES}/g' ProtoPromise/nuget/ProtoPromise.nuspec
 
-      - name: Print nuspec
-        run: cat ProtoPromise/nuget/ProtoPromise.nuspec
+      - name: Print nuspecs
+        run: |
+          cat ProtoPromise/nuget/ProtoPromise.nuspec
+          cat ProtoPromiseUnityHelpers/nuget/ProtoPromiseUnityHelpers.nuspec
 
       - name: Setup nuget
         uses: nuget/setup-nuget@v1
@@ -71,10 +80,18 @@ jobs:
       - name: Build Release
         run: dotnet build -c Release
 
-      - name: Pack
+      - name: Pack ProtoPromise
         run: nuget pack ProtoPromise/nuget/ProtoPromise.nuspec
 
-      - name: Push
+      - name: Pack Unity Helpers
+        run: nuget pack ProtoPromiseUnityHelpers/nuget/ProtoPromiseUnityHelpers.nuspec
+
+      - name: Push ProtoPromise
         run: dotnet nuget push ProtoPromise.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+      - name: Push Unity Helpers
+        run: dotnet nuget push ProtoPromiseUnityHelpers.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}

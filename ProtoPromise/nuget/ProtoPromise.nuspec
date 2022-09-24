@@ -11,10 +11,8 @@
     <projectUrl>https://github.com/timcassell/ProtoPromise</projectUrl>
     <repository type="git" url="https://github.com/timcassell/ProtoPromise" />
     <description>Robust and efficient library for management of asynchronous operations.</description>
-    <releaseNotes>
-      {RELEASE_NOTES}
-    </releaseNotes>
-    <copyright>Copyright 2022</copyright>
+    <releaseNotes>{RELEASE_NOTES}</releaseNotes>
+    <copyright>Copyright ©2022 Tim Cassell</copyright>
     <tags>promise promises task tasks csharp unity dotnet mono coroutine coroutines concurrency concurrent parallel asynchronous async await thread threads threading then thenable callback callbacks</tags>
 
     <dependencies>
