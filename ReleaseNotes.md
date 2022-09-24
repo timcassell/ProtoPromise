@@ -1,5 +1,33 @@
 # Release Notes
 
+## v 2.3.0 - September 25, 2022
+
+Enhancements:
+
+- Added `Promise.Wait()` and `Promise<T>.WaitForResult()` synchronous APIs.
+- `CancelationRegistration` now implements `IDisposable` and `IAsyncDisposable` interfaces. Disposing the registration will unregister the callback, or wait for the callback to complete if it was already invoked.
+- Added `CancelationToken.GetRetainer()` API to reduce `TryRetain` / `Release` boilerplate code.
+- Un-deprecated `Deferred.IsValid`, and changed it to return whether the `Deferred.Promise` is valid, instead of returning `Deferred.IsValidAndPending`.
+
+Fixes:
+
+- Fixed `PromiseYielder` when different runners are used on a re-used routine.
+- Fixed `NullReferenceException` when the AppDomain is unloaded.
+
+Deprecated:
+
+- deprecated `Promise.ResultContainer.RejectContainer`, replaced with `Promise.ResultContainer.RejectReason`.
+- deprecated `CancelationToken.Retain()` (prefer `TryRetain()`).
+- deprecated `CancelationRegistration.Unregister()` (prefer `TryUnregister()` or `Dispose()`).
+
+Misc:
+
+- `CancelationToken.Register(callback)` now returns a default registration if it failed to register instead of throwing.
+
+Breaking Changes:
+
+- Removed `Promise<T>.RaceWithIndex` and `Promise<T>.FirstWithIndex` APIs in build targets older than .Net Standard 2.1. `Promise.RaceWithIndex<T>` and `Promise.FirstWithIndex<T>` APIs can be used instead.
+
 ## v 2.2.0 - August 6, 2022
 
 Enhancements:

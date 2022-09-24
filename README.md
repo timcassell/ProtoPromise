@@ -27,17 +27,11 @@ This library took inspiration from [ES6 Promises](https://developer.mozilla.org/
 
 ## Latest Updates
 
-## v 2.2.0 - August 6, 2022
+## v 2.3.0 - September 25, 2022
 
-- Added `Promise(<T>).AwaitWithProgress(maxProgress)` API to use current progress instead of passing in minProgress.
-- Added `Promise(<T>).{RaceWithIndex, FirstWithIndex}` APIs to be able to tell which promise won the race.
-- Added `Promise(<T>).WaitAsync(CancelationToken)` APIs, and added optional `CancelationToken` arguments to existing `WaitAsync` APIs.
-- Added optional `bool forceAsync` arguments to existing `WaitAsync` and other APIs that allow changing context.
-- Fixed `CancelationToken` callbacks not being invoked after they are registered after the original `System.Threading.CancellationTokenSource` has been reset (.Net 6.0+).
-- Fixed a deadlock in `PromiseSynchronizationContext.Send` if the callback throws an exception. The exception is rethrown in .Net 4.5+.
-- Fixed `WaitAsync` and `Progress` if null `SynchronizationContext` is passed in.
-- Fixed compile errors in Unity 5.
-- Slightly increased performance and decreased memory.
+- Added `Promise.Wait()` and `Promise<T>.WaitForResult()` synchronous APIs.
+- `CancelationRegistration` now implements `IDisposable` and `IAsyncDisposable` interfaces. Disposing the registration will unregister the callback, or wait for the callback to complete if it was already invoked.
+- Added `CancelationToken.GetRetainer()` API to reduce `TryRetain` / `Release` boilerplate code.
 
 See [Release Notes](ReleaseNotes.md) for the full changelog.
 
@@ -649,8 +643,7 @@ You can check whether the token is already canceled:
 ```cs
 public IEnumerator FuncEnumerator(CancelationToken token)
 {
-    bool retained = token.TryRetain();
-    try
+    using (token.GetRetainer()) // Retain the token for the duration of the operation.
     {
         while (!token.IsCancelationRequested)
         {
@@ -662,13 +655,6 @@ public IEnumerator FuncEnumerator(CancelationToken token)
             yield return null;
         }
         Console.Log("token was canceled");
-    }
-    finally
-    {
-        if (retained)
-        {
-            token.Release();
-        }
     }
 }
 ```
@@ -683,10 +669,12 @@ When you register a callback to a token, it returns a `CancelationRegistration` 
 CancelationRegistration registration = token.Register(() => Console.Log("This won't get called."));
 
 // ... later, before the source is canceled
-registration.Unregister();
+registration.TryUnregister();
 ```
 
 If the registration is unregistered before the source is canceled, the callback will not be invoked. Once a registration has been unregistered, it cannot be re-registered. You must register a new callback to the token if you wish to do so.
+
+You may also `Dispose` the registration to unregister the callback, or wait for it to complete if it was already invoked.
 
 ### Canceling Promises
 
