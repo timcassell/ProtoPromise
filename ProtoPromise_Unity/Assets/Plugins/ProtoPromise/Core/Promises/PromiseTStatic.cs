@@ -407,9 +407,8 @@ namespace Proto.Promises
             }
         }
 
-#if UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
-        // Old IL2CPP runtime immediately crashes if these methods exist, even if they are not used. So we only include them if we're not in Unity, or in a newer Unity version with the fixed compiler.
-        // (Even though it would work with the Mono runtime, the API surface must be kept consistent.)
+#if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        // Old IL2CPP runtime immediately crashes if these methods exist, even if they are not used. So we only include them in newer build targets that old Unity versions cannot consume.
         // See https://github.com/timcassell/ProtoPromise/pull/106 for details.
 
         /// <summary>
@@ -519,8 +518,7 @@ namespace Proto.Promises
         {
             return Promise.FirstWithIndex<T, TEnumerator>(promises);
         }
-#endif // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
-
+#endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
