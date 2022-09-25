@@ -76,7 +76,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        if (resultContainer.RejectReason is not System.Exception exception)
+                        if (!(resultContainer.RejectReason is System.Exception exception))
                         {
                             exception = Promise.RejectException(resultContainer.RejectReason);
                         }
@@ -106,7 +106,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        if (resultContainer.RejectReason is not System.Exception exception)
+                        if (!(resultContainer.RejectReason is System.Exception exception))
                         {
                             exception = Promise.RejectException(resultContainer.RejectReason);
                         }
