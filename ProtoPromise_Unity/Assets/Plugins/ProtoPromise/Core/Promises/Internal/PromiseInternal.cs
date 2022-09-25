@@ -135,7 +135,8 @@ namespace Proto.Promises
                     if (waiter._isHookingUp)
                     {
                         waiter._isHookingUp = false;
-                        waiter._didWaitSuccessfully = Monitor.Wait(waiter, timeout);
+                        // If timeout is 0, Monitor.Wait returns true when it should return false in IL2CPP. So we have to explicitly check for that value.
+                        waiter._didWaitSuccessfully = timeout != TimeSpan.Zero && Monitor.Wait(waiter, timeout);
                         Thread.MemoryBarrier(); // Make sure _didWait is written last.
                         waiter._didWait = true;
                         return waiter._didWaitSuccessfully;

@@ -1,4 +1,8 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
+#define NET_LEGACY
+#endif
+
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -99,6 +103,18 @@ namespace ProtoPromiseTests
                         {
                             try
                             {
+#if ENABLE_IL2CPP && !NET_LEGACY && !UNITY_2022_1_OR_NEWER
+                                // ExceptionDispatchInfo.Throw() generates a new Exception object instead of throwing the original object in IL2CPP, causing the Assert to fail.
+                                // This was fixed in Unity 2022. To avoid the tests failing, we instead have to check the object's type and message.
+                                if (s_expectedUncaughtRejectValue is Exception)
+                                {
+                                    Exception expected = (Exception) s_expectedUncaughtRejectValue;
+                                    Assert.AreEqual(expected.GetType(), e.Value.GetType());
+                                    Exception actual = (Exception) e.Value;
+                                    Assert.AreEqual(expected.Message, actual.Message);
+                                    return;
+                                }
+#endif
                                 Assert.AreEqual(s_expectedUncaughtRejectValue, e.Value);
                             }
                             catch (Exception ex)
