@@ -908,7 +908,7 @@ namespace Proto.Promises
                     // callback to complete. While such polling isn't ideal, we expect this to be a rare case (disposing while
                     // the associated callback is running), and brief when it happens (so the polling will be minimal), and making
                     // this work with a callback mechanism will add additional cost to other more common cases.
-                    return Promise.Run((parent, _this, nodeId, tokenId), static async cv =>
+                    return Promise.Run((parent, _this, nodeId, tokenId), async cv =>
                     {
                         var (source, node, nId, sId) = cv;
                         // _this._nodeId will be incremented when the callback is complete and this is disposed.

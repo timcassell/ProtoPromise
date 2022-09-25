@@ -152,7 +152,7 @@ namespace Proto.Promises
 
 #if !NETCOREAPP
         // Override AwaitOnCompleted implementation to prevent boxing in Unity.
-#if UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER // C# 9 added in 2021.2. We can also use this in non-Unity library since CIL has supported function pointers forever.
+#if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER // Even though CIL has always had function pointers, Unity did not properly support the CIL instructions until C# 9/ .Net Standard 2.1 support was added.
         internal unsafe abstract class AwaitOverrider<T> where T : INotifyCompletion
         {
 #pragma warning disable IDE0044 // Add readonly modifier
@@ -193,7 +193,7 @@ namespace Proto.Promises
                 }
             }
         }
-#else // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
+#else // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER
         internal abstract class AwaitOverrider<T> where T : INotifyCompletion
         {
             private static AwaitOverrider<T> s_awaitOverrider;
@@ -238,7 +238,7 @@ namespace Proto.Promises
                 }
             }
         }
-#endif // UNITY_2021_2_OR_NEWER || !UNITY_5_5_OR_NEWER
+#endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER
 #endif // !NETCOREAPP
 
         internal static void ValidateId(short promiseId, PromiseRefBase _ref, int skipFrames)
