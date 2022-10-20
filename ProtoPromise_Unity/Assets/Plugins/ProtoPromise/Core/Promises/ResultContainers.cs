@@ -126,7 +126,7 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.PromiseRefBase source) : this(source._rejectContainer, source.State)
+            internal ResultContainer(Internal.PromiseRefBase source) : this(source._rejectContainerOrPreviousOrLink.UnsafeAs<Internal.IRejectContainer>(), source.State)
             {
             }
 
@@ -251,7 +251,7 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.PromiseRefBase source) : this(source.GetResult<T>(), source._rejectContainer, source.State)
+            internal ResultContainer(Internal.PromiseRefBase source) : this(source.GetResult<T>(), source._rejectContainerOrPreviousOrLink.UnsafeAs<Internal.IRejectContainer>(), source.State)
             {
             }
 

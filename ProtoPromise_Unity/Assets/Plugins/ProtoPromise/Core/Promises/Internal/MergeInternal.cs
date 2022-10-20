@@ -17,6 +17,7 @@
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -30,13 +31,66 @@ namespace Proto.Promises
 #endif
             internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
-                internal override void Handle(PromiseRefBase handler) { throw new System.InvalidOperationException(); }
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
 
-                new protected void Reset(ushort depth)
+                // When each promise is completed, we decrement the wait count until it reaches zero before we handle the next waiter.
+                // If a promise completes with a state that should complete this promise before all the other promises were complete,
+                // we instead swap the count to 0 so that it will be marked complete early, and future completions will decrement into negative and never read 0 again.
+                // (Merge reject/cancel, or First resolve, Race always tries to set complete).
+                [MethodImpl(InlineOption)]
+                protected bool TrySetComplete()
                 {
-                    base.Reset(depth);
-#if PROMISE_PROGRESS
-                    _smallFields._currentProgress = default(Fixed32);
+                    return InterlockedExchange(ref _waitCount, 0) > 0;
+                }
+
+                [MethodImpl(InlineOption)]
+                protected bool RemoveWaiterAndGetIsComplete()
+                {
+                    // No overflow check as we expect the count to be able to go negative.
+                    return Interlocked.Add(ref _waitCount, -1) == 0;
+                }
+
+                protected void ReleaseAndHandleNext(PromiseRefBase handler)
+                {
+                    // Decrement retain counter instead of calling MaybeDispose, since we know the next handler will call MaybeDispose.
+                    InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
+                    HandleNextFromHandler(handler);
+                }
+
+                protected void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                {
+                    _waitCount = pendingAwaits;
+                    unchecked
+                    {
+                        _retainCounter = pendingAwaits + 1;
+                    }
+                    Reset(depth);
+
+                    _passThroughs = promisePassThroughs;
+                    foreach (var passThrough in promisePassThroughs)
+                    {
+#if PROMISE_DEBUG
+                        lock (_previousPromises)
+                        {
+                            _previousPromises.Push(passThrough.Owner);
+                        }
+#endif
+                        passThrough.SetTargetAndAddToOwner(this);
+                    }
+                }
+
+                new protected void Dispose()
+                {
+                    base.Dispose();
+                    while (_passThroughs.IsNotEmpty)
+                    {
+                        _passThroughs.Pop().Dispose();
+                    }
+#if PROMISE_DEBUG
+                    lock (_previousPromises)
+                    {
+                        _previousPromises.Clear();
+                    }
 #endif
                 }
             }
@@ -55,99 +109,57 @@ namespace Proto.Promises
 
                 private void MaybeDisposeNonVirt()
                 {
-                    if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
                     {
                         Dispose();
                         ObjectPool.MaybeRepool(this);
                     }
                 }
 
-                internal static MergePromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ulong totalProgress, ushort depth)
+                internal static MergePromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ushort depth)
                 {
                     var promise = ObjectPool.TryTake<MergePromise<TResult>>()
                         ?? new MergePromise<TResult>();
-                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, totalProgress, depth);
+                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
                     return promise;
                 }
 
                 internal static MergePromise<TResult> GetOrCreate(
                     ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
                     TResult value,
                     PromiseResolvedDelegate<TResult> onPromiseResolved,
-                    int pendingAwaits, ulong completedProgress, ulong totalProgress, ushort depth)
+                    int pendingAwaits, ulong completedProgress, ushort depth)
                 {
                     var promise = MergePromiseT.GetOrCreate(value, onPromiseResolved);
-                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, totalProgress, depth);
+                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
                     return promise;
                 }
 
-                private void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ulong totalProgress, ushort depth)
+                private void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ushort depth)
                 {
-                    _waitCount = pendingAwaits;
-                    unchecked
-                    {
-                        _retainCounter = pendingAwaits + 1;
-                    }
-                    Reset(depth);
-                    SetupProgress(completedProgress, totalProgress);
-
-                    while (promisePassThroughs.IsNotEmpty)
-                    {
-                        var passThrough = promisePassThroughs.Pop();
-#if PROMISE_DEBUG
-                        lock (_previousPromises)
-                        {
-                            _previousPromises.Push(passThrough.Owner);
-                        }
+#if PROMISE_PROGRESS
+                    _completeProgress = completedProgress;
 #endif
-                        passThrough.SetTargetAndAddToOwner(this);
-                        if (_rejectContainer != null)
-                        {
-                            // This was rejected or canceled potentially before all passthroughs were hooked up. Release all remaining passthroughs.
-                            while (promisePassThroughs.IsNotEmpty)
-                            {
-                                var p = promisePassThroughs.Pop();
-                                p.Owner.MaybeMarkAwaitedAndDispose(p.Id);
-                                p.Dispose();
-                                MaybeDispose();
-                            }
-                        }
-                    }
+                    Setup(promisePassThroughs, pendingAwaits, depth);
                 }
 
-                protected override void Handle(PromisePassThrough passThrough)
+                internal override void Handle(PromiseRefBase handler, int index)
                 {
-                    var handler = passThrough.Owner;
-                    var state = handler.State;
-                    if (state != Promise.State.Resolved) // Rejected/Canceled
+                    bool isComplete = handler.State == Promise.State.Resolved
+                        ? RemoveWaiterAndGetIsComplete()
+                        : TrySetComplete();
+                    if (isComplete)
                     {
-                        if (Interlocked.CompareExchange(ref _rejectContainer, handler._rejectContainer, null) == null)
-                        {
-                            handler.SuppressRejection = true;
-                            State = state;
-                            HandleNextInternal();
-                        }
-                        InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
+                        ReleaseAndHandleNext(handler);
+                        return;
                     }
-                    else // Resolved
-                    {
-                        IncrementProgress(passThrough);
-                        if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
-                            && Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
-                        {
-                            State = state;
-                            HandleNextInternal();
-                        }
-                    }
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
                     MaybeDisposeNonVirt();
                 }
-
-                partial void IncrementProgress(PromisePassThrough passThrough);
-                partial void SetupProgress(ulong completedProgress, ulong totalProgress);
 
                 private sealed partial class MergePromiseT : MergePromise<TResult>
                 {
@@ -155,7 +167,7 @@ namespace Proto.Promises
 
                     internal override void MaybeDispose()
                     {
-                        if (InterlockedAddWithOverflowCheck(ref _retainCounter, -1, 0) == 0)
+                        if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
                         {
                             Dispose();
                             _onPromiseResolved = null;
@@ -176,80 +188,29 @@ namespace Proto.Promises
                         return promise;
                     }
 
-                    protected override void Handle(PromisePassThrough passThrough)
+                    internal override void Handle(PromiseRefBase handler, int index)
                     {
-                        var handler = passThrough.Owner;
-                        var state = handler.State;
-                        if (state != Promise.State.Resolved) // Rejected/Canceled
+                        bool isComplete;
+                        if (handler.State == Promise.State.Resolved)
                         {
-                            if (Interlocked.CompareExchange(ref _rejectContainer, handler._rejectContainer, null) == null)
-                            {
-                                handler.SuppressRejection = true;
-                                State = state;
-                                HandleNextInternal();
-                            }
-                            InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0);
+                            _onPromiseResolved.Invoke(handler, ref _result, index);
+                            isComplete = RemoveWaiterAndGetIsComplete();
                         }
-                        else // Resolved
+                        else
                         {
-                            IncrementProgress(passThrough);
-                            _onPromiseResolved.Invoke(handler, ref _result, passThrough.Index);
-                            if (InterlockedAddWithOverflowCheck(ref _waitCount, -1, 0) == 0
-                                && Interlocked.CompareExchange(ref _rejectContainer, RejectContainer.s_completionSentinel, null) == null)
-                            {
-                                State = state;
-                                HandleNextInternal();
-                            }
+                            isComplete = TrySetComplete();
                         }
-                        MaybeDispose();
+                        if (isComplete)
+                        {
+                            ReleaseAndHandleNext(handler);
+                            return;
+                        }
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
+                        MaybeDisposeNonVirt();
                     }
                 }
             }
-
-#if PROMISE_PROGRESS
-            partial class MergePromise<TResult>
-            {
-                partial void SetupProgress(ulong completedProgress, ulong totalProgress)
-                {
-                    _unscaledProgress = new UnsignedFixed64(completedProgress);
-                    _progressScaler = (double) (Depth + 1u) / (double) totalProgress;
-                }
-
-                partial void IncrementProgress(PromisePassThrough passThrough)
-                {
-                    var wasReportingPriority = Fixed32.ts_reportingPriority;
-                    Fixed32.ts_reportingPriority = true;
-
-                    uint dif = passThrough.GetProgressDifferenceToCompletion();
-                    var progress = IncrementProgress(dif);
-                    ReportProgress(progress, Depth);
-
-                    Fixed32.ts_reportingPriority = wasReportingPriority;
-                }
-
-                private Fixed32 NormalizeProgress(UnsignedFixed64 unscaledProgress)
-                {
-                    ThrowIfInPool(this);
-                    var scaledProgress = Fixed32.GetScaled(unscaledProgress, _progressScaler);
-                    _smallFields._currentProgress = scaledProgress;
-                    return scaledProgress;
-                }
-
-                protected override PromiseRefBase IncrementProgress(long amount, ref Fixed32 progress, ushort depth)
-                {
-                    ThrowIfInPool(this);
-                    // This essentially acts as a pass-through to normalize the progress.
-                    progress = IncrementProgress(amount);
-                    return this;
-                }
-
-                private Fixed32 IncrementProgress(long amount)
-                {
-                    var unscaledProgress = _unscaledProgress.InterlockedIncrement(amount);
-                    return NormalizeProgress(unscaledProgress);
-                }
-            }
-#endif
         }
     }
 }

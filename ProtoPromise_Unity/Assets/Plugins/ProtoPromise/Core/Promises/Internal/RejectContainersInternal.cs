@@ -48,16 +48,6 @@ namespace Proto.Promises
 #endif
         internal abstract class RejectContainer : IRejectContainer, ITraceable
         {
-            // This is used with Interlocked in Merge/Race/First to handle completion race conditions.
-            // It's also used as a placeholder for cancelations.
-            internal static readonly RejectContainer s_completionSentinel = new CompletionSentinel();
-
-            private class CompletionSentinel : RejectContainer
-            {
-                public override void ReportUnhandled() { }
-                public override ExceptionDispatchInfo GetExceptionDispatchInfo() { throw new System.InvalidOperationException(); }
-            }
-
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
 #endif

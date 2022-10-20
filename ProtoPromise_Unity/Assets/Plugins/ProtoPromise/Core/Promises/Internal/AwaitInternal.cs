@@ -46,7 +46,7 @@ namespace Proto.Promises
                 if (state == Promise.State.Rejected)
                 {
                     SuppressRejection = true;
-                    var exceptionDispatchInfo = _rejectContainer.GetExceptionDispatchInfo();
+                    var exceptionDispatchInfo = _rejectContainerOrPreviousOrLink.UnsafeAs<IRejectContainer>().GetExceptionDispatchInfo();
                     MaybeDispose();
                     return exceptionDispatchInfo;
                 }
@@ -131,17 +131,12 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal override void Handle(PromiseRefBase handler)
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
                 {
+                    ThrowIfInPool(this);
+                    handler.SetCompletionState(rejectContainer, state);
                     Invoke();
                 }
-
-#if PROMISE_PROGRESS
-                internal override PromiseRefBase SetProgress(ref Fixed32 progress, ref ushort depth)
-                {
-                    return null;
-                }
-#endif
             }
         }
 
@@ -837,7 +832,10 @@ namespace Proto.Promises
         /// Gets an awaiter for this <see cref="Promise{T}"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function.
         /// The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
         /// </summary>
-        /// <remarks> Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`</remarks>
+        /// <remarks>
+        /// If the previously awaited promise did not complete successfully, minProgress will be set to the previous <paramref name="maxProgress"/> instead of current.
+        /// <para/>Use as `await promise.AwaitWithProgress(maxProgress);`
+        /// </remarks>
         /// <returns>The awaiter.</returns>
         public PromiseProgressAwaiter<T> AwaitWithProgress(float minProgress, float maxProgress)
         {
@@ -851,7 +849,10 @@ namespace Proto.Promises
         /// Gets an awaiter for this <see cref="Promise{T}"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function.
         /// The progress reported will be lerped from its current progress to <paramref name="maxProgress"/>. <paramref name="maxProgress"/> must be between 0 and 1 inclusive.
         /// </summary>
-        /// <remarks> Use as `await promise.AwaitWithProgress(maxProgress);`</remarks>
+        /// <remarks>
+        /// If the previously awaited promise did not complete successfully, minProgress will be set to the previous <paramref name="maxProgress"/> instead of current.
+        /// <para/>Use as `await promise.AwaitWithProgress(maxProgress);`
+        /// </remarks>
         /// <returns>The awaiter.</returns>
         public PromiseProgressAwaiter<T> AwaitWithProgress(float maxProgress)
         {

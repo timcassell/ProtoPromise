@@ -397,19 +397,11 @@ namespace Proto.Promises
             internal void HookupAwaiter(PromiseRefBase awaiter, short promiseId)
             {
                 ValidateAwait(awaiter, promiseId);
-
-                SetPrevious(awaiter);
-
+#if PROMISE_DEBUG
+                _previous = awaiter;
+#endif
                 awaiter.HookupExistingWaiter(promiseId, this);
             }
-
-            partial void SetPrevious(PromiseRefBase awaiter);
-#if PROMISE_DEBUG
-            partial void SetPrevious(PromiseRefBase awaiter)
-            {
-                _previous = awaiter;
-            }
-#endif
 
             [MethodImpl(InlineOption)]
             internal void HookupAwaiterWithProgress(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress)
@@ -428,7 +420,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal partial class AsyncPromiseRef<TResult> : AsyncPromiseBase<TResult>
+            internal partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
             {
                 [MethodImpl(InlineOption)]
                 internal static AsyncPromiseRef<TResult> GetOrCreate()
@@ -443,21 +435,19 @@ namespace Proto.Promises
                 {
                     if (exception is OperationCanceledException)
                     {
-                        SetRejectOrCancel(RejectContainer.s_completionSentinel, Promise.State.Canceled);
+                        HandleNextInternal(null, Promise.State.Canceled);
                     }
                     else
                     {
-                        SetRejectOrCancel(CreateRejectContainer(exception, int.MinValue, null, this), Promise.State.Rejected);
+                        HandleNextInternal(CreateRejectContainer(exception, int.MinValue, null, this), Promise.State.Rejected);
                     }
-                    HandleNextInternal();
                 }
 
                 [MethodImpl(InlineOption)]
                 internal void SetAsyncResultVoid()
                 {
                     ThrowIfInPool(this);
-                    State = Promise.State.Resolved;
-                    HandleNextInternal();
+                    HandleNextInternal(null, Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -468,8 +458,8 @@ namespace Proto.Promises
                     TResult result)
                 {
                     ThrowIfInPool(this);
-                    SetResult(result);
-                    HandleNextInternal();
+                    _result = result;
+                    HandleNextInternal(null, Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -541,40 +531,23 @@ namespace Proto.Promises
                 }
 
 #if PROMISE_PROGRESS
+                // TODO: we may be able to remove the virtual call by passing a `ref ProgressRange` to the waiter through the IPromiseAwaiter interface and AwaitOverrider.
                 protected override void HookupAwaiterWithProgressVirt(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress)
                 {
                     ValidateAwait(awaiter, promiseId);
 
-                    SetPreviousAndProgress(awaiter, minProgress, maxProgress);
-
-                    awaiter.InterlockedIncrementProgressReportingCount();
                     HandleablePromiseBase previousWaiter;
                     PromiseRefBase promiseSingleAwait = awaiter.AddWaiter(promiseId, this, out previousWaiter);
-                    if (previousWaiter == null)
+                    if (previousWaiter != PendingAwaitSentinel.s_instance)
                     {
-                        ReportProgressFromHookupWaiterWithProgress(awaiter, depth);
+                        awaiter.VerifyAndHandleWaiter(this, promiseSingleAwait);
+                        return;
                     }
-                    else
-                    {
-                        awaiter.InterlockedDecrementProgressReportingCount();
-                        if (!VerifyWaiter(promiseSingleAwait))
-                        {
-                            throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(2));
-                        }
-
-                        awaiter.HandleNext(this);
-                    }
+                    SetPreviousAndMaybeHookupProgress(awaiter, minProgress, maxProgress);
                 }
 #endif
 
                 partial void SetAwaitedComplete(PromiseRefBase handler);
-#if !PROMISE_PROGRESS && PROMISE_DEBUG
-                [MethodImpl(InlineOption)]
-                partial void SetAwaitedComplete(PromiseRefBase handler)
-                {
-                    _previous = null;
-                }
-#endif
             }
 
 #if !OPTIMIZED_ASYNC_MODE
@@ -691,11 +664,11 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                internal override void Handle(PromiseRefBase handler)
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
                 {
                     ThrowIfInPool(this);
+                    handler.SetCompletionState(rejectContainer, state);
                     SetAwaitedComplete(handler);
-
                     _continuer.MoveNext.Invoke();
                 }
             } // class AsyncPromiseRef
@@ -752,11 +725,11 @@ namespace Proto.Promises
                         }
                     }
 
-                    internal override void Handle(PromiseRefBase handler)
+                    internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
                     {
                         ThrowIfInPool(this);
+                        handler.SetCompletionState(rejectContainer, state);
                         SetAwaitedComplete(handler);
-
                         ContinueMethod();
                     }
                 }

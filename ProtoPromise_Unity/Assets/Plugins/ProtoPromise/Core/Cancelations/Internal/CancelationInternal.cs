@@ -86,7 +86,7 @@ namespace Proto.Promises
                 // Set _userRetainIncrementor to 0 so _userRetainCounter will never overflow.
                 s_canceledSentinel = new CancelationRef(0) { _state = State.CanceledComplete, _internalRetainCounter = 1, _tokenId = -1 };
 #pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
-                // If we don't suppress, the finalizer can run when the ApplicationDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
+                // If we don't suppress, the finalizer can run when the AppDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
                 GC.SuppressFinalize(s_canceledSentinel);
 #pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
             }

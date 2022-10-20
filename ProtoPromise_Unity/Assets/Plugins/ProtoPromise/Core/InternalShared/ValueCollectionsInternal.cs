@@ -189,6 +189,14 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
+            internal ValueLinkedStack<T> TakeAndClear()
+            {
+                T temp = _head;
+                _head = null;
+                return new ValueLinkedStack<T>(temp);
+            }
+
+            [MethodImpl(InlineOption)]
             internal void Push(T item)
             {
                 AssertNotInCollection(item);
@@ -415,12 +423,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal struct ValueList<T> where T : class, ILinked<T>
+        internal struct ValueList<T>
         {
             // This structure is a specialized version of List<T> without the extra object overhead and unused methods.
-            // Individual elements cannot be removed or modified, only all elements can be cleared at once.
-            // This specialization is made use of in PromiseMultiAwait for increasing concurrency while invoking progress,
-            // so threads may iterate over the data while new data is being added.
 
             private T[] _storage;
             private int _count;
@@ -435,6 +440,8 @@ namespace Proto.Promises
             {
                 [MethodImpl(InlineOption)]
                 get { return _storage[index]; }
+                [MethodImpl(InlineOption)]
+                set { _storage[index] = value; }
             }
 
             [MethodImpl(InlineOption)]

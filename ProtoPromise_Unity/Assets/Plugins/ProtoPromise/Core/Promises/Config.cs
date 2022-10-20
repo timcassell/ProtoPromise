@@ -62,18 +62,19 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public static partial class Config
+        public static class Config
         {
             [Obsolete("Use ProgressPrecision to get the precision of progress reports."), EditorBrowsable(EditorBrowsableState.Never)]
-            public static readonly int ProgressDecimalBits = Internal.PromiseRefBase.Fixed32.DecimalBits;
+            public static readonly int ProgressDecimalBits = 32;
 
             /// <summary>
-            /// The maximum precision of progress reports.
+            /// The distance between 1 and the largest value smaller than 1. Progress reports use full 32-bit float precision.
             /// </summary>
 #if !PROMISE_PROGRESS
             [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
-            public static readonly float ProgressPrecision = (float) (1d / Math.Pow(2d, Internal.PromiseRefBase.Fixed32.DecimalBits));
+            [EditorBrowsable(EditorBrowsableState.Never)] // Not obsolete, but not really necessary to use, either.
+            public static readonly float ProgressPrecision = 1f - 0.99999994f;
 
             [Obsolete("Use ObjectPoolingEnabled instead."), EditorBrowsable(EditorBrowsableState.Never)]
             public static PoolType ObjectPooling 
@@ -181,7 +182,7 @@ namespace Proto.Promises
                 {
                     if (!value)
                     {
-                        ThrowCannotDisableAsyncLocal();
+                        ThrowCannotDisableAsyncFlow();
                     }
                     s_asyncFlowExecutionContextEnabled = true;
                 }
@@ -189,9 +190,9 @@ namespace Proto.Promises
             private static bool s_asyncFlowExecutionContextEnabled;
 
             [MethodImpl(MethodImplOptions.NoInlining)]
-            private static void ThrowCannotDisableAsyncLocal()
+            private static void ThrowCannotDisableAsyncFlow()
             {
-                throw new InvalidOperationException("Cannot disable AsyncLocal. It may only be enabled.");
+                throw new InvalidOperationException("Cannot disable AsyncFlowExecutionContext. It may only be enabled.");
             }
 
             [Obsolete, EditorBrowsable(EditorBrowsableState.Never)]

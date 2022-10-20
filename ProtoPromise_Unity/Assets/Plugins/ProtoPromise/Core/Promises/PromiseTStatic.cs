@@ -531,15 +531,14 @@ namespace Proto.Promises
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
-            ulong totalProgress = 0;
             ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
             T v0 = default(T);
-            Internal.PrepareForMerge(promise1, ref v0, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref v0, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
             ValidateArgument(promise2, "promise2", 1);
             T v1 = default(T);
-            Internal.PrepareForMerge(promise2, ref v1, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref v1, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
 
             if (valueContainer == null)
             {
@@ -569,7 +568,7 @@ namespace Proto.Promises
             var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
             {
                 target[index] = feed.GetResult<T>();
-            }, pendingCount, completedProgress, totalProgress, maxDepth);
+            }, pendingCount, completedProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
 
@@ -586,18 +585,17 @@ namespace Proto.Promises
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
-            ulong totalProgress = 0;
             ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
             T v0 = default(T);
-            Internal.PrepareForMerge(promise1, ref v0, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref v0, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
             ValidateArgument(promise2, "promise2", 1);
             T v1 = default(T);
-            Internal.PrepareForMerge(promise2, ref v1, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref v1, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
             ValidateArgument(promise3, "promise3", 1);
             T v2 = default(T);
-            Internal.PrepareForMerge(promise3, ref v2, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref v2, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
 
             if (valueContainer == null)
             {
@@ -628,7 +626,7 @@ namespace Proto.Promises
             var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
             {
                 target[index] = feed.GetResult<T>();
-            }, pendingCount, completedProgress, totalProgress, maxDepth);
+            }, pendingCount, completedProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
 
@@ -646,21 +644,20 @@ namespace Proto.Promises
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
             ulong completedProgress = 0;
-            ulong totalProgress = 0;
             ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
             T v0 = default(T);
-            Internal.PrepareForMerge(promise1, ref v0, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref v0, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
             ValidateArgument(promise2, "promise2", 1);
             T v1 = default(T);
-            Internal.PrepareForMerge(promise2, ref v1, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref v1, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
             ValidateArgument(promise3, "promise3", 1);
             T v2 = default(T);
-            Internal.PrepareForMerge(promise3, ref v2, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref v2, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
             ValidateArgument(promise4, "promise4", 1);
             T v3 = default(T);
-            Internal.PrepareForMerge(promise4, ref v3, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise4, ref v3, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
 
             if (valueContainer == null)
             {
@@ -692,7 +689,7 @@ namespace Proto.Promises
             var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
             {
                 target[index] = feed.GetResult<T>();
-            }, pendingCount, completedProgress, totalProgress, maxDepth);
+            }, pendingCount, completedProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
 
@@ -742,7 +739,6 @@ namespace Proto.Promises
                 var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
                 int pendingCount = 0;
                 ulong completedProgress = 0;
-                ulong totalProgress = 0;
                 ushort maxDepth = 0;
 
                 if (valueContainer == null)
@@ -757,7 +753,7 @@ namespace Proto.Promises
                     var p = promises.Current;
                     ValidateElement(p, "promises", 1);
                     T value = default(T);
-                    Internal.PrepareForMerge(p, ref value, ref passThroughs, i, ref pendingCount, ref completedProgress, ref totalProgress, ref maxDepth);
+                    Internal.PrepareForMerge(p, ref value, ref passThroughs, i, ref pendingCount, ref completedProgress, ref maxDepth);
                     // Make sure list has the same count as promises.
                     if (listSize < (i + 1))
                     {
@@ -784,7 +780,7 @@ namespace Proto.Promises
                 var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
                 {
                     target[index] = feed.GetResult<T>();
-                }, pendingCount, completedProgress, totalProgress, maxDepth);
+                }, pendingCount, completedProgress, maxDepth);
                 return new Promise<IList<T>>(promise, promise.Id, maxDepth);
             }
         }

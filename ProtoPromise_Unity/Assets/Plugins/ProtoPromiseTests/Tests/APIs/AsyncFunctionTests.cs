@@ -1287,7 +1287,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void AsyncPromiseWillHaveProgressSetToMax_WhenAnotherAwaitableIsAwaitedWithoutProgress_MinMax_void()
+        public void AsyncPromiseWillReportProgress_WhenAnotherAwaitableIsAwaitedWithoutProgress_MinMax_void()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -1307,14 +1307,15 @@ namespace ProtoPromiseTests.APIs
                 .Forget();
 
             progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f));
-            progressHelper.ResolveAndAssertResult(deferred1, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 0.5f, false);
-            progressHelper.ResolveAndAssertResult(deferred2, 1f, false);
+            // Implementation detail - progress is not reported after awaited promise is resolved, until another promise is awaited with progress.
+            progressHelper.ResolveAndAssertResult(deferred1, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ResolveAndAssertResult(deferred2, 1f, true);
             Assert.IsTrue(complete);
         }
 
         [Test]
-        public void AsyncPromiseWillHaveProgressSetToMax_WhenAnotherAwaitableIsAwaitedWithoutProgress_Max_void()
+        public void AsyncPromiseWillReportProgress_WhenAnotherAwaitableIsAwaitedWithoutProgress_Max_void()
         {
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
@@ -1334,14 +1335,15 @@ namespace ProtoPromiseTests.APIs
                 .Forget();
 
             progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f));
-            progressHelper.ResolveAndAssertResult(deferred1, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 0.5f, false);
-            progressHelper.ResolveAndAssertResult(deferred2, 1f, false);
+            // Implementation detail - progress is not reported after awaited promise is resolved, until another promise is awaited with progress.
+            progressHelper.ResolveAndAssertResult(deferred1, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ResolveAndAssertResult(deferred2, 1f, true);
             Assert.IsTrue(complete);
         }
 
         [Test]
-        public void AsyncPromiseWillHaveProgressSetToMax_WhenAnotherAwaitableIsAwaitedWithoutProgress_MinMax_T()
+        public void AsyncPromiseWillReportProgress_WhenAnotherAwaitableIsAwaitedWithoutProgress_MinMax_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -1361,14 +1363,15 @@ namespace ProtoPromiseTests.APIs
                 .Forget();
 
             progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f));
-            progressHelper.ResolveAndAssertResult(deferred1, 1, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 0.5f, false);
-            progressHelper.ResolveAndAssertResult(deferred2, 2, 1f, false);
+            // Implementation detail - progress is not reported after awaited promise is resolved, until another promise is awaited with progress.
+            progressHelper.ResolveAndAssertResult(deferred1, 1, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ResolveAndAssertResult(deferred2, 2, 1f, true);
             Assert.IsTrue(complete);
         }
 
         [Test]
-        public void AsyncPromiseWillHaveProgressSetToMax_WhenAnotherAwaitableIsAwaitedWithoutProgress_Max_T()
+        public void AsyncPromiseWillReportProgress_WhenAnotherAwaitableIsAwaitedWithoutProgress_Max_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
@@ -1388,9 +1391,10 @@ namespace ProtoPromiseTests.APIs
                 .Forget();
 
             progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f));
-            progressHelper.ResolveAndAssertResult(deferred1, 1, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 0.5f, false);
-            progressHelper.ResolveAndAssertResult(deferred2, 2, 1f, false);
+            // Implementation detail - progress is not reported after awaited promise is resolved, until another promise is awaited with progress.
+            progressHelper.ResolveAndAssertResult(deferred1, 1, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ResolveAndAssertResult(deferred2, 2, 1f, true);
             Assert.IsTrue(complete);
         }
 #endif // PROMISE_PROGRESS

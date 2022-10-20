@@ -839,10 +839,6 @@ namespace ProtoPromiseTests.APIs
             if (isPending)
             {
 #if PROMISE_PROGRESS
-                // Wait a bit longer to make sure the promise is fully adopted before we report progress.
-                // Otherwise it results in a race condition where the progress may be reported as 0 immediately after we try to report 0.5 and spoils the result.
-                Thread.Sleep(System.TimeSpan.FromMilliseconds(500));
-
                 progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
                 if (completeType == CompleteType.Resolve)
                 {
@@ -955,10 +951,6 @@ namespace ProtoPromiseTests.APIs
             if (isPending)
             {
 #if PROMISE_PROGRESS
-                // Wait a bit longer to make sure the promise is fully adopted before we report progress.
-                // Otherwise it results in a race condition where the progress may be reported as 0 immediately after we try to report 0.5 and spoils the result.
-                Thread.Sleep(System.TimeSpan.FromMilliseconds(500));
-
                 progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
                 if (completeType == CompleteType.Resolve)
                 {
@@ -1071,10 +1063,6 @@ namespace ProtoPromiseTests.APIs
             if (isPending)
             {
 #if PROMISE_PROGRESS
-                // Wait a bit longer to make sure the promise is fully adopted before we report progress.
-                // Otherwise it results in a race condition where the progress may be reported as 0 immediately after we try to report 0.5 and spoils the result.
-                Thread.Sleep(System.TimeSpan.FromMilliseconds(500));
-
                 progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
                 if (completeType == CompleteType.Resolve)
                 {
@@ -1189,10 +1177,6 @@ namespace ProtoPromiseTests.APIs
             if (isPending)
             {
 #if PROMISE_PROGRESS
-                // Wait a bit longer to make sure the promise is fully adopted before we report progress.
-                // Otherwise it results in a race condition where the progress may be reported as 0 immediately after we try to report 0.5 and spoils the result.
-                Thread.Sleep(System.TimeSpan.FromMilliseconds(500));
-
                 progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
                 if (completeType == CompleteType.Resolve)
                 {

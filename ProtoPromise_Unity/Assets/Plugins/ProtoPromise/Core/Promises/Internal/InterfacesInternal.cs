@@ -8,9 +8,9 @@
 #undef PROMISE_PROGRESS
 #endif
 
-using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -37,23 +37,35 @@ namespace Proto.Promises
                 set { _next = value; }
             }
 
-            internal virtual void Handle(PromiseRefBase handler) { throw new System.InvalidOperationException(); }
-            // This is overridden in PromiseMultiAwait and PromiseProgress and PromiseConfigured.
+            internal virtual void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
+            // This is overridden in PromiseConfigured and PromiseProgress.
             internal virtual void HandleFromContext() { throw new System.InvalidOperationException(); }
+            // For Merge/Race promises
+            internal virtual void Handle(PromiseRefBase handler, int index) { throw new System.InvalidOperationException(); }
 #if PROMISE_PROGRESS
-            internal virtual PromiseRefBase SetProgress(ref PromiseRefBase.Fixed32 progress, ref ushort depth) { throw new System.InvalidOperationException(); }
+            internal virtual void MaybeReportProgress(PromiseRefBase reporter, double progress)
+            {
+                // Do nothing. This is overridden by actual progress listeners.
+            }
+            internal virtual void MaybeReportProgress(ref ProgressReportValues progressReportValues)
+            {
+                // Just exit the lock and set to null to break the loop, do nothing else. This is overridden by actual progress listeners.
+                Monitor.Exit(progressReportValues._lockedObject);
+                progressReportValues._progressListener = null;
+            }
             internal virtual void InvokeProgressFromContext() { throw new System.InvalidOperationException(); }
+            internal virtual void MaybeHookupProgressToAwaited(PromiseRefBase current, PromiseRefBase awaited,
+                // We pass by reference so that we will know the values will be settled once the lock is entered on the progress listener.
+                ref PromiseRefBase.ProgressRange userProgressRange, ref PromiseRefBase.ProgressRange listenerProgressRange)
+            {
+                // Do nothing. This is overridden by actual progress listeners.
+            }
 #endif
         }
 
         partial class PromiseRefBase
         {
-            // For Merge/Race/First promises
-            protected virtual void Handle(PromisePassThrough passThrough) { throw new System.InvalidOperationException(); }
-#if PROMISE_PROGRESS
-            protected virtual PromiseRefBase IncrementProgress(long increment, ref Fixed32 progress, ushort depth) { throw new System.InvalidOperationException(); }
-#endif
-
+            // These interfaces are only used in this manner because IDelegate<TArg, TResult> does not work with structs in old IL2CPP runtime.
             internal interface IDelegateResolveOrCancel
             {
                 void InvokeResolver(PromiseRefBase handler, PromiseRefBase owner);
