@@ -172,25 +172,6 @@ namespace Proto.Promises
                 Second,
             }
 
-            // TODO: move these fields out of the struct and directly into the class.
-            private partial struct SmallFields
-            {
-                internal short _promiseId;
-                internal ushort _depth;
-                volatile internal Promise.State _state;
-                internal bool _suppressRejection;
-                internal bool _wasAwaitedorForgotten;
-                // Wait state is only used in PromiseWaitPromise, but it's placed here to take advantage of the available bit space.
-                volatile internal WaitState _waitState;
-
-                [MethodImpl(InlineOption)]
-                internal SmallFields(short initialId)
-                {
-                    this = default(SmallFields);
-                    _promiseId = initialId;
-                }
-            } // SmallFields
-
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
             volatile internal PromiseRefBase _previous; // Used to detect circular awaits.
@@ -199,7 +180,14 @@ namespace Proto.Promises
             // or it is a reference to its old waiter as part of the registered progress promises linked-list,
             // or it is the reject container if the promise was rejected (null if it was resolved).
             volatile internal object _rejectContainerOrPreviousOrLink;
-            private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
+
+            private short _promiseId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
+            private ushort _depth;
+            volatile private Promise.State _state;
+            private bool _suppressRejection;
+            private bool _wasAwaitedorForgotten;
+            // Wait state is only used in PromiseWaitPromise, but it's placed here to take advantage of the available bit space.
+            volatile private WaitState _waitState;
 
             partial class PromiseRef<TResult> : PromiseRefBase
             {
@@ -454,22 +442,14 @@ namespace Proto.Promises
 
             partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>
             {
-                // TODO: move these fields out of the struct and directly into the class.
-                private struct PassThroughSmallFields
-                {
-                    internal int _index;
-                    internal short _id;
-#if PROMISE_PROGRESS
-                    internal ushort _depth;
-#endif
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    internal bool _disposed;
-#endif
-                }
-
                 volatile private PromiseRefBase _owner;
                 volatile private HandleablePromiseBase _target;
-                private PassThroughSmallFields _smallFields;
+                private int _index;
+                private short _id;
+                private ushort _depth;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                private bool _disposed;
+#endif
 
                 // TODO: this can point to _next instead of adding an extra field
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }

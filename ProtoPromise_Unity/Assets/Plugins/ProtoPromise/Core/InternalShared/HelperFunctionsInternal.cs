@@ -189,10 +189,9 @@ namespace Proto.Promises
         }
 
         [MethodImpl(InlineOption)]
-        // TODO: remove this helper. We no longer need to care if the token is canceling
-        // since the TryUnregister was changed to allow unregistration while the token is invoking callbacks.
         internal static bool TryUnregisterAndIsNotCanceling(ref CancelationRegistration cancelationRegistration)
         {
+            // We check isCanceling in case the token is not cancelable (in which case TryUnregister returns false).
             bool isCanceling;
             bool unregistered = cancelationRegistration.TryUnregister(out isCanceling);
             return unregistered | !isCanceling;

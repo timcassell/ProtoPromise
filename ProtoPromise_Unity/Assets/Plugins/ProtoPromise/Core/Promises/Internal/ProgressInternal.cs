@@ -1554,7 +1554,7 @@ namespace Proto.Promises
                 new protected void Reset(ushort depth)
                 {
                     base.Reset(depth);
-                    _smallFields._waitState = WaitState.First;
+                    _waitState = WaitState.First;
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1570,7 +1570,7 @@ namespace Proto.Promises
                 {
                     // These are volatile writes, so their write order will not be changed.
                     // This looks superfluous, but is necessary for progress hookup on another thread.
-                    _smallFields._waitState = WaitState.SettingSecond;
+                    _waitState = WaitState.SettingSecond;
 #if PROMISE_DEBUG
                     _previous = secondPrevious;
 #endif
@@ -1578,7 +1578,7 @@ namespace Proto.Promises
                     // Only set _rejectContainerOrPreviousOrLink if it's the same as the handler,
                     // otherwise it could break the registered promise chain.
                     Interlocked.CompareExchange(ref _rejectContainerOrPreviousOrLink, secondPrevious, handler);
-                    _smallFields._waitState = WaitState.Second;
+                    _waitState = WaitState.Second;
                 }
 
                 internal sealed override PromiseRefBase AddProgressWaiter(short promiseId, out HandleablePromiseBase previousWaiter, ref ProgressHookupValues progressHookupValues)
@@ -1599,7 +1599,7 @@ namespace Proto.Promises
                     progressHookupValues._expectedWaiter = this;
                     var previous = _rejectContainerOrPreviousOrLink;
                     // We read wait state after previous. These are both volatile reads, so we don't need a full memory barrier.
-                    if (_smallFields._waitState == WaitState.First)
+                    if (_waitState == WaitState.First)
                     {
                         _progressRange._min = (float) progressHookupValues.GetLerpedProgressFromLocalProgress(depth);
                         _progressRange._max = (float) progressHookupValues.GetLerpedProgressFromLocalProgress(depth + 1u);
@@ -1624,7 +1624,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private void WaitForSecondPreviousAssignment()
                 {
-                    if (_smallFields._waitState == WaitState.SettingSecond)
+                    if (_waitState == WaitState.SettingSecond)
                     {
                         // Very rare, this should almost never happen.
                         WaitForSecondPreviousAssignmentCore();
@@ -1635,7 +1635,7 @@ namespace Proto.Promises
                 private void WaitForSecondPreviousAssignmentCore()
                 {
                     var spinner = new SpinWait();
-                    while (_smallFields._waitState == WaitState.SettingSecond)
+                    while (_waitState == WaitState.SettingSecond)
                     {
                         spinner.SpinOnce();
                     }
@@ -2474,13 +2474,7 @@ namespace Proto.Promises
                 internal ushort Depth
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _smallFields._depth; }
-                }
-
-                [MethodImpl(InlineOption)]
-                partial void SetDepth(ushort depth)
-                {
-                    _smallFields._depth = depth;
+                    get { return _depth; }
                 }
             } // PromisePassThrough
 
