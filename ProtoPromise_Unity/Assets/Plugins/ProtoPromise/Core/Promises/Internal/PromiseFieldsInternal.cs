@@ -165,49 +165,40 @@ namespace Proto.Promises
 
         partial class PromiseRefBase : HandleablePromiseBase
         {
-            [StructLayout(LayoutKind.Explicit)]
+            internal enum WaitState : byte
+            {
+                First,
+                SettingSecond,
+                Second,
+            }
+
+            // TODO: move these fields out of the struct and directly into the class.
             private partial struct SmallFields
             {
-                [FieldOffset(0)]
-                volatile internal Promise.State _state;
-                [FieldOffset(1)]
-                internal bool _suppressRejection;
-                [FieldOffset(2)]
-                internal bool _wasAwaitedorForgotten;
-                [FieldOffset(3)]
-                internal bool _secondPrevious;
-                // Offset 4 so that we can use Interlocked to increment _deferredId.
-                // Hopefully this won't be necessary in the future when .Net adds Interlocked methods for byte/sbyte/ushort/short. https://github.com/dotnet/runtime/issues/64658
-                [FieldOffset(4)]
-                volatile internal int _idInterlocker;
-                [FieldOffset(4)]
                 internal short _promiseId;
-                // _depth shares bit space with _deferredId, because _depth is always 0 on deferred promises, and _deferredId is not used in non-deferred promises.
-                [FieldOffset(6)]
-                internal short _deferredId;
-                [FieldOffset(6)]
                 internal ushort _depth;
-#if PROMISE_PROGRESS
-                [FieldOffset(8)]
-                internal Fixed32 _currentProgress;
-                [FieldOffset(12)]
-                volatile internal int _reportingProgressCount;
-#endif
+                volatile internal Promise.State _state;
+                internal bool _suppressRejection;
+                internal bool _wasAwaitedorForgotten;
+                // Wait state is only used in PromiseWaitPromise, but it's placed here to take advantage of the available bit space.
+                volatile internal WaitState _waitState;
 
                 [MethodImpl(InlineOption)]
                 internal SmallFields(short initialId)
                 {
                     this = default(SmallFields);
                     _promiseId = initialId;
-                    _deferredId = initialId;
                 }
             } // SmallFields
 
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
-            internal PromiseRefBase _previous; // Used to detect circular awaits.
+            volatile internal PromiseRefBase _previous; // Used to detect circular awaits.
 #endif
-            volatile internal IRejectContainer _rejectContainer;
+            // This is either a reference to the previous promise for progress to iterate over the promise chain,
+            // or it is a reference to its old waiter as part of the registered progress promises linked-list,
+            // or it is the reject container if the promise was rejected (null if it was resolved).
+            volatile internal object _rejectContainerOrPreviousOrLink;
             private SmallFields _smallFields = new SmallFields(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
 
             partial class PromiseRef<TResult> : PromiseRefBase
@@ -225,30 +216,65 @@ namespace Proto.Promises
 
             partial class PromiseDuplicateCancel<TResult> : PromiseSingleAwait<TResult>
             {
-                private CancelationHelper _cancelationHelper;
+                internal CancelationHelper _cancelationHelper;
             }
 
             partial class PromiseConfigured<TResult> : PromiseSingleAwait<TResult>
             {
                 private SynchronizationContext _synchronizationContext;
-                private CancelationHelper _cancelationHelper;
-                private int _isScheduling; // Flag used so that only Cancel() or Handle() will call CompareExchangeWaiter and schedule the continuation. Int for Interlocked.
+                internal CancelationHelper _cancelationHelper;
+                // We have to store previous reject container in a separate field so we won't break the registered progress promises chain until this is invoked on the synchronization context.
+                volatile private object _tempRejectContainer;
+                private int _isScheduling; // Flag used so that only Cancel() or Handle() will schedule the continuation. Int for Interlocked.
+                // We have to store the previous state in a separate field until the next awaiter is ready to be invoked on the proper context.
+                volatile private Promise.State _tempState;
                 volatile private bool _wasCanceled;
-                volatile private Promise.State _previousState;
                 private bool _forceAsync;
             }
 
             partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
             {
-                private ValueList<HandleablePromiseBase> _nextBranches = new ValueList<HandleablePromiseBase>(8);
+                internal ValueList<HandleablePromiseBase> _nextBranches = new ValueList<HandleablePromiseBase>(8);
                 private int _retainCounter;
+            }
 
+            partial class PromiseWaitPromise<TResult> : PromiseSingleAwait<TResult>
+            {
 #if PROMISE_PROGRESS
-                private bool _isProgressScheduled;
+                ProgressRange _progressRange;
 #endif
             }
 
+            [StructLayout(LayoutKind.Explicit)]
+            partial struct DeferredIdAndProgress
+            {
+                // _interlocker overlaps both fields so that we can use Interlocked to CompareExchange both fields at the same time.
+                [FieldOffset(0)]
+                internal int _id;
+                [FieldOffset(4)]
+                internal float _currentProgress;
+                [FieldOffset(0)]
+                private long _interlocker;
+
+                [MethodImpl(InlineOption)]
+                internal DeferredIdAndProgress(int initialId)
+                {
+                    _interlocker = 0;
+                    _id = initialId;
+                    _currentProgress = 0f;
+                }
+            }
+
+            partial class DeferredPromiseBase<TResult> : PromiseSingleAwait<TResult>, IDeferredPromise
+            {
+                protected DeferredIdAndProgress _idAndProgress = new DeferredIdAndProgress(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
+            }
+
             #region Non-cancelable Promises
+            partial class DeferredPromise<TResult> : DeferredPromiseBase<TResult>
+            {
+            }
+
             partial class PromiseResolve<TResult, TResolver> : PromiseSingleAwait<TResult>
                 where TResolver : IDelegateResolveOrCancel
             {
@@ -315,18 +341,6 @@ namespace Proto.Promises
                 private int _retainCounter;
             }
 
-            partial class DeferredPromiseBase<TResult> : AsyncPromiseBase<TResult>, IDeferredPromise
-            {
-                // Interlocked is more efficient on int than forcing it on a short with a CompareExchange loop.
-                // Hopefully this won't be necessary in the future when .Net adds Interlocked methods for byte/sbyte/ushort/short. https://github.com/dotnet/runtime/issues/64658
-                // Then we can use the bit space from SmallFields._deferredId instead of an extra field here.
-                volatile protected int _deferredId;
-            }
-
-            partial class DeferredPromise<TResult> : DeferredPromiseBase<TResult>
-            {
-            }
-
             partial class DeferredPromiseCancel<TResult> : DeferredPromise<TResult>
             {
                 private CancelationRegistration _cancelationRegistration;
@@ -335,14 +349,14 @@ namespace Proto.Promises
             partial class CancelablePromiseResolve<TResult, TResolver> : PromiseSingleAwait<TResult>
                 where TResolver : IDelegateResolveOrCancel
             {
-                private CancelationHelper _cancelationHelper;
+                internal CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
             }
 
             partial class CancelablePromiseResolvePromise<TResult, TResolver> : PromiseWaitPromise<TResult>
                 where TResolver : IDelegateResolveOrCancelPromise
             {
-                private CancelationHelper _cancelationHelper;
+                internal CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
             }
 
@@ -350,7 +364,7 @@ namespace Proto.Promises
                 where TResolver : IDelegateResolveOrCancel
                 where TRejecter : IDelegateReject
             {
-                private CancelationHelper _cancelationHelper;
+                internal CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
                 private TRejecter _rejecter;
             }
@@ -359,7 +373,7 @@ namespace Proto.Promises
                 where TResolver : IDelegateResolveOrCancelPromise
                 where TRejecter : IDelegateRejectPromise
             {
-                private CancelationHelper _cancelationHelper;
+                internal CancelationHelper _cancelationHelper;
                 private TResolver _resolver;
                 private TRejecter _rejecter;
             }
@@ -367,28 +381,28 @@ namespace Proto.Promises
             partial class CancelablePromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>
                 where TContinuer : IDelegateContinue
             {
-                private CancelationHelper _cancelationHelper;
+                internal CancelationHelper _cancelationHelper;
                 private TContinuer _continuer;
             }
 
             partial class CancelablePromiseContinuePromise<TResult, TContinuer> : PromiseWaitPromise<TResult>
                 where TContinuer : IDelegateContinuePromise
             {
-                private CancelationHelper _cancelationHelper;
+                internal CancelationHelper _cancelationHelper;
                 private TContinuer _continuer;
             }
 
             partial class CancelablePromiseCancel<TResult, TCanceler> : PromiseSingleAwait<TResult>
                 where TCanceler : IDelegateResolveOrCancel
             {
-                private CancelationHelper _cancelationHelper;
+                internal CancelationHelper _cancelationHelper;
                 private TCanceler _canceler;
             }
 
             partial class CancelablePromiseCancelPromise<TResult, TCanceler> : PromiseWaitPromise<TResult>
                 where TCanceler : IDelegateResolveOrCancelPromise
             {
-                private CancelationHelper _cancelationHelper;
+                internal CancelationHelper _cancelationHelper;
                 private TCanceler _canceler;
             }
             #endregion
@@ -396,8 +410,11 @@ namespace Proto.Promises
             #region Multi Promises
             partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
-                protected int _waitCount;
+                volatile protected int _waitCount;
                 protected int _retainCounter;
+                // We store the passthroughs for lazy progress subscribe.
+                // The passthroughs will be released when this has fully released if a progress listener did not do it already.
+                protected ValueLinkedStack<PromisePassThrough> _passThroughs;
 
 #if PROMISE_DEBUG
                 // This is used for circular promise chain detection.
@@ -410,13 +427,11 @@ namespace Proto.Promises
             partial class MergePromise<TResult> : MultiHandleablePromiseBase<TResult>
             {
 #if PROMISE_PROGRESS
-                // These are used to avoid rounding errors when normalizing the progress.
-                // Use 64 bits to allow combining many promises with very deep chains.
-                private double _progressScaler;
-                private UnsignedFixed64 _unscaledProgress;
+                private ulong _completeProgress;
 #endif
                 partial class MergePromiseT : MergePromise<TResult>
                 {
+                    // TODO: this can be made static
                     private PromiseResolvedDelegate<TResult> _onPromiseResolved;
                 }
             }
@@ -439,37 +454,56 @@ namespace Proto.Promises
 
             partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>
             {
-                // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
-                // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+                // TODO: move these fields out of the struct and directly into the class.
                 private struct PassThroughSmallFields
                 {
                     internal int _index;
                     internal short _id;
 #if PROMISE_PROGRESS
                     internal ushort _depth;
-                    internal Fixed32 _currentProgress;
 #endif
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     internal bool _disposed;
 #endif
                 }
 
-                private PromiseRefBase _ownerOrTarget;
+                volatile private PromiseRefBase _owner;
+                volatile private HandleablePromiseBase _target;
                 private PassThroughSmallFields _smallFields;
 
+                // TODO: this can point to _next instead of adding an extra field
                 PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
             }
             #endregion
 
 #if PROMISE_PROGRESS
-            partial struct Fixed32
+
+            partial struct ProgressRange
             {
-                private volatile int _value; // int for Interlocked.
+                internal float _min;
+                internal float _max;
             }
 
-            partial struct UnsignedFixed64
+            partial struct ProgressListenerFields
             {
-                private long _value; // long for Interlocked.
+                // Promises that are registered to the progress listener and have not yet completed.
+                // This is a linked-list stack of promises that the progress was subscribed to, using _rejectContainerOrPreviousOrLink field as the links to the next.
+                // The field type is HandleablePromiseBase so that the initial head (tail) can be the progress listener, but the actual registered promises are casted to PromiseRefBase.
+                // This doubles as both a collection of the registered promises, and references to their old waiters (the _rejectContainerOrPreviousOrLink link is also the old waiter).
+                // This is much more complex than using standard LinkedList nodes, but it makes the process zero-alloc (we're just re-using an existing field), well worth the added complexity.
+                internal HandleablePromiseBase _registeredPromisesHead;
+
+                // Promises that have been attempted to be unregistered due to a canceled promise in the chain, but were unsuccessful due to them having already completed on another thread.
+                // This is lazily initialized (because it shouldn't be needed in the vast majority of cases).
+                internal Dictionary<PromiseRefBase, HandleablePromiseBase> _unregisteredPromises;
+
+                // Current reporter is used to check if a progress report should be propagated or ignored.
+                internal HandleablePromiseBase _currentReporter;
+
+                internal float _current;
+                internal float _min;
+                internal float _max;
+                internal int _retainCounter;
             }
 
             partial class PromiseProgress<TResult, TProgress> : PromiseSingleAwait<TResult>
@@ -479,21 +513,93 @@ namespace Proto.Promises
                 private SynchronizationContext _synchronizationContext;
                 private CancelationRegistration _cancelationRegistration;
 
-                volatile private int _isProgressScheduled; // int for Interlocked. 1 if scheduled, 0 if not.
-                private int _retainCounter;
-                volatile private bool _canceled;
+                private ProgressListenerFields _progressFields;
+                // We have to store previous reject container in a separate field so we won't break the registered progress promises chain until this is invoked on the synchronization context.
+                volatile private object _previousRejectContainer;
                 volatile private Promise.State _previousState;
+                private bool _isProgressScheduled;
+                volatile private bool _canceled;
                 private bool _isSynchronous;
                 private bool _forceAsync;
+                private bool _hookingUp;
             }
-#endif
 
-            partial class AsyncPromiseRef<TResult> : AsyncPromiseBase<TResult>
+            partial class IndividualPromisePassThrough<TResult> : PromiseRef<TResult>
+            {
+                private PromiseMultiAwait<TResult> _owner;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                private bool _disposed;
+#endif
+            }
+
+            partial class ProgressMultiAwait<TResult> : ProgressPassThrough
+            {
+                private PromiseMultiAwait<TResult> _owner;
+                private ValueList<HandleablePromiseBase> _progressListeners = new ValueList<HandleablePromiseBase>(8);
+                private ProgressListenerFields _progressFields;
+                private bool _hookingUp;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                private bool _disposed;
+#endif
+            }
+
+            partial class ProgressMerger : ProgressPassThrough
+            {
+                private PromiseRefBase _targetMergePromise;
+                // double for better precision to decrease severity of floating point errors when adding and multiplying.
+                private double _currentProgress;
+                private double _divisorReciprocal; // 1 / expectedProgress since multiplying is faster than dividing.
+                private int _retainCounter;
+                // The passthroughs are only stored during the hookup.
+                private ValueLinkedStack<PromisePassThrough> _passThroughs;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                private bool _disposed;
+#endif
+            }
+
+            partial class MergeProgressPassThrough : ProgressPassThrough
+            {
+                private ProgressMerger _target;
+                private ProgressListenerFields _progressFields;
+                private float _currentProgress;
+                private int _index;
+                private bool _hookingUp;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                private bool _disposed;
+#endif
+            }
+
+            partial class ProgressRacer : ProgressPassThrough
+            {
+                private PromiseRefBase _targetRacePromise;
+                private double _currentProgress;
+                private int _retainCounter;
+                // The passthroughs are only stored during the hookup.
+                private ValueLinkedStack<PromisePassThrough> _passThroughs;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                private bool _disposed;
+#endif
+            }
+
+            partial class RaceProgressPassThrough : ProgressPassThrough
+            {
+                private ProgressRacer _target;
+                private ProgressListenerFields _progressFields;
+                private int _index;
+                private bool _hookingUp;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                private bool _disposed;
+#endif
+            }
+
+#endif // PROMISE_PROGRESS
+
+            partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
             {
                 private ExecutionContext _executionContext;
 #if PROMISE_PROGRESS
-                private float _minProgress;
-                private float _maxProgress;
+                private ProgressRange _listenerProgressRange;
+                private ProgressRange _userProgressRange;
 #endif
 
 #if !OPTIMIZED_ASYNC_MODE
@@ -521,6 +627,12 @@ namespace Proto.Promises
 #endif // !OPTIMIZED_ASYNC_MODE
             } // AsyncPromiseRef
         } // PromiseRefBase
+
+#if PROMISE_PROGRESS
+        partial class ProgressPassThrough : HandleablePromiseBase
+        {
+        }
+#endif
     } // Internal
 
     namespace Async.CompilerServices

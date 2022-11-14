@@ -11,7 +11,6 @@
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0019 // Use pattern matching
-#pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
 using System.Collections.Generic;
@@ -41,7 +40,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             if (context == null)
             {
-                throw new InvalidOperationException("context cannot be null");
+                throw new System.InvalidOperationException("context cannot be null");
             }
 #endif
             if (context == BackgroundSynchronizationContextSentinel.s_instance)
@@ -65,48 +64,6 @@ namespace Proto.Promises
             {
                 // This should never happen.
                 ReportRejection(e, state as ITraceable);
-            }
-        }
-
-        // This is used to facilitate stack unwinding in PromiseMultiAwaits to prevent StackOverflowExceptions in the case of very long promise chains.
-        // Also used for synchronous progress invoke to prevent deadlocks.
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        private partial struct StackUnwindHelper
-        {
-            [ThreadStatic]
-            private static bool ts_isUnwinding;
-            [ThreadStatic]
-            private static Stack<HandleablePromiseBase> ts_handlers;
-
-            [MethodImpl(InlineOption)]
-            internal static bool SwapUnwinding(bool isUnwinding)
-            {
-                bool wasUnwinding = ts_isUnwinding;
-                ts_isUnwinding = isUnwinding;
-                return wasUnwinding;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal static void AddHandler(HandleablePromiseBase handler)
-            {
-                if (ts_handlers == null)
-                {
-                    ts_handlers = new Stack<HandleablePromiseBase>();
-                }
-                ts_handlers.Push(handler);
-            }
-
-            internal static void InvokeHandlers()
-            {
-                if (ts_handlers != null)
-                {
-                    while (ts_handlers.Count > 0)
-                    {
-                        ts_handlers.Pop().HandleFromContext();
-                    }
-                }
             }
         }
 
@@ -163,47 +120,77 @@ namespace Proto.Promises
         }
 
         [MethodImpl(InlineOption)]
-        private static long InterlockedAddWithOverflowCheck(ref long location, long value, long comparand)
+        private static int InterlockedAddWithUnsignedOverflowCheck(ref int location, int value)
         {
+            // ints are treated as uints, we just use int because Interlocked does not support uint on old runtimes.
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            long initialValue, newValue;
-            do
+            unchecked
             {
-                initialValue = Interlocked.Read(ref location);
-                if (initialValue == comparand)
+                // This is also used to subtract, so we have to convert it to a subtraction so the checked context won't throw for a uint add overflow.
+                uint addOrSubtract = value == int.MinValue
+                    ? int.MaxValue + 1u
+                    : (uint) Math.Abs(value);
+                int initialValue, newValue;
+                do
                 {
-                    throw new OverflowException(); // This should never happen, but checking just in case.
-                }
-                newValue = initialValue + value;
-            } while (Interlocked.CompareExchange(ref location, newValue, initialValue) != initialValue);
-            return newValue;
+                    Thread.MemoryBarrier();
+                    initialValue = location;
+                    uint uValue = (uint) initialValue;
+                    checked
+                    {
+                        if (value >= 0)
+                        {
+                            uValue += addOrSubtract;
+                        }
+                        else
+                        {
+                            uValue -= addOrSubtract;
+                        }
+                        newValue = (int) uValue;
+                    }
+                } while (Interlocked.CompareExchange(ref location, newValue, initialValue) != initialValue);
+                return newValue;
+            }
 #else
             return Interlocked.Add(ref location, value);
 #endif
         }
 
         [MethodImpl(InlineOption)]
-        private static int InterlockedAddWithOverflowCheck(ref int location, int value, int comparand)
+        internal static T InterlockedExchange<T>(ref T location, T value) where T : class
         {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            Thread.MemoryBarrier();
-            int initialValue, newValue;
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange loop instead.
+            T current;
             do
             {
-                initialValue = location;
-                if (initialValue == comparand)
-                {
-                    throw new OverflowException(); // This should never happen, but checking just in case.
-                }
-                newValue = initialValue + value;
-            } while (Interlocked.CompareExchange(ref location, newValue, initialValue) != initialValue);
-            return newValue;
+                Thread.MemoryBarrier(); // Force fresh read. Necessary since Volatile.Read isn't available on old runtimes.
+                current = location;
+            } while (Interlocked.CompareExchange(ref location, value, current) != current);
+            return current;
 #else
-            return Interlocked.Add(ref location, value);
+            return Interlocked.Exchange(ref location, value);
 #endif
         }
 
         [MethodImpl(InlineOption)]
+        internal static int InterlockedExchange(ref int location, int value)
+        {
+#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange loop instead.
+            int current;
+            do
+            {
+                Thread.MemoryBarrier(); // Force fresh read. Necessary since Volatile.Read isn't available on old runtimes.
+                current = location;
+            } while (Interlocked.CompareExchange(ref location, value, current) != current);
+            return current;
+#else
+            return Interlocked.Exchange(ref location, value);
+#endif
+        }
+
+        [MethodImpl(InlineOption)]
+        // TODO: remove this helper. We no longer need to care if the token is canceling
+        // since the TryUnregister was changed to allow unregistration while the token is invoking callbacks.
         internal static bool TryUnregisterAndIsNotCanceling(ref CancelationRegistration cancelationRegistration)
         {
             bool isCanceling;
@@ -241,5 +228,16 @@ namespace Proto.Promises
             return (T) o;
 #endif
         }
+
+#if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER)
+        internal static bool Remove<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, out TValue value)
+        {
+            if (dict.TryGetValue(key, out value))
+            {
+                return dict.Remove(key);
+            }
+            return false;
+        }
+#endif
     } // class Internal
 } // namespace Proto.Promises

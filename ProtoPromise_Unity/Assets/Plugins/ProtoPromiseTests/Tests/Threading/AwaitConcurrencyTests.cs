@@ -41,9 +41,9 @@ namespace ProtoPromiseTests.Threading
             threadHelper.ExecuteMultiActionParallel(
                 () =>
                 {
-                    Await();
+                    Await().Forget();
 
-                    async void Await()
+                    async Promise Await()
                     {
                         try
                         {
@@ -83,9 +83,9 @@ namespace ProtoPromiseTests.Threading
             threadHelper.ExecuteMultiActionParallel(
                 () =>
                 {
-                    Await();
+                    Await().Forget();
 
-                    async void Await()
+                    async Promise Await()
                     {
                         try
                         {
@@ -210,9 +210,9 @@ namespace ProtoPromiseTests.Threading
                 {
                     barrierAction =>
                     {
-                        Await();
+                        Await().Forget();
 
-                        async void Await()
+                        async Promise Await()
                         {
                             try
                             {

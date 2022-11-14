@@ -340,15 +340,6 @@ namespace Proto.Promises
                         }
                     }
                 }
-                
-                new protected void Dispose()
-                {
-                    base.Dispose();
-                    lock (_previousPromises)
-                    {
-                        _previousPromises.Clear();
-                    }
-                }
             }
         }
 #else // PROMISE_DEBUG

@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.30523.141
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromiseTests", "ProtoPromiseTests\ProtoPromiseTests.csproj", "{27C1B5AC-2E73-4B91-8258-C67B4B064569}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProtoPromise", "ProtoPromise\ProtoPromise.csproj", "{2A0BBD14-FA01-467C-8A42-55C5C287F66D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromise", "ProtoPromise\ProtoPromise.csproj", "{2A0BBD14-FA01-467C-8A42-55C5C287F66D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromiseUnityHelpers", "ProtoPromiseUnityHelpers\ProtoPromiseUnityHelpers.csproj", "{5B1E6550-0342-4240-AF91-F8059F84BF67}"
 EndProject
@@ -33,12 +33,12 @@ Global
 		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Release_NoProgress|Any CPU.Build.0 = Release_NoProgress|Any CPU
 		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2A0BBD14-FA01-467C-8A42-55C5C287F66D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Debug_NoProgress|Any CPU.ActiveCfg = Debug_NoProgress|Any CPU
-		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Debug_NoProgress|Any CPU.Build.0 = Debug_NoProgress|Any CPU
+		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Debug_NoProgress|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Debug_NoProgress|Any CPU.Build.0 = Debug|Any CPU
 		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Release_NoProgress|Any CPU.ActiveCfg = Release_NoProgress|Any CPU
-		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Release_NoProgress|Any CPU.Build.0 = Release_NoProgress|Any CPU
+		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Release_NoProgress|Any CPU.ActiveCfg = Release|Any CPU
+		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Release_NoProgress|Any CPU.Build.0 = Release|Any CPU
 		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5B1E6550-0342-4240-AF91-F8059F84BF67}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection

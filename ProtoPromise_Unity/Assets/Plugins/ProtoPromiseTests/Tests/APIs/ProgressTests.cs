@@ -13,6 +13,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using ProtoPromiseTests.Threading;
 using System;
+using System.Linq;
 using System.Threading;
 
 namespace ProtoPromiseTests.APIs
@@ -1291,7 +1292,7 @@ namespace ProtoPromiseTests.APIs
             deferred2.Promise.Forget();
         }
 
-        const int MultiProgressCount = 10;
+        const int MultiProgressCount = 2;
 
         [Test]
         public void ProgressMayBeSubscribedToPreservedPromiseMultipleTimes_Pending_void(
@@ -1302,7 +1303,7 @@ namespace ProtoPromiseTests.APIs
             var promise = deferred.Promise.Preserve();
             ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
 
-            TimeSpan timeout = TimeSpan.FromSeconds(20);
+            TimeSpan timeout = TimeSpan.FromSeconds(MultiProgressCount);
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
@@ -1358,7 +1359,7 @@ namespace ProtoPromiseTests.APIs
             var promise = deferred.Promise.Preserve();
             ProgressHelper[] progressHelpers = new ProgressHelper[MultiProgressCount];
 
-            TimeSpan timeout = TimeSpan.FromSeconds(20);
+            TimeSpan timeout = TimeSpan.FromSeconds(MultiProgressCount);
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
@@ -1510,26 +1511,99 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Pending_void(
             // This test is unverifiable when progress is executed on background threads.
-            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption,
+            [Values] bool withThen)
         {
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-            int[] results = new int[MultiProgressCount];
+            var promise = deferred.Promise;
+            var deferred2 = default(Promise.Deferred);
+            if (withThen)
+            {
+                deferred2 = Promise.NewDeferred();
+                promise = promise.Then(() => deferred2.Promise);
+            }
+            promise = promise.Preserve();
+            float multiplier = withThen ? 1f / 2f : 1f;
+
+            float[] results = new float[MultiProgressCount];
             int index = 0;
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 int num = i;
-                promise.Progress(v => { results[index++] = num; }, synchronizationOption).Forget();
+                promise.Progress(v => { results[index++] = num * v; }, synchronizationOption).Forget();
             }
 
             promise.Forget();
             index = 0;
-            deferred.ReportProgress(0.1f);
+            deferred.ReportProgress(0.5f);
             TestHelper.ExecuteForegroundCallbacks();
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 0.5f * multiplier), results);
             index = 0;
             deferred.Resolve();
+            TestHelper.ExecuteForegroundCallbacks();
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 1f * multiplier), results);
+
+            if (withThen)
+            {
+                index = 0;
+                deferred2.ReportProgress(0.5f);
+                TestHelper.ExecuteForegroundCallbacks();
+                CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 1.5f / 2f), results);
+                index = 0;
+                deferred2.Resolve();
+                TestHelper.ExecuteForegroundCallbacks();
+                CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 2f / 2f), results);
+            }
+        }
+
+        [Test]
+        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Pending_T(
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption,
+            [Values] bool withThen)
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise;
+            var deferred2 = default(Promise<int>.Deferred);
+            if (withThen)
+            {
+                deferred2 = Promise.NewDeferred<int>();
+                promise = promise.Then(v => deferred2.Promise);
+            }
+            promise = promise.Preserve();
+            float multiplier = withThen ? 1f / 2f : 1f;
+
+            float[] results = new float[MultiProgressCount];
+            int index = 0;
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                int num = i;
+                promise.Progress(v => { results[index++] = num * v; }, synchronizationOption).Forget();
+            }
+
+            promise.Forget();
+            index = 0;
+            deferred.ReportProgress(0.5f);
+            TestHelper.ExecuteForegroundCallbacks();
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 0.5f * multiplier), results);
+            index = 0;
+            deferred.Resolve(1);
+            TestHelper.ExecuteForegroundCallbacks();
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 1f * multiplier), results);
+
+            if (withThen)
+            {
+                index = 0;
+                deferred2.ReportProgress(0.5f);
+                TestHelper.ExecuteForegroundCallbacks();
+                CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 1.5f / 2f), results);
+                index = 0;
+                deferred2.Resolve(2);
+                TestHelper.ExecuteForegroundCallbacks();
+                CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 2f / 2f), results);
+            }
         }
 
         [Test]
@@ -1549,32 +1623,7 @@ namespace ProtoPromiseTests.APIs
 
             promise.Forget();
             TestHelper.ExecuteForegroundCallbacks();
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
-        }
-
-        [Test]
-        public void ProgressSubscribedToPreservedPromiseWillBeInvokedInOrder_Pending_T(
-            // This test is unverifiable when progress is executed on background threads.
-            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
-        {
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-            int[] results = new int[MultiProgressCount];
-            int index = 0;
-
-            for (int i = 0; i < MultiProgressCount; ++i)
-            {
-                int num = i;
-                promise.Progress(v => { results[index++] = num; }, synchronizationOption).Forget();
-            }
-
-            promise.Forget();
-            index = 0;
-            deferred.ReportProgress(0.1f);
-            TestHelper.ExecuteForegroundCallbacks();
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
-            index = 0;
-            deferred.Resolve(1);
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length), results);
         }
 
         [Test]
@@ -1594,32 +1643,103 @@ namespace ProtoPromiseTests.APIs
 
             promise.Forget();
             TestHelper.ExecuteForegroundCallbacks();
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length), results);
         }
 
         [Test]
         public void ProgressChainSubscribedWillBeInvokedInOrder_Pending_void(
             // This test is unverifiable when progress is executed on background threads.
-            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption,
+            [Values] bool withThen)
         {
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise;
-            int[] results = new int[MultiProgressCount];
+            var deferred2 = default(Promise.Deferred);
+            if (withThen)
+            {
+                deferred2 = Promise.NewDeferred();
+                promise = promise.Then(() => deferred2.Promise);
+            }
+            float multiplier = withThen ? 1f / 2f : 1f;
+
+            float[] results = new float[MultiProgressCount];
             int index = 0;
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 int num = i;
-                promise = promise.Progress(v => { results[index++] = num; }, synchronizationOption);
+                promise = promise.Progress(v => { results[index++] = num * v; }, synchronizationOption);
             }
 
             promise.Forget();
             index = 0;
-            deferred.ReportProgress(0.1f);
+            deferred.ReportProgress(0.5f);
             TestHelper.ExecuteForegroundCallbacks();
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 0.5f * multiplier), results);
             index = 0;
             deferred.Resolve();
+            TestHelper.ExecuteForegroundCallbacks();
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 1f * multiplier), results);
+
+            if (withThen)
+            {
+                index = 0;
+                deferred2.ReportProgress(0.5f);
+                TestHelper.ExecuteForegroundCallbacks();
+                CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 1.5f / 2f), results);
+                index = 0;
+                deferred2.Resolve();
+                TestHelper.ExecuteForegroundCallbacks();
+                CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 2f / 2f), results);
+            }
+        }
+
+        [Test]
+        public void ProgressChainSubscribedWillBeInvokedInOrder_Pending_T(
+            // This test is unverifiable when progress is executed on background threads.
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption,
+            [Values] bool withThen)
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise;
+            var deferred2 = default(Promise<int>.Deferred);
+            if (withThen)
+            {
+                deferred2 = Promise.NewDeferred<int>();
+                promise = promise.Then(v => deferred2.Promise);
+            }
+            float multiplier = withThen ? 1f / 2f : 1f;
+
+            float[] results = new float[MultiProgressCount];
+            int index = 0;
+
+            for (int i = 0; i < MultiProgressCount; ++i)
+            {
+                int num = i;
+                promise = promise.Progress(v => { results[index++] = num * v; }, synchronizationOption);
+            }
+
+            promise.Forget();
+            index = 0;
+            deferred.ReportProgress(0.5f);
+            TestHelper.ExecuteForegroundCallbacks();
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 0.5f * multiplier), results);
+            index = 0;
+            deferred.Resolve(1);
+            TestHelper.ExecuteForegroundCallbacks();
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 1f * multiplier), results);
+
+            if (withThen)
+            {
+                index = 0;
+                deferred2.ReportProgress(0.5f);
+                TestHelper.ExecuteForegroundCallbacks();
+                CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 1.5f / 2f), results);
+                index = 0;
+                deferred2.Resolve(2);
+                TestHelper.ExecuteForegroundCallbacks();
+                CollectionAssert.AreEqual(Enumerable.Range(0, results.Length).Select(v => v * 2f / 2f), results);
+            }
         }
 
         [Test]
@@ -1639,32 +1759,7 @@ namespace ProtoPromiseTests.APIs
 
             promise.Forget();
             TestHelper.ExecuteForegroundCallbacks();
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
-        }
-
-        [Test]
-        public void ProgressChainSubscribedWillBeInvokedInOrder_Pending_T(
-            // This test is unverifiable when progress is executed on background threads.
-            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
-        {
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise;
-            int[] results = new int[MultiProgressCount];
-            int index = 0;
-
-            for (int i = 0; i < MultiProgressCount; ++i)
-            {
-                int num = i;
-                promise = promise.Progress(v => { results[index++] = num; }, synchronizationOption);
-            }
-
-            promise.Forget();
-            index = 0;
-            deferred.ReportProgress(0.1f);
-            TestHelper.ExecuteForegroundCallbacks();
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
-            index = 0;
-            deferred.Resolve(1);
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length), results);
         }
 
         [Test]
@@ -1684,7 +1779,7 @@ namespace ProtoPromiseTests.APIs
 
             promise.Forget();
             TestHelper.ExecuteForegroundCallbacks();
-            CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, results.Length), results);
+            CollectionAssert.AreEqual(Enumerable.Range(0, results.Length), results);
         }
 
         [Test]
