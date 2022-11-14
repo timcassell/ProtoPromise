@@ -68,7 +68,7 @@ namespace Proto.Promises
                 private InvalidAwaitSentinel()
                 {
                     _next = this; // Set _next to this so that CompareExchangeWaiter will always fail. This is also used in the object pool so that the _next field will never be null.
-                    _smallFields = new SmallFields(-5); // Set an id that is unlikely to match (though this should never be used in a Promise struct).
+                    _promiseId = -5; // Set an id that is unlikely to match (though this should never be used in a Promise struct).
                     // If we don't suppress, the finalizer can run when the AppDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
                     System.GC.SuppressFinalize(this);
                 }
@@ -98,7 +98,7 @@ namespace Proto.Promises
 
                 private PendingAwaitSentinel()
                 {
-                    _smallFields = new SmallFields(-5); // Set an id that is unlikely to match (though this should never be used in a Promise struct).
+                    _promiseId = -5; // Set an id that is unlikely to match (though this should never be used in a Promise struct).
                     // If we don't suppress, the finalizer can run when the AppDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
                     System.GC.SuppressFinalize(this);
                 }

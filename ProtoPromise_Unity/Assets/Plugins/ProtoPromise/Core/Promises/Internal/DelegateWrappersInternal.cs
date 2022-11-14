@@ -424,23 +424,22 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Invoke();
-                    MaybeDisposePreviousAfterSecondWait(handler);
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
 
                 void IDelegateReject.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Invoke();
                     handler.MaybeDispose();
+                    Invoke();
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Invoke();
                     handler.MaybeDispose();
+                    Invoke();
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
             }
@@ -488,25 +487,24 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     TResult result = Invoke();
-                    MaybeDisposePreviousAfterSecondWait(handler);
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
 
                 void IDelegateReject.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    TResult result = Invoke();
                     handler.MaybeDispose();
+                    TResult result = Invoke();
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    TResult result = Invoke();
                     handler.MaybeDispose();
+                    TResult result = Invoke();
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
@@ -557,9 +555,8 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Invoke(arg);
-                    MaybeDisposePreviousAfterSecondWait(handler);
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
 
@@ -568,8 +565,8 @@ namespace Proto.Promises
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
-                        Invoke(arg);
                         handler.MaybeDispose();
+                        Invoke(arg);
                         owner.HandleNextInternal(null, Promise.State.Resolved);
                     }
                     else
@@ -634,9 +631,8 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     TResult result = Invoke(arg);
-                    MaybeDisposePreviousAfterSecondWait(handler);
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
@@ -646,8 +642,8 @@ namespace Proto.Promises
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
-                        TResult result = Invoke(arg);
                         handler.MaybeDispose();
+                        TResult result = Invoke(arg);
                         owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                         owner.HandleNextInternal(null, Promise.State.Resolved);
                     }
@@ -696,15 +692,15 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Promise result = Invoke();
                     owner.WaitFor(result, handler);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
+                    handler.MaybeDispose();
                     Promise result = Invoke();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
                     owner.WaitFor(result, handler);
                 }
             }
@@ -737,15 +733,15 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Promise<TResult> result = Invoke();
                     owner.WaitFor(result, handler);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
+                    handler.MaybeDispose();
                     Promise<TResult> result = Invoke();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
                     owner.WaitFor(result, handler);
                 }
             }
@@ -779,7 +775,7 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Promise result = Invoke(arg);
                     owner.WaitFor(result, handler);
                 }
@@ -789,8 +785,8 @@ namespace Proto.Promises
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
+                        handler.MaybeDispose();
                         Promise result = Invoke(arg);
-                        MaybeDisposePreviousBeforeSecondWait(handler);
                         owner.WaitFor(result, handler);
                     }
                     else
@@ -829,7 +825,7 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Promise<TResult> result = Invoke(arg);
                     owner.WaitFor(result, handler);
                 }
@@ -839,8 +835,8 @@ namespace Proto.Promises
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
+                        handler.MaybeDispose();
                         Promise<TResult> result = Invoke(arg);
-                        MaybeDisposePreviousBeforeSecondWait(handler);
                         owner.WaitFor(result, handler);
                     }
                     else
@@ -879,8 +875,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Invoke(new Promise.ResultContainer(handler));
+                    var resultContainer = new Promise.ResultContainer(handler);
                     handler.MaybeDispose();
+                    Invoke(resultContainer);
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
             }
@@ -913,8 +910,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    TResult result = Invoke(new Promise.ResultContainer(handler));
+                    var resultContainer = new Promise.ResultContainer(handler);
                     handler.MaybeDispose();
+                    TResult result = Invoke(resultContainer);
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
@@ -948,8 +946,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Invoke(new Promise<TArg>.ResultContainer(handler));
+                    var resultContainer = new Promise<TArg>.ResultContainer(handler);
                     handler.MaybeDispose();
+                    Invoke(resultContainer);
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
             }
@@ -982,8 +981,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    TResult result = Invoke(new Promise<TArg>.ResultContainer(handler));
+                    var resultContainer = new Promise<TArg>.ResultContainer(handler);
                     handler.MaybeDispose();
+                    TResult result = Invoke(resultContainer);
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
@@ -1023,8 +1023,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Promise result = Invoke(new Promise.ResultContainer(handler));
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    var resultContainer = new Promise.ResultContainer(handler);
+                    handler.MaybeDispose();
+                    Promise result = Invoke(resultContainer);
                     owner.WaitFor(result, handler);
                 }
             }
@@ -1063,8 +1064,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Promise<TResult> result = Invoke(new Promise.ResultContainer(handler));
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    var resultContainer = new Promise.ResultContainer(handler);
+                    handler.MaybeDispose();
+                    Promise<TResult> result = Invoke(resultContainer);
                     owner.WaitFor(result, handler);
                 }
             }
@@ -1103,8 +1105,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Promise result = Invoke(new Promise<TArg>.ResultContainer(handler));
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    var resultContainer = new Promise<TArg>.ResultContainer(handler);
+                    handler.MaybeDispose();
+                    Promise result = Invoke(resultContainer);
                     owner.WaitFor(result, handler);
                 }
             }
@@ -1143,8 +1146,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Promise<TResult> result = Invoke(new Promise<TArg>.ResultContainer(handler));
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    var resultContainer = new Promise<TArg>.ResultContainer(handler);
+                    handler.MaybeDispose();
+                    Promise<TResult> result = Invoke(resultContainer);
                     owner.WaitFor(result, handler);
                 }
             }
@@ -1268,23 +1272,22 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Invoke();
-                    MaybeDisposePreviousAfterSecondWait(handler);
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
 
                 void IDelegateReject.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Invoke();
                     handler.MaybeDispose();
+                    Invoke();
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Invoke();
                     handler.MaybeDispose();
+                    Invoke();
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
             }
@@ -1338,25 +1341,24 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     TResult result = Invoke();
-                    MaybeDisposePreviousAfterSecondWait(handler);
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
 
                 void IDelegateReject.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    TResult result = Invoke();
                     handler.MaybeDispose();
+                    TResult result = Invoke();
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    TResult result = Invoke();
                     handler.MaybeDispose();
+                    TResult result = Invoke();
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
@@ -1413,9 +1415,8 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Invoke(arg);
-                    MaybeDisposePreviousAfterSecondWait(handler);
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
 
@@ -1424,8 +1425,8 @@ namespace Proto.Promises
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
-                        Invoke(arg);
                         handler.MaybeDispose();
+                        Invoke(arg);
                         owner.HandleNextInternal(null, Promise.State.Resolved);
                     }
                     else
@@ -1496,9 +1497,8 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     TResult result = Invoke(arg);
-                    MaybeDisposePreviousAfterSecondWait(handler);
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
@@ -1508,8 +1508,8 @@ namespace Proto.Promises
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
-                        TResult result = Invoke(arg);
                         handler.MaybeDispose();
+                        TResult result = Invoke(arg);
                         owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                         owner.HandleNextInternal(null, Promise.State.Resolved);
                     }
@@ -1564,15 +1564,15 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Promise result = Invoke();
                     owner.WaitFor(result, handler);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
+                    handler.MaybeDispose();
                     Promise result = Invoke();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
                     owner.WaitFor(result, handler);
                 }
             }
@@ -1611,15 +1611,15 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Promise<TResult> result = Invoke();
                     owner.WaitFor(result, handler);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner)
                 {
+                    handler.MaybeDispose();
                     Promise<TResult> result = Invoke();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
                     owner.WaitFor(result, handler);
                 }
             }
@@ -1659,7 +1659,7 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Promise result = Invoke(arg);
                     owner.WaitFor(result, handler);
                 }
@@ -1669,8 +1669,8 @@ namespace Proto.Promises
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
+                        handler.MaybeDispose();
                         Promise result = Invoke(arg);
-                        MaybeDisposePreviousBeforeSecondWait(handler);
                         owner.WaitFor(result, handler);
                     }
                     else
@@ -1715,7 +1715,7 @@ namespace Proto.Promises
                 void IDelegateResolveOrCancelPromise.InvokeResolver(PromiseRefBase handler, PromiseRefBase owner)
                 {
                     TArg arg = handler.GetResult<TArg>();
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    handler.MaybeDispose();
                     Promise<TResult> result = Invoke(arg);
                     owner.WaitFor(result, handler);
                 }
@@ -1725,8 +1725,8 @@ namespace Proto.Promises
                     TArg arg;
                     if (handler.TryGetRejectValue(out arg))
                     {
+                        handler.MaybeDispose();
                         Promise<TResult> result = Invoke(arg);
-                        MaybeDisposePreviousBeforeSecondWait(handler);
                         owner.WaitFor(result, handler);
                     }
                     else
@@ -1771,8 +1771,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Invoke(new Promise.ResultContainer(handler));
+                    var resultContainer = new Promise.ResultContainer(handler);
                     handler.MaybeDispose();
+                    Invoke(resultContainer);
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
             }
@@ -1811,8 +1812,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    TResult result = Invoke(new Promise.ResultContainer(handler));
+                    var resultContainer = new Promise.ResultContainer(handler);
                     handler.MaybeDispose();
+                    TResult result = Invoke(resultContainer);
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
@@ -1852,8 +1854,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Invoke(new Promise<TArg>.ResultContainer(handler));
+                    var resultContainer = new Promise<TArg>.ResultContainer(handler);
                     handler.MaybeDispose();
+                    Invoke(resultContainer);
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
             }
@@ -1892,8 +1895,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    TResult result = Invoke(new Promise<TArg>.ResultContainer(handler));
+                    var resultContainer = new Promise<TArg>.ResultContainer(handler);
                     handler.MaybeDispose();
+                    TResult result = Invoke(resultContainer);
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
@@ -1939,8 +1943,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Promise result = Invoke(new Promise.ResultContainer(handler));
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    var resultContainer = new Promise.ResultContainer(handler);
+                    handler.MaybeDispose();
+                    Promise result = Invoke(resultContainer);
                     owner.WaitFor(result, handler);
                 }
             }
@@ -1985,8 +1990,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Promise<TResult> result = Invoke(new Promise.ResultContainer(handler));
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    var resultContainer = new Promise.ResultContainer(handler);
+                    handler.MaybeDispose();
+                    Promise<TResult> result = Invoke(resultContainer);
                     owner.WaitFor(result, handler);
                 }
             }
@@ -2031,8 +2037,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Promise result = Invoke(new Promise<TArg>.ResultContainer(handler));
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    var resultContainer = new Promise<TArg>.ResultContainer(handler);
+                    handler.MaybeDispose();
+                    Promise result = Invoke(resultContainer);
                     owner.WaitFor(result, handler);
                 }
             }
@@ -2077,8 +2084,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 public void Invoke(PromiseRefBase handler, PromiseRefBase owner)
                 {
-                    Promise<TResult> result = Invoke(new Promise<TArg>.ResultContainer(handler));
-                    MaybeDisposePreviousBeforeSecondWait(handler);
+                    var resultContainer = new Promise<TArg>.ResultContainer(handler);
+                    handler.MaybeDispose();
+                    Promise<TResult> result = Invoke(resultContainer);
                     owner.WaitFor(result, handler);
                 }
             }

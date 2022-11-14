@@ -97,11 +97,11 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                protected override void Execute(PromiseRefBase handler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
+                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
                 {
                     var resolveCallback = _resolver;
                     bool unregistered = _cancelationHelper.TryUnregister(this);
-                    if (unregistered & handler.State == Promise.State.Resolved)
+                    if (unregistered & state == Promise.State.Resolved)
                     {
                         _cancelationHelper.TryRelease();
                         resolveCallback.InvokeResolver(handler, this);
@@ -159,7 +159,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                protected override void Execute(PromiseRefBase handler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
+                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
                 {
                     if (_resolver.IsNull)
                     {
@@ -171,10 +171,9 @@ namespace Proto.Promises
                     var resolveCallback = _resolver;
                     _resolver = default(TResolver);
                     bool unregistered = _cancelationHelper.TryUnregister(this);
-                    if (unregistered & handler.State == Promise.State.Resolved)
+                    if (unregistered & state == Promise.State.Resolved)
                     {
                         _cancelationHelper.TryRelease();
-                        handlerDisposedAfterCallback = _resolveWillDisposeAfterSecondAwait;
                         resolveCallback.InvokeResolver(handler, this);
                     }
                     else if (unregistered)
@@ -233,11 +232,10 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                protected override void Execute(PromiseRefBase handler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
+                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
                 {
                     var resolveCallback = _resolver;
                     var rejectCallback = _rejecter;
-                    var state = handler.State;
                     bool unregistered = _cancelationHelper.TryUnregister(this);
                     if (unregistered & state == Promise.State.Resolved)
                     {
@@ -254,7 +252,6 @@ namespace Proto.Promises
                         handler.SuppressRejection = true;
                         _cancelationHelper.TryRelease();
                         invokingRejected = true;
-                        handlerDisposedAfterCallback = true;
                         rejectCallback.InvokeRejecter(handler, this);
                     }
                     else
@@ -308,7 +305,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                protected override void Execute(PromiseRefBase handler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
+                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
                 {
                     if (_resolver.IsNull)
                     {
@@ -320,12 +317,10 @@ namespace Proto.Promises
                     var resolveCallback = _resolver;
                     _resolver = default(TResolver);
                     var rejectCallback = _rejecter;
-                    var state = handler.State;
                     bool unregistered = _cancelationHelper.TryUnregister(this);
                     if (unregistered & state == Promise.State.Resolved)
                     {
                         _cancelationHelper.TryRelease();
-                        handlerDisposedAfterCallback = _resolveWillDisposeAfterSecondAwait;
                         resolveCallback.InvokeResolver(handler, this);
                     }
                     else if (!unregistered)
@@ -338,7 +333,6 @@ namespace Proto.Promises
                         handler.SuppressRejection = true;
                         _cancelationHelper.TryRelease();
                         invokingRejected = true;
-                        handlerDisposedAfterCallback = true;
                         rejectCallback.InvokeRejecter(handler, this);
                     }
                     else
@@ -389,9 +383,8 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                protected override void Execute(PromiseRefBase handler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
+                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
                 {
-                    handlerDisposedAfterCallback = true;
                     if (_cancelationHelper.TryUnregister(this))
                     {
                         handler.SuppressRejection = true;
@@ -446,7 +439,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                protected override void Execute(PromiseRefBase handler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
+                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
                 {
                     if (_continuer.IsNull)
                     {
@@ -457,7 +450,6 @@ namespace Proto.Promises
 
                     var callback = _continuer;
                     _continuer = default(TContinuer);
-                    handlerDisposedAfterCallback = true;
                     if (_cancelationHelper.TryUnregister(this))
                     {
                         handler.SuppressRejection = true;
@@ -512,11 +504,11 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                protected override void Execute(PromiseRefBase handler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
+                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
                 {
                     var callback = _canceler;
                     bool unregistered = _cancelationHelper.TryUnregister(this);
-                    if (unregistered & handler.State == Promise.State.Canceled)
+                    if (unregistered & state == Promise.State.Canceled)
                     {
                         _cancelationHelper.TryRelease();
                         callback.InvokeResolver(handler, this);
@@ -574,7 +566,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                protected override void Execute(PromiseRefBase handler, ref bool invokingRejected, ref bool handlerDisposedAfterCallback)
+                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
                 {
                     if (_canceler.IsNull)
                     {
@@ -586,10 +578,9 @@ namespace Proto.Promises
                     var callback = _canceler;
                     _canceler = default(TCanceler);
                     bool unregistered = _cancelationHelper.TryUnregister(this);
-                    if (unregistered & handler.State == Promise.State.Canceled)
+                    if (unregistered & state == Promise.State.Canceled)
                     {
                         _cancelationHelper.TryRelease();
-                        handlerDisposedAfterCallback = _resolveWillDisposeAfterSecondAwait;
                         callback.InvokeResolver(handler, this);
                     }
                     else if (unregistered)
