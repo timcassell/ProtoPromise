@@ -822,7 +822,8 @@ namespace Proto.Promises
                     var reporter = progressReportValues._reporter;
                     progressReportValues._reporter = this;
                     float castedProgress = (float) progressReportValues._progress;
-                    if (_progressFields._currentReporter != reporter
+                    // Ignore progress 1, that will be reported when this is complete.
+                    if (castedProgress >= 1f | _progressFields._currentReporter != reporter
                         | _progressFields._current == castedProgress
                         | IsInvoking1 | IsCanceled | _cancelationRegistration.Token.IsCancelationRequested)
                     {
@@ -1771,7 +1772,6 @@ namespace Proto.Promises
                     merger._passThroughs = passThroughs;
                     merger._currentProgress = completedProgress;
                     merger._divisorReciprocal = 1d / expectedProgress;
-                    merger._retainCounter = 1; // We have 1 retain during hookup in case of promise completions on other threads.
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     merger._disposed = false;
 #endif
@@ -1815,31 +1815,31 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
 
                     var returnPassthroughs = new ValueLinkedStack<PromisePassThrough>();
-                    int afterHookedUpReleaseCount = -1; // This was created with 1 retain, so we must release it 1 extra.
+                    int retainCount = 0;
                     while (_passThroughs.IsNotEmpty)
                     {
                         var passthrough = _passThroughs.Pop();
-                        InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
                         if (!MergeProgressPassThrough.TryHookup(this, passthrough, ref progressHookupValues))
                         {
-                            unchecked
-                            {
-                                --afterHookedUpReleaseCount;
-                            }
                             AddProgress(passthrough.Depth + 1u);
                             returnPassthroughs.Push(passthrough);
                             continue;
                         }
+                        unchecked
+                        {
+                            ++retainCount;
+                        }
                         // We replaced the passthrough with the progress passthrough, so it is no longer needed.
                         passthrough.Dispose();
                     }
+                    _retainCounter = retainCount;
 
                     if (returnPassthroughs.IsNotEmpty)
                     {
                         _targetMergePromise.UnsafeAs<IMultiHandleablePromise>().ReturnPassthroughs(returnPassthroughs);
                     }
                     _targetMergePromise.MaybeDispose();
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, afterHookedUpReleaseCount) == 0)
+                    if (retainCount == 0)
                     {
                         Dispose();
                     }
@@ -1874,12 +1874,13 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
 
-                    var target = _targetMergePromise;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    if (_retainCounter == 0)
+                    {
+                        WaitForHookup();
+                    }
+
+                    // We only report the progress if the handler was not the last completed.
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
-#else
-                    if (--_retainCounter == 0)
-#endif
                     {
                         Monitor.Exit(lockedObject);
                         Dispose();
@@ -1890,7 +1891,17 @@ namespace Proto.Promises
                         ReportProgress(oldProgress, ref progressReportValues);
                         progressReportValues.ReportProgressToAllListeners();
                     }
-                    target.Handle(handler, index);
+                    _targetMergePromise.Handle(handler, index);
+                }
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void WaitForHookup()
+                {
+                    var spinner = new SpinWait();
+                    while (_retainCounter == 0)
+                    {
+                        spinner.SpinOnce();
+                    }
                 }
             } // ProgressMerger
 
@@ -2240,11 +2251,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
 
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
-#else
-                    if (--_retainCounter == 0)
-#endif
                     {
                         Dispose();
                     }
