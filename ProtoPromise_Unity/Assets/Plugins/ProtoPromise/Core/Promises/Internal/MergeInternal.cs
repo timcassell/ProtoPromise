@@ -15,6 +15,8 @@
 
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -94,55 +96,37 @@ namespace Proto.Promises
                 }
             }
 
+            internal abstract partial class MergePromise<TResult> : MultiHandleablePromiseBase<TResult>
+            {
+                internal void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ushort depth)
+                {
+#if PROMISE_PROGRESS
+                    _completeProgress = completedProgress;
+#endif
+                    Setup(promisePassThroughs, pendingAwaits, depth);
+                }
+            }
+
+            internal static MergePromise<VoidResult> GetOrCreateAllPromiseVoid(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ushort depth)
+            {
+                var promise = ObjectPool.TryTake<MergePromiseVoid>()
+                    ?? new MergePromiseVoid();
+                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                return promise;
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal partial class MergePromise<TResult> : MultiHandleablePromiseBase<TResult>
+            private sealed class MergePromiseVoid : MergePromise<VoidResult>
             {
-                private MergePromise() { }
-
                 internal override void MaybeDispose()
-                {
-                    MaybeDisposeNonVirt();
-                }
-
-                private void MaybeDisposeNonVirt()
                 {
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
                     {
                         Dispose();
                         ObjectPool.MaybeRepool(this);
                     }
-                }
-
-                internal static MergePromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ushort depth)
-                {
-                    var promise = ObjectPool.TryTake<MergePromise<TResult>>()
-                        ?? new MergePromise<TResult>();
-                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                    return promise;
-                }
-
-                internal static MergePromise<TResult> GetOrCreate(
-                    ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult value,
-                    PromiseResolvedDelegate<TResult> onPromiseResolved,
-                    int pendingAwaits, ulong completedProgress, ushort depth)
-                {
-                    var promise = MergePromiseT.GetOrCreate(value, onPromiseResolved);
-                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                    return promise;
-                }
-
-                private void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ushort depth)
-                {
-#if PROMISE_PROGRESS
-                    _completeProgress = completedProgress;
-#endif
-                    Setup(promisePassThroughs, pendingAwaits, depth);
                 }
 
                 internal override void Handle(PromiseRefBase handler, int index)
@@ -157,68 +141,336 @@ namespace Proto.Promises
                     }
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
-                    MaybeDisposeNonVirt();
+                    MaybeDispose();
+                }
+            }
+
+            private abstract class MergePromiseT<TResult> : MergePromise<TResult>
+            {
+                internal override sealed void MaybeDispose()
+                {
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
+                    {
+                        Dispose();
+                        // We use this base type to repool so that we don't have to override MaybeDispose() on every merge promise, and this can be called directly instead of virtually.
+                        // The merge promises then try to take this base type from the pool, and create their concrete type if it doesn't exist.
+                        // Each merge promise type will be unique thanks to the differing <TResult> type (i.e. <List<T>>, <ValueTuple<T1, T2>>, etc).
+                        ObjectPool.MaybeRepool(this);
+                    }
                 }
 
-                private sealed class MergePromiseT : MergePromise<TResult>
+                internal override sealed void Handle(PromiseRefBase handler, int index)
                 {
-                    private static PromiseResolvedDelegate<TResult> _onPromiseResolved;
-
-                    private MergePromiseT() { }
-
-                    internal override void MaybeDispose()
+                    bool isComplete;
+                    if (handler.State == Promise.State.Resolved)
                     {
-                        if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
-                        {
-                            Dispose();
-                            ObjectPool.MaybeRepool(this);
-                        }
+                        ReadResult(handler, index);
+                        isComplete = RemoveWaiterAndGetIsComplete();
                     }
+                    else
+                    {
+                        isComplete = TrySetComplete();
+                    }
+                    if (isComplete)
+                    {
+                        ReleaseAndHandleNext(handler);
+                        return;
+                    }
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+                    MaybeDispose();
+                }
 
-                    internal static MergePromiseT GetOrCreate(
+                protected abstract void ReadResult(PromiseRefBase handler, int index);
+            }
+
+            internal static MergePromise<IList<TResult>> GetOrCreateAllPromise<TResult>(
+                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
 #if CSHARP_7_3_OR_NEWER
-                        in
+                in
 #endif
-                        TResult value, PromiseResolvedDelegate<TResult> onPromiseResolved)
-                    {
-#if NETCOREAPP && (PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
-                        var oldDelegete = Interlocked.CompareExchange(ref _onPromiseResolved, onPromiseResolved, null);
-                        if (oldDelegete != null && oldDelegete != onPromiseResolved)
-                        {
-                            throw new System.InvalidOperationException("_onPromiseResolved delegate not the same.");
-                        }
-#else
-                        _onPromiseResolved = onPromiseResolved;
-#endif
-                        var promise = ObjectPool.TryTake<MergePromiseT>()
-                            ?? new MergePromiseT();
-                        promise._result = value;
-                        return promise;
-                    }
+                IList<TResult> value,
+                int pendingAwaits, ulong completedProgress, ushort depth)
+            {
+                // We take the base type instead of the concrete type because the base type re-pools with its type.
+                var promise = ObjectPool.TryTake<MergePromiseT<IList<TResult>>, AllPromise<TResult>>()
+                    ?? new AllPromise<TResult>();
+                promise._result = value;
+                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                return promise;
+            }
 
-                    internal override void Handle(PromiseRefBase handler, int index)
+            private sealed class AllPromise<TResult> : MergePromiseT<IList<TResult>>
+            {
+                protected override void ReadResult(PromiseRefBase handler, int index)
+                {
+                    _result[index] = handler.GetResult<TResult>();
+                }
+            }
+
+            internal static MergePromise<T1> GetOrCreateMergePromise<T1>(
+                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                T1 value,
+                int pendingAwaits, ulong completedProgress, ushort depth)
+            {
+                // We take the base type instead of the concrete type because the base type re-pools with its type.
+                var promise = ObjectPool.TryTake<MergePromiseT<T1>, MergePromiseTuple<T1>>()
+                    ?? new MergePromiseTuple<T1>();
+                promise._result = value;
+                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                return promise;
+            }
+
+            private sealed class MergePromiseTuple<T1> : MergePromiseT<T1>
+            {
+                protected override void ReadResult(PromiseRefBase handler, int index)
+                {
+                    if (index == 0)
                     {
-                        bool isComplete;
-                        if (handler.State == Promise.State.Resolved)
-                        {
-                            _onPromiseResolved.Invoke(handler, ref _result, index);
-                            isComplete = RemoveWaiterAndGetIsComplete();
-                        }
-                        else
-                        {
-                            isComplete = TrySetComplete();
-                        }
-                        if (isComplete)
-                        {
-                            ReleaseAndHandleNext(handler);
-                            return;
-                        }
-                        handler.SuppressRejection = true;
-                        handler.MaybeDispose();
-                        MaybeDisposeNonVirt();
+                        _result = handler.GetResult<T1>();
                     }
                 }
             }
-        }
-    }
+
+            internal static MergePromise<ValueTuple<T1, T2>> GetOrCreateMergePromise<T1, T2>(
+                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                ValueTuple<T1, T2> value,
+                int pendingAwaits, ulong completedProgress, ushort depth)
+            {
+                // We take the base type instead of the concrete type because the base type re-pools with its type.
+                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2>>, MergePromiseTuple<T1, T2>>()
+                    ?? new MergePromiseTuple<T1, T2>();
+                promise._result = value;
+                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                return promise;
+            }
+
+            private sealed class MergePromiseTuple<T1, T2> : MergePromiseT<ValueTuple<T1, T2>>
+            {
+                protected override void ReadResult(PromiseRefBase handler, int index)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            _result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            _result.Item2 = handler.GetResult<T2>();
+                            break;
+                    }
+                }
+            }
+
+            internal static MergePromise<ValueTuple<T1, T2, T3>> GetOrCreateMergePromise<T1, T2, T3>(
+                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                ValueTuple<T1, T2, T3> value,
+                int pendingAwaits, ulong completedProgress, ushort depth)
+            {
+                // We take the base type instead of the concrete type because the base type re-pools with its type.
+                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2, T3>>, MergePromiseTuple<T1, T2, T3>>()
+                    ?? new MergePromiseTuple<T1, T2, T3>();
+                promise._result = value;
+                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                return promise;
+            }
+
+            private sealed class MergePromiseTuple<T1, T2, T3> : MergePromiseT<ValueTuple<T1, T2, T3>>
+            {
+                protected override void ReadResult(PromiseRefBase handler, int index)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            _result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            _result.Item2 = handler.GetResult<T2>();
+                            break;
+                        case 2:
+                            _result.Item3 = handler.GetResult<T3>();
+                            break;
+                    }
+                }
+            }
+
+            internal static MergePromise<ValueTuple<T1, T2, T3, T4>> GetOrCreateMergePromise<T1, T2, T3, T4>(
+                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                ValueTuple<T1, T2, T3, T4> value,
+                int pendingAwaits, ulong completedProgress, ushort depth)
+            {
+                // We take the base type instead of the concrete type because the base type re-pools with its type.
+                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2, T3, T4>>, MergePromiseTuple<T1, T2, T3, T4>>()
+                    ?? new MergePromiseTuple<T1, T2, T3, T4>();
+                promise._result = value;
+                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                return promise;
+            }
+
+            private sealed class MergePromiseTuple<T1, T2, T3, T4> : MergePromiseT<ValueTuple<T1, T2, T3, T4>>
+            {
+                protected override void ReadResult(PromiseRefBase handler, int index)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            _result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            _result.Item2 = handler.GetResult<T2>();
+                            break;
+                        case 2:
+                            _result.Item3 = handler.GetResult<T3>();
+                            break;
+                        case 3:
+                            _result.Item4 = handler.GetResult<T4>();
+                            break;
+                    }
+                }
+            }
+
+            internal static MergePromise<ValueTuple<T1, T2, T3, T4, T5>> GetOrCreateMergePromise<T1, T2, T3, T4, T5>(
+                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                ValueTuple<T1, T2, T3, T4, T5> value,
+                int pendingAwaits, ulong completedProgress, ushort depth)
+            {
+                // We take the base type instead of the concrete type because the base type re-pools with its type.
+                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5>>, MergePromiseTuple<T1, T2, T3, T4, T5>>()
+                    ?? new MergePromiseTuple<T1, T2, T3, T4, T5>();
+                promise._result = value;
+                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                return promise;
+            }
+
+            private sealed class MergePromiseTuple<T1, T2, T3, T4, T5> : MergePromiseT<ValueTuple<T1, T2, T3, T4, T5>>
+            {
+                protected override void ReadResult(PromiseRefBase handler, int index)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            _result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            _result.Item2 = handler.GetResult<T2>();
+                            break;
+                        case 2:
+                            _result.Item3 = handler.GetResult<T3>();
+                            break;
+                        case 3:
+                            _result.Item4 = handler.GetResult<T4>();
+                            break;
+                        case 4:
+                            _result.Item5 = handler.GetResult<T5>();
+                            break;
+                    }
+                }
+            }
+
+            internal static MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>> GetOrCreateMergePromise<T1, T2, T3, T4, T5, T6>(
+                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                ValueTuple<T1, T2, T3, T4, T5, T6> value,
+                int pendingAwaits, ulong completedProgress, ushort depth)
+            {
+                // We take the base type instead of the concrete type because the base type re-pools with its type.
+                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6>>, MergePromiseTuple<T1, T2, T3, T4, T5, T6>>()
+                    ?? new MergePromiseTuple<T1, T2, T3, T4, T5, T6>();
+                promise._result = value;
+                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                return promise;
+            }
+
+            private sealed class MergePromiseTuple<T1, T2, T3, T4, T5, T6> : MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6>>
+            {
+                protected override void ReadResult(PromiseRefBase handler, int index)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            _result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            _result.Item2 = handler.GetResult<T2>();
+                            break;
+                        case 2:
+                            _result.Item3 = handler.GetResult<T3>();
+                            break;
+                        case 3:
+                            _result.Item4 = handler.GetResult<T4>();
+                            break;
+                        case 4:
+                            _result.Item5 = handler.GetResult<T5>();
+                            break;
+                        case 5:
+                            _result.Item6 = handler.GetResult<T6>();
+                            break;
+                    }
+                }
+            }
+
+            internal static MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> GetOrCreateMergePromise<T1, T2, T3, T4, T5, T6, T7>(
+                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                ValueTuple<T1, T2, T3, T4, T5, T6, T7> value,
+                int pendingAwaits, ulong completedProgress, ushort depth)
+            {
+                // We take the base type instead of the concrete type because the base type re-pools with its type.
+                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>, MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>>()
+                    ?? new MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>();
+                promise._result = value;
+                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                return promise;
+            }
+
+            private sealed class MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7> : MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>
+            {
+                protected override void ReadResult(PromiseRefBase handler, int index)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            _result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            _result.Item2 = handler.GetResult<T2>();
+                            break;
+                        case 2:
+                            _result.Item3 = handler.GetResult<T3>();
+                            break;
+                        case 3:
+                            _result.Item4 = handler.GetResult<T4>();
+                            break;
+                        case 4:
+                            _result.Item5 = handler.GetResult<T5>();
+                            break;
+                        case 5:
+                            _result.Item6 = handler.GetResult<T6>();
+                            break;
+                        case 6:
+                            _result.Item7 = handler.GetResult<T7>();
+                            break;
+                    }
+                }
+            }
+        } // class PromiseRefBase
+    } // class Internal
 }

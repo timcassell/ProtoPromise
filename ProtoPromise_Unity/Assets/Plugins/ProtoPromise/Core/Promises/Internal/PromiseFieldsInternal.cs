@@ -410,8 +410,6 @@ namespace Proto.Promises
 #endif
             }
 
-            internal delegate void PromiseResolvedDelegate<TResult>(PromiseRefBase handler, ref TResult result, int index);
-
             partial class MergePromise<TResult> : MultiHandleablePromiseBase<TResult>
             {
 #if PROMISE_PROGRESS

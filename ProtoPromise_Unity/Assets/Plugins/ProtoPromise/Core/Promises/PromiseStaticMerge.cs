@@ -35,7 +35,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount, completedProgress, maxDepth);
             return new Promise(promise, promise.Id, maxDepth);
         }
 
@@ -61,7 +61,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount, completedProgress, maxDepth);
             return new Promise(promise, promise.Id, maxDepth);
         }
 
@@ -89,7 +89,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount, completedProgress, maxDepth);
             return new Promise(promise, promise.Id, maxDepth);
         }
 
@@ -138,7 +138,7 @@ namespace Proto.Promises
                 {
                     return Internal.CreateResolved(maxDepth);
                 }
-                var promise = Internal.PromiseRefBase.MergePromise<Internal.VoidResult>.GetOrCreate(passThroughs, pendingCount, completedProgress, maxDepth);
+                var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount, completedProgress, maxDepth);
                 return new Promise(promise, promise.Id, maxDepth);
             }
         }
@@ -200,13 +200,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<T1>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref T1 target, int index) =>
-            {
-                if (index == 0)
-                {
-                    target = feed.GetResult<T1>();
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<T1>(promise, promise.Id, maxDepth);
         }
 
@@ -231,17 +225,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2> target, int index) =>
-            {
-                if (index == 0)
-                {
-                    target.Item1 = feed.GetResult<T1>();
-                }
-                else
-                {
-                    target.Item2 = feed.GetResult<T2>();
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, maxDepth);
         }
 
@@ -268,18 +252,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2> target, int index) =>
-            {
-                switch (index)
-                {
-                    case 0:
-                        target.Item1 = feed.GetResult<T1>();
-                        break;
-                    case 1:
-                        target.Item2 = feed.GetResult<T2>();
-                        break;
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, maxDepth);
         }
 
@@ -306,21 +279,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3> target, int index) =>
-            {
-                switch (index)
-                {
-                    case 0:
-                        target.Item1 = feed.GetResult<T1>();
-                        break;
-                    case 1:
-                        target.Item2 = feed.GetResult<T2>();
-                        break;
-                    case 2:
-                        target.Item3 = feed.GetResult<T3>();
-                        break;
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id, maxDepth);
         }
 
@@ -349,21 +308,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3> target, int index) =>
-            {
-                switch (index)
-                {
-                    case 0:
-                        target.Item1 = feed.GetResult<T1>();
-                        break;
-                    case 1:
-                        target.Item2 = feed.GetResult<T2>();
-                        break;
-                    case 2:
-                        target.Item3 = feed.GetResult<T3>();
-                        break;
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id, maxDepth);
         }
 
@@ -392,24 +337,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4> target, int index) =>
-            {
-                switch (index)
-                {
-                    case 0:
-                        target.Item1 = feed.GetResult<T1>();
-                        break;
-                    case 1:
-                        target.Item2 = feed.GetResult<T2>();
-                        break;
-                    case 2:
-                        target.Item3 = feed.GetResult<T3>();
-                        break;
-                    case 3:
-                        target.Item4 = feed.GetResult<T4>();
-                        break;
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id, maxDepth);
         }
 
@@ -440,24 +368,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4> target, int index) =>
-            {
-                switch (index)
-                {
-                    case 0:
-                        target.Item1 = feed.GetResult<T1>();
-                        break;
-                    case 1:
-                        target.Item2 = feed.GetResult<T2>();
-                        break;
-                    case 2:
-                        target.Item3 = feed.GetResult<T3>();
-                        break;
-                    case 3:
-                        target.Item4 = feed.GetResult<T4>();
-                        break;
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id, maxDepth);
         }
 
@@ -488,27 +399,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5> target, int index) =>
-            {
-                switch (index)
-                {
-                    case 0:
-                        target.Item1 = feed.GetResult<T1>();
-                        break;
-                    case 1:
-                        target.Item2 = feed.GetResult<T2>();
-                        break;
-                    case 2:
-                        target.Item3 = feed.GetResult<T3>();
-                        break;
-                    case 3:
-                        target.Item4 = feed.GetResult<T4>();
-                        break;
-                    case 4:
-                        target.Item5 = feed.GetResult<T5>();
-                        break;
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id, maxDepth);
         }
 
@@ -541,27 +432,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5> target, int index) =>
-            {
-                switch (index)
-                {
-                    case 0:
-                        target.Item1 = feed.GetResult<T1>();
-                        break;
-                    case 1:
-                        target.Item2 = feed.GetResult<T2>();
-                        break;
-                    case 2:
-                        target.Item3 = feed.GetResult<T3>();
-                        break;
-                    case 3:
-                        target.Item4 = feed.GetResult<T4>();
-                        break;
-                    case 4:
-                        target.Item5 = feed.GetResult<T5>();
-                        break;
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id, maxDepth);
         }
 
@@ -594,30 +465,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5, T6> target, int index) =>
-            {
-                switch (index)
-                {
-                    case 0:
-                        target.Item1 = feed.GetResult<T1>();
-                        break;
-                    case 1:
-                        target.Item2 = feed.GetResult<T2>();
-                        break;
-                    case 2:
-                        target.Item3 = feed.GetResult<T3>();
-                        break;
-                    case 3:
-                        target.Item4 = feed.GetResult<T4>();
-                        break;
-                    case 4:
-                        target.Item5 = feed.GetResult<T5>();
-                        break;
-                    case 5:
-                        target.Item6 = feed.GetResult<T6>();
-                        break;
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id, maxDepth);
         }
 
@@ -652,30 +500,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5, T6> target, int index) =>
-            {
-                switch (index)
-                {
-                    case 0:
-                        target.Item1 = feed.GetResult<T1>();
-                        break;
-                    case 1:
-                        target.Item2 = feed.GetResult<T2>();
-                        break;
-                    case 2:
-                        target.Item3 = feed.GetResult<T3>();
-                        break;
-                    case 3:
-                        target.Item4 = feed.GetResult<T4>();
-                        break;
-                    case 4:
-                        target.Item5 = feed.GetResult<T5>();
-                        break;
-                    case 5:
-                        target.Item6 = feed.GetResult<T6>();
-                        break;
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id, maxDepth);
         }
 
@@ -710,33 +535,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5, T6, T7> target, int index) =>
-            {
-                switch (index)
-                {
-                    case 0:
-                        target.Item1 = feed.GetResult<T1>();
-                        break;
-                    case 1:
-                        target.Item2 = feed.GetResult<T2>();
-                        break;
-                    case 2:
-                        target.Item3 = feed.GetResult<T3>();
-                        break;
-                    case 3:
-                        target.Item4 = feed.GetResult<T4>();
-                        break;
-                    case 4:
-                        target.Item5 = feed.GetResult<T5>();
-                        break;
-                    case 5:
-                        target.Item6 = feed.GetResult<T6>();
-                        break;
-                    case 6:
-                        target.Item7 = feed.GetResult<T7>();
-                        break;
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, maxDepth);
         }
 
@@ -773,33 +572,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>.GetOrCreate(passThroughs, value, (Internal.PromiseRefBase feed, ref ValueTuple<T1, T2, T3, T4, T5, T6, T7> target, int index) =>
-            {
-                switch (index)
-                {
-                    case 0:
-                        target.Item1 = feed.GetResult<T1>();
-                        break;
-                    case 1:
-                        target.Item2 = feed.GetResult<T2>();
-                        break;
-                    case 2:
-                        target.Item3 = feed.GetResult<T3>();
-                        break;
-                    case 3:
-                        target.Item4 = feed.GetResult<T4>();
-                        break;
-                    case 4:
-                        target.Item5 = feed.GetResult<T5>();
-                        break;
-                    case 5:
-                        target.Item6 = feed.GetResult<T6>();
-                        break;
-                    case 6:
-                        target.Item7 = feed.GetResult<T7>();
-                        break;
-                }
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
             return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, maxDepth);
         }
     }
