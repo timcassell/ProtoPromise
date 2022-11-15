@@ -1607,6 +1607,14 @@ namespace Proto.Promises
 #endif
             internal sealed partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>
             {
+                PromisePassThrough ILinked<PromisePassThrough>.Next
+                {
+                    [MethodImpl(InlineOption)]
+                    get { return _next.UnsafeAs<PromisePassThrough>(); }
+                    [MethodImpl(InlineOption)]
+                    set { _next = value; }
+                }
+
                 internal PromiseRefBase Owner
                 {
                     [MethodImpl(InlineOption)]

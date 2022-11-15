@@ -417,11 +417,6 @@ namespace Proto.Promises
 #if PROMISE_PROGRESS
                 private ulong _completeProgress;
 #endif
-                partial class MergePromiseT : MergePromise<TResult>
-                {
-                    // TODO: this can be made static
-                    private PromiseResolvedDelegate<TResult> _onPromiseResolved;
-                }
             }
 
             partial class RacePromise<TResult> : MultiHandleablePromiseBase<TResult>
@@ -440,7 +435,7 @@ namespace Proto.Promises
             {
             }
 
-            partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>
+            partial class PromisePassThrough : HandleablePromiseBase
             {
                 volatile private PromiseRefBase _owner;
                 volatile private HandleablePromiseBase _target;
@@ -450,9 +445,6 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 private bool _disposed;
 #endif
-
-                // TODO: this can point to _next instead of adding an extra field
-                PromisePassThrough ILinked<PromisePassThrough>.Next { get; set; }
             }
             #endregion
 

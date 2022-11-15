@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -518,7 +519,18 @@ namespace Proto.Promises
         {
             return Promise.FirstWithIndex<T, TEnumerator>(promises);
         }
+
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+        [MethodImpl(Internal.InlineOption)]
+        private static Internal.PromiseRefBase.PromiseResolvedDelegate<IList<T>> GetOnPromiseResolvedAllDelegate()
+        {
+            return (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
+            {
+                target[index] = feed.GetResult<T>();
+            };
+        }
+
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
@@ -565,10 +577,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
-            {
-                target[index] = feed.GetResult<T>();
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, GetOnPromiseResolvedAllDelegate(), pendingCount, completedProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
 
@@ -623,10 +632,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
-            {
-                target[index] = feed.GetResult<T>();
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, GetOnPromiseResolvedAllDelegate(), pendingCount, completedProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
 
@@ -686,10 +692,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
-            {
-                target[index] = feed.GetResult<T>();
-            }, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, GetOnPromiseResolvedAllDelegate(), pendingCount, completedProgress, maxDepth);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
 
@@ -777,10 +780,7 @@ namespace Proto.Promises
                     return Internal.CreateResolved(valueContainer, maxDepth);
                 }
 
-                var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, (Internal.PromiseRefBase feed, ref IList<T> target, int index) =>
-                {
-                    target[index] = feed.GetResult<T>();
-                }, pendingCount, completedProgress, maxDepth);
+                var promise = Internal.PromiseRefBase.MergePromise<IList<T>>.GetOrCreate(passThroughs, valueContainer, GetOnPromiseResolvedAllDelegate(), pendingCount, completedProgress, maxDepth);
                 return new Promise<IList<T>>(promise, promise.Id, maxDepth);
             }
         }

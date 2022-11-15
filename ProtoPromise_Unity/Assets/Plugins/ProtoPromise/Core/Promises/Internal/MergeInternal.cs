@@ -13,7 +13,6 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System.Diagnostics;
@@ -161,8 +160,10 @@ namespace Proto.Promises
                     MaybeDisposeNonVirt();
                 }
 
-                private sealed partial class MergePromiseT : MergePromise<TResult>
+                private sealed class MergePromiseT : MergePromise<TResult>
                 {
+                    private static PromiseResolvedDelegate<TResult> _onPromiseResolved;
+
                     private MergePromiseT() { }
 
                     internal override void MaybeDispose()
@@ -170,7 +171,6 @@ namespace Proto.Promises
                         if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
                         {
                             Dispose();
-                            _onPromiseResolved = null;
                             ObjectPool.MaybeRepool(this);
                         }
                     }
@@ -181,9 +181,17 @@ namespace Proto.Promises
 #endif
                         TResult value, PromiseResolvedDelegate<TResult> onPromiseResolved)
                     {
+#if NETCOREAPP && (PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
+                        var oldDelegete = Interlocked.CompareExchange(ref _onPromiseResolved, onPromiseResolved, null);
+                        if (oldDelegete != null && oldDelegete != onPromiseResolved)
+                        {
+                            throw new System.InvalidOperationException("_onPromiseResolved delegate not the same.");
+                        }
+#else
+                        _onPromiseResolved = onPromiseResolved;
+#endif
                         var promise = ObjectPool.TryTake<MergePromiseT>()
                             ?? new MergePromiseT();
-                        promise._onPromiseResolved = onPromiseResolved;
                         promise._result = value;
                         return promise;
                     }
