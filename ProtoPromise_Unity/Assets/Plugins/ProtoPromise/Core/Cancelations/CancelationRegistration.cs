@@ -105,11 +105,22 @@ namespace Proto.Promises
         /// <summary>
         /// Try to unregister the callback from the associated <see cref="CancelationToken"/>.
         /// If the callback is currently executing, this method will wait until it completes,
-        /// except in the degenerate cases where a callback method unregisters itself.
+        /// except in the degenerate case where the callback itself is unregistering itself.
         /// </summary>
         public void Dispose()
         {
             Internal.CancelationCallbackNode.TryUnregisterOrWaitForCallbackToComplete(_ref, _node, _nodeId, _tokenId);
+        }
+
+        /// <summary>
+        /// Try to unregister the callback from the associated <see cref="CancelationToken"/>.
+        /// The returned <see cref="Promise"/> will be resolved once the associated callback
+        /// is unregistered without having executed or once it's finished executing, except
+        /// in the degenerate case where the callback itself is unregistering itself.
+        /// </summary>
+        public Promise DisposeAsync()
+        {
+            return Internal.CancelationCallbackNode.TryUnregisterOrWaitForCallbackToCompleteAsync(_ref, _node, _nodeId, _tokenId);
         }
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationRegistration"/>.</summary>
@@ -150,15 +161,9 @@ namespace Proto.Promises
 #if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP2_1_OR_GREATER || UNITY_2021_2_OR_NEWER
     partial struct CancelationRegistration : IAsyncDisposable
     {
-        /// <summary>
-        /// Try to unregister the callback from the associated <see cref="CancelationToken"/>.
-        /// The returned <see cref="System.Threading.Tasks.ValueTask"/> will complete once the associated callback
-        /// is unregistered without having executed or once it's finished executing, except
-        /// in the degenerate case where the callback itself is unregistering itself.
-        /// </summary>
-        public System.Threading.Tasks.ValueTask DisposeAsync()
+        System.Threading.Tasks.ValueTask IAsyncDisposable.DisposeAsync()
         {
-            return Internal.CancelationCallbackNode.TryUnregisterOrWaitForCallbackToCompleteAsync(_ref, _node, _nodeId, _tokenId);
+            return DisposeAsync();
         }
     }
 #endif
