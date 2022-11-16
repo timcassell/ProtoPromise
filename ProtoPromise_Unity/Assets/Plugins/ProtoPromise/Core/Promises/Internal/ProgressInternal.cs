@@ -2500,7 +2500,7 @@ namespace Proto.Promises
                 new private void SetProgressValuesAndGetPrevious(ref ProgressHookupValues progressHookupValues)
                 {
                     ThrowIfInPool(this);
-                    _listenerProgressRange = new ProgressRange(
+                    _fields._listenerProgressRange = new ProgressRange(
                         (float) progressHookupValues._min,
                         (float) progressHookupValues._max
                     );
@@ -2509,7 +2509,7 @@ namespace Proto.Promises
                     // This is a volatile read, so we don't need a full memory barrier.
                     progressHookupValues._previous = _rejectContainerOrPreviousOrLink as PromiseRefBase;
                     progressHookupValues._expectedWaiter = this;
-                    progressHookupValues.SetMinAndMaxFromLocalProgress(_userProgressRange._min, _userProgressRange._max);
+                    progressHookupValues.SetMinAndMaxFromLocalProgress(_fields._userProgressRange._min, _fields._userProgressRange._max);
                     if (progressHookupValues._previous != null)
                     {
                         progressHookupValues.SetDivisorFromDepth(progressHookupValues._previous.Depth);
@@ -2531,8 +2531,8 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 new private void Reset()
                 {
-                    _userProgressRange._min = 0f;
-                    _userProgressRange._max = 0f;
+                    _fields._userProgressRange._min = 0f;
+                    _fields._userProgressRange._max = 0f;
                     base.Reset();
                 }
 
@@ -2544,31 +2544,31 @@ namespace Proto.Promises
                     // otherwise it could break the registered promise chain.
                     Interlocked.CompareExchange(ref _rejectContainerOrPreviousOrLink, null, handler);
                 }
-
-                [MethodImpl(InlineOption)]
-                private void SetPreviousAndMaybeHookupProgress(PromiseRefBase waiter, float minProgress, float maxProgress)
-                {
-#if PROMISE_DEBUG
-                    _previous = waiter;
-#endif
-                    if (float.IsNaN(minProgress))
-                    {
-                        // We have to set min to previous max instead of current, since we can't know what the current would be if the previous awaited promise was rejected or canceled, and a progress listener was never hooked up.
-                        // Technically, we could hook up a progress listener just to tell this what its current progress would be, but that would be extremely inefficient for the common case where it doesn't matter.
-                        minProgress = _userProgressRange._max;
-                    }
-                    // Write range before write previous to resolve race condition with progress listener hooking up to this.
-                    _userProgressRange._min = minProgress;
-                    _userProgressRange._max = maxProgress;
-
-                    // Resolve race condition with progress hookup.
-                    // Only write _rejectContainerOrPreviousOrLink if it's null,
-                    // otherwise it could break the registered promise chain.
-                    Interlocked.CompareExchange(ref _rejectContainerOrPreviousOrLink, waiter, null);
-
-                    _next.MaybeHookupProgressToAwaited(this, waiter, ref _userProgressRange, ref _listenerProgressRange);
-                }
             } // AsyncPromiseRef
+
+            [MethodImpl(InlineOption)]
+            private void SetPreviousAndMaybeHookupAsyncProgress(PromiseRefBase waiter, float minProgress, float maxProgress, ref AsyncPromiseFields asyncFields)
+            {
+#if PROMISE_DEBUG
+                _previous = waiter;
+#endif
+                if (float.IsNaN(minProgress))
+                {
+                    // We have to set min to previous max instead of current, since we can't know what the current would be if the previous awaited promise was rejected or canceled, and a progress listener was never hooked up.
+                    // Technically, we could hook up a progress listener just to tell this what its current progress would be, but that would be extremely inefficient for the common case where it doesn't matter.
+                    minProgress = asyncFields._userProgressRange._max;
+                }
+                // Write range before write previous to resolve race condition with progress listener hooking up to this.
+                asyncFields._userProgressRange._min = minProgress;
+                asyncFields._userProgressRange._max = maxProgress;
+
+                // Resolve race condition with progress hookup.
+                // Only write _rejectContainerOrPreviousOrLink if it's null,
+                // otherwise it could break the registered promise chain.
+                Interlocked.CompareExchange(ref _rejectContainerOrPreviousOrLink, waiter, null);
+
+                _next.MaybeHookupProgressToAwaited(this, waiter, ref asyncFields._userProgressRange, ref asyncFields._listenerProgressRange);
+            }
 #endif // PROMISE_PROGRESS
         } // PromiseRefBase
     } // Internal
