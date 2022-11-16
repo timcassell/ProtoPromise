@@ -1503,7 +1503,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationToken cancelationToken = cancelationSource.Token;
                 bool invoked = false;
                 CancelationRegistration cancelationRegistration = cancelationToken.Register(() => invoked = true);
-                cancelationRegistration.DisposeAsync();
+                cancelationRegistration.DisposeAsync().Forget();
                 cancelationSource.Cancel();
                 Assert.IsFalse(invoked);
                 cancelationSource.Dispose();
@@ -1513,7 +1513,7 @@ namespace ProtoPromiseTests.APIs
             public void CancelationRegistrationDisposeAsyncUnregistersCallback_1()
             {
                 bool completedAsync = false;
-                RunAsync().Wait(TimeSpan.FromSeconds(5));
+                RunAsync().Wait(TimeSpan.FromSeconds(1));
                 Assert.IsTrue(completedAsync);
 
                 async Promise RunAsync()
@@ -1525,6 +1525,87 @@ namespace ProtoPromiseTests.APIs
                     cancelationSource.Cancel();
                     Assert.IsFalse(invoked);
                     cancelationSource.Dispose();
+                    completedAsync = true;
+                }
+            }
+
+            [Test]
+            public void CancelationRegistrationDisposeAsyncDoesNotCompleteUntilTheCallbackIsComplete_0()
+            {
+                bool completedAsync = false;
+                bool isCallbackRegistered = false;
+                bool isCallbackComplete = false;
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+
+                var promise = Promise.Run(RunAsync, SynchronizationOption.Background, forceAsync: true);
+                SpinWait.SpinUntil(() => isCallbackRegistered);
+                var cancelPromise = Promise.Run(cancelationSource.Cancel, SynchronizationOption.Background, forceAsync: true);
+
+                Thread.Sleep(100);
+                Assert.IsFalse(completedAsync);
+                isCallbackComplete = true;
+
+                if (!promise.Wait(TimeSpan.FromSeconds(1)) | !cancelPromise.Wait(TimeSpan.FromSeconds(1)))
+                {
+                    throw new TimeoutException();
+                }
+                Assert.IsTrue(completedAsync);
+                cancelationSource.Dispose();
+
+                async Promise RunAsync()
+                {
+                    bool continueAsyncFunction = false;
+                    var registration = cancelationToken.Register(1, cv =>
+                    {
+                        continueAsyncFunction = true;
+                        SpinWait.SpinUntil(() => isCallbackComplete);
+                    });
+                    {
+                        isCallbackRegistered = true;
+                        SpinWait.SpinUntil(() => continueAsyncFunction);
+                    }
+                    await registration.DisposeAsync();
+                    completedAsync = true;
+                }
+            }
+
+            [Test]
+            public void CancelationRegistrationDisposeAsyncDoesNotCompleteUntilTheCallbackIsComplete_1()
+            {
+                bool completedAsync = false;
+                bool isCallbackRegistered = false;
+                bool isCallbackComplete = false;
+                CancelationSource cancelationSource = CancelationSource.New();
+                CancelationToken cancelationToken = cancelationSource.Token;
+
+                var promise = Promise.Run(RunAsync, SynchronizationOption.Background, forceAsync: true);
+                SpinWait.SpinUntil(() => isCallbackRegistered);
+                var cancelPromise = Promise.Run(cancelationSource.Cancel, SynchronizationOption.Background, forceAsync: true);
+
+                Thread.Sleep(100);
+                Assert.IsFalse(completedAsync);
+                isCallbackComplete = true;
+
+                if (!promise.Wait(TimeSpan.FromSeconds(1)) | !cancelPromise.Wait(TimeSpan.FromSeconds(1)))
+                {
+                    throw new TimeoutException();
+                }
+                Assert.IsTrue(completedAsync);
+                cancelationSource.Dispose();
+
+                async Promise RunAsync()
+                {
+                    bool continueAsyncFunction = false;
+                    await using (cancelationToken.Register(1, cv =>
+                    {
+                        continueAsyncFunction = true;
+                        SpinWait.SpinUntil(() => isCallbackComplete);
+                    }))
+                    {
+                        isCallbackRegistered = true;
+                        SpinWait.SpinUntil(() => continueAsyncFunction);
+                    }
                     completedAsync = true;
                 }
             }

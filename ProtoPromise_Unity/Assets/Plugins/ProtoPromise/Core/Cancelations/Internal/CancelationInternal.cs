@@ -877,13 +877,12 @@ namespace Proto.Promises
                 }
             }
 
-#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP2_1_OR_GREATER || UNITY_2021_2_OR_NEWER
             [MethodImpl(InlineOption)]
-            internal static System.Threading.Tasks.ValueTask TryUnregisterOrWaitForCallbackToCompleteAsync(CancelationRef parent, CancelationCallbackNode _this, int nodeId, int tokenId)
+            internal static Promise TryUnregisterOrWaitForCallbackToCompleteAsync(CancelationRef parent, CancelationCallbackNode _this, int nodeId, int tokenId)
             {
                 if (_this == null | parent == null)
                 {
-                    return new System.Threading.Tasks.ValueTask();
+                    return new Promise();
                 }
 
                 parent._smallFields._locker.Enter();
@@ -895,7 +894,7 @@ namespace Proto.Promises
                     _this.RemoveFromLinkedList();
                     parent._smallFields._locker.Exit();
                     _this.Dispose();
-                    return new System.Threading.Tasks.ValueTask();
+                    return new Promise();
                 }
 
                 bool parentIsCanceling = parent._state == CancelationRef.State.Canceled;
@@ -908,23 +907,33 @@ namespace Proto.Promises
                     // callback to complete. While such polling isn't ideal, we expect this to be a rare case (disposing while
                     // the associated callback is running), and brief when it happens (so the polling will be minimal), and making
                     // this work with a callback mechanism will add additional cost to other more common cases.
-                    return Promise.Run((parent, _this, nodeId, tokenId), async cv =>
-                    {
-                        var (source, node, nId, sId) = cv;
-                        // _this._nodeId will be incremented when the callback is complete and this is disposed.
-                        // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
-                        // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.
-                        while (nId == node._nodeId & sId == source.TokenId)
-                        {
-                            // Yield the thread and queue the continuation asynchronously.
-                            // This is nearly equivalent to Task.Yield(), except it uses the background context in the config.
-                            await Promise.SwitchToBackground(true);
-                        }
-                    }, forceAsync: true);
+                    var deferred = Promise.NewDeferred();
+                    WaitForInvokeComplete(parent, _this, nodeId, tokenId, deferred);
+                    return deferred.Promise;
                 }
-                return new System.Threading.Tasks.ValueTask();
+                return new Promise();
             }
-#endif
+
+            private static void WaitForInvokeComplete(CancelationRef parent, CancelationCallbackNode node, int nodeId, int tokenId, Promise.Deferred deferred)
+            {
+                // node._nodeId will be incremented when the callback is complete and it is disposed.
+                // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
+                // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.
+                if (nodeId == node._nodeId & tokenId == parent.TokenId)
+                {
+                    // Queue the check to happen again on a background thread.
+                    // Force async so the current thread will be yielded if this is already being executed on a background thread.
+                    // This is recursive, but it's done so asynchronously so it will never cause StackOverflowException.
+                    Promise.Run(ValueTuple.Create(parent, node, nodeId, tokenId, deferred),
+                        cv => WaitForInvokeComplete(cv.Item1, cv.Item2, cv.Item3, cv.Item4, cv.Item5),
+                        Promise.Config.BackgroundContext, forceAsync: true)
+                        .Forget();
+                }
+                else
+                {
+                    deferred.Resolve();
+                }
+            }
         } // class CancelationCallbackNode
 
         partial class CancelationRef
