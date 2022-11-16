@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
-
 using System;
 using System.Diagnostics;
 

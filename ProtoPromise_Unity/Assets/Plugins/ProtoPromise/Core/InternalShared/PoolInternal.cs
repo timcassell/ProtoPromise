@@ -89,6 +89,25 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
+            internal static TActual TryTake<T, TActual>()
+                where T : HandleablePromiseBase
+                where TActual : T
+            {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                TActual obj = Type<T>.TryTake().UnsafeAs<TActual>();
+                if (s_trackObjectsForRelease & obj == null)
+                {
+                    // Create here via reflection so that the object can be tracked.
+                    obj = Activator.CreateInstance(typeof(TActual), true).UnsafeAs<TActual>();
+                }
+                MarkNotInPool(obj);
+                return obj;
+#else
+                return TryTake<T>().UnsafeAs<TActual>();
+#endif
+            }
+
+            [MethodImpl(InlineOption)]
             internal static void MaybeRepool<T>(T obj) where T : HandleablePromiseBase
             {
                 MarkInPool(obj);
