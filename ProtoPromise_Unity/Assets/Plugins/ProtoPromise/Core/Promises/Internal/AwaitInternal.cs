@@ -142,7 +142,7 @@ namespace Proto.Promises
 
         internal interface IPromiseAwaiter
         {
-            void AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef);
+            void AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields);
         }
 
 #if !NETCOREAPP
@@ -151,7 +151,7 @@ namespace Proto.Promises
         internal unsafe abstract class AwaitOverrider<T> where T : INotifyCompletion
         {
 #pragma warning disable IDE0044 // Add readonly modifier
-            private static delegate*<ref T, PromiseRefBase, void> s_awaitOverrider;
+            private static delegate*<ref T, PromiseRefBase, ref PromiseRefBase.AsyncPromiseFields, void> s_awaitOverrider;
 #pragma warning restore IDE0044 // Add readonly modifier
 
             [MethodImpl(InlineOption)]
@@ -167,9 +167,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRefBase asyncPromiseRef)
+            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields)
             {
-                s_awaitOverrider(ref awaiter, asyncPromiseRef);
+                s_awaitOverrider(ref awaiter, asyncPromiseRef, ref asyncFields);
             }
 
             private sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
@@ -182,9 +182,9 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef)
+                private static void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields)
                 {
-                    awaiter.AwaitOnCompletedInternal(asyncPromiseRef);
+                    awaiter.AwaitOnCompletedInternal(asyncPromiseRef, ref asyncFields);
                 }
             }
         }
@@ -206,12 +206,12 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRefBase asyncPromiseRef)
+            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields)
             {
-                s_awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef);
+                s_awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef, ref asyncFields);
             }
 
-            protected abstract void AwaitOnCompletedVirt(ref T awaiter, PromiseRefBase asyncPromiseRef);
+            protected abstract void AwaitOnCompletedVirt(ref T awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields);
 
             private sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
             {
@@ -227,9 +227,9 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                protected override void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef)
+                protected override void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields)
                 {
-                    awaiter.AwaitOnCompletedInternal(asyncPromiseRef);
+                    awaiter.AwaitOnCompletedInternal(asyncPromiseRef, ref asyncFields);
                 }
             }
         }
@@ -415,7 +415,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref Internal.PromiseRefBase.AsyncPromiseFields asyncFields)
             {
                 asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
             }
@@ -522,7 +522,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref Internal.PromiseRefBase.AsyncPromiseFields asyncFields)
             {
                 asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
             }
@@ -641,9 +641,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref Internal.PromiseRefBase.AsyncPromiseFields asyncFields)
             {
-                asyncPromiseRef.HookupAwaiterWithProgress(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress);
+                asyncPromiseRef.HookupAwaiterWithProgress(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress, ref asyncFields);
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -761,9 +761,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref Internal.PromiseRefBase.AsyncPromiseFields asyncFields)
             {
-                asyncPromiseRef.HookupAwaiterWithProgress(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress);
+                asyncPromiseRef.HookupAwaiterWithProgress(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress, ref asyncFields);
             }
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);

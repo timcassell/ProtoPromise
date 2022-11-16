@@ -564,13 +564,18 @@ namespace Proto.Promises
 
 #endif // PROMISE_PROGRESS
 
+            internal struct AsyncPromiseFields
+            {
+                internal ExecutionContext _executionContext;
+#if PROMISE_PROGRESS
+                internal ProgressRange _listenerProgressRange;
+                internal ProgressRange _userProgressRange;
+#endif
+            }
+
             partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
             {
-                private ExecutionContext _executionContext;
-#if PROMISE_PROGRESS
-                private ProgressRange _listenerProgressRange;
-                private ProgressRange _userProgressRange;
-#endif
+                private AsyncPromiseFields _fields;
 
 #if !OPTIMIZED_ASYNC_MODE
                 partial class PromiseMethodContinuer : HandleablePromiseBase

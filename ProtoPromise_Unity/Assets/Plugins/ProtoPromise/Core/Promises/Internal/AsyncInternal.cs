@@ -404,18 +404,23 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void HookupAwaiterWithProgress(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress)
+            internal void HookupAwaiterWithProgress(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress, ref AsyncPromiseFields asyncFields)
             {
-#if PROMISE_PROGRESS
-                HookupAwaiterWithProgressVirt(awaiter, promiseId, depth, minProgress, maxProgress);
-#else
+#if !PROMISE_PROGRESS
                 HookupAwaiter(awaiter, promiseId);
+#else
+                ValidateAwait(awaiter, promiseId);
+
+                HandleablePromiseBase previousWaiter;
+                PromiseRefBase promiseSingleAwait = awaiter.AddWaiter(promiseId, this, out previousWaiter);
+                if (previousWaiter != PendingAwaitSentinel.s_instance)
+                {
+                    awaiter.VerifyAndHandleWaiter(this, promiseSingleAwait);
+                    return;
+                }
+                SetPreviousAndMaybeHookupAsyncProgress(awaiter, minProgress, maxProgress, ref asyncFields);
 #endif
             }
-
-#if PROMISE_PROGRESS
-            protected virtual void HookupAwaiterWithProgressVirt(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress) { throw new System.InvalidOperationException(); }
-#endif
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -493,12 +498,12 @@ namespace Proto.Promises
 #if NETCOREAPP
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
-                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
+                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref, ref _ref._fields);
                     }
 #else
                     if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
                     {
-                        AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
+                        AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref, ref _ref._fields);
                     }
 #endif
                     else
@@ -516,12 +521,12 @@ namespace Proto.Promises
 #if NETCOREAPP
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
-                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
+                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref, ref _ref._fields);
                     }
 #else
                     if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
                     {
-                        AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref);
+                        AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref, ref _ref._fields);
                     }
 #endif
                     else
@@ -529,23 +534,6 @@ namespace Proto.Promises
                         awaiter.UnsafeOnCompleted(_ref.MoveNext);
                     }
                 }
-
-#if PROMISE_PROGRESS
-                // TODO: we may be able to remove the virtual call by passing a `ref ProgressRange` to the waiter through the IPromiseAwaiter interface and AwaitOverrider.
-                protected override void HookupAwaiterWithProgressVirt(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress)
-                {
-                    ValidateAwait(awaiter, promiseId);
-
-                    HandleablePromiseBase previousWaiter;
-                    PromiseRefBase promiseSingleAwait = awaiter.AddWaiter(promiseId, this, out previousWaiter);
-                    if (previousWaiter != PendingAwaitSentinel.s_instance)
-                    {
-                        awaiter.VerifyAndHandleWaiter(this, promiseSingleAwait);
-                        return;
-                    }
-                    SetPreviousAndMaybeHookupProgress(awaiter, minProgress, maxProgress);
-                }
-#endif
 
                 partial void SetAwaitedComplete(PromiseRefBase handler);
             }
@@ -620,9 +608,9 @@ namespace Proto.Promises
                             SetCurrentInvoker(_owner);
                             try
                             {
-                                if (_owner._executionContext != null)
+                                if (_owner._fields._executionContext != null)
                                 {
-                                    ExecutionContext.Run(_owner._executionContext, s_executionContextCallback, this);
+                                    ExecutionContext.Run(_owner._fields._executionContext, s_executionContextCallback, this);
                                 }
                                 else
                                 {
@@ -648,7 +636,7 @@ namespace Proto.Promises
                     }
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
-                        _ref._executionContext = ExecutionContext.Capture();
+                        _ref._fields._executionContext = ExecutionContext.Capture();
                     }
                 }
 
@@ -660,7 +648,7 @@ namespace Proto.Promises
                         _continuer.Dispose();
                         _continuer = null;
                     }
-                    _executionContext = null;
+                    _fields._executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -703,7 +691,7 @@ namespace Proto.Promises
                     {
                         Dispose();
                         _stateMachine = default(TStateMachine);
-                        _executionContext = null;
+                        _fields._executionContext = null;
                         ObjectPool.MaybeRepool(this);
                     }
 
@@ -715,9 +703,9 @@ namespace Proto.Promises
                     [MethodImpl(InlineOption)]
                     private void ContinueMethod()
                     {
-                        if (_executionContext != null)
+                        if (_fields._executionContext != null)
                         {
-                            ExecutionContext.Run(_executionContext, s_executionContextCallback, this);
+                            ExecutionContext.Run(_fields._executionContext, s_executionContextCallback, this);
                         }
                         else
                         {
@@ -751,14 +739,14 @@ namespace Proto.Promises
                     }
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
-                        _ref._executionContext = ExecutionContext.Capture();
+                        _ref._fields._executionContext = ExecutionContext.Capture();
                     }
                 }
 
                 internal override void MaybeDispose()
                 {
                     Dispose();
-                    _executionContext = null;
+                    _fields._executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
             }
