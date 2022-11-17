@@ -310,12 +310,6 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 _previous = null;
 #endif
-                // TODO: Can this check be moved to PromiseForgetSentinel?
-                // Rejection maybe wasn't caught.
-                if (State == Promise.State.Rejected & !SuppressRejection)
-                {
-                    _rejectContainerOrPreviousOrLink.UnsafeAs<IRejectContainer>().ReportUnhandled();
-                }
                 _rejectContainerOrPreviousOrLink = null;
             }
 
@@ -693,6 +687,13 @@ namespace Proto.Promises
                             throw new System.InvalidOperationException("PromiseMultiAwait was disposed completely without being forgotten.");
                         }
 #endif
+                        // Rejection maybe wasn't caught.
+                        // We handle this directly here because we don't add the PromiseForgetSentinel to this type when it is forgotten.
+                        if (State == Promise.State.Rejected & !SuppressRejection)
+                        {
+                            SuppressRejection = true;
+                            _rejectContainerOrPreviousOrLink.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                        }
                         Dispose();
                     }
                     ObjectPool.MaybeRepool(this);

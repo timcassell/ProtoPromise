@@ -103,19 +103,7 @@ namespace ProtoPromiseTests
                         {
                             try
                             {
-#if ENABLE_IL2CPP && !NET_LEGACY && !UNITY_2022_1_OR_NEWER
-                                // ExceptionDispatchInfo.Throw() generates a new Exception object instead of throwing the original object in IL2CPP, causing the Assert to fail.
-                                // This was fixed in Unity 2022. To avoid the tests failing, we instead have to check the object's type and message.
-                                if (s_expectedUncaughtRejectValue is Exception)
-                                {
-                                    Exception expected = (Exception) s_expectedUncaughtRejectValue;
-                                    Assert.AreEqual(expected.GetType(), e.Value.GetType());
-                                    Exception actual = (Exception) e.Value;
-                                    Assert.AreEqual(expected.Message, actual.Message);
-                                    return;
-                                }
-#endif
-                                Assert.AreEqual(s_expectedUncaughtRejectValue, e.Value);
+                                AssertRejection(s_expectedUncaughtRejectValue, e.Value);
                             }
                             catch (Exception ex)
                             {
@@ -137,6 +125,23 @@ namespace ProtoPromiseTests
             }
 
             TestContext.Progress.WriteLine("Begin time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
+        }
+
+        public static void AssertRejection(object expected, object actual)
+        {
+#if ENABLE_IL2CPP && !NET_LEGACY && !UNITY_2022_1_OR_NEWER
+            // ExceptionDispatchInfo.Throw() generates a new Exception object instead of throwing the original object in IL2CPP, causing the Assert to fail.
+            // This was fixed in Unity 2022. To avoid the tests failing, we instead have to check the object's type and message.
+            if (expected is Exception)
+            {
+                Exception ex = (Exception) expected;
+                Assert.AreEqual(ex.GetType(), actual.GetType());
+                Exception actualEx = (Exception) actual;
+                Assert.AreEqual(ex.Message, actualEx.Message);
+                return;
+            }
+#endif
+            Assert.AreEqual(expected, actual);
         }
 
         public static void Cleanup()
@@ -2964,8 +2969,9 @@ namespace ProtoPromiseTests
             promise.Forget();
         }
 
-        public static Action<Promise>[] ResolveActionsVoid(Action onResolved)
+        public static Action<Promise>[] ResolveActionsVoid(Action onResolved = null)
         {
+            onResolved += () => { };
             return new Action<Promise>[8]
             {
                 promise => promise.Then(() => onResolved()).Forget(),
@@ -2980,8 +2986,9 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Action<Promise<T>>[] ResolveActions<T>(Action<T> onResolved)
+        public static Action<Promise<T>>[] ResolveActions<T>(Action<T> onResolved = null)
         {
+            onResolved += v => { };
             return new Action<Promise<T>>[8]
             {
                 promise => promise.Then(v => onResolved(v)).Forget(),
@@ -2996,8 +3003,10 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Action<Promise>[] ThenActionsVoid(Action onResolved, Action onRejected)
+        public static Action<Promise>[] ThenActionsVoid(Action onResolved = null, Action onRejected = null)
         {
+            onResolved += () => { };
+            onRejected += () => { };
             return new Action<Promise>[64]
             {
                 promise => promise.Then(() => onResolved(), () => onRejected()).Forget(),
@@ -3074,8 +3083,10 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Action<Promise<T>>[] ThenActions<T>(Action<T> onResolved, Action onRejected)
+        public static Action<Promise<T>>[] ThenActions<T>(Action<T> onResolved = null, Action onRejected = null)
         {
+            onResolved += v => { };
+            onRejected += () => { };
             return new Action<Promise<T>>[64]
             {
                 promise => promise.Then(v => onResolved(v), () => onRejected()).Forget(),
@@ -3152,8 +3163,9 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Action<Promise>[] CatchActionsVoid(Action onRejected)
+        public static Action<Promise>[] CatchActionsVoid(Action onRejected = null)
         {
+            onRejected += () => { };
             return new Action<Promise>[8]
             {
                 promise => promise.Catch(() => onRejected()).Forget(),
@@ -3168,8 +3180,9 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Action<Promise<T>>[] CatchActions<T>(Action onRejected)
+        public static Action<Promise<T>>[] CatchActions<T>(Action onRejected = null)
         {
+            onRejected += () => { };
             return new Action<Promise<T>>[8]
             {
                 promise => promise.Catch(() => { onRejected(); return default(T); }).Forget(),
@@ -3184,8 +3197,9 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Action<Promise>[] ContinueWithActionsVoid(Action onContinue)
+        public static Action<Promise>[] ContinueWithActionsVoid(Action onContinue = null)
         {
+            onContinue += () => { };
             return new Action<Promise>[8]
             {
                 promise => promise.ContinueWith(_ => onContinue()).Forget(),
@@ -3200,8 +3214,9 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Action<Promise<T>>[] ContinueWithActions<T>(Action onContinue)
+        public static Action<Promise<T>>[] ContinueWithActions<T>(Action onContinue = null)
         {
+            onContinue += () => { };
             return new Action<Promise<T>>[8]
             {
                 promise => promise.ContinueWith(_ => onContinue()).Forget(),
@@ -3215,8 +3230,9 @@ namespace ProtoPromiseTests
                 promise => promise.ContinueWith(1, (Promise<T>.ContinueFunc<int, Promise<int>>)((cv, _) => { onContinue(); return Promise.Resolved(1); })).Forget()
             };
         }
-        public static Func<Promise, CancelationToken, Promise>[] ResolveActionsVoidWithCancelation(Action onResolved)
+        public static Func<Promise, CancelationToken, Promise>[] ResolveActionsVoidWithCancelation(Action onResolved = null)
         {
+            onResolved += () => { };
             return new Func<Promise, CancelationToken, Promise>[8]
             {
                 (promise, cancelationToken) => promise.Then(() => onResolved(), cancelationToken),
@@ -3231,8 +3247,9 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Func<Promise<T>, CancelationToken, Promise>[] ResolveActionsWithCancelation<T>(Action<T> onResolved)
+        public static Func<Promise<T>, CancelationToken, Promise>[] ResolveActionsWithCancelation<T>(Action<T> onResolved = null)
         {
+            onResolved += v => { };
             return new Func<Promise<T>, CancelationToken, Promise>[8]
             {
                 (promise, cancelationToken) => promise.Then(v => onResolved(v), cancelationToken),
@@ -3247,8 +3264,10 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Func<Promise, CancelationToken, Promise>[] ThenActionsVoidWithCancelation(Action onResolved, Action onRejected)
+        public static Func<Promise, CancelationToken, Promise>[] ThenActionsVoidWithCancelation(Action onResolved = null, Action onRejected = null)
         {
+            onResolved += () => { };
+            onRejected += () => { };
             return new Func<Promise, CancelationToken, Promise>[64]
             {
                 (promise, cancelationToken) => promise.Then(() => onResolved(), () => onRejected(), cancelationToken),
@@ -3325,8 +3344,10 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Func<Promise<T>, CancelationToken, Promise>[] ThenActionsWithCancelation<T>(Action<T> onResolved, Action onRejected)
+        public static Func<Promise<T>, CancelationToken, Promise>[] ThenActionsWithCancelation<T>(Action<T> onResolved = null, Action onRejected = null)
         {
+            onResolved += v => { };
+            onRejected += () => { };
             return new Func<Promise<T>, CancelationToken, Promise>[64]
             {
                 (promise, cancelationToken) => promise.Then(v => onResolved(v), () => onRejected(), cancelationToken),
@@ -3403,8 +3424,9 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Func<Promise, CancelationToken, Promise>[] CatchActionsVoidWithCancelation(Action onRejected)
+        public static Func<Promise, CancelationToken, Promise>[] CatchActionsVoidWithCancelation(Action onRejected = null)
         {
+            onRejected += () => { };
             return new Func<Promise, CancelationToken, Promise>[8]
             {
                 (promise, cancelationToken) => promise.Catch(() => onRejected(), cancelationToken),
@@ -3419,8 +3441,9 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Func<Promise<T>, CancelationToken, Promise>[] CatchActionsWithCancelation<T>(Action onRejected)
+        public static Func<Promise<T>, CancelationToken, Promise>[] CatchActionsWithCancelation<T>(Action onRejected = null)
         {
+            onRejected += () => { };
             return new Func<Promise<T>, CancelationToken, Promise>[8]
             {
                 (promise, cancelationToken) => promise.Catch(() => { onRejected(); return default(T); }, cancelationToken),
@@ -3435,8 +3458,9 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Func<Promise, CancelationToken, Promise>[] ContinueWithActionsVoidWithCancelation(Action onContinue)
+        public static Func<Promise, CancelationToken, Promise>[] ContinueWithActionsVoidWithCancelation(Action onContinue = null)
         {
+            onContinue += () => { };
             return new Func<Promise, CancelationToken, Promise>[8]
             {
                 (promise, cancelationToken) => promise.ContinueWith(_ => onContinue(), cancelationToken),
@@ -3451,8 +3475,9 @@ namespace ProtoPromiseTests
             };
         }
 
-        public static Func<Promise<T>, CancelationToken, Promise>[] ContinueWithActionsWithCancelation<T>(Action onContinue)
+        public static Func<Promise<T>, CancelationToken, Promise>[] ContinueWithActionsWithCancelation<T>(Action onContinue = null)
         {
+            onContinue += () => { };
             return new Func<Promise<T>, CancelationToken, Promise>[8]
             {
                 (promise, cancelationToken) => promise.ContinueWith(_ => onContinue(), cancelationToken),

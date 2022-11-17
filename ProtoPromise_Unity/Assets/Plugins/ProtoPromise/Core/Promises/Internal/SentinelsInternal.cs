@@ -52,6 +52,12 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
                 {
+                    // Rejection maybe wasn't caught.
+                    if (state == Promise.State.Rejected & !handler.SuppressRejection)
+                    {
+                        handler.SuppressRejection = true;
+                        rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                    }
                     handler.SetCompletionState(rejectContainer, state);
                     handler.MaybeDispose();
                 }
