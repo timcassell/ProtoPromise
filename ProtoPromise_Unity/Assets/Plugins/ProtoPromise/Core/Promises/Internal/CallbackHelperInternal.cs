@@ -795,7 +795,7 @@ namespace Proto.Promises
                     Promise<TResult> promise, ushort nextDepth)
                 {
 #if !PROMISE_PROGRESS
-                    return new Promise<TResult>(promise._ref, promise._id, nextDepth, promise._result);
+                    return new Promise<TResult>(promise._ref, promise._id, nextDepth, promise._result).Duplicate();
 #else
                     var _ref = promise._ref;
                     if (_ref == null)
@@ -823,7 +823,7 @@ namespace Proto.Promises
                     Promise promise, ushort nextDepth)
                 {
 #if !PROMISE_PROGRESS
-                    return new Promise(promise._ref, promise._id, nextDepth);
+                    return new Promise(promise._ref, promise._id, nextDepth).Duplicate();
 #else
                     var _ref = promise._ref;
                     if (_ref == null)
