@@ -880,7 +880,7 @@ namespace Proto.Promises
                     else
                     {
                         MaybeDispose();
-                        handler.MaybeDispose();
+                        handler.ReportUnhandledAndMaybeDispose();
                     }
                 }
 
@@ -965,8 +965,8 @@ namespace Proto.Promises
                     if (Interlocked.Exchange(ref _isScheduling, 1) != 0)
 #endif
                     {
-                        handler.MaybeDispose();
                         MaybeDispose();
+                        handler.ReportUnhandledAndMaybeDispose();
                         return;
                     }
 

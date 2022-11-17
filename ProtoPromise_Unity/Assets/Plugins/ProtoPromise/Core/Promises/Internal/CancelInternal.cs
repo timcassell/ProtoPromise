@@ -26,6 +26,29 @@ namespace Proto.Promises
     {
         partial class PromiseRefBase
         {
+            internal virtual void ReportUnhandledAndMaybeDispose()
+            {
+                // PromiseSingleAwait
+
+                // Rejection maybe wasn't caught.
+                if (State == Promise.State.Rejected & !SuppressRejection)
+                {
+                    SuppressRejection = true;
+                    _rejectContainerOrPreviousOrLink.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                }
+                MaybeDispose();
+            }
+
+            partial class PromiseMultiAwait<TResult>
+            {
+                internal override void ReportUnhandledAndMaybeDispose()
+                {
+                    // We don't report unhandled rejection here unless none of the waiters suppressed.
+                    // This way we only report it once in case multiple waiters were canceled.
+                    MaybeDispose();
+                }
+            }
+
             internal partial struct CancelationHelper
             {
                 [MethodImpl(InlineOption)]
@@ -114,7 +137,7 @@ namespace Proto.Promises
                     else
                     {
                         MaybeDispose();
-                        handler.MaybeDispose();
+                        handler.ReportUnhandledAndMaybeDispose();
                     }
                 }
 
@@ -184,7 +207,7 @@ namespace Proto.Promises
                     else
                     {
                         MaybeDispose();
-                        handler.MaybeDispose();
+                        handler.ReportUnhandledAndMaybeDispose();
                     }
                 }
 
@@ -245,7 +268,7 @@ namespace Proto.Promises
                     else if (!unregistered)
                     {
                         MaybeDispose();
-                        handler.MaybeDispose();
+                        handler.ReportUnhandledAndMaybeDispose();
                     }
                     else if (state == Promise.State.Rejected)
                     {
@@ -326,7 +349,7 @@ namespace Proto.Promises
                     else if (!unregistered)
                     {
                         MaybeDispose();
-                        handler.MaybeDispose();
+                        handler.ReportUnhandledAndMaybeDispose();
                     }
                     else if (state == Promise.State.Rejected)
                     {
@@ -394,7 +417,7 @@ namespace Proto.Promises
                     else
                     {
                         MaybeDispose();
-                        handler.MaybeDispose();
+                        handler.ReportUnhandledAndMaybeDispose();
                     }
                 }
 
@@ -459,7 +482,7 @@ namespace Proto.Promises
                     else
                     {
                         MaybeDispose();
-                        handler.MaybeDispose();
+                        handler.ReportUnhandledAndMaybeDispose();
                     }
                 }
 
@@ -521,7 +544,7 @@ namespace Proto.Promises
                     else
                     {
                         MaybeDispose();
-                        handler.MaybeDispose();
+                        handler.ReportUnhandledAndMaybeDispose();
                     }
                 }
 
@@ -591,7 +614,7 @@ namespace Proto.Promises
                     else
                     {
                         MaybeDispose();
-                        handler.MaybeDispose();
+                        handler.ReportUnhandledAndMaybeDispose();
                     }
                 }
 

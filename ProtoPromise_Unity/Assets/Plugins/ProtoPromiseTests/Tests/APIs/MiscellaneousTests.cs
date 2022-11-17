@@ -971,20 +971,20 @@ namespace ProtoPromiseTests.APIs
                     )
                 );
 
+                var deferred = Promise.NewDeferred();
+                var preservedPromise = deferred.Promise.Preserve();
+
                 foreach (var callback in actions)
                 {
-                    var deferred = Promise.NewDeferred();
-                    var preservedPromise = deferred.Promise.Preserve();
                     foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
                     {
                         ++expectedCount;
-                        callback(promise);
+                        callback.Invoke(promise);
                     }
-                    preservedPromise.Forget();
-                    deferred.Reject(expectedRejectionValue);
-
                 }
 
+                preservedPromise.Forget();
+                deferred.Reject(expectedRejectionValue);
                 cancelationSource.Dispose();
                 Assert.AreEqual(expectedCount, uncaughtCount);
             }
@@ -1051,21 +1051,155 @@ namespace ProtoPromiseTests.APIs
                     )
                 );
 
+                var deferred = Promise.NewDeferred<int>();
+                var preservedPromise = deferred.Promise.Preserve();
+
                 foreach (var callback in actions)
                 {
-                    var deferred = Promise.NewDeferred<int>();
-                    var preservedPromise = deferred.Promise.Preserve();
                     foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
                     {
                         ++expectedCount;
-                        callback(promise);
+                        callback.Invoke(promise);
                     }
-                    preservedPromise.Forget();
-                    deferred.Reject(expectedRejectionValue);
-
                 }
 
+                preservedPromise.Forget();
+                deferred.Reject(expectedRejectionValue);
                 cancelationSource.Dispose();
+                Assert.AreEqual(expectedCount, uncaughtCount);
+            }
+            finally
+            {
+                Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
+            }
+        }
+
+        [Test, TestCaseSource("GetExpectedRejections")]
+        public void WhenPromiseIsCanceled_UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
+        {
+            // Testing an implementation detail - when a promise is canceled and the previous promise is rejected, it counts as an uncaught rejection.
+            // This behavior is subject to change.
+
+            var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            try
+            {
+                int expectedCount = 0;
+                int uncaughtCount = 0;
+                Promise.Config.UncaughtRejectionHandler = unhandledException =>
+                {
+                    if (expectedRejectionValue == null)
+                    {
+                        Assert.IsInstanceOf<System.NullReferenceException>(unhandledException.Value);
+                    }
+                    else
+                    {
+                        TestHelper.AssertRejection(expectedRejectionValue, unhandledException.Value);
+                    }
+                    ++uncaughtCount;
+                };
+
+                var cancelationSource = CancelationSource.New();
+
+                var actions = new System.Func<Promise, CancelationToken, Promise>[][]
+                {
+                    TestHelper.ResolveActionsVoidWithCancelation(),
+                    TestHelper.ThenActionsVoidWithCancelation(onRejected: () => { }),
+                    TestHelper.CatchActionsVoidWithCancelation(onRejected: () => { }),
+                    TestHelper.ContinueWithActionsVoidWithCancelation(() => { }),
+                    new System.Func<Promise, CancelationToken, Promise>[]
+                    {
+                        (promise, token) => promise.WaitAsync(token),
+                        (promise, token) => promise.WaitAsync(SynchronizationOption.Foreground, cancelationToken: token)
+                    }
+                }
+                .SelectMany(x => x);
+
+                var deferred = Promise.NewDeferred();
+                var preservedPromise = deferred.Promise.Preserve();
+
+                foreach (var callback in actions)
+                {
+                    // We subtract 1 because the preserved promise will only report its unhandled rejection if none of the waiters suppress it. (In this case, the .Duplicate() does suppress it.)
+                    --expectedCount;
+                    foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+                    {
+                        ++expectedCount;
+                        callback.Invoke(promise, cancelationSource.Token).Forget();
+                    }
+                }
+
+                preservedPromise.Forget();
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+                deferred.Reject(expectedRejectionValue);
+                TestHelper.ExecuteForegroundCallbacks();
+                Assert.AreEqual(expectedCount, uncaughtCount);
+            }
+            finally
+            {
+                Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
+            }
+        }
+
+        [Test, TestCaseSource("GetExpectedRejections")]
+        public void WhenPromiseIsCanceled_UncaughtRejectionIsSentToUncaughtRejectionHandler_T(object expectedRejectionValue)
+        {
+            // Testing an implementation detail - when a promise is canceled and the previous promise is rejected, it counts as an uncaught rejection.
+            // This behavior is subject to change.
+
+            var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            try
+            {
+                int expectedCount = 0;
+                int uncaughtCount = 0;
+                Promise.Config.UncaughtRejectionHandler = unhandledException =>
+                {
+                    if (expectedRejectionValue == null)
+                    {
+                        Assert.IsInstanceOf<System.NullReferenceException>(unhandledException.Value);
+                    }
+                    else
+                    {
+                        TestHelper.AssertRejection(expectedRejectionValue, unhandledException.Value);
+                    }
+                    ++uncaughtCount;
+                };
+
+                var cancelationSource = CancelationSource.New();
+
+                var actions = new System.Func<Promise<int>, CancelationToken, Promise>[][]
+                {
+                    TestHelper.ResolveActionsWithCancelation<int>(),
+                    TestHelper.ThenActionsWithCancelation<int>(onRejected: () => { }),
+                    TestHelper.CatchActionsWithCancelation<int>(onRejected: () => { }),
+                    TestHelper.ContinueWithActionsWithCancelation<int>(() => { }),
+                    new System.Func<Promise<int>, CancelationToken, Promise>[]
+                    {
+                        (promise, token) => promise.WaitAsync(token),
+                        (promise, token) => promise.WaitAsync(SynchronizationOption.Foreground, cancelationToken: token)
+                    }
+                }
+                .SelectMany(x => x);
+
+                var deferred = Promise.NewDeferred<int>();
+                var preservedPromise = deferred.Promise.Preserve();
+
+                foreach (var callback in actions)
+                {
+                    // We subtract 1 because the preserved promise will only report its unhandled rejection if none of the waiters suppress it. (In this case, the .Duplicate() does suppress it.)
+                    --expectedCount;
+                    foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+                    {
+                        ++expectedCount;
+                        callback.Invoke(promise, cancelationSource.Token).Forget();
+                    }
+                }
+
+                preservedPromise.Forget();
+                cancelationSource.Cancel();
+                cancelationSource.Dispose();
+                deferred.Reject(expectedRejectionValue);
+                TestHelper.ExecuteForegroundCallbacks();
                 Assert.AreEqual(expectedCount, uncaughtCount);
             }
             finally
