@@ -203,6 +203,12 @@ namespace Proto.Promises
                     HookupNewPromise(promiseId, newPromise);
                     return newPromise;
                 }
+
+                new protected void Dispose()
+                {
+                    base.Dispose();
+                    _result = default(TResult);
+                }
             }
 
             internal abstract void MaybeMarkAwaitedAndDispose(short promiseId);
