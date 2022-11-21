@@ -1,0 +1,124 @@
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+using System;
+using System.Collections.Generic;
+using System.Threading;
+
+namespace Proto.Promises
+{
+    public partial struct Promise
+    {
+        /// <summary>Executes a for each operation on an <see cref="IEnumerable{TSource}"/> in which iterations may run in parallel.</summary>
+        /// <typeparam name="TSource">The type of the data in the source.</typeparam>
+        /// <param name="source">An enumerable data source.</param>
+        /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
+        /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
+        /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
+        /// <returns>A promise that represents the entire for each operation.</returns>
+        public static Promise ParallelForEach<TSource>(IEnumerable<TSource> source, Func<TSource, CancelationToken, Promise> body,
+            CancelationToken cancelationToken = default(CancelationToken), SynchronizationContext synchronizationContext = null, int maxDegreeOfParallelism = -1)
+        {
+            return Promise<TSource>.ParallelForEach(source, body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+        }
+
+        /// <summary>Executes a for each operation on an <see cref="IEnumerable{TSource}"/> in which iterations may run in parallel.</summary>
+        /// <typeparam name="TSource">The type of the data in the source.</typeparam>
+        /// <typeparam name="TCapture">The type of the captured value.</typeparam>
+        /// <param name="source">An enumerable data source.</param>
+        /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
+        /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
+        /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
+        /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
+        /// <returns>A promise that represents the entire for each operation.</returns>
+        public static Promise ParallelForEach<TSource, TCapture>(IEnumerable<TSource> source, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body,
+            CancelationToken cancelationToken = default(CancelationToken), SynchronizationContext synchronizationContext = null, int maxDegreeOfParallelism = -1)
+        {
+            return Promise<TSource>.ParallelForEach(source, captureValue, body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+        }
+    }
+
+    public partial struct Promise<T>
+    {
+        /// <summary>Executes a for each operation on an <see cref="IEnumerable{T}"/> in which iterations may run in parallel.</summary>
+        /// <param name="source">An enumerable data source.</param>
+        /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
+        /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
+        /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
+        /// <returns>A promise that represents the entire for each operation.</returns>
+        public static Promise ParallelForEach(IEnumerable<T> source, Func<T, CancelationToken, Promise> body,
+            CancelationToken cancelationToken = default(CancelationToken), SynchronizationContext synchronizationContext = null, int maxDegreeOfParallelism = -1)
+        {
+            ValidateArgument(source, "source", 1);
+
+            return ParallelForEach(source.GetEnumerator(), body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+        }
+
+        /// <summary>Executes a for each operation on an <see cref="IEnumerable{T}"/> in which iterations may run in parallel.</summary>
+        /// <typeparam name="TCapture">The type of the captured value.</typeparam>
+        /// <param name="source">An enumerable data source.</param>
+        /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
+        /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
+        /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
+        /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
+        /// <returns>A promise that represents the entire for each operation.</returns>
+        public static Promise ParallelForEach<TCapture>(IEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body,
+            CancelationToken cancelationToken = default(CancelationToken), SynchronizationContext synchronizationContext = null, int maxDegreeOfParallelism = -1)
+        {
+            ValidateArgument(source, "source", 1);
+
+            return ParallelForEach(source.GetEnumerator(), captureValue, body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+        }
+
+        /// <summary>Executes a for each operation on an <see cref="IEnumerator{T}"/> in which iterations may run in parallel.</summary>
+        /// <typeparam name="TEnumerator">The type of the enumerator.</typeparam>
+        /// <param name="source">An enumerable data source.</param>
+        /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
+        /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
+        /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
+        /// <returns>A promise that represents the entire for each operation.</returns>
+        public static Promise ParallelForEach<TEnumerator>(TEnumerator source, Func<T, CancelationToken, Promise> body,
+            CancelationToken cancelationToken = default(CancelationToken), SynchronizationContext synchronizationContext = null, int maxDegreeOfParallelism = -1)
+            where TEnumerator : IEnumerator<T>
+        {
+            ValidateArgument(source, "source", 1);
+            ValidateArgument(body, "body", 1);
+
+            return Internal.ParallelForEach<TEnumerator, Internal.ParallelBody<T>, T>(source, new Internal.ParallelBody<T>(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+        }
+
+        /// <summary>Executes a for each operation on an <see cref="IEnumerator{T}"/> in which iterations may run in parallel.</summary>
+        /// <typeparam name="TEnumerator">The type of the enumerator.</typeparam>
+        /// <typeparam name="TCapture">The type of the captured value.</typeparam>
+        /// <param name="source">An enumerable data source.</param>
+        /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
+        /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
+        /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
+        /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
+        /// <returns>A promise that represents the entire for each operation.</returns>
+        public static Promise ParallelForEach<TEnumerator, TCapture>(TEnumerator source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body,
+            CancelationToken cancelationToken = default(CancelationToken), SynchronizationContext synchronizationContext = null, int maxDegreeOfParallelism = -1)
+            where TEnumerator : IEnumerator<T>
+        {
+            ValidateArgument(source, "source", 1);
+            ValidateArgument(body, "body", 1);
+
+            return Internal.ParallelForEach<TEnumerator, Internal.ParallelCaptureBody<T, TCapture>, T>(source, new Internal.ParallelCaptureBody<T, TCapture>(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+        }
+    }
+}
