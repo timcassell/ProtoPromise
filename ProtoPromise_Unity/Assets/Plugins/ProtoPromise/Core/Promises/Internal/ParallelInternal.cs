@@ -17,14 +17,58 @@
 #pragma warning disable CA1507 // Use nameof to express symbol names
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+using System.Diagnostics;
 using System.Threading;
 
 namespace Proto.Promises
 {
     partial class Internal
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal struct ForLoopEnumerator : IEnumerator<int>
+        {
+            private int _currentForIterator;
+            private int _currentForIncrement;
+            private readonly int _toIndex;
+
+            internal ForLoopEnumerator(int fromIndex, int toIndex)
+            {
+                _currentForIterator = 0;
+                _currentForIncrement = fromIndex;
+                _toIndex = toIndex;
+            }
+
+            int IEnumerator<int>.Current { get { return _currentForIterator; } }
+
+            object IEnumerator.Current { get { return _currentForIterator; } }
+
+            bool IEnumerator.MoveNext()
+            {
+                // We have to check if it's already complete before incrementing to prevent overflow.
+                if (_currentForIncrement >= _toIndex)
+                {
+                    return false;
+                }
+                _currentForIterator = _currentForIncrement;
+                unchecked
+                {
+                    ++_currentForIncrement;
+                }
+                return _currentForIterator < _toIndex;
+            }
+
+            void IDisposable.Dispose() { }
+
+            void IEnumerator.Reset()
+            {
+                throw new NotImplementedException();
+            }
+        }
+
         internal interface IParallelBody<TSource>
         {
             Promise Invoke(TSource source, CancelationToken cancelationToken);
@@ -86,7 +130,7 @@ namespace Proto.Promises
             try
             {
                 var promise = PromiseRefBase.PromiseParallelForEach<TEnumerator, TParallelBody, TSource>.GetOrCreate(enumerator, body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
-                promise.QueueWorkerIfAvailable(true);
+                promise.MaybeLaunchWorker(true);
                 return new Promise(promise, promise.Id, 0);
             }
             catch (Exception e)
@@ -99,6 +143,9 @@ namespace Proto.Promises
         {
             // Inheriting PromiseSingleAwait<TEnumerator> instead of PromiseRefBase so we can take advantage of the already implemented methods.
             // We store the enumerator in the _result field to save space, because this type is only used in `Promise`, not `Promise<T>`, so the result doesn't matter.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             internal sealed class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : PromiseSingleAwait<TEnumerator>, ICancelable
                 where TEnumerator : IEnumerator<TSource>
                 where TParallelBody : IParallelBody<TSource>
@@ -112,14 +159,6 @@ namespace Proto.Promises
                 private List<Exception> _exceptions;
                 private bool _wasCanceled;
 
-                private TEnumerator Enumerator
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _result; }
-                    [MethodImpl(InlineOption)]
-                    set { _result = value; }
-                }
-
                 private PromiseParallelForEach() { }
 
                 internal static PromiseParallelForEach<TEnumerator, TParallelBody, TSource> GetOrCreate(TEnumerator enumerator, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
@@ -127,7 +166,7 @@ namespace Proto.Promises
                     var promise = ObjectPool.TryTake<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>()
                         ?? new PromiseParallelForEach<TEnumerator, TParallelBody, TSource>();
                     promise.Reset();
-                    promise.Enumerator = enumerator;
+                    promise._result = enumerator;
                     promise._body = body;
                     promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
@@ -142,28 +181,27 @@ namespace Proto.Promises
                     Dispose();
                     _body = default(TParallelBody);
                     _synchronizationContext = null;
-                    _exceptions = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
-                void ICancelable.Cancel()
+                public void Cancel()
                 {
                     _wasCanceled = true;
                     _cancelationSource.TryCancel();
                 }
 
-                internal void QueueWorkerIfAvailable(bool queueWorker)
+                internal void MaybeLaunchWorker(bool launchWorker)
                 {
-                    if (queueWorker & _remainingAvailableWorkers > 0)
+                    if (launchWorker & _remainingAvailableWorkers > 0)
                     {
                         --_remainingAvailableWorkers;
                         // We add to the wait counter before we run the worker to resolve a race condition where the counter could hit zero prematurely.
                         InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, 1);
-                        ExecuteWorker(true);
+                        LaunchWorker(true);
                     }
                 }
 
-                private void ExecuteWorker(bool launchNext)
+                private void LaunchWorker(bool launchNext)
                 {
                     // We switch to the synchronization context, and we force async so that the new worker will be queued to run on a background thread
                     // and not block the current worker, and because this calls itself recursively and we don't want to cause a StackOverflowException.
@@ -184,12 +222,15 @@ namespace Proto.Promises
                             TSource element;
                             lock (_this)
                             {
-                                if (!_this.Enumerator.MoveNext())
+                                if (!_this._result.MoveNext())
                                 {
+                                    // We cancel the source to notify completion, and return resolved instead of canceled
+                                    // so that the ultimate promise will be resolved instead of canceled.
+                                    _cancelationSource.TryCancel();
                                     return Promise.Resolved();
                                 }
 
-                                element = _this.Enumerator.Current;
+                                element = _this._result.Current;
                             }
 
                             // If the available workers allows it and we've not yet queued the next worker, do so now.  We wait
@@ -197,7 +238,7 @@ namespace Proto.Promises
                             // serialized resource, and b) avoid queueing another work if there aren't any more items.  Each worker
                             // is responsible only for creating the next worker, which in turn means there can't be any contention
                             // on creating workers (though it's possible one worker could be executing while we're creating the next).
-                            _this.QueueWorkerIfAvailable(_launchNext);
+                            _this.MaybeLaunchWorker(_launchNext);
 
                             // Process the loop body.
                             return _this._body.Invoke(element, _this._cancelationSource.Token);
@@ -217,8 +258,7 @@ namespace Proto.Promises
                     }
                     else if (state == Promise.State.Canceled)
                     {
-                        _wasCanceled = true;
-                        _cancelationSource.TryCancel();
+                        Cancel();
                     }
 
                     if (isWorkerComplete)
@@ -228,7 +268,7 @@ namespace Proto.Promises
                     else
                     {
                         // Run the worker body again, but without launching another worker.
-                        ExecuteWorker(false);
+                        LaunchWorker(false);
                     }
                 }
 
@@ -254,7 +294,7 @@ namespace Proto.Promises
                         try
                         {
                             _externalCancelationRegistration.Dispose();
-                            Enumerator.Dispose();
+                            _result.Dispose();
                         }
                         catch (Exception e)
                         {
@@ -269,7 +309,9 @@ namespace Proto.Promises
                         // This must be the very last thing done.
                         if (_exceptions != null)
                         {
-                            HandleNextInternal(CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this), Promise.State.Rejected);
+                            var rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                            _exceptions = null;
+                            HandleNextInternal(rejectContainer, Promise.State.Rejected);
                         }
                         else
                         {

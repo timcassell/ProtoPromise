@@ -66,6 +66,7 @@ namespace ProtoPromiseTests
                     _owner = null;
                     _callback = null;
                     _state = null;
+                    SetSynchronizationContext(owner);
                     callback.Invoke(state);
                     Interlocked.Decrement(ref owner._runningActionCount);
                     lock (_locker)
