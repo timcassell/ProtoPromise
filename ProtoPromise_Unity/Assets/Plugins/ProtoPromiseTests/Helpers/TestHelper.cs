@@ -397,6 +397,14 @@ namespace ProtoPromiseTests
             return promise.WaitAsync((SynchronizationOption) configureType, forceAsync, cancelationToken);
         }
 
+        public static void WaitWithTimeout(this Promise promise, TimeSpan timeout)
+        {
+            if (!promise.Wait(timeout))
+            {
+                throw new TimeoutException("Promise.Wait timed out after " + timeout);
+            }
+        }
+
         public static void AssertCallbackContext(SynchronizationType expectedContext, SynchronizationType invokeContext, Thread foregroundThread)
         {
             switch (expectedContext)
