@@ -48,7 +48,7 @@ namespace ProtoPromiseTests.APIs
         [TearDown]
         public void Teardown()
         {
-            Object.Destroy(behaviour);
+            Object.Destroy(behaviour.gameObject);
 
             TestHelper.Cleanup();
         }

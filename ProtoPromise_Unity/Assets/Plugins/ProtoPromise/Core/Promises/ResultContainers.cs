@@ -117,17 +117,9 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.IRejectContainer rejectContainer, State state)
+            internal ResultContainer(object rejectContainer, State state)
             {
                 _target = new Promise<Internal.VoidResult>.ResultContainer(default(Internal.VoidResult), rejectContainer, state);
-            }
-
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
-            [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.PromiseRefBase source) : this(source._rejectContainerOrPreviousOrLink.UnsafeAs<Internal.IRejectContainer>(), source.State)
-            {
             }
 
             /// <summary>
@@ -211,7 +203,7 @@ namespace Proto.Promises
             /// <summary>
             /// FOR INTERNAL USE ONLY!
             /// </summary>
-            internal readonly Internal.IRejectContainer _rejectContainer;
+            internal readonly object _rejectContainer;
             private readonly Promise.State _state;
             private readonly T _result;
 #if PROMISE_DEBUG
@@ -237,7 +229,7 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
-                T result, Internal.IRejectContainer rejectContainer, Promise.State state)
+                T result, object rejectContainer, Promise.State state)
             {
                 _rejectContainer = rejectContainer;
                 _state = state;
@@ -247,16 +239,8 @@ namespace Proto.Promises
 #endif
             }
 
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(Internal.PromiseRefBase source) : this(source.GetResult<T>(), source._rejectContainerOrPreviousOrLink.UnsafeAs<Internal.IRejectContainer>(), source.State)
-            {
-            }
-
-            [MethodImpl(Internal.InlineOption)]
-            private ResultContainer(Internal.IRejectContainer rejectContainer, Promise.State state, long id)
+            private ResultContainer(object rejectContainer, Promise.State state, long id)
                 : this(default(T), rejectContainer, state)
             {
 #if PROMISE_DEBUG
@@ -319,8 +303,9 @@ namespace Proto.Promises
                 get
                 {
                     ValidateCall();
-                    var container = _rejectContainer;
-                    return container == null ? null : container.Value;
+                    return _state == Promise.State.Rejected
+                        ? _rejectContainer.UnsafeAs<Internal.IRejectContainer>().Value
+                        : null;
                 }
             }
 
@@ -331,7 +316,7 @@ namespace Proto.Promises
                 {
                     ValidateCall();
                     ValidateRejected();
-                    return new ReasonContainer(_rejectContainer, Id);
+                    return new ReasonContainer(_rejectContainer.UnsafeAs<Internal.IRejectContainer>(), Id);
                 }
             }
 

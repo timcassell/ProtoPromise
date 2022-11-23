@@ -42,12 +42,14 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, int index)
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
                 {
                     if (TrySetComplete())
                     {
                         _result = handler.GetResult<TResult>();
-                        ReleaseAndHandleNext(handler);
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
+                        ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
                     handler.MaybeDispose();
@@ -84,12 +86,14 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, int index)
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
                 {
                     if (TrySetComplete())
                     {
                         _result = index;
-                        ReleaseAndHandleNext(handler);
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
+                        ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
                     handler.MaybeDispose();
@@ -126,12 +130,14 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, int index)
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
                 {
                     if (TrySetComplete())
                     {
                         _result = new ValueTuple<int, TResult>(index, handler.GetResult<TResult>());
-                        ReleaseAndHandleNext(handler);
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
+                        ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
                     handler.MaybeDispose();
@@ -168,7 +174,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, int index)
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
                 {
                     bool isComplete = handler.State == Promise.State.Resolved
                         ? TrySetComplete()
@@ -176,7 +182,9 @@ namespace Proto.Promises
                     if (isComplete)
                     {
                         _result = handler.GetResult<TResult>();
-                        ReleaseAndHandleNext(handler);
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
+                        ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
                     handler.SuppressRejection = true;
@@ -214,7 +222,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, int index)
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
                 {
                     bool isComplete = handler.State == Promise.State.Resolved
                         ? TrySetComplete()
@@ -222,7 +230,9 @@ namespace Proto.Promises
                     if (isComplete)
                     {
                         _result = index;
-                        ReleaseAndHandleNext(handler);
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
+                        ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
                     handler.SuppressRejection = true;
@@ -260,7 +270,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, int index)
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
                 {
                     bool isComplete = handler.State == Promise.State.Resolved
                         ? TrySetComplete()
@@ -268,7 +278,9 @@ namespace Proto.Promises
                     if (isComplete)
                     {
                         _result = new ValueTuple<int, TResult>(index, handler.GetResult<TResult>());
-                        ReleaseAndHandleNext(handler);
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
+                        ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
                     handler.SuppressRejection = true;

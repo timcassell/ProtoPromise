@@ -190,12 +190,8 @@ namespace Proto.Promises
                 promise
                     .ContinueWith(yieldInstruction, (yi, resultContainer) =>
                     {
-                        var state = resultContainer.State;
-                        if (state != Promise.State.Resolved)
-                        {
-                            yi._rejectContainer = resultContainer._target._rejectContainer;
-                        }
-                        yi._state = state;
+                        yi._rejectContainer = resultContainer._target._rejectContainer;
+                        yi._state = resultContainer.State;
                         yi.MaybeDispose();
                     })
                     .Forget();
@@ -265,16 +261,9 @@ namespace Proto.Promises
                 promise
                     .ContinueWith(yieldInstruction, (yi, resultContainer) =>
                     {
-                        var state = resultContainer.State;
-                        if (state == Promise.State.Resolved)
-                        {
-                            yi._result = resultContainer.Result;
-                        }
-                        else
-                        {
-                            yi._rejectContainer = resultContainer._rejectContainer;
-                        }
-                        yi._state = state;
+                        yi._result = resultContainer.Result;
+                        yi._rejectContainer = resultContainer._rejectContainer;
+                        yi._state = resultContainer.State;
                         yi.MaybeDispose();
                     })
                     .Forget();
