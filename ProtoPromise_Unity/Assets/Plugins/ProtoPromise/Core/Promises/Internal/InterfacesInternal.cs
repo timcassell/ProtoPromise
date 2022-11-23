@@ -41,7 +41,7 @@ namespace Proto.Promises
             // This is overridden in PromiseConfigured and PromiseProgress.
             internal virtual void HandleFromContext() { throw new System.InvalidOperationException(); }
             // For Merge/Race promises
-            internal virtual void Handle(PromiseRefBase handler, int index) { throw new System.InvalidOperationException(); }
+            internal virtual void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index) { throw new System.InvalidOperationException(); }
 #if PROMISE_PROGRESS
             internal virtual void MaybeReportProgress(PromiseRefBase reporter, double progress)
             {
@@ -68,33 +68,33 @@ namespace Proto.Promises
             // These interfaces are only used in this manner because IDelegate<TArg, TResult> does not work with structs in old IL2CPP runtime.
             internal interface IDelegateResolveOrCancel
             {
-                void InvokeResolver(PromiseRefBase handler, PromiseRefBase owner);
+                void InvokeResolver(PromiseRefBase handler, Promise.State state, PromiseRefBase owner);
             }
 
             internal interface IDelegateResolveOrCancelPromise
             {
-                void InvokeResolver(PromiseRefBase handler, PromiseRefBase owner);
+                void InvokeResolver(PromiseRefBase handler, Promise.State state, PromiseRefBase owner);
                 bool IsNull { get; }
             }
 
             internal interface IDelegateReject
             {
-                void InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner);
+                void InvokeRejecter(object rejectContainer, PromiseRefBase owner);
             }
 
             internal interface IDelegateRejectPromise
             {
-                void InvokeRejecter(PromiseRefBase handler, PromiseRefBase owner);
+                void InvokeRejecter(PromiseRefBase handler, object rejectContainer, PromiseRefBase owner);
             }
 
             internal interface IDelegateContinue
             {
-                void Invoke(PromiseRefBase handler, PromiseRefBase owner);
+                void Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, PromiseRefBase owner);
             }
 
             internal interface IDelegateContinuePromise
             {
-                void Invoke(PromiseRefBase handler, PromiseRefBase owner);
+                void Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, PromiseRefBase owner);
                 bool IsNull { get; }
             }
         }

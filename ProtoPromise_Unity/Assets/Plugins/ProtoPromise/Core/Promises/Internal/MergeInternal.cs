@@ -51,11 +51,11 @@ namespace Proto.Promises
                     return Interlocked.Add(ref _waitCount, -1) == 0;
                 }
 
-                protected void ReleaseAndHandleNext(PromiseRefBase handler)
+                protected void ReleaseAndHandleNext(object rejectContainer, Promise.State state)
                 {
                     // Decrement retain counter instead of calling MaybeDispose, since we know the next handler will call MaybeDispose.
                     InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
-                    HandleNextFromHandler(handler);
+                    HandleNextInternal(rejectContainer, state);
                 }
 
                 protected void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
@@ -129,18 +129,18 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Handle(PromiseRefBase handler, int index)
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
                 {
-                    bool isComplete = handler.State == Promise.State.Resolved
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+                    bool isComplete = state == Promise.State.Resolved
                         ? RemoveWaiterAndGetIsComplete()
                         : TrySetComplete();
                     if (isComplete)
                     {
-                        ReleaseAndHandleNext(handler);
+                        ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
-                    handler.SuppressRejection = true;
-                    handler.MaybeDispose();
                     MaybeDispose();
                 }
             }
@@ -159,10 +159,10 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override sealed void Handle(PromiseRefBase handler, int index)
+                internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
                 {
                     bool isComplete;
-                    if (handler.State == Promise.State.Resolved)
+                    if (state == Promise.State.Resolved)
                     {
                         ReadResult(handler, index);
                         isComplete = RemoveWaiterAndGetIsComplete();
@@ -171,13 +171,13 @@ namespace Proto.Promises
                     {
                         isComplete = TrySetComplete();
                     }
-                    if (isComplete)
-                    {
-                        ReleaseAndHandleNext(handler);
-                        return;
-                    }
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
+                    if (isComplete)
+                    {
+                        ReleaseAndHandleNext(rejectContainer, state);
+                        return;
+                    }
                     MaybeDispose();
                 }
 

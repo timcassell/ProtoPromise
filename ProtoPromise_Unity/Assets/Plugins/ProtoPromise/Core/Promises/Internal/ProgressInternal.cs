@@ -1074,9 +1074,8 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
 #endif
+                    Dispose();
                     _owner = null;
-                    _result = default(TResult);
-                    _rejectContainerOrPreviousOrLink = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -1870,7 +1869,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void Handle(float oldProgress, float maxProgress, PromiseRefBase handler, int index, object lockedObject)
+                internal void Handle(float oldProgress, float maxProgress, PromiseRefBase handler, object rejectContainer, Promise.State state, int index, object lockedObject)
                 {
                     ThrowIfInPool(this);
 
@@ -1891,7 +1890,7 @@ namespace Proto.Promises
                         ReportProgress(oldProgress, ref progressReportValues);
                         progressReportValues.ReportProgressToAllListeners();
                     }
-                    _targetMergePromise.Handle(handler, index);
+                    _targetMergePromise.Handle(handler, rejectContainer, state, index);
                 }
 
                 [MethodImpl(MethodImplOptions.NoInlining)]
@@ -2117,7 +2116,7 @@ namespace Proto.Promises
 
                     handler.SetCompletionState(rejectContainer, state);
                     // We continue to hold the lock until the target has been handled.
-                    _target.Handle(_currentProgress, _progressFields._max, handler, _index, this);
+                    _target.Handle(_currentProgress, _progressFields._max, handler, rejectContainer, state, _index, this);
                     MaybeDispose(negativeDetachedCount);
                 }
             } // MergeProgressPassThrough
@@ -2247,7 +2246,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                new internal void Handle(PromiseRefBase handler, int index)
+                new internal void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
                 {
                     ThrowIfInPool(this);
 
@@ -2255,7 +2254,7 @@ namespace Proto.Promises
                     {
                         Dispose();
                     }
-                    _targetRacePromise.Handle(handler, index);
+                    _targetRacePromise.Handle(handler, rejectContainer, state, index);
                 }
             } // ProgressRacer
 
@@ -2472,7 +2471,7 @@ namespace Proto.Promises
                     handler.SetCompletionState(rejectContainer, state);
                     var racer = _target;
                     MaybeDispose(negativeDetachedCount);
-                    racer.Handle(handler, _index);
+                    racer.Handle(handler, rejectContainer, state, _index);
                 }
             } // RaceProgressPassThrough
 
