@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 #pragma warning disable CA1507 // Use nameof to express symbol names
@@ -34,10 +35,19 @@ namespace Proto.Promises.Threading
 
             private SyncCallback() { }
 
+            [MethodImpl(Internal.InlineOption)]
+            private static SyncCallback GetOrCreate()
+            {
+                var obj = Internal.ObjectPool.TryTakeOrInvalid<SyncCallback>();
+                return obj == Internal.PromiseRefBase.InvalidAwaitSentinel.s_instance
+                    ? new SyncCallback()
+                    : obj.UnsafeAs<SyncCallback>();
+            }
+
             internal static SyncCallback GetOrCreate(SendOrPostCallback callback, object state, bool needsPulse)
             {
-                var sc = Internal.ObjectPool.TryTake<SyncCallback>()
-                    ?? new SyncCallback();
+                var sc = GetOrCreate();
+                sc._next = null;
                 sc._callback = callback;
                 sc._state = state;
                 sc._needsPulse = needsPulse;

@@ -91,10 +91,18 @@ namespace Proto.Promises
                 private AwaiterRef() { }
 
                 [MethodImpl(InlineOption)]
+                private static AwaiterRef<TContinuer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<AwaiterRef<TContinuer>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new AwaiterRef<TContinuer>()
+                        : obj.UnsafeAs<AwaiterRef<TContinuer>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static AwaiterRef<TContinuer> GetOrCreate(TContinuer continuer)
                 {
-                    var awaiter = ObjectPool.TryTake<AwaiterRef<TContinuer>>()
-                        ?? new AwaiterRef<TContinuer>();
+                    var awaiter = GetOrCreate();
                     awaiter._continuer = continuer;
                     SetCreatedStacktrace(awaiter, 3);
                     return awaiter;

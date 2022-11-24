@@ -48,7 +48,7 @@ namespace Proto.Promises
             }
         }
 
-        partial class ValueLinkedStackSafe<T> : TraceableCollection
+        partial class ValueLinkedStackSafe : TraceableCollection
         {
             internal ValueLinkedStackSafe() { }
 
@@ -282,10 +282,10 @@ namespace Proto.Promises
         /// This structure is unsuitable for general purpose.
         /// </summary>
 #if PROTO_PROMISE_DEVELOPER_MODE
-        internal partial class ValueLinkedStackSafe<T> where T : HandleablePromiseBase
+        internal partial class ValueLinkedStackSafe
 #else
         [DebuggerNonUserCode, StackTraceHidden]
-        internal struct ValueLinkedStackSafe<T> where T : HandleablePromiseBase
+        internal struct ValueLinkedStackSafe
 #endif
         {
             private HandleablePromiseBase _head;
@@ -295,7 +295,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal ValueLinkedStackSafe(HandleablePromiseBase tailSentinel)
             {
-                // Sentinel is PromiseRefBase.InvalidAwaitSentinel.s_instance
+                // Sentinel is PromiseRefBase.InvalidAwaitSentinel.s_instance, it references itself so we don't need any null checks.
                 _head = tailSentinel;
                 _locker = new SpinLocker();
             }
@@ -309,9 +309,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void Push(T item)
+            internal void Push(HandleablePromiseBase item)
             {
-                AssertNotInCollection((HandleablePromiseBase) item);
+                AssertNotInCollection(item);
 
                 _locker.Enter();
                 item._next = _head;
@@ -320,28 +320,18 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal T TryPop()
+            internal HandleablePromiseBase PopOrInvalid()
             {
+                // We use InvalidAwaitSentinel as the sentinel, so we don't need a branch here to check the bottom of the stack, because it references itself.
                 _locker.Enter();
                 var head = _head;
                 _head = head._next;
                 _locker.Exit();
 
-                if (head == PromiseRefBase.InvalidAwaitSentinel.s_instance)
-                {
-                    return null;
-                }
-                MarkRemovedFromCollection(head);
-                return head.UnsafeAs<T>();
-            }
-
-            [MethodImpl(InlineOption)]
-            static private void MarkRemovedFromCollection(HandleablePromiseBase item)
-            {
-                item._next = null;
 #if PROTO_PROMISE_DEVELOPER_MODE
-                CollectionChecker<HandleablePromiseBase>.Remove(item);
+                CollectionChecker<HandleablePromiseBase>.Remove(head);
 #endif
+                return head;
             }
         }
 
@@ -490,10 +480,19 @@ namespace Proto.Promises
                 internal T _value;
 
                 [MethodImpl(InlineOption)]
+                private static Node GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<Node>();
+                    return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
+                        ? new Node()
+                        : obj.UnsafeAs<Node>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static Node GetOrCreate(T value)
                 {
-                    var node = ObjectPool.TryTake<Node>()
-                        ?? new Node();
+                    var node = GetOrCreate();
+                    node._next = null;
                     node._value = value;
                     return node;
                 }

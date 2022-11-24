@@ -109,8 +109,7 @@ namespace Proto.Promises
 
             internal static MergePromise<VoidResult> GetOrCreateAllPromiseVoid(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ushort depth)
             {
-                var promise = ObjectPool.TryTake<MergePromiseVoid>()
-                    ?? new MergePromiseVoid();
+                var promise = MergePromiseVoid.GetOrCreate();
                 promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
                 return promise;
             }
@@ -120,6 +119,15 @@ namespace Proto.Promises
 #endif
             private sealed class MergePromiseVoid : MergePromise<VoidResult>
             {
+                [MethodImpl(InlineOption)]
+                internal static MergePromiseVoid GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseVoid>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new MergePromiseVoid()
+                        : obj.UnsafeAs<MergePromiseVoid>();
+                }
+
                 internal override void MaybeDispose()
                 {
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
@@ -192,9 +200,7 @@ namespace Proto.Promises
                 IList<TResult> value,
                 int pendingAwaits, ulong completedProgress, ushort depth)
             {
-                // We take the base type instead of the concrete type because the base type re-pools with its type.
-                var promise = ObjectPool.TryTake<MergePromiseT<IList<TResult>>, AllPromise<TResult>>()
-                    ?? new AllPromise<TResult>();
+                var promise = AllPromise<TResult>.GetOrCreate();
                 promise._result = value;
                 promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
                 return promise;
@@ -202,6 +208,16 @@ namespace Proto.Promises
 
             private sealed class AllPromise<TResult> : MergePromiseT<IList<TResult>>
             {
+                [MethodImpl(InlineOption)]
+                internal static AllPromise<TResult> GetOrCreate()
+                {
+                    // We take the base type instead of the concrete type because the base type re-pools with its type.
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<IList<TResult>>, AllPromise<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new AllPromise<TResult>()
+                        : obj.UnsafeAs<AllPromise<TResult>>();
+                }
+
                 protected override void ReadResult(PromiseRefBase handler, int index)
                 {
                     _result[index] = handler.GetResult<TResult>();
@@ -216,9 +232,7 @@ namespace Proto.Promises
                 T1 value,
                 int pendingAwaits, ulong completedProgress, ushort depth)
             {
-                // We take the base type instead of the concrete type because the base type re-pools with its type.
-                var promise = ObjectPool.TryTake<MergePromiseT<T1>, MergePromiseTuple<T1>>()
-                    ?? new MergePromiseTuple<T1>();
+                var promise = MergePromiseTuple<T1>.GetOrCreate();
                 promise._result = value;
                 promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
                 return promise;
@@ -226,6 +240,16 @@ namespace Proto.Promises
 
             private sealed class MergePromiseTuple<T1> : MergePromiseT<T1>
             {
+                [MethodImpl(InlineOption)]
+                internal static MergePromiseTuple<T1> GetOrCreate()
+                {
+                    // We take the base type instead of the concrete type because the base type re-pools with its type.
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<T1>, MergePromiseTuple<T1>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new MergePromiseTuple<T1>()
+                        : obj.UnsafeAs<MergePromiseTuple<T1>>();
+                }
+
                 protected override void ReadResult(PromiseRefBase handler, int index)
                 {
                     if (index == 0)
@@ -243,9 +267,7 @@ namespace Proto.Promises
                 ValueTuple<T1, T2> value,
                 int pendingAwaits, ulong completedProgress, ushort depth)
             {
-                // We take the base type instead of the concrete type because the base type re-pools with its type.
-                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2>>, MergePromiseTuple<T1, T2>>()
-                    ?? new MergePromiseTuple<T1, T2>();
+                var promise = MergePromiseTuple<T1, T2>.GetOrCreate();
                 promise._result = value;
                 promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
                 return promise;
@@ -253,6 +275,16 @@ namespace Proto.Promises
 
             private sealed class MergePromiseTuple<T1, T2> : MergePromiseT<ValueTuple<T1, T2>>
             {
+                [MethodImpl(InlineOption)]
+                internal static MergePromiseTuple<T1, T2> GetOrCreate()
+                {
+                    // We take the base type instead of the concrete type because the base type re-pools with its type.
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2>>, MergePromiseTuple<T1, T2>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new MergePromiseTuple<T1, T2>()
+                        : obj.UnsafeAs<MergePromiseTuple<T1, T2>>();
+                }
+
                 protected override void ReadResult(PromiseRefBase handler, int index)
                 {
                     switch (index)
@@ -275,9 +307,7 @@ namespace Proto.Promises
                 ValueTuple<T1, T2, T3> value,
                 int pendingAwaits, ulong completedProgress, ushort depth)
             {
-                // We take the base type instead of the concrete type because the base type re-pools with its type.
-                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2, T3>>, MergePromiseTuple<T1, T2, T3>>()
-                    ?? new MergePromiseTuple<T1, T2, T3>();
+                var promise = MergePromiseTuple<T1, T2, T3>.GetOrCreate();
                 promise._result = value;
                 promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
                 return promise;
@@ -285,6 +315,16 @@ namespace Proto.Promises
 
             private sealed class MergePromiseTuple<T1, T2, T3> : MergePromiseT<ValueTuple<T1, T2, T3>>
             {
+                [MethodImpl(InlineOption)]
+                internal static MergePromiseTuple<T1, T2, T3> GetOrCreate()
+                {
+                    // We take the base type instead of the concrete type because the base type re-pools with its type.
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2, T3>>, MergePromiseTuple<T1, T2, T3>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new MergePromiseTuple<T1, T2, T3>()
+                        : obj.UnsafeAs<MergePromiseTuple<T1, T2, T3>>();
+                }
+
                 protected override void ReadResult(PromiseRefBase handler, int index)
                 {
                     switch (index)
@@ -310,9 +350,7 @@ namespace Proto.Promises
                 ValueTuple<T1, T2, T3, T4> value,
                 int pendingAwaits, ulong completedProgress, ushort depth)
             {
-                // We take the base type instead of the concrete type because the base type re-pools with its type.
-                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2, T3, T4>>, MergePromiseTuple<T1, T2, T3, T4>>()
-                    ?? new MergePromiseTuple<T1, T2, T3, T4>();
+                var promise = MergePromiseTuple<T1, T2, T3, T4>.GetOrCreate();
                 promise._result = value;
                 promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
                 return promise;
@@ -320,6 +358,16 @@ namespace Proto.Promises
 
             private sealed class MergePromiseTuple<T1, T2, T3, T4> : MergePromiseT<ValueTuple<T1, T2, T3, T4>>
             {
+                [MethodImpl(InlineOption)]
+                internal static MergePromiseTuple<T1, T2, T3, T4> GetOrCreate()
+                {
+                    // We take the base type instead of the concrete type because the base type re-pools with its type.
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2, T3, T4>>, MergePromiseTuple<T1, T2, T3, T4>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new MergePromiseTuple<T1, T2, T3, T4>()
+                        : obj.UnsafeAs<MergePromiseTuple<T1, T2, T3, T4>>();
+                }
+
                 protected override void ReadResult(PromiseRefBase handler, int index)
                 {
                     switch (index)
@@ -348,9 +396,7 @@ namespace Proto.Promises
                 ValueTuple<T1, T2, T3, T4, T5> value,
                 int pendingAwaits, ulong completedProgress, ushort depth)
             {
-                // We take the base type instead of the concrete type because the base type re-pools with its type.
-                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5>>, MergePromiseTuple<T1, T2, T3, T4, T5>>()
-                    ?? new MergePromiseTuple<T1, T2, T3, T4, T5>();
+                var promise = MergePromiseTuple<T1, T2, T3, T4, T5>.GetOrCreate();
                 promise._result = value;
                 promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
                 return promise;
@@ -358,6 +404,16 @@ namespace Proto.Promises
 
             private sealed class MergePromiseTuple<T1, T2, T3, T4, T5> : MergePromiseT<ValueTuple<T1, T2, T3, T4, T5>>
             {
+                [MethodImpl(InlineOption)]
+                internal static MergePromiseTuple<T1, T2, T3, T4, T5> GetOrCreate()
+                {
+                    // We take the base type instead of the concrete type because the base type re-pools with its type.
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5>>, MergePromiseTuple<T1, T2, T3, T4, T5>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new MergePromiseTuple<T1, T2, T3, T4, T5>()
+                        : obj.UnsafeAs<MergePromiseTuple<T1, T2, T3, T4, T5>>();
+                }
+
                 protected override void ReadResult(PromiseRefBase handler, int index)
                 {
                     switch (index)
@@ -389,9 +445,7 @@ namespace Proto.Promises
                 ValueTuple<T1, T2, T3, T4, T5, T6> value,
                 int pendingAwaits, ulong completedProgress, ushort depth)
             {
-                // We take the base type instead of the concrete type because the base type re-pools with its type.
-                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6>>, MergePromiseTuple<T1, T2, T3, T4, T5, T6>>()
-                    ?? new MergePromiseTuple<T1, T2, T3, T4, T5, T6>();
+                var promise = MergePromiseTuple<T1, T2, T3, T4, T5, T6>.GetOrCreate();
                 promise._result = value;
                 promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
                 return promise;
@@ -399,6 +453,16 @@ namespace Proto.Promises
 
             private sealed class MergePromiseTuple<T1, T2, T3, T4, T5, T6> : MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6>>
             {
+                [MethodImpl(InlineOption)]
+                internal static MergePromiseTuple<T1, T2, T3, T4, T5, T6> GetOrCreate()
+                {
+                    // We take the base type instead of the concrete type because the base type re-pools with its type.
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6>>, MergePromiseTuple<T1, T2, T3, T4, T5, T6>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new MergePromiseTuple<T1, T2, T3, T4, T5, T6>()
+                        : obj.UnsafeAs<MergePromiseTuple<T1, T2, T3, T4, T5, T6>>();
+                }
+
                 protected override void ReadResult(PromiseRefBase handler, int index)
                 {
                     switch (index)
@@ -433,9 +497,7 @@ namespace Proto.Promises
                 ValueTuple<T1, T2, T3, T4, T5, T6, T7> value,
                 int pendingAwaits, ulong completedProgress, ushort depth)
             {
-                // We take the base type instead of the concrete type because the base type re-pools with its type.
-                var promise = ObjectPool.TryTake<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>, MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>>()
-                    ?? new MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>();
+                var promise = MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>.GetOrCreate();
                 promise._result = value;
                 promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
                 return promise;
@@ -443,6 +505,16 @@ namespace Proto.Promises
 
             private sealed class MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7> : MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>
             {
+                [MethodImpl(InlineOption)]
+                internal static MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7> GetOrCreate()
+                {
+                    // We take the base type instead of the concrete type because the base type re-pools with its type.
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>, MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>()
+                        : obj.UnsafeAs<MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>>();
+                }
+
                 protected override void ReadResult(PromiseRefBase handler, int index)
                 {
                     switch (index)

@@ -6,6 +6,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
@@ -34,10 +35,18 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                [MethodImpl(InlineOption)]
+                private static RacePromise<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<RacePromise<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new RacePromise<TResult>()
+                        : obj.UnsafeAs<RacePromise<TResult>>();
+                }
+
                 internal static RacePromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<RacePromise<TResult>>()
-                        ?? new RacePromise<TResult>();
+                    var promise = GetOrCreate();
                     promise.Setup(promisePassThroughs, pendingAwaits, depth);
                     return promise;
                 }
@@ -78,10 +87,18 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                [MethodImpl(InlineOption)]
+                private static RacePromiseWithIndexVoid GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<RacePromiseWithIndexVoid>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new RacePromiseWithIndexVoid()
+                        : obj.UnsafeAs<RacePromiseWithIndexVoid>();
+                }
+
                 new internal static RacePromiseWithIndexVoid GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<RacePromiseWithIndexVoid>()
-                        ?? new RacePromiseWithIndexVoid();
+                    var promise = GetOrCreate();
                     promise.Setup(promisePassThroughs, pendingAwaits, depth);
                     return promise;
                 }
@@ -122,10 +139,18 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                [MethodImpl(InlineOption)]
+                private static RacePromiseWithIndex<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<RacePromiseWithIndex<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new RacePromiseWithIndex<TResult>()
+                        : obj.UnsafeAs<RacePromiseWithIndex<TResult>>();
+                }
+
                 new internal static RacePromiseWithIndex<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<RacePromiseWithIndex<TResult>>()
-                        ?? new RacePromiseWithIndex<TResult>();
+                    var promise = GetOrCreate();
                     promise.Setup(promisePassThroughs, pendingAwaits, depth);
                     return promise;
                 }
@@ -166,10 +191,18 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                [MethodImpl(InlineOption)]
+                private static FirstPromise<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<FirstPromise<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new FirstPromise<TResult>()
+                        : obj.UnsafeAs<FirstPromise<TResult>>();
+                }
+
                 new internal static FirstPromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<FirstPromise<TResult>>()
-                        ?? new FirstPromise<TResult>();
+                    var promise = GetOrCreate();
                     promise.Setup(promisePassThroughs, pendingAwaits, depth);
                     return promise;
                 }
@@ -214,10 +247,18 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                [MethodImpl(InlineOption)]
+                private static FirstPromiseWithIndexVoid GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<FirstPromiseWithIndexVoid>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new FirstPromiseWithIndexVoid()
+                        : obj.UnsafeAs<FirstPromiseWithIndexVoid>();
+                }
+
                 new internal static FirstPromiseWithIndexVoid GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<FirstPromiseWithIndexVoid>()
-                        ?? new FirstPromiseWithIndexVoid();
+                    var promise = GetOrCreate();
                     promise.Setup(promisePassThroughs, pendingAwaits, depth);
                     return promise;
                 }
@@ -262,10 +303,18 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                [MethodImpl(InlineOption)]
+                private static FirstPromiseWithIndex<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<FirstPromiseWithIndex<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new FirstPromiseWithIndex<TResult>()
+                        : obj.UnsafeAs<FirstPromiseWithIndex<TResult>>();
+                }
+
                 new internal static FirstPromiseWithIndex<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<FirstPromiseWithIndex<TResult>>()
-                        ?? new FirstPromiseWithIndex<TResult>();
+                    var promise = GetOrCreate();
                     promise.Setup(promisePassThroughs, pendingAwaits, depth);
                     return promise;
                 }

@@ -40,12 +40,12 @@ namespace Proto.Promises
 #endif
             private static class Type<T> where T : HandleablePromiseBase
             {
-                // Using ValueLinkedStackSafe<> makes object pooling free.
-                // No array allocations or linked list node allocations are necessary (the objects have links built-in through the ILinked<> interface).
+                // Using ValueLinkedStackSafe makes object pooling free.
+                // No array allocations or linked list node allocations are necessary (the objects have links built-in through the HandleablePromiseBase._next property).
                 // Even the pool itself doesn't require a class instance (that would be necessary with a typed dictionary).
 
                 // This must not be readonly.
-                private static ValueLinkedStackSafe<T> s_pool = new ValueLinkedStackSafe<T>(PromiseRefBase.InvalidAwaitSentinel.s_instance);
+                private static ValueLinkedStackSafe s_pool = new ValueLinkedStackSafe(PromiseRefBase.InvalidAwaitSentinel.s_instance);
 
                 // The downside to static pools instead of a Type dictionary is adding each type's clear function to the OnClearPool delegate consumes memory and is potentially more expensive than clearing a dictionary.
                 // This cost could be removed if Promise.Config.ObjectPoolingEnabled is made constant and set to false, and we add a check before accessing the pool.
@@ -61,9 +61,9 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static T TryTake()
+                internal static HandleablePromiseBase TryTakeOrInvalid()
                 {
-                    return s_pool.TryPop();
+                    return s_pool.PopOrInvalid();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -74,14 +74,14 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static T TryTake<T>() where T : HandleablePromiseBase
+            internal static HandleablePromiseBase TryTakeOrInvalid<T>() where T : HandleablePromiseBase
             {
-                T obj = Type<T>.TryTake();
+                var obj = Type<T>.TryTakeOrInvalid();
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 if (s_trackObjectsForRelease & obj == null)
                 {
                     // Create here via reflection so that the object can be tracked.
-                    obj = Activator.CreateInstance(typeof(T), true).UnsafeAs<T>();
+                    obj = Activator.CreateInstance(typeof(T), true).UnsafeAs<HandleablePromiseBase>();
                 }
 #endif
                 MarkNotInPool(obj);
@@ -89,21 +89,21 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static TActual TryTake<T, TActual>()
+            internal static HandleablePromiseBase TryTakeOrInvalid<T, TActual>()
                 where T : HandleablePromiseBase
                 where TActual : T
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                TActual obj = Type<T>.TryTake().UnsafeAs<TActual>();
+                var obj = Type<T>.TryTakeOrInvalid();
                 if (s_trackObjectsForRelease & obj == null)
                 {
                     // Create here via reflection so that the object can be tracked.
-                    obj = Activator.CreateInstance(typeof(TActual), true).UnsafeAs<TActual>();
+                    obj = Activator.CreateInstance(typeof(TActual), true).UnsafeAs<HandleablePromiseBase>();
                 }
                 MarkNotInPool(obj);
                 return obj;
 #else
-                return TryTake<T>().UnsafeAs<TActual>();
+                return TryTakeOrInvalid<T>();
 #endif
             }
 
@@ -141,6 +141,10 @@ namespace Proto.Promises
 
             static partial void MarkNotInPool(object obj)
             {
+                if (obj == PromiseRefBase.InvalidAwaitSentinel.s_instance)
+                {
+                    return;
+                }
                 lock (s_pooledObjects)
                 {
                     s_pooledObjects.Remove(obj);

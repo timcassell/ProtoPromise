@@ -196,72 +196,100 @@ namespace ProtoPromiseTests.Threading
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
         }
 
-        [Test]
-        public void PromiseWithReferenceBacking_ThenMayOnlyBeCalledOnce_void()
+        private static List<Action<Promise>> GetThenActions_void()
         {
-            var actions = new List<Action<Promise>>(TestHelper.ResolveActionsVoid(() => { }));
-            actions.AddRange(TestHelper.ThenActionsVoid(() => { }, null));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in actions)
+            var actions = new List<Action<Promise>>(TestHelper.ResolveActionsVoid());
+            actions.AddRange(TestHelper.ThenActionsVoid());
+            return actions;
+        }
+
+        private static IEnumerable<TestCaseData> GetThenArgs_void()
+        {
+            var actions = GetThenActions_void();
+            for (int i = 0; i < actions.Count; ++i)
             {
-                int successCount = 0, invalidCount = 0;
-                var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise;
-
-                threadHelper.ExecuteMultiActionParallel(
-                    () =>
-                    {
-                        try
-                        {
-                            action(promise);
-                            Interlocked.Increment(ref successCount);
-                        }
-                        catch (Proto.Promises.InvalidOperationException)
-                        {
-                            Interlocked.Increment(ref invalidCount);
-                        }
-                    }
-                );
-
-                deferred.Resolve();
-
-                Assert.AreEqual(1, successCount);
-                Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
+                yield return new TestCaseData(i);
             }
         }
 
-        [Test]
-        public void PromiseWithReferenceBacking_ThenMayOnlyBeCalledOnce_T()
+        // It takes a long time to test all then actions, so split it up for each action.
+        [Test, TestCaseSource("GetThenArgs_void")]
+        public void PromiseWithReferenceBacking_ThenMayOnlyBeCalledOnce_void(int thenIndex)
         {
-            var actions = new List<Action<Promise<int>>>(TestHelper.ResolveActions<int>(v => { }));
-            actions.AddRange(TestHelper.ThenActions<int>(v => { }, null));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in actions)
-            {
-                int successCount = 0, invalidCount = 0;
-                var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise;
+            var actions = GetThenActions_void();
+            var action = actions[thenIndex];
 
-                threadHelper.ExecuteMultiActionParallel(
-                    () =>
+            int successCount = 0, invalidCount = 0;
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise;
+
+            new ThreadHelper().ExecuteMultiActionParallel(
+                () =>
+                {
+                    try
                     {
-                        try
-                        {
-                            action(promise);
-                            Interlocked.Increment(ref successCount);
-                        }
-                        catch (Proto.Promises.InvalidOperationException)
-                        {
-                            Interlocked.Increment(ref invalidCount);
-                        }
+                        action(promise);
+                        Interlocked.Increment(ref successCount);
                     }
-                );
+                    catch (Proto.Promises.InvalidOperationException)
+                    {
+                        Interlocked.Increment(ref invalidCount);
+                    }
+                }
+            );
 
-                deferred.Resolve(1);
+            deferred.Resolve();
 
-                Assert.AreEqual(1, successCount);
-                Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
+            Assert.AreEqual(1, successCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
+        }
+
+        private static List<Action<Promise<int>>> GetThenActions_T()
+        {
+            var actions = new List<Action<Promise<int>>>(TestHelper.ResolveActions<int>());
+            actions.AddRange(TestHelper.ThenActions<int>());
+            return actions;
+        }
+
+        private static IEnumerable<TestCaseData> GetThenArgs_T()
+        {
+            var actions = GetThenActions_void();
+            for (int i = 0; i < actions.Count; ++i)
+            {
+                yield return new TestCaseData(i);
             }
+        }
+
+        // It takes a long time to test all then actions, so split it up for each action.
+        [Test, TestCaseSource("GetThenArgs_T")]
+        public void PromiseWithReferenceBacking_ThenMayOnlyBeCalledOnce_T(int thenIndex)
+        {
+            var actions = GetThenActions_T();
+            var action = actions[thenIndex];
+
+            int successCount = 0, invalidCount = 0;
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise;
+
+            new ThreadHelper().ExecuteMultiActionParallel(
+                () =>
+                {
+                    try
+                    {
+                        action(promise);
+                        Interlocked.Increment(ref successCount);
+                    }
+                    catch (Proto.Promises.InvalidOperationException)
+                    {
+                        Interlocked.Increment(ref invalidCount);
+                    }
+                }
+            );
+
+            deferred.Resolve(1);
+
+            Assert.AreEqual(1, successCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
         }
 
         [Test]
