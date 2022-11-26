@@ -140,9 +140,18 @@ namespace Proto.Promises.Threading
         /// <summary>
         /// Create a new <see cref="PromiseSynchronizationContext"/> affiliated with the current thread.
         /// </summary>
-        public PromiseSynchronizationContext()
+        public PromiseSynchronizationContext() : this(Thread.CurrentThread) { }
+
+        /// <summary>
+        /// Create a new <see cref="PromiseSynchronizationContext"/> affiliated with the <paramref name="runThread"/>.
+        /// </summary>
+        public PromiseSynchronizationContext(Thread runThread)
         {
-            _thread = Thread.CurrentThread;
+            if (runThread == null)
+            {
+                throw new ArgumentNullException("runThread", "runThread may not be null", Internal.GetFormattedStacktrace(1));
+            }
+            _thread = runThread;
         }
 
         /// <summary>
@@ -190,7 +199,7 @@ namespace Proto.Promises.Threading
         }
 
         /// <summary>
-        /// Execute all callbacks that have been scheduled to run on this thread.
+        /// Execute all callbacks that have been scheduled to run on this context.
         /// </summary>
         /// <exception cref="System.InvalidOperationException">If this is called on a different thread than this was created on, or if this is called recursively.</exception>
         /// <exception cref="AggregateException">If one or more callbacks throw an exception, they will be wrapped and rethrown as <see cref="AggregateException"/>.</exception>
@@ -198,9 +207,9 @@ namespace Proto.Promises.Threading
         {
             if (Thread.CurrentThread != _thread | _isInvoking)
             {
-                throw new System.InvalidOperationException(_isInvoking
-                    ? "Execute invoked recursively. This is not supported."
-                    : "Execute may only be called from the thread on which the PromiseSynchronizationContext was created.");
+                throw new System.InvalidOperationException(Thread.CurrentThread != _thread
+                    ? "Execute may only be called from the thread on which the PromiseSynchronizationContext is affiliated."
+                    : "Execute invoked recursively. This is not supported.");
             }
 
             var currentContextInternal = Internal.ts_currentContext;
