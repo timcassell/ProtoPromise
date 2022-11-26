@@ -206,16 +206,16 @@ namespace Proto.Promises
                         --_remainingAvailableWorkers;
                         // We add to the wait counter before we run the worker to resolve a race condition where the counter could hit zero prematurely.
                         InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, 1);
-                        LaunchWorker(true);
+                        // We run the worker on the synchronization context, and we force async so that it will not block the current thread.
+                        Promise.Run(this, _this => _this.WorkerBody(true), _synchronizationContext, forceAsync: true)
+                            .Forget();
                     }
                 }
 
-                private void LaunchWorker(bool launchNext)
+                private void WorkerBody(bool launchNext)
                 {
-                    // We switch to the synchronization context, and we force async so that the new worker will be queued to run on a background thread
-                    // and not block the current worker, and because this calls itself recursively and we don't want to cause a StackOverflowException.
-                    // We do it this way instead of using async/await with a loop because old language versions do not support async/await.
-                    Promise.SwitchToContext(_synchronizationContext, forceAsync: true)
+                    // We do it this way instead of using async/await with a loop, because old language versions do not support async/await.
+                    Promise.Resolved()
                         .Then(ValueTuple.Create(this, launchNext), cv =>
                         {
                             // The worker body. Each worker will execute this same body.
@@ -277,7 +277,10 @@ namespace Proto.Promises
                     else
                     {
                         // Run the worker body again, but without launching another worker.
-                        LaunchWorker(false);
+                        // We run it on the synchronization context and force async,
+                        // because this is a recursive call and we don't want to cause a StackOverflowException.
+                        Promise.Run(this, _this => _this.WorkerBody(false), _synchronizationContext, forceAsync: true)
+                            .Forget();
                     }
                 }
 
