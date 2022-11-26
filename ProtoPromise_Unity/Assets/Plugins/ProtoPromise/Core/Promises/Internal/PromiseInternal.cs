@@ -115,10 +115,19 @@ namespace Proto.Promises
         {
             private PromiseSynchronousWaiter() { }
 
+            [MethodImpl(InlineOption)]
+            private static PromiseSynchronousWaiter GetOrCreate()
+            {
+                var obj = ObjectPool.TryTakeOrInvalid<PromiseSynchronousWaiter>();
+                return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
+                    ? new PromiseSynchronousWaiter()
+                    : obj.UnsafeAs<PromiseSynchronousWaiter>();
+            }
+
             internal static bool TryWaitForCompletion(PromiseRefBase promise, short promiseId, TimeSpan timeout)
             {
-                var waiter = ObjectPool.TryTake<PromiseSynchronousWaiter>()
-                    ?? new PromiseSynchronousWaiter();
+                var waiter = GetOrCreate();
+                waiter._next = null;
                 lock (waiter)
                 {
                     waiter._didWaitSuccessfully = false;
@@ -395,6 +404,7 @@ namespace Proto.Promises
                 {
                     throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(3));
                 }
+                ThrowIfInPool(this);
 
                 WaitUntilStateIsNotPending();
                 waiter.Handle(this, _rejectContainerOrPreviousOrLink, State);
@@ -667,10 +677,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseMultiAwait<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseMultiAwait<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseMultiAwait<TResult>()
+                        : obj.UnsafeAs<PromiseMultiAwait<TResult>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseMultiAwait<TResult> GetOrCreate(ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseMultiAwait<TResult>>()
-                        ?? new PromiseMultiAwait<TResult>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     return promise;
                 }
@@ -833,10 +851,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseDuplicate<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseDuplicate<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseDuplicate<TResult>()
+                        : obj.UnsafeAs<PromiseDuplicate<TResult>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseDuplicate<TResult> GetOrCreate(ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseDuplicate<TResult>>()
-                        ?? new PromiseDuplicate<TResult>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     return promise;
                 }
@@ -866,10 +892,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseDuplicateCancel<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseDuplicateCancel<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseDuplicateCancel<TResult>()
+                        : obj.UnsafeAs<PromiseDuplicateCancel<TResult>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseDuplicateCancel<TResult> GetOrCreate(ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseDuplicateCancel<TResult>>()
-                        ?? new PromiseDuplicateCancel<TResult>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._cancelationHelper.Reset();
                     return promise;
@@ -916,6 +950,15 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl(InlineOption)]
+                private static PromiseConfigured<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseConfigured<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseConfigured<TResult>()
+                        : obj.UnsafeAs<PromiseConfigured<TResult>>();
+                }
+
                 private static PromiseConfigured<TResult> GetOrCreateBase(SynchronizationContext synchronizationContext, ushort depth, bool forceAsync)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -924,8 +967,7 @@ namespace Proto.Promises
                         throw new InvalidOperationException("synchronizationContext cannot be null");
                     }
 #endif
-                    var promise = ObjectPool.TryTake<PromiseConfigured<TResult>>()
-                        ?? new PromiseConfigured<TResult>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._synchronizationContext = synchronizationContext;
                     promise._wasCanceled = false;
@@ -1224,10 +1266,18 @@ namespace Proto.Promises
                 private PromiseResolve() { }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseResolve<TResult, TResolver> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseResolve<TResult, TResolver>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseResolve<TResult, TResolver>()
+                        : obj.UnsafeAs<PromiseResolve<TResult, TResolver>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseResolve<TResult, TResolver> GetOrCreate(TResolver resolver, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseResolve<TResult, TResolver>>()
-                        ?? new PromiseResolve<TResult, TResolver>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._resolver = resolver;
                     return promise;
@@ -1263,10 +1313,18 @@ namespace Proto.Promises
                 private PromiseResolvePromise() { }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseResolvePromise<TResult, TResolver> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseResolvePromise<TResult, TResolver>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseResolvePromise<TResult, TResolver>()
+                        : obj.UnsafeAs<PromiseResolvePromise<TResult, TResolver>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseResolvePromise<TResult, TResolver> GetOrCreate(TResolver resolver, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseResolvePromise<TResult, TResolver>>()
-                        ?? new PromiseResolvePromise<TResult, TResolver>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._resolver = resolver;
                     return promise;
@@ -1310,10 +1368,18 @@ namespace Proto.Promises
                 private PromiseResolveReject() { }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseResolveReject<TResult, TResolver, TRejecter> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseResolveReject<TResult, TResolver, TRejecter>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseResolveReject<TResult, TResolver, TRejecter>()
+                        : obj.UnsafeAs<PromiseResolveReject<TResult, TResolver, TRejecter>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseResolveReject<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseResolveReject<TResult, TResolver, TRejecter>>()
-                        ?? new PromiseResolveReject<TResult, TResolver, TRejecter>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -1360,10 +1426,18 @@ namespace Proto.Promises
                 private PromiseResolveRejectPromise() { }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseResolveRejectPromise<TResult, TResolver, TRejecter> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseResolveRejectPromise<TResult, TResolver, TRejecter>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseResolveRejectPromise<TResult, TResolver, TRejecter>()
+                        : obj.UnsafeAs<PromiseResolveRejectPromise<TResult, TResolver, TRejecter>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseResolveRejectPromise<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseResolveRejectPromise<TResult, TResolver, TRejecter>>()
-                        ?? new PromiseResolveRejectPromise<TResult, TResolver, TRejecter>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
@@ -1415,10 +1489,18 @@ namespace Proto.Promises
                 private PromiseContinue() { }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseContinue<TResult, TContinuer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseContinue<TResult, TContinuer>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseContinue<TResult, TContinuer>()
+                        : obj.UnsafeAs<PromiseContinue<TResult, TContinuer>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseContinue<TResult, TContinuer> GetOrCreate(TContinuer continuer, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseContinue<TResult, TContinuer>>()
-                        ?? new PromiseContinue<TResult, TContinuer>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._continuer = continuer;
                     return promise;
@@ -1448,10 +1530,18 @@ namespace Proto.Promises
                 private PromiseContinuePromise() { }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseContinuePromise<TResult, TContinuer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseContinuePromise<TResult, TContinuer>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseContinuePromise<TResult, TContinuer>()
+                        : obj.UnsafeAs<PromiseContinuePromise<TResult, TContinuer>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseContinuePromise<TResult, TContinuer> GetOrCreate(TContinuer continuer, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseContinuePromise<TResult, TContinuer>>()
-                        ?? new PromiseContinuePromise<TResult, TContinuer>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._continuer = continuer;
                     return promise;
@@ -1488,10 +1578,18 @@ namespace Proto.Promises
                 private PromiseFinally() { }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseFinally<TResult, TFinalizer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseFinally<TResult, TFinalizer>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseFinally<TResult, TFinalizer>()
+                        : obj.UnsafeAs<PromiseFinally<TResult, TFinalizer>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseFinally<TResult, TFinalizer> GetOrCreate(TFinalizer finalizer, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseFinally<TResult, TFinalizer>>()
-                        ?? new PromiseFinally<TResult, TFinalizer>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._finalizer = finalizer;
                     return promise;
@@ -1535,10 +1633,18 @@ namespace Proto.Promises
                 private PromiseCancel() { }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseCancel<TResult, TCanceler> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseCancel<TResult, TCanceler>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseCancel<TResult, TCanceler>()
+                        : obj.UnsafeAs<PromiseCancel<TResult, TCanceler>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseCancel<TResult, TCanceler> GetOrCreate(TCanceler canceler, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseCancel<TResult, TCanceler>>()
-                        ?? new PromiseCancel<TResult, TCanceler>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._canceler = canceler;
                     return promise;
@@ -1574,10 +1680,18 @@ namespace Proto.Promises
                 private PromiseCancelPromise() { }
 
                 [MethodImpl(InlineOption)]
+                private static PromiseCancelPromise<TResult, TCanceler> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseCancelPromise<TResult, TCanceler>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseCancelPromise<TResult, TCanceler>()
+                        : obj.UnsafeAs<PromiseCancelPromise<TResult, TCanceler>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static PromiseCancelPromise<TResult, TCanceler> GetOrCreate(TCanceler resolver, ushort depth)
                 {
-                    var promise = ObjectPool.TryTake<PromiseCancelPromise<TResult, TCanceler>>()
-                        ?? new PromiseCancelPromise<TResult, TCanceler>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._canceler = resolver;
                     return promise;
@@ -1678,10 +1792,19 @@ namespace Proto.Promises
                 }
 #endif
 
+                [MethodImpl(InlineOption)]
+                private static PromisePassThrough GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromisePassThrough>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromisePassThrough()
+                        : obj.UnsafeAs<PromisePassThrough>();
+                }
+
                 internal static PromisePassThrough GetOrCreate(Promise owner, int index)
                 {
-                    var passThrough = ObjectPool.TryTake<PromisePassThrough>()
-                        ?? new PromisePassThrough();
+                    var passThrough = GetOrCreate();
+                    passThrough._next = null;
                     passThrough._owner = owner._ref;
                     passThrough._id = owner._id;
                     passThrough._index = index;

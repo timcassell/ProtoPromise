@@ -141,10 +141,18 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                [MethodImpl(InlineOption)]
+                private static DeferredPromise<TResult> GetFromPoolOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<DeferredPromise<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new DeferredPromise<TResult>()
+                        : obj.UnsafeAs<DeferredPromise<TResult>>();
+                }
+
                 internal static DeferredPromise<TResult> GetOrCreate()
                 {
-                    var promise = ObjectPool.TryTake<DeferredPromise<TResult>>()
-                        ?? new DeferredPromise<TResult>();
+                    var promise = GetFromPoolOrCreate();
                     promise.Reset();
                     return promise;
                 }
@@ -208,10 +216,18 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                [MethodImpl(InlineOption)]
+                new private static DeferredPromiseCancel<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<DeferredPromiseCancel<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new DeferredPromiseCancel<TResult>()
+                        : obj.UnsafeAs<DeferredPromiseCancel<TResult>>();
+                }
+
                 internal static DeferredPromiseCancel<TResult> GetOrCreate(CancelationToken cancelationToken)
                 {
-                    var promise = ObjectPool.TryTake<DeferredPromiseCancel<TResult>>()
-                        ?? new DeferredPromiseCancel<TResult>();
+                    var promise = GetOrCreate();
                     promise.Reset();
                     cancelationToken.TryRegister(promise, out promise._cancelationRegistration);
                     return promise;

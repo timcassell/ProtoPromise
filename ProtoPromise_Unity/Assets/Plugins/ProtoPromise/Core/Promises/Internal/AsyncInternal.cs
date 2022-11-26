@@ -428,10 +428,18 @@ namespace Proto.Promises
             internal partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
             {
                 [MethodImpl(InlineOption)]
+                private static AsyncPromiseRef<TResult> GetFromPoolOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<AsyncPromiseRef<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new AsyncPromiseRef<TResult>()
+                        : obj.UnsafeAs<AsyncPromiseRef<TResult>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static AsyncPromiseRef<TResult> GetOrCreate()
                 {
-                    var promise = ObjectPool.TryTake<AsyncPromiseRef<TResult>>()
-                        ?? new AsyncPromiseRef<TResult>();
+                    var promise = GetFromPoolOrCreate();
                     promise.Reset();
                     return promise;
                 }
@@ -583,10 +591,19 @@ namespace Proto.Promises
                         }
 
                         [MethodImpl(InlineOption)]
+                        private static Continuer<TStateMachine> GetOrCreate()
+                        {
+                            var obj = ObjectPool.TryTakeOrInvalid<Continuer<TStateMachine>>();
+                            return obj == InvalidAwaitSentinel.s_instance
+                                ? new Continuer<TStateMachine>()
+                                : obj.UnsafeAs<Continuer<TStateMachine>>();
+                        }
+
+                        [MethodImpl(InlineOption)]
                         public static Continuer<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
                         {
-                            var continuer = ObjectPool.TryTake<Continuer<TStateMachine>>()
-                                ?? new Continuer<TStateMachine>();
+                            var continuer = GetOrCreate();
+                            continuer._next = null;
                             continuer._stateMachine = stateMachine;
                             return continuer;
                         }
@@ -677,10 +694,18 @@ namespace Proto.Promises
                         _moveNext = ContinueMethod;
                     }
 
+                    [MethodImpl(InlineOption)]
+                    private static AsyncPromiseRefMachine<TStateMachine> GetOrCreate()
+                    {
+                        var obj = ObjectPool.TryTakeOrInvalid<AsyncPromiseRefMachine<TStateMachine>>();
+                        return obj == InvalidAwaitSentinel.s_instance
+                            ? new AsyncPromiseRefMachine<TStateMachine>()
+                            : obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>();
+                    }
+
                     internal static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
                     {
-                        var promise = ObjectPool.TryTake<AsyncPromiseRefMachine<TStateMachine>>()
-                            ?? new AsyncPromiseRefMachine<TStateMachine>();
+                        var promise = GetOrCreate();
                         promise.Reset();
                         // ORDER VERY IMPORTANT, ref must be set before copying stateMachine.
                         _ref = promise;

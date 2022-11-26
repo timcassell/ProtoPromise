@@ -4,6 +4,7 @@
 using System;
 using System.Collections;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace Proto.Promises
@@ -80,10 +81,19 @@ namespace Proto.Promises
 
             private Routine() { }
 
+            [MethodImpl(Internal.InlineOption)]
+            private static Routine GetOrCreate()
+            {
+                var obj = Internal.ObjectPool.TryTakeOrInvalid<Routine>();
+                return obj == Internal.PromiseRefBase.InvalidAwaitSentinel.s_instance
+                    ? new Routine()
+                    : obj.UnsafeAs<Routine>();
+            }
+
             internal static Promise WaitForInstruction(object yieldInstruction, MonoBehaviour runner)
             {
-                var routine = Internal.ObjectPool.TryTake<Routine>()
-                    ?? new Routine();
+                var routine = GetOrCreate();
+                routine._next = null;
                 routine._deferred = Promise.NewDeferred();
                 bool validRunner = runner != null;
                 runner = validRunner ? runner : PromiseYielderBehaviour.Instance;

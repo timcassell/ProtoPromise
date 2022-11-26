@@ -20,6 +20,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -161,10 +162,18 @@ namespace Proto.Promises
 
                 private PromiseParallelForEach() { }
 
+                [MethodImpl(InlineOption)]
+                private static PromiseParallelForEach<TEnumerator, TParallelBody, TSource> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseParallelForEach<TEnumerator, TParallelBody, TSource>()
+                        : obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>();
+                }
+
                 internal static PromiseParallelForEach<TEnumerator, TParallelBody, TSource> GetOrCreate(TEnumerator enumerator, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
                 {
-                    var promise = ObjectPool.TryTake<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>()
-                        ?? new PromiseParallelForEach<TEnumerator, TParallelBody, TSource>();
+                    var promise = GetOrCreate();
                     promise.Reset();
                     promise._result = enumerator;
                     promise._body = body;

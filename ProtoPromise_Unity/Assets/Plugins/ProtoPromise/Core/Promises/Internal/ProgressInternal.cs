@@ -495,6 +495,15 @@ namespace Proto.Promises
                     _progressFields._retainCounter = 2;
                 }
 
+                [MethodImpl(InlineOption)]
+                private static PromiseProgress<TResult, TProgress> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseProgress<TResult, TProgress>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseProgress<TResult, TProgress>()
+                        : obj.UnsafeAs<PromiseProgress<TResult, TProgress>>();
+                }
+
                 internal static PromiseProgress<TResult, TProgress> GetOrCreate(TProgress progress, ushort depth, bool isSynchronous, SynchronizationContext synchronizationContext, bool forceAsync)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -503,8 +512,7 @@ namespace Proto.Promises
                         throw new InvalidOperationException("synchronizationContext cannot be null");
                     }
 #endif
-                    var promise = ObjectPool.TryTake<PromiseProgress<TResult, TProgress>>()
-                        ?? new PromiseProgress<TResult, TProgress>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._progress = progress;
                     promise.IsCanceled = false;
@@ -523,8 +531,7 @@ namespace Proto.Promises
                         throw new System.InvalidOperationException("synchronizationContext cannot be null");
                     }
 #endif
-                    var promise = ObjectPool.TryTake<PromiseProgress<TResult, TProgress>>()
-                        ?? new PromiseProgress<TResult, TProgress>();
+                    var promise = GetOrCreate();
                     promise.Reset(depth);
                     promise._progress = progress;
                     promise.IsCanceled = false;
@@ -960,7 +967,7 @@ namespace Proto.Promises
                         return VerifyAndHandleWaiter(waiter, out previousWaiter);
                     }
                     previousWaiter = PendingAwaitSentinel.s_instance;
-                    return this; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
+                    return null; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -1044,10 +1051,18 @@ namespace Proto.Promises
                 // This is necessary because the _rejectContainerOrPreviousOrLink field is used to hook up the registered promises chain,
                 // and it would not be possible to do that for multiple progress listeners with a single promise object. So we have to create dummy objects to register multiple.
 
+                [MethodImpl(InlineOption)]
+                private static IndividualPromisePassThrough<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<IndividualPromisePassThrough<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new IndividualPromisePassThrough<TResult>()
+                        : obj.UnsafeAs<IndividualPromisePassThrough<TResult>>();
+                }
+
                 internal static IndividualPromisePassThrough<TResult> GetOrCreateAndRegister(PromiseMultiAwait<TResult> owner, ref ProgressHookupValues progressHookupValues)
                 {
-                    var passthrough = ObjectPool.TryTake<IndividualPromisePassThrough<TResult>>()
-                        ?? new IndividualPromisePassThrough<TResult>();
+                    var passthrough = GetOrCreate();
                     passthrough._owner = owner;
                     passthrough._next = progressHookupValues.ProgressListener;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -1121,10 +1136,19 @@ namespace Proto.Promises
 #endif
             private sealed partial class ProgressMultiAwait<TResult> : ProgressPassThrough
             {
+                [MethodImpl(InlineOption)]
+                private static ProgressMultiAwait<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<ProgressMultiAwait<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new ProgressMultiAwait<TResult>()
+                        : obj.UnsafeAs<ProgressMultiAwait<TResult>>();
+                }
+
                 private static ProgressMultiAwait<TResult> GetOrCreate(PromiseMultiAwait<TResult> owner)
                 {
-                    var passthrough = ObjectPool.TryTake<ProgressMultiAwait<TResult>>()
-                        ?? new ProgressMultiAwait<TResult>();
+                    var passthrough = GetOrCreate();
+                    passthrough._next = null;
                     passthrough._owner = owner;
                     // Retain the owner so we can continue to lock on it until this is disposed.
                     owner.Retain();
@@ -1368,7 +1392,6 @@ namespace Proto.Promises
 
                 private void MaybeReportProgressImpl(ref ProgressReportValues progressReportValues)
                 {
-                    ThrowIfInPool(this);
                     progressReportValues._progressListener = null;
 
                     if (_progressFields._currentReporter != progressReportValues._reporter)
@@ -1376,6 +1399,8 @@ namespace Proto.Promises
                         ExitLock();
                         return;
                     }
+                    // We only check this is not in the pool after we verified the reporter, otherwise it is valid for this to be in the pool.
+                    ThrowIfInPool(this);
 
                     progressReportValues._reporter = this;
                     _progressFields._current = (float) progressReportValues._progress;
@@ -1763,10 +1788,19 @@ namespace Proto.Promises
                 }
 #endif
 
+                [MethodImpl(InlineOption)]
+                private static ProgressMerger GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<ProgressMerger>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new ProgressMerger()
+                        : obj.UnsafeAs<ProgressMerger>();
+                }
+
                 private static ProgressMerger GetOrCreate(PromiseRefBase targetMergePromise, ulong completedProgress, ulong expectedProgress, ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
-                    var merger = ObjectPool.TryTake<ProgressMerger>()
-                        ?? new ProgressMerger();
+                    var merger = GetOrCreate();
+                    merger._next = null;
                     merger._targetMergePromise = targetMergePromise;
                     merger._passThroughs = passThroughs;
                     merger._currentProgress = completedProgress;
@@ -1935,10 +1969,19 @@ namespace Proto.Promises
                 }
 #endif
 
+                [MethodImpl(InlineOption)]
+                private static MergeProgressPassThrough GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<MergeProgressPassThrough>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new MergeProgressPassThrough()
+                        : obj.UnsafeAs<MergeProgressPassThrough>();
+                }
+
                 private static MergeProgressPassThrough GetOrCreate(ProgressMerger target, int index)
                 {
-                    var passThrough = ObjectPool.TryTake<MergeProgressPassThrough>()
-                        ?? new MergeProgressPassThrough();
+                    var passThrough = GetOrCreate();
+                    passThrough._next = null;
                     passThrough._target = target;
                     passThrough._currentProgress = 0f;
                     passThrough._index = index;
@@ -2150,10 +2193,19 @@ namespace Proto.Promises
                 }
 #endif
 
+                [MethodImpl(InlineOption)]
+                private static ProgressRacer GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<ProgressRacer>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new ProgressRacer()
+                        : obj.UnsafeAs<ProgressRacer>();
+                }
+
                 private static ProgressRacer GetOrCreate(PromiseRefBase targetRacePromise, ValueLinkedStack<PromisePassThrough> passThroughs)
                 {
-                    var racer = ObjectPool.TryTake<ProgressRacer>()
-                        ?? new ProgressRacer();
+                    var racer = GetOrCreate();
+                    racer._next = null;
                     racer._targetRacePromise = targetRacePromise;
                     racer._passThroughs = passThroughs;
                     racer._currentProgress = 0f;
@@ -2289,10 +2341,19 @@ namespace Proto.Promises
                 }
 #endif
 
+                [MethodImpl(InlineOption)]
+                private static RaceProgressPassThrough GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<RaceProgressPassThrough>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new RaceProgressPassThrough()
+                        : obj.UnsafeAs<RaceProgressPassThrough>();
+                }
+
                 private static RaceProgressPassThrough GetOrCreate(ProgressRacer target, int index)
                 {
-                    var passThrough = ObjectPool.TryTake<RaceProgressPassThrough>()
-                        ?? new RaceProgressPassThrough();
+                    var passThrough = GetOrCreate();
+                    passThrough._next = null;
                     passThrough._target = target;
                     passThrough._index = index;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE

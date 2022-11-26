@@ -73,8 +73,8 @@ namespace ProtoPromiseTests
     {
         public const SynchronizationType backgroundType = (SynchronizationType) 2;
 
-        public static readonly PromiseSynchronizationContext _foregroundContext = new PromiseSynchronizationContext();
-        public static readonly BackgroundSynchronizationContext _backgroundContext = new BackgroundSynchronizationContext();
+        public static PromiseSynchronizationContext _foregroundContext;
+        public static BackgroundSynchronizationContext _backgroundContext;
         private static readonly List<Exception> _uncaughtExceptions = new List<Exception>();
         public static object s_expectedUncaughtRejectValue;
 
@@ -83,17 +83,17 @@ namespace ProtoPromiseTests
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void Setup()
         {
-            if (Promise.Config.ForegroundContext != _foregroundContext)
+            if (_foregroundContext == null)
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 Internal.TrackObjectsForRelease();
 #endif
 
                 // Set the foreground context to execute foreground promise callbacks.
-                Promise.Config.ForegroundContext = _foregroundContext;
+                Promise.Config.ForegroundContext = _foregroundContext = new PromiseSynchronizationContext();
                 // Used instead of ThreadPool, because ThreadPool has issues in old runtime, causing tests to fail.
                 // This also allows us to wait for all background threads to complete for validation purposes.
-                Promise.Config.BackgroundContext = _backgroundContext;
+                Promise.Config.BackgroundContext = _backgroundContext = new BackgroundSynchronizationContext();
                 // Set uncaught rejection handler.
                 Promise.Config.UncaughtRejectionHandler = e =>
                 {

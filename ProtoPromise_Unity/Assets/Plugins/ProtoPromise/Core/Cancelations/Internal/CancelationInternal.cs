@@ -194,10 +194,19 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
+            private static CancelationRef GetFromPoolOrCreate()
+            {
+                var obj = ObjectPool.TryTakeOrInvalid<CancelationRef>();
+                return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
+                    ? new CancelationRef()
+                    : obj.UnsafeAs<CancelationRef>();
+            }
+
+            [MethodImpl(InlineOption)]
             internal static CancelationRef GetOrCreate()
             {
-                var cancelRef = ObjectPool.TryTake<CancelationRef>()
-                    ?? new CancelationRef();
+                var cancelRef = GetFromPoolOrCreate();
+                cancelRef._next = null;
                 cancelRef.Initialize(false);
                 return cancelRef;
             }
@@ -660,14 +669,22 @@ namespace Proto.Promises
 #endif
 
                 [MethodImpl(InlineOption)]
+                private static CallbackNodeImpl<TCancelable> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<CallbackNodeImpl<TCancelable>>();
+                    return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
+                        ? new CallbackNodeImpl<TCancelable>()
+                        : obj.UnsafeAs<CallbackNodeImpl<TCancelable>>();
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static CallbackNodeImpl<TCancelable> GetOrCreate(
 #if CSHARP_7_3_OR_NEWER
                     in
 #endif
                     TCancelable cancelable, CancelationRef parent)
                 {
-                    var del = ObjectPool.TryTake<CallbackNodeImpl<TCancelable>>()
-                        ?? new CallbackNodeImpl<TCancelable>();
+                    var del = GetOrCreate();
                     del._parentId = parent._smallFields._instanceId;
                     del._cancelable = cancelable;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -1053,8 +1070,8 @@ namespace Proto.Promises
                 // Don't take from the object pool, just create new (this is so the object pool's tracker won't report this since Dispose is never called on it).
                 var cancelRef = new CancelationRef();
 #else
-                var cancelRef = ObjectPool.TryTake<CancelationRef>()
-                    ?? new CancelationRef();
+                var cancelRef = GetFromPoolOrCreate();
+                cancelRef._next = null;
 #endif
                 cancelRef.Initialize(true);
                 cancelRef._bclSource = source;
