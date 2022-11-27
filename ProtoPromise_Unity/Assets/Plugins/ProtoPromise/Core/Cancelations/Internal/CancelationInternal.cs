@@ -1035,7 +1035,8 @@ namespace Proto.Promises
                         return source.IsCancellationRequested ? CancelationToken.Canceled() : default(CancelationToken);
                     }
 
-                    if (s_tokenCache.TryGetValue(source, out var cancelationRef))
+                    CancelationRef cancelationRef;
+                    if (s_tokenCache.TryGetValue(source, out cancelationRef))
                     {
                         var tokenId = cancelationRef.TokenId;
                         Thread.MemoryBarrier();

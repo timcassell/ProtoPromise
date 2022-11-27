@@ -5,7 +5,7 @@
     <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
     <Version>2.3.0</Version>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <!--Set true to help debug internal promise code (allows the debugger to step into the code and includes internal stacktraces).-->
     <DeveloperMode>false</DeveloperMode>
   </PropertyGroup>
@@ -20,19 +20,12 @@
     <!--Unity's IL2CPP runtime had a lot of issues that we had to work around, most of which were fixed when they added .Net Standard 2.1 support.
       If someone chooses to use the Nuget package instead of the Unity package, and builds with IL2CPP in an older Unity version, we must make sure everything still works with those workarounds.
       To keep things simple, we just define ENABLE_IL2CPP in all build targets older than netstandard2.1, so all build targets that older Unity versions can possibly consume will have the workarounds baked in.-->
-    <When Condition="'$(TargetFramework)'=='net35'">
+    <When Condition="'$(TargetFramework)'=='net35' OR '$(TargetFramework)'=='net40'">
       <PropertyGroup>
         <!--The newest language version Unity 5.5 supports (by default).-->
         <LangVersion>4</LangVersion>
         <!--Unity uses NET_LEGACY for old runtime prior to .Net 4.6, so we will do the same here.-->
         <DefineConstants>$(DefineConstants);NET_LEGACY;ENABLE_IL2CPP</DefineConstants>
-      </PropertyGroup>
-    </When>
-    <When Condition="'$(TargetFramework)'=='net40'">
-      <PropertyGroup>
-        <LangVersion>7.3</LangVersion>
-        <!--Unity uses NET_LEGACY for old runtime prior to .Net 4.6, so we will do the same here.-->
-        <DefineConstants>$(DefineConstants);NET_LEGACY;ENABLE_IL2CPP;CSHARP_7_3_OR_NEWER</DefineConstants>
       </PropertyGroup>
     </When>
     <When Condition="'$(TargetFramework)'=='net47' OR '$(TargetFramework)'=='netstandard2.0'">
@@ -45,6 +38,7 @@
       <PropertyGroup>
         <!--For function pointers in await override implementation.-->
         <LangVersion>9</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <DefineConstants>$(DefineConstants);CSHARP_7_3_OR_NEWER</DefineConstants>
       </PropertyGroup>
     </Otherwise>
