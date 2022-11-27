@@ -2,6 +2,10 @@
 #define NET_LEGACY
 #endif
 
+// ValueTuples are available in .Net 4.7 and Unity 2018.1 or newer.
+// Unity 2017 supported .Net 4.6 experimental, full support with ValueTuples wasn't added until 2018.1.
+#if NET_LEGACY || NET45 || UNITY_2017
+
 #pragma warning disable RECS0025 // Non-readonly field referenced in 'GetHashCode()'
 #pragma warning disable RECS0017 // Possible compare of value type with 'null'
 #pragma warning disable IDE0031 // Use null propagation
@@ -11,7 +15,6 @@
 #pragma warning disable 0436 // Type conflicts with imported type
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
-#if NET_LEGACY || NET45 // ValueTuples are available in .Net 4.7 and newer.
 // Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.
 
 namespace System.Collections

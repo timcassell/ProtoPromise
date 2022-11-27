@@ -24,7 +24,7 @@ namespace Proto.Promises
 #endif
     public static partial class Extensions
     {
-#if !NET_LEGACY
+#if CSHARP_7_3_OR_NEWER
         /// <summary>
         /// Convert the <paramref name="promise"/> to a <see cref="Task"/>.
         /// </summary>
@@ -56,7 +56,7 @@ namespace Proto.Promises
         {
             return await task;
         }
-#elif NET40
+#elif !NET_LEGACY || NET40
         /// <summary>
         /// Convert the <paramref name="promise"/> to a <see cref="Task"/>.
         /// </summary>
@@ -76,10 +76,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        if (!(resultContainer.RejectReason is System.Exception exception))
-                        {
-                            exception = Promise.RejectException(resultContainer.RejectReason);
-                        }
+                        System.Exception exception = resultContainer._target._rejectContainer.UnsafeAs<Internal.IRejectContainer>().GetExceptionDispatchInfo().SourceException;
                         source.SetException(exception);
                     }
                 })
@@ -106,10 +103,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        if (!(resultContainer.RejectReason is System.Exception exception))
-                        {
-                            exception = Promise.RejectException(resultContainer.RejectReason);
-                        }
+                        System.Exception exception = resultContainer._rejectContainer.UnsafeAs<Internal.IRejectContainer>().GetExceptionDispatchInfo().SourceException;
                         source.SetException(exception);
                     }
                 })
@@ -164,7 +158,7 @@ namespace Proto.Promises
             }, TaskContinuationOptions.ExecuteSynchronously);
             return deferred.Promise;
         }
-#endif // elif NET40
+#endif // elif !NET_LEGACY || NET40
 
 #if UNITY_2021_2_OR_NEWER || (!NET_LEGACY && !UNITY_5_5_OR_NEWER)
         /// <summary>

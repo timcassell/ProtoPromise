@@ -13,6 +13,8 @@ namespace System.Runtime.ExceptionServices
     {
         private Exception _source;
 
+        public Exception SourceException { get { return _source; } }
+
         public static ExceptionDispatchInfo Capture(Exception source)
         {
             return new ExceptionDispatchInfo() { _source = source };
