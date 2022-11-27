@@ -177,6 +177,11 @@ namespace Proto.Promises
                 if (!_didWaitSuccessfully)
                 {
                     handler.MaybeDispose();
+                    if (state == Promise.State.Rejected && !(handler is PromiseRefBase.IPromiseMultiAwait))
+                    {
+                        // Report the rejection here since the original caller was unable to observe it.
+                        rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                    }
                 }
                 ObjectPool.MaybeRepool(this);
             }
@@ -639,10 +644,13 @@ namespace Proto.Promises
                 }
             }
 
+            // Just so we can check the type.
+            internal interface IPromiseMultiAwait { }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
+            internal sealed partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>, IPromiseMultiAwait
             {
                 private PromiseMultiAwait() { }
 
