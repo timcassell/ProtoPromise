@@ -1537,6 +1537,115 @@ namespace ProtoPromiseTests.APIs
             Assert.AreNotEqual(expectedTimeout, isComplete);
             Assert.AreNotEqual(expectedTimeout, didCatch);
         }
+
+        private static IEnumerable<TestCaseData> GetExpectedRejectionsAndTimeout()
+        {
+            object[] rejections = new object[4]
+            {
+                null,
+                new object(),
+                new System.InvalidOperationException(),
+                42
+            };
+            int[] timeouts = new int[2] { 0, 1 };
+            
+            foreach (var rejection in rejections)
+            foreach (var timeout in timeouts)
+            {
+                yield return new TestCaseData(rejection, timeout);
+            }
+        }
+
+        [Test, TestCaseSource("GetExpectedRejectionsAndTimeout")]
+        public void PromiseWait_UncaughtRejectionIsSentToUncaughtRejectionHandler(object expectedRejectionValue, int timeout)
+        {
+            var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            try
+            {
+                int expectedCount = 0;
+                int uncaughtCount = 0;
+                Promise.Config.UncaughtRejectionHandler = unhandledException =>
+                {
+                    if (expectedRejectionValue == null)
+                    {
+                        Assert.IsInstanceOf<System.NullReferenceException>(unhandledException.Value);
+                    }
+                    else
+                    {
+                        TestHelper.AssertRejection(expectedRejectionValue, unhandledException.Value);
+                    }
+                    ++uncaughtCount;
+                };
+
+                var deferred = Promise.NewDeferred();
+                var preservedPromise = deferred.Promise.Preserve();
+
+                foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+                {
+                    ++expectedCount;
+                    Assert.IsFalse(promise.Wait(System.TimeSpan.FromMilliseconds(timeout)));
+                }
+
+                // Run it again with a freshly preserved promise, because the initial promise will have had its rejection suppressed by the other promises.
+                var secondPreservedPromise = preservedPromise.Preserve();
+                preservedPromise.Forget();
+                Assert.IsFalse(secondPreservedPromise.Wait(System.TimeSpan.FromMilliseconds(timeout)));
+
+                secondPreservedPromise.Forget();
+                deferred.Reject(expectedRejectionValue);
+                Assert.AreEqual(expectedCount, uncaughtCount);
+            }
+            finally
+            {
+                Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
+            }
+        }
+
+        [Test, TestCaseSource("GetExpectedRejectionsAndTimeout")]
+        public void PromiseWaitForResult_UncaughtRejectionIsSentToUncaughtRejectionHandler(object expectedRejectionValue, int timeout)
+        {
+            var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            try
+            {
+                int expectedCount = 0;
+                int uncaughtCount = 0;
+                Promise.Config.UncaughtRejectionHandler = unhandledException =>
+                {
+                    if (expectedRejectionValue == null)
+                    {
+                        Assert.IsInstanceOf<System.NullReferenceException>(unhandledException.Value);
+                    }
+                    else
+                    {
+                        TestHelper.AssertRejection(expectedRejectionValue, unhandledException.Value);
+                    }
+                    ++uncaughtCount;
+                };
+
+                var deferred = Promise.NewDeferred<int>();
+                var preservedPromise = deferred.Promise.Preserve();
+
+                int outResult;
+                foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+                {
+                    ++expectedCount;
+                    Assert.IsFalse(promise.WaitForResult(System.TimeSpan.FromMilliseconds(timeout), out outResult));
+                }
+
+                // Run it again with a freshly preserved promise, because the initial promise will have had its rejection suppressed by the other promises.
+                var secondPreservedPromise = preservedPromise.Preserve();
+                preservedPromise.Forget();
+                Assert.IsFalse(secondPreservedPromise.WaitForResult(System.TimeSpan.FromMilliseconds(timeout), out outResult));
+
+                secondPreservedPromise.Forget();
+                deferred.Reject(expectedRejectionValue);
+                Assert.AreEqual(expectedCount, uncaughtCount);
+            }
+            finally
+            {
+                Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
+            }
+        }
 #endif // !UNITY_WEBGL
     }
 }
