@@ -443,6 +443,25 @@ namespace Proto.Promises
                 return newStack;
             }
 
+            internal void TakeAndEnqueueElements(ref ValueLinkedQueue<T> other)
+            {
+                if (other.IsEmpty)
+                {
+                    return;
+                }
+                if (IsEmpty)
+                {
+                    _head = other._head;
+                }
+                else
+                {
+                    _tail.Next = other._head;
+                }
+                _tail = other._tail;
+                other._head = null;
+                other._tail = null;
+            }
+
             [MethodImpl(InlineOption)]
             public Enumerator<T> GetEnumerator()
             {

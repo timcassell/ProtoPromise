@@ -62,6 +62,12 @@ namespace Proto.Promises
             partial void ValidateAwait(PromiseRefBase other, short promiseId);
         }
 
+        [MethodImpl(InlineOption)]
+        internal static void SetCreatedStacktraceInternal(ITraceable traceable, int skipFrames)
+        {
+            SetCreatedStacktrace(traceable, skipFrames);
+        }
+
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames);
         static partial void SetCurrentInvoker(ITraceable current);
         static partial void ClearCurrentInvoker();
