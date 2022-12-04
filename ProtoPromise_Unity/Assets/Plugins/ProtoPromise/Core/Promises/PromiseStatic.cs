@@ -299,7 +299,7 @@ namespace Proto.Promises
         /// <param name="action">The delegate that will invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="action"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
-		public static Promise Run(Action action, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = false)
+		public static Promise Run(Action action, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
             ValidateArgument(action, "action", 1);
 
@@ -315,7 +315,7 @@ namespace Proto.Promises
         /// <param name="action">The delegate that will invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="action"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
-		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = false)
+		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
             ValidateArgument(action, "action", 1);
 
@@ -330,7 +330,7 @@ namespace Proto.Promises
         /// <param name="action">The delegate that will invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="action"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
-		public static Promise Run(Action action, SynchronizationContext synchronizationContext, bool forceAsync = false)
+		public static Promise Run(Action action, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
             ValidateArgument(action, "action", 1);
 
@@ -346,7 +346,7 @@ namespace Proto.Promises
         /// <param name="action">The delegate that will invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="action"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
-		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationContext synchronizationContext, bool forceAsync = false)
+		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
             ValidateArgument(action, "action", 1);
 
@@ -361,7 +361,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
-		public static Promise<T> Run<T>(Func<T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = false)
+		public static Promise<T> Run<T>(Func<T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
@@ -377,7 +377,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
-		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = false)
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
@@ -392,7 +392,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
-		public static Promise<T> Run<T>(Func<T> function, SynchronizationContext synchronizationContext, bool forceAsync = false)
+		public static Promise<T> Run<T>(Func<T> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
@@ -408,7 +408,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
-		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationContext synchronizationContext, bool forceAsync = false)
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
@@ -423,7 +423,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
-		public static Promise Run(Func<Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = false)
+		public static Promise Run(Func<Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
@@ -441,7 +441,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
-		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = false)
+		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
@@ -458,7 +458,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
-		public static Promise Run(Func<Promise> function, SynchronizationContext synchronizationContext, bool forceAsync = false)
+		public static Promise Run(Func<Promise> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
@@ -476,7 +476,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
-		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationContext synchronizationContext, bool forceAsync = false)
+		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
@@ -493,7 +493,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
-		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = false)
+		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
@@ -511,7 +511,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
-		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = false)
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
@@ -528,7 +528,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
-		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationContext synchronizationContext, bool forceAsync = false)
+		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
@@ -546,7 +546,7 @@ namespace Proto.Promises
         /// <param name="function">The delegate that will invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
-		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationContext synchronizationContext, bool forceAsync = false)
+		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
             ValidateArgument(function, "function", 1);
 
