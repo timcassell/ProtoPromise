@@ -124,6 +124,7 @@ namespace ProtoPromiseTests
                 _stopwatch = Stopwatch.StartNew();
             }
 
+            SynchronizationContext.SetSynchronizationContext(_foregroundContext);
             TestContext.Progress.WriteLine("Begin time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
         }
 
@@ -403,6 +404,16 @@ namespace ProtoPromiseTests
             {
                 throw new TimeoutException("Promise.Wait timed out after " + timeout);
             }
+        }
+
+        public static T WaitWithTimeout<T>(this Promise<T> promise, TimeSpan timeout)
+        {
+            T result;
+            if (!promise.WaitForResult(timeout, out result))
+            {
+                throw new TimeoutException("Promise.Wait timed out after " + timeout);
+            }
+            return result;
         }
 
         public static void AssertCallbackContext(SynchronizationType expectedContext, SynchronizationType invokeContext, Thread foregroundThread)

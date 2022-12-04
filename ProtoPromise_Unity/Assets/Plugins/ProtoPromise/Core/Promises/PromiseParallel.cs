@@ -4,10 +4,10 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0034 // Simplify 'default' expression
+
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 
 namespace Proto.Promises
