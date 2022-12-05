@@ -61,7 +61,7 @@ namespace Proto.Promises
                         ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
-                    handler.MaybeDispose();
+                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                     MaybeDispose();
                 }
             }
@@ -113,7 +113,7 @@ namespace Proto.Promises
                         ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
-                    handler.MaybeDispose();
+                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                     MaybeDispose();
                 }
             }
@@ -165,7 +165,7 @@ namespace Proto.Promises
                         ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
-                    handler.MaybeDispose();
+                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                     MaybeDispose();
                 }
             }

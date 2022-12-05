@@ -139,16 +139,17 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
                 {
-                    handler.SuppressRejection = true;
-                    handler.MaybeDispose();
                     bool isComplete = state == Promise.State.Resolved
                         ? RemoveWaiterAndGetIsComplete()
                         : TrySetComplete();
                     if (isComplete)
                     {
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
                         ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
+                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                     MaybeDispose();
                 }
             }
@@ -179,13 +180,14 @@ namespace Proto.Promises
                     {
                         isComplete = TrySetComplete();
                     }
-                    handler.SuppressRejection = true;
-                    handler.MaybeDispose();
                     if (isComplete)
                     {
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
                         ReleaseAndHandleNext(rejectContainer, state);
                         return;
                     }
+                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                     MaybeDispose();
                 }
 

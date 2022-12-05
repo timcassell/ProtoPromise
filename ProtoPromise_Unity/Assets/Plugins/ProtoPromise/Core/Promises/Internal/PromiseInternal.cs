@@ -330,6 +330,7 @@ namespace Proto.Promises
             {
                 // Make sure instructions are not re-ordered to after this is disposed.
                 Thread.MemoryBarrier();
+                ThrowIfInPool(this);
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 if (State == Promise.State.Pending)
@@ -461,12 +462,6 @@ namespace Proto.Promises
                 return this.UnsafeAs<PromiseRef<TResult>>()._result;
             }
 
-            [MethodImpl(InlineOption)]
-            private bool TryGetRejectValue<TReject>(out TReject rejectValue)
-            {
-                return _rejectContainerOrPreviousOrLink.UnsafeAs<IRejectContainer>().TryGetValue(out rejectValue);
-            }
-
             internal void HandleNext(HandleablePromiseBase nextHandler, object rejectContainer, Promise.State state)
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -527,6 +522,15 @@ namespace Proto.Promises
                 // If the waiter is a progress listener, it will handle it, otherwise any other waiter will just set the values like normal.
                 ThrowIfInPool(this);
                 HandleNext(_next, rejectContainer, state);
+            }
+
+            private void MaybeReportUnhandledRejection(object rejectContainer, Promise.State state)
+            {
+                if (state == Promise.State.Rejected & !SuppressRejection)
+                {
+                    SuppressRejection = true;
+                    rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -722,11 +726,7 @@ namespace Proto.Promises
 #endif
                         // Rejection maybe wasn't caught.
                         // We handle this directly here because we don't add the PromiseForgetSentinel to this type when it is forgotten.
-                        if (State == Promise.State.Rejected & !SuppressRejection)
-                        {
-                            SuppressRejection = true;
-                            _rejectContainerOrPreviousOrLink.UnsafeAs<IRejectContainer>().ReportUnhandled();
-                        }
+                        MaybeReportUnhandledRejection(_rejectContainerOrPreviousOrLink, State);
                         Dispose();
                     }
                     ObjectPool.MaybeRepool(this);
@@ -929,7 +929,7 @@ namespace Proto.Promises
                     else
                     {
                         MaybeDispose();
-                        handler.ReportUnhandledAndMaybeDispose();
+                        handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                     }
                 }
 
@@ -1023,7 +1023,7 @@ namespace Proto.Promises
 #endif
                     {
                         MaybeDispose();
-                        handler.ReportUnhandledAndMaybeDispose();
+                        handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                         return;
                     }
 
@@ -1611,7 +1611,6 @@ namespace Proto.Promises
 
                 protected override void Execute(PromiseRefBase handler, object rejectContainer, Promise.State state, ref bool invokingRejected)
                 {
-                    handler.SuppressRejection = true;
                     var callback = _finalizer;
                     _finalizer = default(TFinalizer);
                     try
@@ -1620,12 +1619,8 @@ namespace Proto.Promises
                     }
                     catch
                     {
-                        // Unlike normal finally clauses, we won't swallow the previous rejection. Instead, we send it to the uncaught rejection handler.
-                        if (state == Promise.State.Rejected)
-                        {
-                            handler._rejectContainerOrPreviousOrLink.UnsafeAs<IRejectContainer>().ReportUnhandled();
-                        }
-                        handler.MaybeDispose();
+                        // Unlike normal finally clauses, we won't swallow the previous rejection. Instead, we report it.
+                        handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                         throw;
                     }
                     HandleSelf(handler, rejectContainer, state);
