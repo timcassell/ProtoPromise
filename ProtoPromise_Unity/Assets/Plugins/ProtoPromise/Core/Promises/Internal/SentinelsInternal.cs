@@ -52,14 +52,8 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
                 {
-                    // Rejection maybe wasn't caught.
-                    if (state == Promise.State.Rejected & !handler.SuppressRejection)
-                    {
-                        handler.SuppressRejection = true;
-                        rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
-                    }
                     handler.SetCompletionState(rejectContainer, state);
-                    handler.MaybeDispose();
+                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                 }
             }
 
@@ -85,7 +79,7 @@ namespace Proto.Promises
                 }
 
                 internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
-                internal override void ReportUnhandledAndMaybeDispose() { throw new System.InvalidOperationException(); }
+                internal override void MaybeReportUnhandledAndDispose(object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
                 protected override void OnForget(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
@@ -130,7 +124,7 @@ namespace Proto.Promises
                 }
 
                 internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
-                internal override void ReportUnhandledAndMaybeDispose() { throw new System.InvalidOperationException(); }
+                internal override void MaybeReportUnhandledAndDispose(object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
                 protected override void OnForget(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
