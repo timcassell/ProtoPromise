@@ -24,8 +24,15 @@
       <PropertyGroup>
         <!--The newest language version Unity 5.5 supports (by default).-->
         <LangVersion>4</LangVersion>
-        <!--Unity uses NET_LEGACY for old runtime prior to .Net 4.6, so we will do the same here.-->
+        <!--Unity uses NET_LEGACY for old runtime prior to .Net 4.6, so we will do the same here (except .Net 4.5 which we treat as not legacy).-->
         <DefineConstants>$(DefineConstants);NET_LEGACY;ENABLE_IL2CPP</DefineConstants>
+      </PropertyGroup>
+    </When>
+    <When Condition="'$(TargetFramework)'=='net45'">
+      <PropertyGroup>
+        <!--The newest language version Unity 2017 supports with experimental .Net 4.6 scripting backend.-->
+        <LangVersion>6</LangVersion>
+        <DefineConstants>$(DefineConstants);ENABLE_IL2CPP</DefineConstants>
       </PropertyGroup>
     </When>
     <When Condition="'$(TargetFramework)'=='net47' OR '$(TargetFramework)'=='netstandard2.0'">
