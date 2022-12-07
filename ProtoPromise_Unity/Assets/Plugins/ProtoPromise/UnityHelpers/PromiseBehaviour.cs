@@ -4,6 +4,7 @@ using Proto.Promises.Threading;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using UnityEngine;
 
 namespace Proto.Promises
@@ -74,6 +75,11 @@ namespace Proto.Promises
                     // so that we can minimize the extra stack frames in the logs that we don't care about.
                     Promise.Config.UncaughtRejectionHandler = HandleRejection;
                 }
+
+                if (SynchronizationContext.Current == null)
+                {
+                    SynchronizationContext.SetSynchronizationContext(_syncContext);
+                }
             }
 
             private void Start()
@@ -109,6 +115,10 @@ namespace Proto.Promises
                     if (Promise.Config.UncaughtRejectionHandler == HandleRejection)
                     {
                         Promise.Config.UncaughtRejectionHandler = null;
+                    }
+                    if (SynchronizationContext.Current == _syncContext)
+                    {
+                        SynchronizationContext.SetSynchronizationContext(null);
                     }
                     _syncContext.Execute(); // Clear out any pending callbacks.
                 }

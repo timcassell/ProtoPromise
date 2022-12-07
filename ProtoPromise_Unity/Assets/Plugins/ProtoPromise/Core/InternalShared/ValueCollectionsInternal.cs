@@ -382,6 +382,59 @@ namespace Proto.Promises
                 }
             }
 
+            internal T Dequeue()
+            {
+                T head = _head;
+                if (_tail == head)
+                {
+                    _head = null;
+                    _tail = null;
+                }
+                else
+                {
+                    _head = head.Next;
+                }
+
+                MarkRemovedFromCollection(head);
+                return head;
+            }
+
+            internal bool TryRemove(T item)
+            {
+                if (IsEmpty)
+                {
+                    return false;
+                }
+                if (item == _head)
+                {
+                    _head = _head.Next;
+                    if (item == _tail)
+                    {
+                        _tail = null;
+                    }
+                    MarkRemovedFromCollection(item);
+                    return true;
+                }
+                T node = _head;
+                T next = node.Next;
+                while (next != null)
+                {
+                    if (next == item)
+                    {
+                        node.Next = next.Next;
+                        if (item == _tail)
+                        {
+                            _tail = node;
+                        }
+                        MarkRemovedFromCollection(item);
+                        return true;
+                    }
+                    node = next;
+                    next = node.Next;
+                }
+                return false;
+            }
+
             internal ValueLinkedStack<T> MoveElementsToStack()
             {
                 var newStack = new ValueLinkedStack<T>(_head);
