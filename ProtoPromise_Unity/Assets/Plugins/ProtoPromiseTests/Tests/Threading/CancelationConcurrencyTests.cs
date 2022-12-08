@@ -676,12 +676,6 @@ namespace ProtoPromiseTests.Threading
         }
 
 #if NET6_0_OR_GREATER || UNITY_2021_2_OR_NEWER
-        private static void ConsumeDisposeTask(System.Threading.Tasks.ValueTask task)
-        {
-            // await the task even though we don't care about its result, for cleanup purposes.
-            Promise.Run(task, async t => await t).Forget();
-        }
-
         [Test]
         public void CancelationTokenMayBeCanceledAndRegistrationDisposedAsyncConcurrently()
         {
@@ -711,10 +705,10 @@ namespace ProtoPromiseTests.Threading
                  },
                  // Parallel actions
                  () => cancelationSource.TryCancel(),
-                 () => ConsumeDisposeTask(cancelationRegistrations[0].DisposeAsync()),
-                 () => ConsumeDisposeTask(cancelationRegistrations[1].DisposeAsync()),
-                 () => ConsumeDisposeTask(cancelationRegistrations[2].DisposeAsync()),
-                 () => ConsumeDisposeTask(cancelationRegistrations[3].DisposeAsync())
+                 () => cancelationRegistrations[0].DisposeAsync().Forget(),
+                 () => cancelationRegistrations[1].DisposeAsync().Forget(),
+                 () => cancelationRegistrations[2].DisposeAsync().Forget(),
+                 () => cancelationRegistrations[3].DisposeAsync().Forget()
              );
         }
 
@@ -744,10 +738,10 @@ namespace ProtoPromiseTests.Threading
                  () => { },
                  // Parallel actions
                  () => cancelationSource.TryDispose(),
-                 () => ConsumeDisposeTask(cancelationRegistrations[0].DisposeAsync()),
-                 () => ConsumeDisposeTask(cancelationRegistrations[1].DisposeAsync()),
-                 () => ConsumeDisposeTask(cancelationRegistrations[2].DisposeAsync()),
-                 () => ConsumeDisposeTask(cancelationRegistrations[3].DisposeAsync())
+                 () => cancelationRegistrations[0].DisposeAsync().Forget(),
+                 () => cancelationRegistrations[1].DisposeAsync().Forget(),
+                 () => cancelationRegistrations[2].DisposeAsync().Forget(),
+                 () => cancelationRegistrations[3].DisposeAsync().Forget()
              );
         }
 #endif // NET6_0_OR_GREATER || UNITY_2021_2_OR_NEWER
@@ -1216,8 +1210,8 @@ namespace ProtoPromiseTests.Threading
                  () => cancelationRegistration2.Dispose(),
                  () => { bool _; cancelationRegistration2.TryUnregister(out _); }
 #if NET6_0_OR_GREATER || UNITY_2021_2_OR_NEWER
-                 , () => ConsumeDisposeTask(cancelationRegistration1.DisposeAsync()),
-                 () => ConsumeDisposeTask(cancelationRegistration2.DisposeAsync())
+                 , () => cancelationRegistration1.DisposeAsync().Forget(),
+                 () => cancelationRegistration2.DisposeAsync().Forget()
 #endif
              );
         }
