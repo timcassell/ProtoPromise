@@ -9,6 +9,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromise", "ProtoPromis
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromiseUnityHelpers", "ProtoPromiseUnityHelpers\ProtoPromiseUnityHelpers.csproj", "{5B1E6550-0342-4240-AF91-F8059F84BF67}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9790CDFB-EFE9-4657-9F36-577112C30BE5}"
+	ProjectSection(SolutionItems) = preProject
+		DeveloperNotes.txt = DeveloperNotes.txt
+		README.md = README.md
+		ReleaseNotes.md = ReleaseNotes.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug_NoProgress|Any CPU = Debug_NoProgress|Any CPU
