@@ -22,7 +22,7 @@ jobs:
         run: |
           VERSION=${GITHUB_REF/refs\/tags\/v/}
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "::set-output name=version::$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Verify version in csproj and package.json
         run: |

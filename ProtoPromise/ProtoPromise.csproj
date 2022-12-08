@@ -75,7 +75,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\*.md" />
     <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\**/*.cs" />
     <Compile Remove="nuget\**" />
     <Content Remove="nuget\**" />
