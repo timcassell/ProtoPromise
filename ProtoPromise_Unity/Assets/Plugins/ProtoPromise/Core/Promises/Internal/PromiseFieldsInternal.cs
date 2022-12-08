@@ -21,6 +21,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable 0649 // Field is never assigned to, and will always have its default value
 
@@ -614,11 +615,13 @@ namespace Proto.Promises
     {
         partial struct PromiseMethodBuilder
         {
+            // This must not be readonly.
             private Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult> _ref;
         }
 
         partial struct PromiseMethodBuilder<T>
         {
+            // These must not be readonly.
             private Internal.PromiseRefBase.AsyncPromiseRef<T> _ref;
 #if OPTIMIZED_ASYNC_MODE
             private T _result;
