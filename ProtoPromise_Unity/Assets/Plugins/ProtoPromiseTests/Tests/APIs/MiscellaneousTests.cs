@@ -11,9 +11,8 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using Proto.Promises.Async.CompilerServices;
 using ProtoPromiseTests.Threading;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 
 namespace ProtoPromiseTests.APIs
@@ -1236,5 +1235,44 @@ namespace ProtoPromiseTests.APIs
             Assert.AreNotEqual(expectedTimeout, didCatch);
         }
 #endif // !UNITY_WEBGL
+
+#if NET6_0_OR_GREATER
+        [Test]
+        public void PromiseVoidMethodBuilderOverride_UncaughtRejectionsAreReported()
+        {
+            // With the default async void method builder using the Task system,
+            // an uncaught exception may be thrown on a background thread and crash the app.
+            // This test ensures that the PromiseVoidMethodBuilder is used instead
+            // by testing that the uncaught exception is reported the same as the rest of the system.
+
+            var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            try
+            {
+                var expected = new System.InvalidOperationException("PromiseVoidMethodBuilder test exception.");
+                int uncaughtCount = 0;
+                Promise.Config.UncaughtRejectionHandler = unhandledException =>
+                {
+                    TestHelper.AssertRejection(expected, unhandledException.Value);
+                    ++uncaughtCount;
+                };
+
+                var deferred = Promise.NewDeferred();
+                TestAsyncVoidOverride(deferred.Promise, expected);
+                deferred.Resolve();
+                Assert.AreEqual(1, uncaughtCount);
+            }
+            finally
+            {
+                Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
+            }
+        }
+
+        [System.Runtime.CompilerServices.AsyncMethodBuilder(typeof(PromiseVoidMethodBuilder))]
+        private static async void TestAsyncVoidOverride(Promise promise, System.Exception exception)
+        {
+            await promise;
+            throw exception;
+        }
+#endif
     }
 }
