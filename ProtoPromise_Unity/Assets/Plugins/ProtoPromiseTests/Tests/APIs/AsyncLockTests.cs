@@ -45,7 +45,7 @@ namespace ProtoPromiseTests.APIs
                     key.Dispose();
                 })
                 .Catch((System.InvalidOperationException e) => didThrow = true)
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             Assert.IsTrue(didThrow);
         }
 
@@ -78,7 +78,7 @@ namespace ProtoPromiseTests.APIs
                 .Forget();
             Assert.AreEqual(Promise.State.Canceled, state);
 
-            lockPromise.WaitWithTimeout(TimeSpan.FromSeconds(1)).Dispose();
+            lockPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)).Dispose();
         }
 
         [Test]
@@ -117,6 +117,65 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void AsyncLock_CanceledLock_ThrowsException_Then()
+        {
+            var mutex = new AsyncLock();
+            var cts = CancelationSource.New();
+
+            mutex.LockAsync()
+                .Then(key =>
+                {
+                    var canceledLockPromise = mutex.LockAsync(cts.Token);
+                    cts.Cancel();
+
+                    Assert.Catch<OperationCanceledException>(() => canceledLockPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)));
+                    key.Dispose();
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cts.Dispose();
+        }
+
+        [Test]
+        public void AsyncLock_CanceledTooLate_StillTakesLock_Then()
+        {
+            var mutex = new AsyncLock();
+            var cts = CancelationSource.New();
+
+            Promise<AsyncLock.Key> cancelableLockPromise = default(Promise<AsyncLock.Key>);
+            mutex.LockAsync()
+                .Then(key =>
+                {
+                    cancelableLockPromise = mutex.LockAsync(cts.Token);
+                    key.Dispose();
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+
+            cancelableLockPromise
+                .Then(key =>
+                {
+                    cts.Cancel();
+
+                    Promise.State state = Promise.State.Pending;
+                    var nextLocker = mutex.LockAsync()
+                        .ContinueWith(r =>
+                        {
+                            state = r.State;
+                            r.Result.Dispose();
+                        });
+                    Assert.AreEqual(Promise.State.Pending, state);
+
+                    key.Dispose();
+                    return nextLocker;
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cts.Dispose();
+        }
+
+#if !UNITY_WEBGL
+        [Test]
         public void AsyncLock_Locked_PreventsLockUntilUnlocked_Then()
         {
             var mutex = new AsyncLock();
@@ -151,7 +210,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsFalse(promise2IsComplete);
             deferred1Continue.Resolve();
-            promise2.WaitWithTimeout(TimeSpan.FromSeconds(1));
+            promise2.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
@@ -211,8 +270,8 @@ namespace ProtoPromiseTests.APIs
             Assert.IsFalse(promise3Complete);
             deferred2Continue.Resolve();
 
-            promise2.WaitWithTimeout(TimeSpan.FromSeconds(1));
-            promise3.WaitWithTimeout(TimeSpan.FromSeconds(1));
+            promise2.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            promise3.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
@@ -235,79 +294,77 @@ namespace ProtoPromiseTests.APIs
                     SpinWait.SpinUntil(() => triedToEnterLock);
                     cts.Cancel();
 
-                    Assert.Catch<OperationCanceledException>(() => promise.WaitWithTimeout(TimeSpan.FromSeconds(1)));
+                    Assert.Catch<OperationCanceledException>(() => promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)));
                     key.Dispose();
 
-                    mutex.LockAsync().WaitWithTimeout(TimeSpan.FromSeconds(1)).Dispose();
+                    mutex.LockAsync().WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)).Dispose();
                 })
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
                 
             cts.Dispose();
         }
+#endif // !UNITY_WEBGL
 
+#if CSHARP_7_3_OR_NEWER
         [Test]
-        public void AsyncLock_CanceledLock_ThrowsException_Then()
+        public void AsyncLock_CanceledLock_ThrowsException_AsyncAwait()
         {
-            var mutex = new AsyncLock();
-            var cts = CancelationSource.New();
-
-            mutex.LockAsync()
-                .Then(key =>
-                {
-                    var canceledLockPromise = mutex.LockAsync(cts.Token);
-                    cts.Cancel();
-
-                    // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
-                    TestHelper.ExecuteForegroundCallbacks();
-                    Assert.Catch<OperationCanceledException>(() => canceledLockPromise.WaitWithTimeout(TimeSpan.FromSeconds(1)));
-                    key.Dispose();
-                }).WaitWithTimeout(TimeSpan.FromSeconds(1));
-
-            cts.Dispose();
+            AsyncLock_CanceledLock_ThrowsException_AsyncAwait_Core()
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
-        [Test]
-        public void AsyncLock_CanceledTooLate_StillTakesLock_Then()
+        private async Promise AsyncLock_CanceledLock_ThrowsException_AsyncAwait_Core()
         {
             var mutex = new AsyncLock();
             var cts = CancelationSource.New();
 
-            Promise<AsyncLock.Key> cancelableLockPromise = default(Promise<AsyncLock.Key>);
-            mutex.LockAsync()
-                .Then(key =>
-                {
-                    cancelableLockPromise = mutex.LockAsync(cts.Token);
-                    key.Dispose();
-                })
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
-
-
-            var promise = cancelableLockPromise
-                .Then(key =>
-                {
-                    cts.Cancel();
-
-                    Promise.State state = Promise.State.Pending;
-                    var nextLocker = mutex.LockAsync()
-                        .ContinueWith(r =>
-                        {
-                            state = r.State;
-                            r.Result.Dispose();
-                        });
-                    Assert.AreEqual(Promise.State.Pending, state);
-
-                    key.Dispose();
-                    return nextLocker;
-                });
+            var key = await mutex.LockAsync();
+            var canceledLockPromise = mutex.LockAsync(cts.Token);
+            cts.Cancel();
 
             // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
             TestHelper.ExecuteForegroundCallbacks();
-            promise.WaitWithTimeout(TimeSpan.FromSeconds(1));
-            
+            Assert.Catch<OperationCanceledException>(() => canceledLockPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)));
+            key.Dispose();
             cts.Dispose();
         }
 
-#if CSHARP_7_3_OR_NEWER
+        [Test]
+        public void AsyncLock_CanceledTooLate_StillTakesLock_AsyncAwait()
+        {
+            AsyncLock_CanceledTooLate_StillTakesLock_AsyncAwait_Core()
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        private async Promise AsyncLock_CanceledTooLate_StillTakesLock_AsyncAwait_Core()
+        {
+            var mutex = new AsyncLock();
+            var cts = CancelationSource.New();
+
+            Promise<AsyncLock.Key> cancelableLockPromise;
+            using (await mutex.LockAsync())
+            {
+                cancelableLockPromise = mutex.LockAsync(cts.Token);
+            }
+
+            cts.Cancel();
+
+            Promise.State state = Promise.State.Pending;
+            var nextLocker = mutex.LockAsync()
+                .ContinueWith(r =>
+                {
+                    state = r.State;
+                    r.Result.Dispose();
+                });
+            Assert.AreEqual(Promise.State.Pending, state);
+
+            var key = await cancelableLockPromise;
+            key.Dispose();
+            await nextLocker;
+            cts.Dispose();
+        }
+
+#if !UNITY_WEBGL
         [Test]
         public void AsyncLock_Locked_PreventsLockUntilUnlocked_SingleThread_AsyncAwait()
         {
@@ -349,7 +406,8 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void AsyncLock_Locked_PreventsLockUntilUnlocked_AsyncAwait()
         {
-            AsyncLock_Locked_PreventsLockUntilUnlocked_AsyncAwait_Core().WaitWithTimeout(TimeSpan.FromSeconds(1));
+            AsyncLock_Locked_PreventsLockUntilUnlocked_AsyncAwait_Core()
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         private async Promise AsyncLock_Locked_PreventsLockUntilUnlocked_AsyncAwait_Core()
@@ -384,7 +442,8 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void AsyncLock_Locked_OnlyPermitsOneLockerAtATime_AsyncAwait()
         {
-            AsyncLock_Locked_OnlyPermitsOneLockerAtATime_AsyncAwait_Core().WaitWithTimeout(TimeSpan.FromSeconds(1));
+            AsyncLock_Locked_OnlyPermitsOneLockerAtATime_AsyncAwait_Core()
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         private async Promise AsyncLock_Locked_OnlyPermitsOneLockerAtATime_AsyncAwait_Core()
@@ -438,7 +497,8 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void AsyncLock_CanceledLock_LeavesLockUnlocked_AsyncAwait()
         {
-            AsyncLock_CanceledLock_LeavesLockUnlocked_AsyncAwait_Core().WaitWithTimeout(TimeSpan.FromSeconds(1));
+            AsyncLock_CanceledLock_LeavesLockUnlocked_AsyncAwait_Core()
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         private async Promise AsyncLock_CanceledLock_LeavesLockUnlocked_AsyncAwait_Core()
@@ -458,70 +518,10 @@ namespace ProtoPromiseTests.APIs
             SpinWait.SpinUntil(() => triedToEnterLock);
             cts.Cancel();
 
-            Assert.Catch<OperationCanceledException>(() => promise.WaitWithTimeout(TimeSpan.FromSeconds(1)));
+            Assert.Catch<OperationCanceledException>(() => promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)));
             unlock.Dispose();
 
-            mutex.LockAsync().WaitWithTimeout(TimeSpan.FromSeconds(1)).Dispose();
-            cts.Dispose();
-        }
-
-        [Test]
-        public void AsyncLock_CanceledLock_ThrowsException_AsyncAwait()
-        {
-            AsyncLock_CanceledLock_ThrowsException_AsyncAwait_Core().WaitWithTimeout(TimeSpan.FromSeconds(1));
-        }
-
-        private async Promise AsyncLock_CanceledLock_ThrowsException_AsyncAwait_Core()
-        {
-            var mutex = new AsyncLock();
-            var cts = CancelationSource.New();
-
-            var key = await mutex.LockAsync();
-            var canceledLockPromise = mutex.LockAsync(cts.Token);
-            cts.Cancel();
-
-            // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
-            TestHelper.ExecuteForegroundCallbacks();
-            Assert.Catch<OperationCanceledException>(() => canceledLockPromise.WaitWithTimeout(TimeSpan.FromSeconds(1)));
-            key.Dispose();
-            cts.Dispose();
-        }
-
-        [Test]
-        public void AsyncLock_CanceledTooLate_StillTakesLock_AsyncAwait()
-        {
-            AsyncLock_CanceledTooLate_StillTakesLock_AsyncAwait_Core().WaitWithTimeout(TimeSpan.FromSeconds(1));
-        }
-
-        private async Promise AsyncLock_CanceledTooLate_StillTakesLock_AsyncAwait_Core()
-        {
-            var mutex = new AsyncLock();
-            var cts = CancelationSource.New();
-
-            Promise<AsyncLock.Key> cancelableLockPromise;
-            using (await mutex.LockAsync())
-            {
-                cancelableLockPromise = mutex.LockAsync(cts.Token);
-            }
-
-            cts.Cancel();
-
-            Promise.State state = Promise.State.Pending;
-            var nextLocker = mutex.LockAsync()
-                .ContinueWith(r =>
-                {
-                    state = r.State;
-                    r.Result.Dispose();
-                });
-            Assert.AreEqual(Promise.State.Pending, state);
-
-            // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
-            TestHelper.ExecuteForegroundCallbacks();
-            var key = await cancelableLockPromise;
-            key.Dispose();
-            // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
-            TestHelper.ExecuteForegroundCallbacks();
-            await nextLocker;
+            mutex.LockAsync().WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)).Dispose();
             cts.Dispose();
         }
 
@@ -551,11 +551,12 @@ namespace ProtoPromiseTests.APIs
                 }
             }, forceAsync: true);
 
-            promise2.WaitWithTimeout(TimeSpan.FromSeconds(10));
+            promise2.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(10));
             cancelationSource.Cancel();
-            promise1.WaitWithTimeout(TimeSpan.FromSeconds(1));
+            promise1.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
         }
+#endif // !UNITY_WEBGL
 #endif // CSHARP_7_3_OR_NEWER
     }
 }

@@ -8,13 +8,13 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
 namespace ProtoPromiseTests.APIs
 {
+#if !UNITY_WEBGL
     public sealed class ParallelForTests
     {
         [SetUp]
@@ -530,4 +530,5 @@ namespace ProtoPromiseTests.APIs
             }
         }
     }
+#endif // !UNITY_WEBGL
 }

@@ -1,4 +1,10 @@
-﻿using NUnit.Framework;
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
@@ -20,6 +26,24 @@ namespace ProtoPromiseTests.APIs
             TestHelper.Cleanup();
         }
 
+#if PROMISE_DEBUG
+        [Test]
+        public void AsyncMonitor_ReleaseLock_BeforeWaitAsyncCompletes_Throws()
+        {
+            var mutex = new AsyncLock();
+            mutex.LockAsync()
+                .Then(key =>
+                {
+                    var waitpromise = AsyncMonitor.WaitAsync(key);
+                    Assert.Catch<System.InvalidOperationException>(key.Dispose);
+                    waitpromise
+                        .Catch((System.InvalidOperationException e) => { }) // The promise is also rejected along with the throw, so we catch it here.
+                        .Forget();
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+#endif
+
         [Test]
         public void AsyncMonitor_TryEnter_ReturnsTrueIfLockIsNotHeld()
         {
@@ -29,6 +53,132 @@ namespace ProtoPromiseTests.APIs
             key.Dispose();
         }
 
+        [Test]
+        public void AsyncMonitor_PreCanceled_WaitReturnsFalse()
+        {
+            var mutex = new AsyncLock();
+            using (var key = mutex.Lock())
+            {
+                Assert.IsFalse(AsyncMonitor.Wait(key, CancelationToken.Canceled()));
+            }
+        }
+
+        [Test]
+        public void AsyncMonitor_PreCanceled_WaitAsyncYieldsFalse()
+        {
+            var mutex = new AsyncLock();
+            mutex.LockAsync()
+                .Then(key =>
+                {
+                    return AsyncMonitor.WaitAsync(key, CancelationToken.Canceled())
+                        .Then(wasPulsed =>
+                        {
+                            Assert.IsFalse(wasPulsed);
+                            key.Dispose();
+                        });
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncMonitor_Canceled_WaitAsyncYieldsFalse()
+        {
+            var mutex = new AsyncLock();
+            var cts = CancelationSource.New();
+            var readyDeferred = Promise.NewDeferred();
+            var waitPromise = mutex.LockAsync()
+                .Then(key =>
+                {
+                    readyDeferred.Resolve();
+                    return AsyncMonitor.WaitAsync(key, cts.Token)
+                        .Then(wasPulsed =>
+                        {
+                            Assert.IsFalse(wasPulsed);
+                            key.Dispose();
+                        });
+                });
+
+            readyDeferred.Promise
+                .Then(() => mutex.LockAsync())
+                .Then(key =>
+                {
+                    cts.Cancel();
+                    AsyncMonitor.Pulse(key);
+                    key.Dispose();
+                    return waitPromise;
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cts.Dispose();
+        }
+
+        [Test]
+        public void AsyncMonitor_CanceledTooLate_WaitAsyncYieldsTrue()
+        {
+            var mutex = new AsyncLock();
+            var cts = CancelationSource.New();
+            var readyDeferred = Promise.NewDeferred();
+            var waitPromise = mutex.LockAsync()
+                .Then(key =>
+                {
+                    readyDeferred.Resolve();
+                    return AsyncMonitor.WaitAsync(key, cts.Token)
+                        .Then(wasPulsed =>
+                        {
+                            Assert.IsTrue(wasPulsed);
+                            cts.Cancel();
+                            key.Dispose();
+                        });
+                });
+
+            readyDeferred.Promise
+                .Then(() => mutex.LockAsync())
+                .Then(key =>
+                {
+                    AsyncMonitor.Pulse(key);
+                    key.Dispose();
+                    return waitPromise;
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cts.Dispose();
+        }
+
+        [Test]
+        public void AsyncMonitor_Pulse_DoesNothingWithNoWaiters()
+        {
+            var mutex = new AsyncLock();
+            mutex.LockAsync()
+                .Then(key =>
+                {
+                    AsyncMonitor.Pulse(key);
+                    key.Dispose();
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            using (var key = mutex.Lock())
+            {
+                AsyncMonitor.Pulse(key);
+            }
+        }
+
+        [Test]
+        public void AsyncMonitor_PulseAll_DoesNothingWithNoWaiters()
+        {
+            var mutex = new AsyncLock();
+            mutex.LockAsync()
+                .Then(key =>
+                {
+                    AsyncMonitor.PulseAll(key);
+                    key.Dispose();
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            using (var key = mutex.Lock())
+            {
+                AsyncMonitor.PulseAll(key);
+            }
+        }
+
+#if !UNITY_WEBGL
         [Test]
         public void AsyncMonitor_TryEnter_ReturnsFalseIfLockIsHeld()
         {
@@ -60,34 +210,7 @@ namespace ProtoPromiseTests.APIs
                     }
                     return promise;
                 })
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
-        }
-
-        [Test]
-        public void AsyncMonitor_PreCanceled_WaitReturnsFalse()
-        {
-            var mutex = new AsyncLock();
-            using (var key = mutex.Lock())
-            {
-                Assert.IsFalse(AsyncMonitor.Wait(key, CancelationToken.Canceled()));
-            }
-        }
-
-        [Test]
-        public void AsyncMonitor_PreCanceled_WaitAsyncYieldsFalse()
-        {
-            var mutex = new AsyncLock();
-            var promise = mutex.LockAsync()
-                .Then(key =>
-                {
-                    var waitPromise = AsyncMonitor.WaitAsync(key, CancelationToken.Canceled());
-                    key.Dispose();
-                    return waitPromise;
-                })
-                .Then(wasPulsed => Assert.IsFalse(wasPulsed));
-
-            TestHelper.ExecuteForegroundCallbacks();
-            promise.WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
@@ -96,7 +219,7 @@ namespace ProtoPromiseTests.APIs
             var mutex = new AsyncLock();
             var cts = CancelationSource.New();
             var readyDeferred = Promise.NewDeferred();
-            var promise = Promise.Run(() =>
+            var waitPromise = Promise.Run(() =>
             {
                 using (var key = mutex.Lock())
                 {
@@ -112,42 +235,9 @@ namespace ProtoPromiseTests.APIs
                     cts.Cancel();
                     AsyncMonitor.Pulse(key);
                     key.Dispose();
-                    return promise;
-                })
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
-            cts.Dispose();
-        }
-
-        [Test]
-        public void AsyncMonitor_Canceled_WaitAsyncYieldsFalse()
-        {
-            var mutex = new AsyncLock();
-            var cts = CancelationSource.New();
-            var readyDeferred = Promise.NewDeferred();
-            var waitPromise = mutex.LockAsync()
-                .Then(key =>
-                {
-                    readyDeferred.Resolve();
-                    return AsyncMonitor.WaitAsync(key, cts.Token)
-                        .Then(wasPulsed =>
-                        {
-                            Assert.IsFalse(wasPulsed);
-                            key.Dispose();
-                        });
-                });
-
-            var pulsePromise = readyDeferred.Promise
-                .Then(() => mutex.LockAsync())
-                .Then(key =>
-                {
-                    cts.Cancel();
-                    AsyncMonitor.Pulse(key);
-                    key.Dispose();
                     return waitPromise;
-                });
-
-            TestHelper.ExecuteForegroundCallbacks();
-            pulsePromise.WaitWithTimeout(TimeSpan.FromSeconds(1));
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cts.Dispose();
         }
 
@@ -157,7 +247,7 @@ namespace ProtoPromiseTests.APIs
             var mutex = new AsyncLock();
             var cts = CancelationSource.New();
             var readyDeferred = Promise.NewDeferred();
-            var promise = Promise.Run(() =>
+            var waitPromise = Promise.Run(() =>
             {
                 using (var key = mutex.Lock())
                 {
@@ -173,19 +263,107 @@ namespace ProtoPromiseTests.APIs
                 {
                     AsyncMonitor.Pulse(key);
                     key.Dispose();
-                    return promise;
+                    return waitPromise;
                 })
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cts.Dispose();
         }
 
         [Test]
-        public void AsyncMonitor_CanceledTooLate_WaitAsyncYieldsTrue()
+        public void AsyncMonitor_CanceledOutsideLock_WaitReturnsFalse()
+        {
+            var mutex = new AsyncLock();
+            var cts = CancelationSource.New();
+            var readyDeferred = Promise.NewDeferred();
+            var waitPromise = Promise.Run(() =>
+            {
+                using (var key = mutex.Lock())
+                {
+                    readyDeferred.Resolve();
+                    Assert.IsFalse(AsyncMonitor.Wait(key, cts.Token));
+                }
+            }, SynchronizationOption.Background, forceAsync: true);
+
+            readyDeferred.Promise
+                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .Then(() =>
+                {
+                    Thread.Sleep(TimeSpan.FromMilliseconds(100)); // Give a little extra time for the Wait.
+                    cts.Cancel();
+                    return waitPromise;
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
+            cts.Dispose();
+        }
+
+        [Test]
+        public void AsyncMonitor_CanceledOutsideLock_WaitAsyncYieldsFalse()
         {
             var mutex = new AsyncLock();
             var cts = CancelationSource.New();
             var readyDeferred = Promise.NewDeferred();
             var waitPromise = mutex.LockAsync()
+                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .Then(key =>
+                {
+                    readyDeferred.Resolve();
+                    return AsyncMonitor.WaitAsync(key, cts.Token)
+                        .Then(wasPulsed =>
+                        {
+                            Assert.IsFalse(wasPulsed);
+                            key.Dispose();
+                        });
+                });
+
+            readyDeferred.Promise
+                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .Then(() =>
+                {
+                    Thread.Sleep(TimeSpan.FromMilliseconds(100)); // Give a little extra time for the Wait.
+                    cts.Cancel();
+                    return waitPromise;
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
+            cts.Dispose();
+        }
+
+        [Test]
+        public void AsyncMonitor_CanceledTooLateOutsideLock_WaitReturnsTrue()
+        {
+            var mutex = new AsyncLock();
+            var cts = CancelationSource.New();
+            var readyDeferred = Promise.NewDeferred();
+            var waitPromise = Promise.Run(() =>
+            {
+                using (var key = mutex.Lock())
+                {
+                    readyDeferred.Resolve();
+                    Assert.IsTrue(AsyncMonitor.Wait(key, cts.Token));
+                }
+            }, SynchronizationOption.Background, forceAsync: true);
+
+            readyDeferred.Promise
+                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .Then(() => mutex.LockAsync())
+                .Then(key =>
+                {
+                    AsyncMonitor.Pulse(key);
+                    key.Dispose();
+                    cts.Cancel();
+                    return waitPromise;
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cts.Dispose();
+        }
+
+        [Test]
+        public void AsyncMonitor_CanceledTooLateOutsideLock_WaitAsyncYieldsTrue()
+        {
+            var mutex = new AsyncLock();
+            var cts = CancelationSource.New();
+            var readyDeferred = Promise.NewDeferred();
+            var waitPromise = mutex.LockAsync()
+                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
                 .Then(key =>
                 {
                     readyDeferred.Resolve();
@@ -193,22 +371,21 @@ namespace ProtoPromiseTests.APIs
                         .Then(wasPulsed =>
                         {
                             Assert.IsTrue(wasPulsed);
-                            cts.Cancel();
                             key.Dispose();
                         });
                 });
 
-            var pulsePromise = readyDeferred.Promise
+            readyDeferred.Promise
+                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
                 .Then(() => mutex.LockAsync())
                 .Then(key =>
                 {
                     AsyncMonitor.Pulse(key);
                     key.Dispose();
+                    cts.Cancel();
                     return waitPromise;
-                });
-
-            TestHelper.ExecuteForegroundCallbacks();
-            pulsePromise.WaitWithTimeout(TimeSpan.FromSeconds(1));
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cts.Dispose();
         }
 
@@ -242,7 +419,7 @@ namespace ProtoPromiseTests.APIs
                 {
                     Assert.AreEqual(1, completed);
                 })
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
@@ -285,7 +462,7 @@ namespace ProtoPromiseTests.APIs
                 {
                     Assert.AreEqual(2, completed);
                 })
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
@@ -338,6 +515,7 @@ namespace ProtoPromiseTests.APIs
                     });
             });
             Promise.All(deferred1Ready.Promise, deferred2Ready.Promise)
+                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
                 .Then(() =>
                 {
                     return AsyncMonitor.EnterAsync(mutex)
@@ -363,7 +541,7 @@ namespace ProtoPromiseTests.APIs
                 {
                     Assert.AreEqual(2, completed);
                 })
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
@@ -412,6 +590,7 @@ namespace ProtoPromiseTests.APIs
                     });
             });
             Promise.All(deferred1Ready.Promise, deferred2Ready.Promise)
+                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
                 .Then(() =>
                 {
                     return AsyncMonitor.EnterAsync(mutex)
@@ -426,14 +605,15 @@ namespace ProtoPromiseTests.APIs
                 {
                     Assert.AreEqual(2, completed);
                 })
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
 #if CSHARP_7_3_OR_NEWER
         [Test]
         public void AsyncMonitor_Pulse_ReleasesOneAsyncWaiter_AsyncAwait()
         {
-            Pulse_ReleasesOneAsyncWaiter_AsyncAwait_Core().WaitWithTimeout(TimeSpan.FromSeconds(1));
+            Pulse_ReleasesOneAsyncWaiter_AsyncAwait_Core()
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         private async Promise Pulse_ReleasesOneAsyncWaiter_AsyncAwait_Core()
@@ -487,7 +667,8 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void AsyncMonitor_PulseAll_ReleasesAllAsyncWaiters_AsyncAwait()
         {
-            PulseAll_ReleasesAllAsyncWaiters_AsyncAwait_Core().WaitWithTimeout(TimeSpan.FromSeconds(1));
+            PulseAll_ReleasesAllAsyncWaiters_AsyncAwait_Core()
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         private async Promise PulseAll_ReleasesAllAsyncWaiters_AsyncAwait_Core()
@@ -528,5 +709,6 @@ namespace ProtoPromiseTests.APIs
             Assert.AreEqual(2, completed);
         }
 #endif // CSHARP_7_3_OR_NEWER
+#endif // !UNITY_WEBGL
     }
 }

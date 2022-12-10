@@ -18,6 +18,7 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -29,6 +30,9 @@ namespace Proto.Promises
         internal interface IAsyncLockPromise : ILinked<IAsyncLockPromise>, ITraceable
         {
             void Resolve(ref long currentKey);
+#if PROMISE_DEBUG
+            long KeyForDebug { get; }
+#endif
         }
 
         partial class PromiseRefBase
@@ -43,6 +47,10 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 internal Threading.AsyncLock Owner { get { return _result._owner; } }
                 IAsyncLockPromise ILinked<IAsyncLockPromise>.Next { get; set; }
+
+#if PROMISE_DEBUG
+                long IAsyncLockPromise.KeyForDebug { get { return 0; } }
+#endif
 
                 [MethodImpl(InlineOption)]
                 private static AsyncLockPromise GetOrCreate()
@@ -148,6 +156,23 @@ namespace Proto.Promises
                 private CancelationRegistration _cancelationRegistration;
                 IAsyncLockPromise ILinked<IAsyncLockPromise>.Next { get; set; }
 
+#if PROMISE_DEBUG
+                long IAsyncLockPromise.KeyForDebug { get { return _key; } }
+
+                internal void RejectFromEarlyLockRelease(InvalidOperationException exception)
+                {
+                    // This can only happen with an AsyncMonitor.WaitAsync call. Synchronous waits cannot be misused.
+                    ThrowIfInPool(this);
+                    _cancelationRegistration.Dispose();
+                    Promise.Run(this, _this =>
+                    {
+                        var rejectContainer = CreateRejectContainer(exception, int.MinValue, null, _this);
+                        _this.HandleNextInternal(rejectContainer, Promise.State.Rejected);
+                    }, _callerContext, forceAsync: true)
+                        .Forget();
+                }
+#endif
+
                 [MethodImpl(InlineOption)]
                 private static AsyncLockWaitPromise GetOrCreate()
                 {
@@ -214,6 +239,27 @@ namespace Proto.Promises
                     // We just move this to the ready queue, we don't post the continuation yet because we have to make sure the lock is re-acquired before this is resolved.
                     _result = false;
                     _owner.MaybeMakeReady(this);
+                }
+
+                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
+                {
+                    if (promiseId != Id)
+                    {
+                        previousWaiter = InvalidAwaitSentinel.s_instance;
+                        return InvalidAwaitSentinel.s_instance;
+                    }
+                    ThrowIfInPool(this);
+                    WasAwaitedOrForgotten = true;
+                    previousWaiter = CompareExchangeWaiter(waiter, PendingAwaitSentinel.s_instance);
+                    if (previousWaiter != PendingAwaitSentinel.s_instance
+                        && CompareExchangeWaiter(waiter, PromiseCompletionSentinel.s_instance) != PromiseCompletionSentinel.s_instance)
+                    {
+                        previousWaiter = InvalidAwaitSentinel.s_instance;
+                        return InvalidAwaitSentinel.s_instance;
+                    }
+                    _owner.ReleaseLockFromWaitPromise(_key);
+                    previousWaiter = PendingAwaitSentinel.s_instance;
+                    return null; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
                 }
 
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
@@ -360,6 +406,11 @@ namespace Proto.Promises
                 return _locker.TryUnregister(promise);
             }
 
+            internal void ReleaseLockFromWaitPromise(long key)
+            {
+                _locker.ReleaseLockFromWaitPromise(key);
+            }
+
             [MethodImpl(MethodImplOptions.NoInlining)]
             private static void ThrowInvalidKey(int skipFrames)
             {
@@ -380,6 +431,9 @@ namespace Proto.Promises
                 private long _currentKey;
 
                 partial void SetTrace(Internal.ITraceable traceable);
+                partial void AddWaitPulseKey(long key, int skipFrames);
+                partial void RemoveWaitPulseKey(Internal.IAsyncLockPromise promise);
+                partial void ValidateKeyRelease(long key, int skipFrames);
 #if PROMISE_DEBUG
                 // This is to help debug where a Key was left undisposed.
                 private Internal.CausalityTrace _trace;
@@ -392,6 +446,65 @@ namespace Proto.Promises
                 partial void SetTrace(Internal.ITraceable traceable)
                 {
                     _trace = traceable == null ? null : traceable.Trace;
+                }
+
+                // This is used to tell if a key was disposed before all wait promises were resolved.
+                private readonly HashSet<long> _waitPulseKeys = new HashSet<long>();
+
+                partial void AddWaitPulseKey(long key, int skipFrames)
+                {
+                    if (!_waitPulseKeys.Add(key))
+                    {
+                        throw new InvalidOperationException("Cannot AsyncMonitor.Wait(Async) while the previous AsyncMonitor.WaitAsync has not completed.", Internal.GetFormattedStacktrace(skipFrames + 1));
+                    }
+                }
+
+                partial void RemoveWaitPulseKey(Internal.IAsyncLockPromise promise)
+                {
+                    long key = promise.KeyForDebug;
+                    if (key != 0 && !_waitPulseKeys.Remove(key))
+                    {
+                        // This should never happen.
+                        throw new System.InvalidOperationException("Could not remove key: " + key);
+                    }
+                }
+
+                partial void ValidateKeyRelease(long key, int skipFrames)
+                {
+                    if (!_waitPulseKeys.Contains(key))
+                    {
+                        return;
+                    }
+
+                    // We make sure there can only be 1 wait promise per key at a time, validated in AddWaitPulseKey, so we only need to remove 1 when it's found.
+                    Internal.IAsyncLockPromise matchedPromise = null;
+                    foreach (var promise in _waitPulseQueue)
+                    {
+                        if (promise.KeyForDebug == key)
+                        {
+                            matchedPromise = promise;
+                            break;
+                        }
+                    }
+                    if (matchedPromise != null)
+                    {
+                        _waitPulseQueue.TryRemove(matchedPromise);
+                    }
+                    else
+                    {
+                        foreach (var promise in _queue)
+                        {
+                            if (promise.KeyForDebug == key)
+                            {
+                                matchedPromise = promise;
+                                break;
+                            }
+                        }
+                        _queue.TryRemove(matchedPromise);
+                    }
+                    var exception = new InvalidOperationException("AsyncLock.Key was disposed before an AsyncMonitor.WaitAsync promise was complete.", Internal.GetFormattedStacktrace(skipFrames + 1));
+                    ((Internal.PromiseRefBase.AsyncLockWaitPromise) matchedPromise).RejectFromEarlyLockRelease(exception);
+                    throw exception;
                 }
 #endif
 
@@ -462,8 +575,10 @@ namespace Proto.Promises
                     {
                         if (_currentKey != key)
                         {
-                            ThrowInvalidKey(3);
+                            ThrowInvalidKey(2);
                         }
+                        ValidateKeyRelease(key, 2);
+
                         // We keep the lock until there are no more waiters.
                         if (_queue.IsEmpty)
                         {
@@ -473,14 +588,15 @@ namespace Proto.Promises
                         }
                         _currentKey = GenerateKey();
                         next = _queue.Dequeue();
+
                         SetTrace(next);
+                        RemoveWaitPulseKey(next);
                     }
                     next.Resolve(ref _currentKey);
                 }
 
                 internal Promise<bool> WaitAsync(AsyncLock owner, long key, bool isSynchronous, CancelationToken cancelationToken)
                 {
-                    Internal.IAsyncLockPromise next;
                     Internal.PromiseRefBase.AsyncLockWaitPromise promise;
                     lock (this)
                     {
@@ -488,21 +604,40 @@ namespace Proto.Promises
                         {
                             ThrowInvalidKey(3);
                         }
+                        AddWaitPulseKey(key, 3);
+
                         promise = Internal.PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(owner, key, isSynchronous ? null : CaptureContext());
                         _waitPulseQueue.Enqueue(promise);
                         promise.MaybeHookupCancelation(cancelationToken);
+                        // We don't release the lock until the promise has been awaited.
+                    }
+                    return new Promise<bool>(promise, promise.Id, 0);
+                }
+
+                internal void ReleaseLockFromWaitPromise(long key)
+                {
+                    // This is called when the WaitAsync promise has been awaited.
+                    Internal.IAsyncLockPromise next;
+                    lock (this)
+                    {
+                        if (key != _currentKey)
+                        {
+                            throw new InvalidOperationException("AsyncMonitor.WaitAsync promise must be awaited while the lock is held.", Internal.GetFormattedStacktrace(5));
+                        }
+
                         // We keep the lock until there are no more waiters.
                         if (_queue.IsEmpty)
                         {
                             _currentKey = 0;
-                            return new Promise<bool>(promise, promise.Id, 0);
+                            return;
                         }
                         _currentKey = GenerateKey();
                         next = _queue.Dequeue();
+
                         SetTrace(next);
+                        RemoveWaitPulseKey(next);
                     }
                     next.Resolve(ref _currentKey);
-                    return new Promise<bool>(promise, promise.Id, 0);
                 }
 
                 internal void Pulse(long key)
@@ -528,10 +663,7 @@ namespace Proto.Promises
                         {
                             ThrowInvalidKey(3);
                         }
-                        if (!_waitPulseQueue.IsEmpty)
-                        {
-                            _queue.TakeAndEnqueueElements(ref _waitPulseQueue);
-                        }
+                        _queue.TakeAndEnqueueElements(ref _waitPulseQueue);
                     }
                 }
 
@@ -545,13 +677,25 @@ namespace Proto.Promises
 
                 internal void MaybeMakeReady(Internal.PromiseRefBase.AsyncLockWaitPromise promise)
                 {
+                    Internal.IAsyncLockPromise next;
                     lock (this)
                     {
                         if (_waitPulseQueue.TryRemove(promise))
                         {
                             _queue.Enqueue(promise);
                         }
+                        if (_currentKey != 0 | _queue.IsEmpty)
+                        {
+                            return;
+                        }
+                        // The lock is not currently held, and there is at least 1 waiter attempting to take the lock, we need to resolve the next.
+                        _currentKey = GenerateKey();
+                        next = _queue.Dequeue();
+
+                        SetTrace(next);
+                        RemoveWaitPulseKey(next);
                     }
+                    next.Resolve(ref _currentKey);
                 }
             } // class Locker
         } // class AsyncLock
