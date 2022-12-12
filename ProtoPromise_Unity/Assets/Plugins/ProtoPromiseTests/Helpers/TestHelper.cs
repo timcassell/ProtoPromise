@@ -416,6 +416,40 @@ namespace ProtoPromiseTests
             return result;
         }
 
+        public static void WaitWithTimeoutWhileExecutingForegroundContext(this Promise promise, TimeSpan timeout)
+        {
+            bool isPending = true;
+            promise = promise.Finally(() => isPending = false);
+
+            if (!SpinWait.SpinUntil(() =>
+                {
+                    ExecuteForegroundCallbacks();
+                    return !isPending;
+                }, timeout))
+            {
+                promise.Forget();
+                throw new TimeoutException("Promise wait timed out after " + timeout);
+            }
+            promise.Wait();
+        }
+
+        public static T WaitWithTimeoutWhileExecutingForegroundContext<T>(this Promise<T> promise, TimeSpan timeout)
+        {
+            bool isPending = true;
+            promise = promise.Finally(() => isPending = false);
+
+            if (!SpinWait.SpinUntil(() =>
+            {
+                ExecuteForegroundCallbacks();
+                return !isPending;
+            }, timeout))
+            {
+                promise.Forget();
+                throw new TimeoutException("Promise wait timed out after " + timeout);
+            }
+            return promise.WaitForResult();
+        }
+
         public static void AssertCallbackContext(SynchronizationType expectedContext, SynchronizationType invokeContext, Thread foregroundThread)
         {
             switch (expectedContext)
