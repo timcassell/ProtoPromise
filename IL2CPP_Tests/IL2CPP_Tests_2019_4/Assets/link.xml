@@ -1,0 +1,4 @@
+<linker>
+  <assembly fullname="ProtoPromise" preserve="all"/>
+  <assembly fullname="ProtoPromiseTests" preserve="all"/>
+</linker>

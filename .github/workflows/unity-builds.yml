@@ -26,6 +26,9 @@ jobs:
             # unity-builder does not support standalone IL2CPP builds older than Unity 2020.
           - buildTarget: Standalone
             scriptingBackend: IL2CPP
+            # Net4.x standalone is tested in il2cpp tests.
+          - buildTarget: Standalone
+            scriptingRuntime: Net4.x
             # WebGL only supports IL2CPP
           - buildTarget: WebGL
             scriptingBackend: Mono

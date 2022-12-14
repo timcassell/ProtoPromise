@@ -1,4 +1,4 @@
-name: Unity Tests
+name: Unity Editor Tests
 
 on: [pull_request]
 
