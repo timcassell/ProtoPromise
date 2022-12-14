@@ -17,13 +17,8 @@ namespace Proto.Promises
         // We initialize the config as early as possible. Ideally we would just do this in static constructors of Promise(<T>) and Promise.Config,
         // but since this is in a separate assembly, that's not possible.
         // Also, using static constructors would slightly slow down promises in IL2CPP where it would have to check if it already ran on every call.
-#if UNITY_2019_2_OR_NEWER
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-#elif UNITY_2019_1_OR_NEWER
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
-#else
+        // We can't use SubsystemRegistration or AfterAssembliesLoaded which run before BeforeSceneLoad, because it forcibly destroys the MonoBehaviour.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-#endif
         internal static void InitializePromiseConfig()
         {
             PromiseBehaviour.Init();
