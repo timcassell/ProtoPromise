@@ -1,7 +1,10 @@
-# This workflow is to make sure platforms will build properly in all runtimes and with all configurations,
-# because it is currently not possible to run platform tests in cloud CI.
+# This workflow is to make sure builds work properly in all runtimes and with all configurations.
+# This is done because WebGL is currently not possible to run platform tests in cloud CI.
+# Only building for WebGL because it does the full IL2CPP process plus an extra emscripten process.
+# Standalone is built in IL2CPP tests, and other platforms do the same IL2CPP process.
+# We do not need to test Mono builds here because that is already done with the Editor tests.
 
-name: Unity Builds
+name: Unity WebGL Builds
 
 on: [pull_request]
 
@@ -10,61 +13,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  unity-build:
+  build:
+    name: Build (${{ matrix.scriptingRuntime.name }}, ${{ matrix.mode.name }}, ${{ matrix.progress.name }})
     runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
       matrix:
-        buildTarget: [Standalone, WebGL, Android]
-        scriptingRuntime: [Net3.5, Net4.x]
-        scriptingBackend: [Mono, IL2CPP]
-        mode: [Release, Debug]
-        progress: [Progress_Enabled, Progress_Disabled]
-        
-        exclude:
-            # unity-builder does not support standalone IL2CPP builds older than Unity 2020.
-          - buildTarget: Standalone
-            scriptingBackend: IL2CPP
-            # Net4.x standalone is tested in il2cpp tests.
-          - buildTarget: Standalone
-            scriptingRuntime: Net4.x
-            # WebGL only supports IL2CPP
-          - buildTarget: WebGL
-            scriptingBackend: Mono
-
-        include:
-          - buildTarget: Standalone
-            targetPlatform: StandaloneLinux64
-            buildTargetId: 1
-          - buildTarget: WebGL
-            targetPlatform: WebGL
-            buildTargetId: 13
-          - buildTarget: Android
-            targetPlatform: Android
-            buildTargetId: 7
-
-          - mode: Release
-            modeSymbol: PROTO_PROMISE_DEBUG_DISABLE
-          - mode: Debug
-            modeSymbol: PROTO_PROMISE_DEBUG_ENABLE
-
-          - progress: Progress_Enabled
-            progressSymbol: PROTO_PROMISE_PROGRESS_ENABLE
-          - progress: Progress_Disabled
-            progressSymbol: PROTO_PROMISE_PROGRESS_DISABLE
-
-          - scriptingRuntime: Net3.5
-            scriptingRuntimeVersion: 0
-            apiCompatibilityLevel: 2
-          - scriptingRuntime: Net4.x
-            scriptingRuntimeVersion: 1
-            apiCompatibilityLevel: 6
-            
-          - scriptingBackend: Mono
-            scriptingBackendId: 0
-          - scriptingBackend: IL2CPP
-            scriptingBackendId: 1
+        scriptingRuntime:
+          - {
+              name: Net3.5,
+              version: 0,
+              apiLevel: 2
+            }
+          - {
+              name: Net4.x,
+              version: 1,
+              apiLevel: 6
+            }
+        mode:
+          - {
+              name: Release,
+              symbol: PROTO_PROMISE_DEBUG_DISABLE
+            }
+          - {
+              name: Debug,
+              symbol: PROTO_PROMISE_DEBUG_ENABLE
+            }
+        progress:
+          - {
+              name: Progress_Enabled,
+              symbol: PROTO_PROMISE_PROGRESS_ENABLE
+            }
+          - {
+              name: Progress_Disabled,
+              symbol: PROTO_PROMISE_PROGRESS_DISABLE
+            }
 
     steps:
       - name: Checkout
@@ -72,22 +56,18 @@ jobs:
 
       - name: Rewrite ProjectSettings
         run: |
-          DefineSymbols="${{ matrix.modeSymbol }};${{ matrix.progressSymbol }}"
+          DefineSymbols="${{ matrix.mode.symbol }};${{ matrix.progress.symbol }}"
           DefineOriginal="  scriptingDefineSymbols: {}"
-          DefineReplace="  scriptingDefineSymbols: \\n    ${{ matrix.buildTargetId }}: $DefineSymbols"
+          DefineReplace="  scriptingDefineSymbols: \\n    13: $DefineSymbols"
           sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
           RuntimeOriginal="  scriptingRuntimeVersion: 0"
-          RuntimeReplace="  scriptingRuntimeVersion: ${{ matrix.scriptingRuntimeVersion }}"
+          RuntimeReplace="  scriptingRuntimeVersion: ${{ matrix.scriptingRuntime.version }}"
           sed -i "{s/$RuntimeOriginal/$RuntimeReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
           ApiOriginal="  apiCompatibilityLevel: 2"
-          ApiReplace="  apiCompatibilityLevel: ${{ matrix.apiCompatibilityLevel }}"
+          ApiReplace="  apiCompatibilityLevel: ${{ matrix.scriptingRuntime.apiLevel }}"
           sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
-
-          BackendOriginal="  scriptingBackend: {}"
-          BackendReplace="  scriptingBackend: \\n    ${{ matrix.buildTarget }}: ${{ matrix.scriptingBackendId }}"
-          sed -i "{s/$BackendOriginal/$BackendReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
       - name: Build Project
         uses: game-ci/unity-builder@v2
@@ -95,6 +75,6 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}
         with:
           projectPath: ProtoPromise_Unity
-          targetPlatform: ${{ matrix.targetPlatform }}
+          targetPlatform: WebGL
           buildMethod: UnityBuilderAction.BuildScript.Build
           allowDirtyBuild: true
