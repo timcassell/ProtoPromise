@@ -6,6 +6,7 @@ using System.Threading;
 
 namespace ProtoPromiseTests.APIs
 {
+#if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public class AsyncLockTests
     {
         [SetUp]
@@ -559,4 +560,5 @@ namespace ProtoPromiseTests.APIs
 #endif // !UNITY_WEBGL
 #endif // CSHARP_7_3_OR_NEWER
     }
+#endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 }
