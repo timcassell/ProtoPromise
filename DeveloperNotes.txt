@@ -1,8 +1,7 @@
 ﻿For each new release...
 
 
-VERY IMPORTANT - Before doing any of this, run unit tests locally on the IL2CPP player (standalone) to make sure no crashes occur and all tests pass. IL2CPP can be quite finnicky, and unfortunately, the tests cannot be run in CI.
-Also test the demo scene in Unity 5.5 to make sure it works (no need to run tests as the test runner didn't exist back then).
+Before releasing, test the demo scene in Unity 5.5 to make sure it works (no need to run tests as the test runner didn't exist back then).
 
 
 Update the version in `ProtoPromise.csproj`, `ProtoPromiseUnityHelpers.csproj`, and `package.json`.

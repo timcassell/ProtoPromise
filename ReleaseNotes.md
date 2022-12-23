@@ -1,5 +1,35 @@
 # Release Notes
 
+## v 2.4.0 - December 23, 2022
+
+Enhancements:
+
+- Added `Promise.ParallelFor` and `Promise.ParallelForEach` APIs to run iterations concurrently and asynchronously (compare to `Parallel.ForEach`).
+- Exposed `CancelationRegistration.DisposeAsync()` in all supported runtimes.
+- Added `AsyncLock` and `AsyncMonitor` to be able to lock around asynchronous resources (in the `Proto.Promises.Threading` namespace).
+
+Fixes:
+
+- Promise result values are no longer stored past the promise's lifetime.
+- Fixed compilation errors in Unity 2017 when the experimental .Net 4.6 runtime is selected.
+- Fixed compilation warnings in Unity when importing the ProtoPromise package through the Package Manager.
+- Fixed default foreground context never being executed in Unity 2019.1 or newer.
+
+Optimizations:
+
+- Increased performance of progress reports.
+- Increased performance of promises.
+- Reduced memory consumption of `All`, `Merge`, `Race`, and `First` promises.
+
+Misc:
+
+- Progress reports now use full 32-bit float precision instead of 16-bit fixed precision.
+- Changed `Promise.Run` `forceAsync` flag to default to `true` instead of `false`.
+
+Breaking Changes:
+
+- Changed `CancelationRegistration.DisposeAsync()` to return `Promise` instead of `ValueTask` (`await using` code still works the same, but may need a recompile).
+
 ## v 2.3.0 - September 25, 2022
 
 Enhancements:

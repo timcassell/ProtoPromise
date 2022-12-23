@@ -27,11 +27,13 @@ This library took inspiration from [ES6 Promises](https://developer.mozilla.org/
 
 ## Latest Updates
 
-## v 2.3.0 - September 25, 2022
+## v 2.4.0 - December 23, 2022
 
-- Added `Promise.Wait()` and `Promise<T>.WaitForResult()` synchronous APIs.
-- `CancelationRegistration` now implements `IDisposable` and `IAsyncDisposable` interfaces. Disposing the registration will unregister the callback, or wait for the callback to complete if it was already invoked.
-- Added `CancelationToken.GetRetainer()` API to reduce `TryRetain` / `Release` boilerplate code.
+- Added `Promise.ParallelFor` and `Promise.ParallelForEach` APIs to run iterations concurrently and asynchronously (compare to `Parallel.ForEach`).
+- Added `AsyncLock` and `AsyncMonitor` to be able to lock around asynchronous resources.
+- Increased performance of promises and progress reports.
+- Reduced memory consumption of `All`, `Merge`, `Race`, and `First` promises.
+- Progress reports now use full 32-bit float precision instead of 16-bit fixed precision.
 
 See [Release Notes](ReleaseNotes.md) for the full changelog.
 
@@ -74,6 +76,8 @@ See [Release Notes](ReleaseNotes.md) for the full changelog.
     - [Capture Values](#capture-values)
     - [Switching Execution Context](#switching-execution-context)
     - [AsyncLocal Support](#asynclocal-support)
+    - [Parallel Iterations](#parallel-iterations)
+    - [Async Lock](#async-lock)
 - [Additional Information](#additional-information)
     - [Understanding Then](#understanding-then)
     - [Finally](#finally)
@@ -103,7 +107,7 @@ Go to the latest [release](https://github.com/timcassell/ProtoPromise/releases) 
 
 Install from https://www.nuget.org/packages/ProtoPromise/
 
-`Install-Package ProtoPromise`
+`dotnet add package ProtoPromise`
 
 ## Creating a Promise for an Async Operation
 
@@ -948,6 +952,80 @@ private async Promise FuncVoidNested()
 }
 ```
 
+### Parallel Iterations
+
+You may have a very large collection that you need to iterate as quickly as possible without blocking the current thread. A `foreach` loop will do the job, but it will only run each iteration sequentially on the current thread.
+`Parallel.ForEach` will do the job concurrently, possibly utilizing multiple threads, but it will still block the current thread until all iterations are complete. `Promise.ParallelForEach` to the rescue!
+
+```cs
+public static Promise IterateAsync<T>(this IEnumerable<T> enumerable, Action<T> action)
+{
+    return Promise.ParallelForEach(enumerable, (item, cancelationToken) =>
+    {
+        action(item);
+        return Promise.Resolved();
+    });
+}
+```
+
+This will run each iteration concurrently without blocking the current thread.
+
+You may also wish to parallelize a `for` loop, which you can do with `Promise.ParallelFor`.
+
+```cs
+public static Promise ForAsync(int min, int max, Action<int> action)
+{
+    return Promise.ParallelFor(min, max, (item, cancelationToken) =>
+    {
+        action(item);
+        return Promise.Resolved();
+    });
+}
+```
+
+(`Promise.ParallelForEach` is similar to `Parallel.ForEachAsync` in .Net 6+, but uses `Promise` instead of `Task` to be more efficient, and works in older runtimes. And even in newer runtimes, `Parallel.ForAsync` does not exist.)
+
+### Async Lock
+
+`AsyncLock` (in the `Proto.Promises.Threading` namespace) can be used to coordinate mutual exclusive execution around asynchronous resources. It is similar to the normal `lock` keyword, except `lock` cannot be used around `await`s.
+The syntax is a little different: instead of `lock (mutex) { }`, the syntax is `using (await mutex.LockAsync()) { }`. Everything inside the `using` block will be protected by the lock.
+
+```cs
+private readonly AsyncLock _mutex = new AsyncLock();
+
+public async Promise DoStuffAsync()
+{
+    using (await _mutex.LockAsync())
+    {
+        // Do mutually exclusive async work here.
+        await Task.Delay(TimeSpan.FromSeconds(1));
+    }
+}
+```
+
+You may also use the `AsyncMonitor` class to `WaitAsync` and `Pulse` in a fashion very similar to the normal `Monitor` class.
+
+```cs
+private readonly AsyncLock _mutex = new AsyncLock();
+
+public async Promise DoStuffAsync()
+{
+    using (var key = await _mutex.LockAsync())
+    {
+        // Wait for a pulse.
+        await AsyncMonitor.WaitAsync(key);
+        // Continue after another context has pulsed the lock.
+    }
+}
+```
+
+`AsyncLock` also supports synchronous locks, so a thread may try to enter a lock synchronously, even while another thread is holding it asynchronously. `using (_mutex.Lock()) { }`
+WARNING: doing so may cause a deadlock if the async function that holds the lock tries to switch context to the same thread before releasing the lock. Although it is supported, it is not recommended to mix synchronous and asynchronous locks. If at all possible, normal locks should be preferred.
+
+WARNING: `AsyncLock` does _not_ support re-entrance (recursion). If you attempt to enter the lock while it is already entered, it will result in a deadlock.
+
+Note: `AsyncLock` and `AsyncMonitor` are only available in .Net Standard 2.1 (or Unity 2021.2) or newer platforms.
+
 ## Additional Information
 
 ### Understanding Then
@@ -994,7 +1072,7 @@ You may realize that `Catch(onRejected)` also works just like `onRejected` in `T
 
 Promises can easily interoperate with Tasks simply by calling the `Promise.ToTask()` or `Task.ToPromise()` extension methods.
 
-Promises can also be converted to ValueTasks by calling `Promise.AsValueTask()` method, or by implicitly casting `ValueTask valueTask = promise`. ValueTasks can be converted to Promises by calling the `ValueTask.ToPromise()` extensions method. Converting a Promise to a ValueTask does not cause any allocations to occur (but the same may not be true vice-versa).
+Promises can also be converted to ValueTasks by calling `Promise.AsValueTask()` method, or by implicitly casting `ValueTask valueTask = promise`. ValueTasks can be converted to Promises by calling the `ValueTask.ToPromise()` extension method.
 
 `Proto.Promises.CancelationToken` can be converted to and from `System.Threading.CancellationToken` by calling `token.ToCancellationToken()` method or `token.ToCancelationToken()` extension method.
 

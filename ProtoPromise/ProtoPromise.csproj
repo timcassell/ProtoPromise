@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>net35;net40;net45;net47;netstandard2.0;netstandard2.1;netcoreapp2.1;net5.0;net6.0</TargetFrameworks>
     <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
-    <Version>2.3.0</Version>
+    <Version>2.4.0</Version>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <!--Set true to help debug internal promise code (allows the debugger to step into the code and includes internal stacktraces).-->
