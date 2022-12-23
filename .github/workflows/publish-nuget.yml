@@ -54,9 +54,10 @@ jobs:
         run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromiseUnityHelpers/nuget/ProtoPromiseUnityHelpers.nuspec
 
       - name: Overwrite ProtoPromise nuspec release notes
+        env:
+          RELEASE_NOTES: ${{ steps.get_release.outputs.body }}
         run: |
-          RELEASE_NOTES='${{ steps.get_release.outputs.body }}'
-          export REPLACE_RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed -e ':a' -e 'N' -e '$!ba' -e 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g')
+          export REPLACE_RELEASE_NOTES=$(echo "$ENV{RELEASE_NOTES}" | sed -e ':a' -e 'N' -e '$!ba' -e 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g')
           perl -l -p -i -e 's/{RELEASE_NOTES}/$ENV{REPLACE_RELEASE_NOTES}/g' ProtoPromise/nuget/ProtoPromise.nuspec
 
       - name: Print nuspecs
