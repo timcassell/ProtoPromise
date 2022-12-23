@@ -12,6 +12,7 @@ using System.Threading;
 
 namespace ProtoPromiseTests.APIs
 {
+#if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public class AsyncMonitorTests
     {
         [SetUp]
@@ -711,4 +712,5 @@ namespace ProtoPromiseTests.APIs
 #endif // CSHARP_7_3_OR_NEWER
 #endif // !UNITY_WEBGL
     }
+#endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 }
