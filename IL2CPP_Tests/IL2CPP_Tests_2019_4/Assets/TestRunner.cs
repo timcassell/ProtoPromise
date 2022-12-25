@@ -7,23 +7,30 @@ public class TestRunner : MonoBehaviour
 {
     void Start()
     {
-        // Command line args include the executable name and unity args, so we need to strip them to only include nunit args.
-        string[] args = System.Environment.GetCommandLineArgs();
-        int i = 0;
-        while (i < args.Length)
+        try
         {
-            if (args[i].StartsWith("--"))
+            // Command line args include the executable name and unity args, so we need to strip them to only include nunit args.
+            string[] args = System.Environment.GetCommandLineArgs();
+            int i = 0;
+            while (i < args.Length)
             {
-                break;
+                if (args[i].StartsWith("--"))
+                {
+                    break;
+                }
+                ++i;
             }
-            ++i;
+            List<string> nUnitArgs = new List<string>(args.Length - i);
+            for (; i < args.Length; ++i)
+            {
+                nUnitArgs.Add(args[i]);
+            }
+            int quitCode = new AutoRun(typeof(TestHelper).Assembly).Execute(nUnitArgs.ToArray());
+            Application.Quit(quitCode);
         }
-        List<string> nUnitArgs = new List<string>(args.Length - i);
-        for (; i < args.Length; ++i)
+        catch
         {
-            nUnitArgs.Add(args[i]);
+            Application.Quit(1);
         }
-        int quitCode = new AutoRun(typeof(TestHelper).Assembly).Execute(nUnitArgs.ToArray());
-        Application.Quit(quitCode);
     }
 }

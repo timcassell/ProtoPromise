@@ -8,7 +8,7 @@ concurrency:
 
 jobs:
   net4:
-    runs-on: windows-2019
+    runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
@@ -17,11 +17,18 @@ jobs:
         # and a newer version with .Net Standard 2.1 support (IL2CPP is less fragile).
         # We only test .Net 4.X runtime because Unity 2019.4 removed the .Net 3.5 option,
         # and we include NUnitLite dll targeting netstandard2.0 which cannot be used when targeting .Net 3.5.
+        # And unity-builder does not support IL2CPP Standalone in Unity 2018.
         unityVersion: [2019_4, 2021_3]
         mode: [Release, Debug]
         progress: [Progress_Enabled, Progress_Disabled]
         
         include:
+          # New Unity versions changed the key to a string instead of integer.
+          - unityVersion: 2019_4
+            buildTargetId: 1
+          - unityVersion: 2021_3
+            buildTargetId: Standalone
+
           - mode: Release
             modeSymbol: PROTO_PROMISE_DEBUG_DISABLE
           - mode: Debug
@@ -38,10 +45,10 @@ jobs:
 
       - name: Rewrite ProjectSettings
         run: |
-          $DefineSymbols="${{ matrix.modeSymbol }};${{ matrix.progressSymbol }}"
-          $DefineOriginal="  scriptingDefineSymbols: {}"
-          $DefineReplace="  scriptingDefineSymbols: \\n    1: $DefineSymbols"
-          (Get-Content IL2CPP_Tests/IL2CPP_Tests_${{ matrix.unityVersion }}/ProjectSettings/ProjectSettings.asset).replace('$DefineOriginal', '$DefineReplace') | Set-Content IL2CPP_Tests/IL2CPP_Tests_${{ matrix.unityVersion }}/ProjectSettings/ProjectSettings.asset
+          DefineSymbols="${{ matrix.modeSymbol }};${{ matrix.progressSymbol }}"
+          DefineOriginal="  scriptingDefineSymbols: {}"
+          DefineReplace="  scriptingDefineSymbols: \\n    ${{ matrix.buildTargetId }}: $DefineSymbols"
+          sed -i "{s/$DefineOriginal/$DefineReplace/g}" IL2CPP_Tests/IL2CPP_Tests_${{ matrix.unityVersion }}/ProjectSettings/ProjectSettings.asset
 
       - name: Cache Unity Library
         uses: actions/cache@v3
@@ -54,23 +61,23 @@ jobs:
       - name: Build Project
         uses: game-ci/unity-builder@v2
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2019_X_WINDOWS }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2019_4_29F1_UBUNTU }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: IL2CPP_Tests/IL2CPP_Tests_${{ matrix.unityVersion }}
-          targetPlatform: StandaloneWindows64
+          targetPlatform: StandaloneLinux64
           allowDirtyBuild: true
 
       - name: Run Tests
-        timeout-minutes: 30
+        timeout-minutes: 120
         run: |
-          Start-Process -Wait -FilePath "build\StandaloneWindows64\StandaloneWindows64.exe" -ArgumentList "-batchmode `
-            --trace=Info `
-            --labels=All `
-            --stoponerror `
-            --result:unity-test-results-il2cpp-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.unityVersion }}.xml `
-            --output=unity-test-results-il2cpp-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.unityVersion }}.log"
+          xvfb-run build/StandaloneLinux64/StandaloneLinux64 -batchmode \
+            --trace=Info \
+            --labels=All \
+            --stoponerror \
+            --result:unity-test-results-il2cpp-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.unityVersion }}.xml \
+            --output=unity-test-results-il2cpp-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.unityVersion }}.log
 
       # Workaround for NUnit XML (see https://github.com/dorny/test-reporter/issues/98#issuecomment-867106931)
       - name: Install NUnit
@@ -81,7 +88,8 @@ jobs:
       - name: Fetch transform code
         if: always()
         run: |
-          Invoke-WebRequest https://raw.githubusercontent.com/nunit/nunit-transforms/master/nunit3-junit/nunit3-junit.xslt -Outfile "nunit3-junit.xslt"
+          wget https://raw.githubusercontent.com/nunit/nunit-transforms/master/nunit3-junit/nunit3-junit.xslt
+        shell: bash
 
       - name: Transform NUnit3 to JUnit
         if: always()
@@ -93,6 +101,7 @@ jobs:
             $xslt.Load("nunit3-junit.xslt");
             $xslt.Transform($xml, $output);
           }
+        shell: pwsh
 
       - uses: dorny/test-reporter@v1
         if: always()
