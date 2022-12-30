@@ -274,7 +274,7 @@ The chain of processing for a promise ends as soon as an error/exception occurs.
 Multiple async operations can be chained one after the other using `await` or `.Then`.
 
 ```cs
-void Func()
+async void Func()
 {
     try
     {
@@ -384,7 +384,7 @@ void Func()
 When a promise is awaited in an async function and is rejected, the exception behaves similar to a non-async function, skipping the rest of the code up to a `catch` clause that matches the exception.
 
 ```cs
-void Func()
+async void Func()
 {
     try
     {
@@ -476,7 +476,7 @@ promise
     {
         progressBar.SetProgress(progress);
         progressText.SetText( ((int) (progress * 100f)).ToString() + "%" );
-    }
+    })
 ```
 
 Progress can be reported through the deferred, and if it is reported, progress *must* be reported between 0 and 1 inclusive:
@@ -510,7 +510,8 @@ Download("google.com")                      // <---- This will report 0.0f - 0.2
     .Then(() => Download("bing.com"))       // <---- This will report 0.5f - 0.75f
     .Then(() => WaitForSeconds(1f))         // <---- This will report 0.75f - 1.0f
     .Progress(progressBar.SetProgress)
-    .Then(() => Console.Log("Downloads and extra waits complete."));
+    .Then(() => Console.Log("Downloads and extra waits complete."))
+    .Forget();
 ```
 
 Progress must be manually normalized in an `async Promise` function via the `.AwaitWithProgress` API.
@@ -560,7 +561,7 @@ Promise.All(Download("http://www.google.com"), Download("http://www.bing.com")) 
         {
             Console.WriteLine(link);
         }
-    });
+    })
 ```
 
 Progress from an All promise will be normalized from all of the input promises.
@@ -575,7 +576,7 @@ Promise.Merge(Download("http://www.google.com"), DownloadImage("http://www.examp
     {
         Console.WriteLine(values.Item1);    // Print the HTML.
         image.SetTexture(values.Item2);     // Assign the texture to an image object.
-    });
+    })
 ```
 
 ### Race Parallel
@@ -584,7 +585,7 @@ The `Race` function is similar to the `All` function, but it is the first async 
 
 ```cs
 Promise.Race(Download("http://www.google.com"), Download("http://www.bing.com"))  // Download each URL.
-    .Then(html => Console.Log(html));                       // Both pages are downloaded, but only
+    .Then(html => Console.Log(html))                        // Both pages are downloaded, but only
                                                             // log the first one downloaded.
 ```
 
@@ -711,7 +712,8 @@ Download("http://www.google.com");                                  // <---- Thi
     .Then(html => Console.Log(html), cancelationSource.Token).      // <---- This will be canceled before the download completes and will not run.
     .Then(() => Download("http://www.bing.com"))                    // <---- This will also be canceled and will not run.
     .Then(html => Console.Log(html))                                // <---- This will also be canceled and will not run.
-    .Finally(cancelationSource.Dispose);                            // Remember to always dispose of the cancelation source when it's no longer needed.
+    .Finally(cancelationSource.Dispose)                             // Remember to always dispose of the cancelation source when it's no longer needed.
+    .Forget();
     
 // ... later, before the first download is complete
 cancelationSource.Cancel();                 // <---- This will stop the callbacks from being ran, but will not stop the google download.
@@ -724,7 +726,7 @@ cancelablePromise
     .CatchCancelation(() =>
     {
         Console.Log("Download was canceled!");
-    });
+    })
 ```
 
 Just like `.Catch`, `.CatchCancelation` can return a value of the same type, or no value to transform the promise to a non-value promise, or it can return another promise of the same type or non-value to have its state adopted.
@@ -748,7 +750,8 @@ Download("http://www.google.com")                                           // <
     .Then(html => Console.Log(html))                                        // <---- This will *not* be canceled and will run
     .Then(() => Download("http://www.bing.com"), cancelationSource.Token)   // <---- This will be canceled before the download starts and will not run.
     .Then(html => Console.Log(html))                                        // <---- This will be canceled and will not run.
-    .Finally(cancelationSource.Dispose);                                    // Remember to always dispose of the cancelation source when it's no longer needed.
+    .Finally(cancelationSource.Dispose)                                     // Remember to always dispose of the cancelation source when it's no longer needed.
+    .Forget();
     
 // ... later, before the first download is complete
 cancelationSource.Cancel();
@@ -822,7 +825,7 @@ public async Promise<string> Download(string url, int maxRetries = 0)
     {
         if (maxRetries <= 0)
         {
-            throw Promise.Rethrow; // Rethrow the rejection without processing it so that the caller can catch it.
+            throw; // Rethrow the rejection without processing it so that the caller can catch it.
         }
         Console.Log($"There was an error downloading {url}, retrying..."); 
         return await Download(url, maxRetries - 1).AwaitWithProgress(0f, 1f);
@@ -950,16 +953,16 @@ Other APIs that allow you to pass `SynchronizationOption` or `SynchronizationCon
 ```cs
 private AsyncLocal<int> _asyncLocal = new AsyncLocal<int>();
 
-public async Promise FuncVoid()
+public async Promise Func()
 {
     _asyncLocal.Value = 1;
 
-    await FuncVoidNested();
+    await FuncNested();
 
     Assert.AreEqual(1, _asyncLocal.Value);
 }
 
-private async Promise FuncVoidNested()
+private async Promise FuncNested()
 {
     Assert.AreEqual(1, _asyncLocal.Value);
     _asyncLocal.Value = 2;
