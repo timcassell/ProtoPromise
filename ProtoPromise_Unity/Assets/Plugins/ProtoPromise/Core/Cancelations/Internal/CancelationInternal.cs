@@ -244,7 +244,13 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool IsTokenCanceled(int tokenId)
             {
-                return tokenId == TokenId & _state >= State.Canceled;
+                return tokenId == TokenId & (_state >= State.Canceled
+                    // TODO: Unity hasn't adopted .Net 6+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
+#if NET6_0_OR_GREATER
+                    // This is only necessary in .Net 6 or later, since `CancellationTokenSource.TryReset()` was added.
+                    | (_linkedToBclToken && _bclSource.IsCancellationRequested)
+#endif
+                    );
             }
 
             internal void MaybeLinkToken(CancelationToken token)

@@ -962,8 +962,8 @@ namespace ProtoPromiseTests.APIs
 
             // Nulled out fields aren't garbage collected in Debug mode until the end of the scope.
             // Github's test runners also aren't collecting properly even in RELEASE mode, causing the tests to fail.
-            // So these GC tests will only run locally when the PROTO_PROMISE_TEST_SOURCE_GC symbol exists.
-#if !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE && !DEBUG && PROTO_PROMISE_TEST_SOURCE_GC
+            // So these GC tests will only run locally when the PROTO_PROMISE_TEST_CANCELLATION_TOKEN_SOURCE_GC symbol exists.
+#if !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE && !DEBUG && PROTO_PROMISE_TEST_CANCELLATION_TOKEN_SOURCE_GC
             [MethodImpl(MethodImplOptions.NoInlining)]
             void ConvertToken(CancellationTokenSource source)
             {
@@ -1048,18 +1048,34 @@ namespace ProtoPromiseTests.APIs
             }
 #endif // NET6_0_OR_GREATER
 
-#endif // !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE && !DEBUG && PROTO_PROMISE_TEST_SOURCE_GC
+#endif // !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE && !DEBUG && PROTO_PROMISE_TEST_CANCELLATION_TOKEN_SOURCE_GC
 
 #endif // !NET_LEGACY || NET40
 
 #if NET6_0_OR_GREATER
             [Test]
-            public void ToCancelationTokenIsCanceledWhenSourceIsResetThenCanceled()
+            public void ToCancelationToken_IsCanceled_WhenSourceIsResetThenCanceled()
             {
-                int canceledCount = 0;
-
                 var cancelationSource = new CancellationTokenSource();
                 var token = cancelationSource.Token.ToCancelationToken();
+
+                Assert.IsFalse(token.IsCancelationRequested);
+
+                cancelationSource.TryReset();
+                Assert.IsFalse(token.IsCancelationRequested);
+
+                cancelationSource.Cancel();
+                Assert.IsTrue(token.IsCancelationRequested);
+
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void ToCancelationToken_RegisterCallbackIsInvoked_WhenSourceIsResetThenCanceled()
+            {
+                var cancelationSource = new CancellationTokenSource();
+                var token = cancelationSource.Token.ToCancelationToken();
+                int canceledCount = 0;
 
                 token.Register(() => ++canceledCount);
 
@@ -1497,7 +1513,7 @@ namespace ProtoPromiseTests.APIs
 #if NET6_0_OR_GREATER || UNITY_2021_2_OR_NEWER
 
             [Test]
-            public void CancelationRegistrationDisposeAsyncUnregistersCallback_0()
+            public void CancelationRegistrationDisposeAsyncUnregistersCallback()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
@@ -1510,7 +1526,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationRegistrationDisposeAsyncUnregistersCallback_1()
+            public void CancelationRegistrationAwaitUsingUnregistersCallback()
             {
                 bool completedAsync = false;
                 RunAsync().Wait(TimeSpan.FromSeconds(1));
@@ -1530,7 +1546,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationRegistrationDisposeAsyncDoesNotCompleteUntilTheCallbackIsComplete_0()
+            public void CancelationRegistrationDisposeAsyncDoesNotCompleteUntilTheCallbackIsComplete()
             {
                 bool completedAsync = false;
                 bool isCallbackRegistered = false;
@@ -1571,7 +1587,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationRegistrationDisposeAsyncDoesNotCompleteUntilTheCallbackIsComplete_1()
+            public void CancelationRegistrationAwaitUsingDoesNotCompleteUntilTheCallbackIsComplete()
             {
                 bool completedAsync = false;
                 bool isCallbackRegistered = false;
@@ -1658,7 +1674,7 @@ namespace ProtoPromiseTests.APIs
 #if NET6_0_OR_GREATER || UNITY_2021_2_OR_NEWER
 
             [Test]
-            public void CancelationRegistrationDisposeAsyncWaitsForCallbackToComplete_0()
+            public void CancelationRegistrationDisposeAsyncWaitsForCallbackToComplete()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
@@ -1687,7 +1703,7 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void CancelationRegistrationDisposeAsyncWaitsForCallbackToComplete_1()
+            public void CancelationRegistrationAwaitUsingWaitsForCallbackToComplete()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 CancelationToken cancelationToken = cancelationSource.Token;
