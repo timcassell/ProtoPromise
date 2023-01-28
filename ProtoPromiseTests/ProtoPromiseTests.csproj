@@ -8,6 +8,7 @@
     <LangVersion>9</LangVersion>
     <!-- Set from command line -->
     <DeveloperMode>false</DeveloperMode>
+    <TestCancellationTokenSourceGC>false</TestCancellationTokenSourceGC>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoProgress|AnyCPU'">
@@ -26,6 +27,10 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>portable</DebugType>
     <Optimize>false</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TestCancellationTokenSourceGC)'=='true'">
+    <DefineConstants>$(DefineConstants);PROTO_PROMISE_TEST_CANCELLATION_TOKEN_SOURCE_GC</DefineConstants>
   </PropertyGroup>
 
   <!-- For command-line testing -->
