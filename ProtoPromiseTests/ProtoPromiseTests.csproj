@@ -6,6 +6,7 @@
     <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER</DefineConstants>
     <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
     <LangVersion>9</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Set from command line -->
     <DeveloperMode>false</DeveloperMode>
     <TestCancellationTokenSourceGC>false</TestCancellationTokenSourceGC>

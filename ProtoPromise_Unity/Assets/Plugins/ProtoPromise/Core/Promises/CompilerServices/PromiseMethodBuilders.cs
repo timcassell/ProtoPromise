@@ -27,6 +27,8 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0060 // Remove unused parameter
 #pragma warning disable IDE0074 // Use compound assignment
+// Other async libraries could be doing the same AsyncMethodBuilderAttribute trick, but left theirs public, so we suppress the warning just in case.
+#pragma warning disable 0436 // Type conflicts with imported type
 
 using System;
 using System.Diagnostics;
@@ -39,8 +41,6 @@ namespace System.Runtime.CompilerServices
     // This attribute is required for the C# compiler to compile custom async methods. It is only included publicly in .Net Standard 2.1 and .Net Core.
     // We don't need to make it public, as the C# compiler can work with it being internal.
 
-    // Other async libraries could be doing this same trick, but left theirs public, so we suppress the warning just in case.
-#pragma warning disable 0436 // Type conflicts with imported type
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Interface | AttributeTargets.Delegate, Inherited = false, AllowMultiple = false)]
     internal sealed class AsyncMethodBuilderAttribute : Attribute
     {
@@ -51,7 +51,6 @@ namespace System.Runtime.CompilerServices
             BuilderType = builderType;
         }
     }
-#pragma warning restore 0436 // Type conflicts with imported type
 #endif
 
 #if NET_LEGACY

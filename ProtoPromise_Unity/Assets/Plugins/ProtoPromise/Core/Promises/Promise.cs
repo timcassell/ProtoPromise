@@ -9,13 +9,13 @@
 #undef PROMISE_DEBUG
 #endif
 // define PROTO_PROMISE_PROGRESS_DISABLE to disable progress reports on promises.
-// If Progress is enabled, promises use more memory, and it creates an upper bound to the depth of a promise chain (see Config for details).
 #if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 

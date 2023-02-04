@@ -1,4 +1,6 @@
-﻿#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
+﻿#pragma warning disable IDE0031 // Use null propagation
+#pragma warning disable CA1041 // Provide ObsoleteAttribute message
+#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.ComponentModel;

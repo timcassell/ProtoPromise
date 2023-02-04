@@ -776,7 +776,9 @@ namespace ProtoPromiseTests.APIs
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
 
+#if PROMISE_PROGRESS
             ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+#endif
 
             System.Func<Promise> action = () =>
             {
@@ -887,7 +889,9 @@ namespace ProtoPromiseTests.APIs
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
 
+#if PROMISE_PROGRESS
             ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+#endif
 
             System.Func<int, Promise> action = cv =>
             {
@@ -999,7 +1003,9 @@ namespace ProtoPromiseTests.APIs
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
 
+#if PROMISE_PROGRESS
             ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+#endif
 
             System.Func<Promise<int>> action = () =>
             {
@@ -1112,7 +1118,9 @@ namespace ProtoPromiseTests.APIs
             var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
 
+#if PROMISE_PROGRESS
             ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+#endif
 
             System.Func<int, Promise<int>> action = cv =>
             {

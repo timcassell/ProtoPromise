@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
@@ -26,6 +27,7 @@ namespace Proto.Promises
         private readonly string _stackTrace;
         public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
     }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
 #endif

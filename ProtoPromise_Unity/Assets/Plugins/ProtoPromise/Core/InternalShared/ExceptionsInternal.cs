@@ -83,7 +83,7 @@ namespace Proto.Promises
 #endif
         internal sealed class RejectExceptionInternal : RejectException, IRejectionToContainer, ICantHandleException
         {
-            private object _value;
+            private readonly object _value;
 
             internal RejectExceptionInternal(object value)
             {

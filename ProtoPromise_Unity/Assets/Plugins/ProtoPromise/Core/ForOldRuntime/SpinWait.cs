@@ -290,7 +290,6 @@ namespace Proto.Promises // Using internally instead of public in System.Threadi
         /// <summary>
         /// Gets the number of available processors
         /// </summary>
-        [SuppressMessage("Microsoft.Concurrency", "CA8001", Justification = "Reviewed for thread safety")]
         internal static int ProcessorCount
         {
             get

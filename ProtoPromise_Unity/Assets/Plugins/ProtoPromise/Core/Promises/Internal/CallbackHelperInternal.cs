@@ -9,8 +9,9 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0074 // Use compound assignment
 
 using System;
 using System.Diagnostics;

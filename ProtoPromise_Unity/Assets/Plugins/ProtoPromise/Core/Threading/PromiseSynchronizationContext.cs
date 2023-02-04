@@ -9,6 +9,9 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 
 #pragma warning disable CA1507 // Use nameof to express symbol names
+#pragma warning disable IDE0016 // Use 'throw' expression
+#pragma warning disable IDE0031 // Use null propagation
+#pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 namespace Proto.Promises.Threading

@@ -22,8 +22,11 @@
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0044 // Add readonly modifier
+#pragma warning disable IDE0052 // Remove unread private members
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable CA1822 // Mark members as static
 #pragma warning disable 0649 // Field is never assigned to, and will always have its default value
+#pragma warning disable 0414 // The private field is assigned but its value is never used
 
 using System;
 using System.Collections.Generic;
@@ -187,8 +190,10 @@ namespace Proto.Promises
             volatile private Promise.State _state;
             private bool _suppressRejection;
             private bool _wasAwaitedorForgotten;
+#if PROMISE_PROGRESS
             // Wait state is only used in PromiseWaitPromise, but it's placed here to take advantage of the available bit space.
             volatile private WaitState _waitState;
+#endif
 
             partial class PromiseRef<TResult> : PromiseRefBase
             {
@@ -259,7 +264,7 @@ namespace Proto.Promises
                 protected DeferredIdAndProgress _idAndProgress = new DeferredIdAndProgress(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
             }
 
-            #region Non-cancelable Promises
+#region Non-cancelable Promises
             partial class DeferredPromise<TResult> : DeferredPromiseBase<TResult>
             {
             }
@@ -321,9 +326,9 @@ namespace Proto.Promises
             {
                 private TCanceler _canceler;
             }
-            #endregion
+#endregion
 
-            #region Cancelable Promises
+#region Cancelable Promises
             partial struct CancelationHelper
             {
                 private CancelationRegistration _cancelationRegistration;
@@ -394,9 +399,9 @@ namespace Proto.Promises
                 internal CancelationHelper _cancelationHelper;
                 private TCanceler _canceler;
             }
-            #endregion
+#endregion
 
-            #region Multi Promises
+#region Multi Promises
             partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
                 volatile protected int _waitCount;
@@ -445,7 +450,7 @@ namespace Proto.Promises
                 private bool _disposed;
 #endif
             }
-            #endregion
+#endregion
 
 #if PROMISE_PROGRESS
 

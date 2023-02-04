@@ -25,6 +25,7 @@
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0038 // Use pattern matching
+#pragma warning disable IDE0074 // Use compound assignment
 
 using System;
 using System.Diagnostics;
@@ -339,7 +340,7 @@ namespace Proto.Promises
                     }
 
                     [MethodImpl(InlineOption)]
-                    private static AsyncPromiseRefMachine<TStateMachine> GetOrCreate()
+                    new private static AsyncPromiseRefMachine<TStateMachine> GetOrCreate()
                     {
                         var obj = ObjectPool.TryTakeOrInvalid<AsyncPromiseRefMachine<TStateMachine>>();
                         return obj == InvalidAwaitSentinel.s_instance
