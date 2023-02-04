@@ -291,105 +291,99 @@ namespace Proto.Promises
                 TCancelable cancelable, int tokenId, out CancelationRegistration registration) where TCancelable : ICancelable
             {
                 _smallFields._locker.Enter();
-                if (tokenId != TokenId)
+                State state = _state;
+                bool isTokenMatched = tokenId == TokenId;
+                if (!isTokenMatched | state != State.Pending)
                 {
                     _smallFields._locker.Exit();
                     registration = default(CancelationRegistration);
+                    if (isTokenMatched & state >= State.Canceled)
+                    {
+                        cancelable.Cancel();
+                        return true;
+                    }
                     return false;
                 }
 
-                State state = _state;
-                if (state == State.Pending)
-                {
-                    // TODO: Unity hasn't adopted .Net 6+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
+                // TODO: Unity hasn't adopted .Net 6+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
 #if NET6_0_OR_GREATER
-                    // This is only necessary in .Net 6 or later, since `CancellationTokenSource.TryReset()` was added.
-                    if (_linkedToBclToken)
+                // This is only necessary in .Net 6 or later, since `CancellationTokenSource.TryReset()` was added.
+                if (_linkedToBclToken)
+                {
+                    System.Threading.CancellationToken token;
+                    // If the source was disposed, the Token property will throw ObjectDisposedException. Unfortunately, this is the only way to check if it's disposed.
+                    try
                     {
-                        System.Threading.CancellationToken token;
-                        // If the source was disposed, the Token property will throw ObjectDisposedException. Unfortunately, this is the only way to check if it's disposed.
-                        try
+                        token = _bclSource.Token;
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        int sourceId = SourceId;
+                        bool isCanceled = _bclSource.IsCancellationRequested;
+                        if (isCanceled)
                         {
-                            token = _bclSource.Token;
+                            _smallFields._locker.Exit();
+                            cancelable.Cancel();
                         }
-                        catch (ObjectDisposedException)
+                        else
                         {
-                            int sourceId = SourceId;
-                            bool isCanceled = _bclSource.IsCancellationRequested;
-                            if (isCanceled)
-                            {
-                                _smallFields._locker.Exit();
-                                cancelable.Cancel();
-                            }
-                            else
-                            {
-                                UnregisterAll();
-                                _smallFields._locker.Exit();
-                            }
-                            registration = default(CancelationRegistration);
-                            return isCanceled;
-                        }
-
-                        // If we are unable to unregister, it means the source had TryReset() called on it, or the token was canceled on another thread (and the other thread may be waiting on the lock).
-                        if (!_bclRegistration.Unregister())
-                        {
-                            if (token.IsCancellationRequested)
-                            {
-                                _smallFields._locker.Exit();
-                                cancelable.Cancel();
-                                registration = default(CancelationRegistration);
-                                return true;
-                            }
                             UnregisterAll();
+                            _smallFields._locker.Exit();
                         }
-                        // Callback could be invoked synchronously if the token is canceled on another thread,
-                        // so we set a flag to prevent a deadlock, then check the flag again after the hookup to see if it was invoked.
-                        ts_isLinkingToBclToken = true;
-                        _bclRegistration = token.Register(state =>
-                        {
-                            // This could be invoked synchronously if the token is canceled, so we check the flag to prevent a deadlock.
-                            if (ts_isLinkingToBclToken)
-                            {
-                                // Reset the flag so that we can tell that this was invoked synchronously.
-                                ts_isLinkingToBclToken = false;
-                                return;
-                            }
-                            state.UnsafeAs<CancelationRef>().Cancel();
-                        }, this, false);
+                        registration = default(CancelationRegistration);
+                        return isCanceled;
+                    }
 
-                        if (!ts_isLinkingToBclToken)
+                    // If we are unable to unregister, it means the source had TryReset() called on it, or the token was canceled on another thread (and the other thread may be waiting on the lock).
+                    if (!_bclRegistration.Unregister())
+                    {
+                        if (token.IsCancellationRequested)
                         {
-                            // Hook up the node instead of invoking since it might throw, and we need all registered callbacks to be invoked.
-                            var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable, this);
-                            int oldNodeId = node.NodeId;
-                            _registeredCallbacksHead.InsertPrevious(node);
-
-                            InvokeCallbacksAlreadyLocked();
-                            registration = new CancelationRegistration(this, node, oldNodeId, tokenId);
+                            _smallFields._locker.Exit();
+                            cancelable.Cancel();
+                            registration = default(CancelationRegistration);
                             return true;
                         }
-                        ts_isLinkingToBclToken = false;
+                        UnregisterAll();
                     }
-#endif
-
+                    // Callback could be invoked synchronously if the token is canceled on another thread,
+                    // so we set a flag to prevent a deadlock, then check the flag again after the hookup to see if it was invoked.
+                    ts_isLinkingToBclToken = true;
+                    _bclRegistration = token.Register(state =>
                     {
+                        // This could be invoked synchronously if the token is canceled, so we check the flag to prevent a deadlock.
+                        if (ts_isLinkingToBclToken)
+                        {
+                            // Reset the flag so that we can tell that this was invoked synchronously.
+                            ts_isLinkingToBclToken = false;
+                            return;
+                        }
+                        state.UnsafeAs<CancelationRef>().Cancel();
+                    }, this, false);
+
+                    if (!ts_isLinkingToBclToken)
+                    {
+                        // Hook up the node instead of invoking since it might throw, and we need all registered callbacks to be invoked.
                         var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable, this);
                         int oldNodeId = node.NodeId;
                         _registeredCallbacksHead.InsertPrevious(node);
-                        _smallFields._locker.Exit();
+
+                        InvokeCallbacksAlreadyLocked();
                         registration = new CancelationRegistration(this, node, oldNodeId, tokenId);
                         return true;
                     }
+                    ts_isLinkingToBclToken = false;
                 }
+#endif
 
-                _smallFields._locker.Exit();
-                registration = default(CancelationRegistration);
-                if (state >= State.Canceled)
                 {
-                    cancelable.Cancel();
+                    var node = CallbackNodeImpl<TCancelable>.GetOrCreate(cancelable, this);
+                    int oldNodeId = node.NodeId;
+                    _registeredCallbacksHead.InsertPrevious(node);
+                    _smallFields._locker.Exit();
+                    registration = new CancelationRegistration(this, node, oldNodeId, tokenId);
                     return true;
                 }
-                return false;
             }
 
             [MethodImpl(InlineOption)]
