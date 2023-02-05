@@ -1204,7 +1204,9 @@ namespace ProtoPromiseTests.APIs
 
                 isComplete = true;
                 throw expectedException;
+#pragma warning disable CS0162 // Unreachable code detected
                 return 42;
+#pragma warning restore CS0162 // Unreachable code detected
             });
 
             SpinWait.SpinUntil(() => isExecuting);

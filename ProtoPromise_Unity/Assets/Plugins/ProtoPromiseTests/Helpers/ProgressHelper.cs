@@ -1,7 +1,8 @@
-﻿using NUnit.Framework;
-using Proto.Promises;
+﻿using Proto.Promises;
 using System;
 using System.Threading;
+
+#pragma warning disable CS0618 // Type or member is obsolete
 
 namespace ProtoPromiseTests
 {

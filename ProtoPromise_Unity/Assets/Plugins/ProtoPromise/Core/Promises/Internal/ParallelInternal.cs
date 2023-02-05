@@ -14,6 +14,8 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable IDE0250 // Make struct 'readonly'
 #pragma warning disable CA1507 // Use nameof to express symbol names
 
 using System;

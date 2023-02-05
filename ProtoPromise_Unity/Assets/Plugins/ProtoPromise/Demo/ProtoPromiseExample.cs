@@ -3,6 +3,8 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
+#pragma warning disable CS0618 // Type or member is obsolete
+
 namespace Proto.Promises.Examples
 {
     public class ProtoPromiseExample : MonoBehaviour

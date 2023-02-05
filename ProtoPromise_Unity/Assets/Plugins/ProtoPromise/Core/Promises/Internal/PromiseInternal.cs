@@ -15,7 +15,9 @@
 
 #pragma warning disable IDE0016 // Use 'throw' expression
 #pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0083 // Use pattern matching
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;

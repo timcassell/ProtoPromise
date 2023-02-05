@@ -16,7 +16,6 @@
 #if PROMISE_PROGRESS
 
 #pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Diagnostics;

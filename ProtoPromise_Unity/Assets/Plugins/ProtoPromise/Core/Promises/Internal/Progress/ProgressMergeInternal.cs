@@ -203,6 +203,8 @@ namespace Proto.Promises
                     double newValue;
                     do
                     {
+                        // There is no Volatile.Read in old runtime, so we have to place a memory barrier instead to make sure we read a fresh value.
+                        Thread.MemoryBarrier();
                         current = _currentProgress;
                         newValue = current + value;
                     } while (Interlocked.CompareExchange(ref _currentProgress, newValue, current) != current);

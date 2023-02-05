@@ -6,6 +6,8 @@ using UnityEngine;
 using UnityEngine.Networking;
 #endif
 
+#pragma warning disable CS0618 // Type or member is obsolete
+
 namespace Proto.Promises.Examples
 {
     public static class DownloadHelper

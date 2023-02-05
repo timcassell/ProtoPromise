@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable CA1507 // Use nameof to express symbol names
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 

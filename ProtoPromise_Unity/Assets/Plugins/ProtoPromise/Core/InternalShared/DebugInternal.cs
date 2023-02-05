@@ -9,6 +9,7 @@
 #endif
 
 #pragma warning disable IDE0031 // Use null propagation
+#pragma warning disable IDE0074 // Use compound assignment
 
 using System;
 using System.Collections.Generic;
@@ -71,7 +72,6 @@ namespace Proto.Promises
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames);
         static partial void SetCurrentInvoker(ITraceable current);
         static partial void ClearCurrentInvoker();
-        static partial void IncrementInvokeId();
 #if PROMISE_DEBUG
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames)
         {
@@ -81,6 +81,7 @@ namespace Proto.Promises
             traceable.Trace = new CausalityTrace(stackTrace, ts_currentTrace);
         }
 
+        static partial void IncrementInvokeId();
 #if !CSHARP_7_3_OR_NEWER
         // This is only needed in older language versions that don't support ref structs.
         [ThreadStatic]

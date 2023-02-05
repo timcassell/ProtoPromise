@@ -13,6 +13,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0038 // Use pattern matching
 #pragma warning disable IDE0054 // Use compound assignment
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
 using System.Diagnostics;

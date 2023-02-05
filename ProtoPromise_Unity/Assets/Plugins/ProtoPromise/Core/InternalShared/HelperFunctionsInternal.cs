@@ -11,6 +11,7 @@
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0019 // Use pattern matching
+#pragma warning disable IDE0074 // Use compound assignment
 
 using System;
 using System.Collections.Generic;

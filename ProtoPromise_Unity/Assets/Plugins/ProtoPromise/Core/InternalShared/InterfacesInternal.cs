@@ -2,7 +2,6 @@
 #define NET_LEGACY
 #endif
 
-using System;
 using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises

@@ -2,6 +2,8 @@
 #define NET_LEGACY
 #endif
 
+#pragma warning disable IDE0034 // Simplify 'default' expression
+
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
