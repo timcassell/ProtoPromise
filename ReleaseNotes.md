@@ -1,5 +1,15 @@
 # Release Notes
 
+## v 2.4.1 - February 5, 2023
+
+Fixes:
+
+- Fixed `CancelationToken.IsCancelationRequested` when it was created from a `System.Threading.CancellationToken`.
+
+Optimizations:
+
+- Small performance improvement in `CancelationToken.(Try)Register`.
+
 ## v 2.4.0 - December 23, 2022
 
 Enhancements:

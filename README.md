@@ -45,13 +45,10 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-## v 2.4.0 - December 23, 2022
+## v 2.4.1 - February 5, 2023
 
-- Added `Promise.ParallelFor` and `Promise.ParallelForEach` APIs to run iterations concurrently and asynchronously (compare to `Parallel.ForEach`).
-- Added `AsyncLock` and `AsyncMonitor` to be able to lock around asynchronous resources.
-- Increased performance of promises and progress reports.
-- Reduced memory consumption of `All`, `Merge`, `Race`, and `First` promises.
-- Progress reports now use full 32-bit float precision instead of 16-bit fixed precision.
+- Fixed `CancelationToken.IsCancelationRequested` when it was created from a `System.Threading.CancellationToken`.
+- Small performance improvement in `CancelationToken.(Try)Register`.
 
 See [Release Notes](ReleaseNotes.md) for the full changelog.
 
