@@ -124,7 +124,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal enum State : int
+            internal enum State : byte
             {
                 Pending,
                 Disposed,
