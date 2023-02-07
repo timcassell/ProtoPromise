@@ -112,7 +112,7 @@ Add to your assets from the Asset Store at https://assetstore.unity.com/packages
 
 In the Package Manager, open the dropdown and click on `Add Package from git url` and enter `https://github.com/TimCassell/ProtoPromise.git?path=ProtoPromise_Unity/Assets/Plugins/ProtoPromise`.
 Or add `"com.timcassell.protopromise": "https://github.com/TimCassell/ProtoPromise.git?path=ProtoPromise_Unity/Assets/Plugins/ProtoPromise"` to `Packages/manifest.json`.
-You may append `#vX.X.X` to use a specific version, for exampe `#v2.0.0`.
+You may append `#vX.X.X` to use a specific version, for example `#v2.0.0`.
 
 - Download unitypackage from GitHub
 
