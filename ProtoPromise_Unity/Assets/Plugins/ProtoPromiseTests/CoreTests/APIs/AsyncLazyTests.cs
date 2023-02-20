@@ -38,6 +38,26 @@ namespace ProtoPromiseTests.APIs
             TestHelper.Cleanup();
         }
 
+#if PROMISE_PROGRESS
+        [Test]
+        public void AsyncLazy_ProgressIsReportedProperly()
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var lazy = new AsyncLazy<int>(() => deferred.Promise);
+
+            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+
+            lazy.Promise
+                .SubscribeProgress(progressHelper)
+                .Forget();
+
+            progressHelper.AssertCurrentProgress(0f);
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.ResolveAndAssertResult(deferred, 1, 1f);
+        }
+#endif
+
         [Test]
         public void AsyncLazy_NeverAwaited_DoesNotCallFunc()
         {
