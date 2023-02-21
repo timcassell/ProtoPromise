@@ -189,10 +189,10 @@ namespace ProtoPromiseTests.APIs
             {
                 using (var key = AsyncMonitor.Enter(mutex))
                 {
-                    deferredReady.Resolve();
                     // Hold onto the lock until the other thread tries to enter.
                     lock (mutex)
                     {
+                        deferredReady.Resolve();
                         Monitor.Wait(mutex);
                     }
                 }
