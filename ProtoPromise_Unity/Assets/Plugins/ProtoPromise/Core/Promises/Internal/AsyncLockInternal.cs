@@ -47,6 +47,8 @@ namespace Proto.Promises
                 // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
                 private SynchronizationContext _callerContext;
                 private CancelationRegistration _cancelationRegistration;
+                // We have to store the previous state in a separate field until the next awaiter is ready to be invoked on the proper context.
+                private Promise.State _tempState;
                 internal AsyncLockInternal Owner { get { return _result._owner; } }
                 IAsyncLockPromise ILinked<IAsyncLockPromise>.Next { get; set; }
 
@@ -98,29 +100,35 @@ namespace Proto.Promises
                     cancelationToken.TryRegister(this, out _cancelationRegistration);
                 }
 
+                private void Continue(Promise.State state)
+                {
+                    if (_callerContext == null)
+                    {
+                        // It was a synchronous lock, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
+                        HandleNextInternal(null, state);
+                        return;
+                    }
+                    // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
+                    _tempState = state;
+                    ScheduleForHandle(this, _callerContext);
+                }
+
+                internal override void HandleFromContext()
+                {
+                    HandleNextInternal(null, _tempState);
+                }
+
                 public void Resolve(ref long currentKey)
                 {
-                    lock (this)
-                    {
-                        ThrowIfInPool(this);
+                    ThrowIfInPool(this);
 
-                        // We don't need to check if the unregister was successful or not.
-                        // The fact that this was called means the cancelation was unable to unregister this from the lock.
-                        // We just dispose to wait for the callback to complete before we continue.
-                        _cancelationRegistration.Dispose();
+                    // We don't need to check if the unregister was successful or not.
+                    // The fact that this was called means the cancelation was unable to unregister this from the lock.
+                    // We just dispose to wait for the callback to complete before we continue.
+                    _cancelationRegistration.Dispose();
 
-                        _result = new AsyncLock.Key(Owner, currentKey);
-                        if (_callerContext == null)
-                        {
-                            // It was a synchronous lock, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
-                            HandleNextInternal(null, Promise.State.Resolved);
-                            return;
-                        }
-                    }
-
-                    // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
-                    Promise.Run(this, _this => _this.HandleNextInternal(null, Promise.State.Resolved), _callerContext, forceAsync: true)
-                        .Forget();
+                    _result = new AsyncLock.Key(Owner, currentKey);
+                    Continue(Promise.State.Resolved);
                 }
 
                 void ICancelable.Cancel()
@@ -130,17 +138,7 @@ namespace Proto.Promises
                     {
                         return;
                     }
-
-                    if (_callerContext == null)
-                    {
-                        // It was a synchronous lock, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
-                        HandleNextInternal(null, Promise.State.Canceled);
-                        return;
-                    }
-
-                    // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
-                    Promise.Run(this, _this => _this.HandleNextInternal(null, Promise.State.Canceled), _callerContext, forceAsync: true)
-                        .Forget();
+                    Continue(Promise.State.Canceled);
                 }
 
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
@@ -166,11 +164,8 @@ namespace Proto.Promises
                     // This can only happen with an AsyncMonitor.WaitAsync call. Synchronous waits cannot be misused.
                     ThrowIfInPool(this);
                     _cancelationRegistration.Dispose();
-                    Promise.Run(this, _this =>
-                    {
-                        var rejectContainer = CreateRejectContainer(exception, int.MinValue, null, _this);
-                        _this.HandleNextInternal(rejectContainer, Promise.State.Rejected);
-                    }, _callerContext, forceAsync: true)
+                    var rejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                    Promise.Run(() => HandleNextInternal(rejectContainer, Promise.State.Rejected), _callerContext, forceAsync: true)
                         .Forget();
                 }
 #endif
@@ -214,25 +209,26 @@ namespace Proto.Promises
 
                 public void Resolve(ref long currentKey)
                 {
-                    lock (this)
+                    ThrowIfInPool(this);
+
+                    // Dispose to wait for the callback to complete before we continue.
+                    _cancelationRegistration.Dispose();
+
+                    currentKey = _key;
+                    if (_callerContext == null)
                     {
-                        ThrowIfInPool(this);
-
-                        // Dispose to wait for the callback to complete before we continue.
-                        _cancelationRegistration.Dispose();
-
-                        currentKey = _key;
-                        if (_callerContext == null)
-                        {
-                            // It was a synchronous wait, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
-                            HandleNextInternal(null, Promise.State.Resolved);
-                            return;
-                        }
+                        // It was a synchronous wait, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
+                        HandleNextInternal(null, Promise.State.Resolved);
+                        return;
                     }
-
                     // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
-                    Promise.Run(this, _this => _this.HandleNextInternal(null, Promise.State.Resolved), _callerContext, forceAsync: true)
-                        .Forget();
+                    ScheduleForHandle(this, _callerContext);
+                }
+
+                internal override void HandleFromContext()
+                {
+                    // We only continue with resolved state here. If this was rejected due to mis-use, the rejection is posted via Promise.Run.
+                    HandleNextInternal(null, Promise.State.Resolved);
                 }
 
                 void ICancelable.Cancel()

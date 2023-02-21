@@ -244,6 +244,16 @@ namespace ProtoPromiseTests.Threading
         }
 
         /// <summary>
+        /// Get how many actions will be invoked if parallel actions are expanded to processor count.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public static int GetExpandCount(int count)
+        {
+            return Math.Max(Environment.ProcessorCount / count, 1) * count;
+        }
+
+        /// <summary>
         /// Run each action in parallel multiple times with differing offsets for each run.
         /// <para/>The number of runs is 3^actions.Length, so be careful if you don't want the test to run too long.
         /// </summary>
