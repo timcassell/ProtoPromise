@@ -295,7 +295,7 @@ namespace Proto.Promises
         /// Run the <paramref name="action"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise"/> that will be resolved when the <paramref name="action"/> returns successfully.
         /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
-        /// <param name="action">The delegate that will invoked.</param>
+        /// <param name="action">The delegate that will be invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="action"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise Run(Action action, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
@@ -311,7 +311,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
         /// <param name="captureValue">The value that will be passed to <paramref name="action"/>.</param>
-        /// <param name="action">The delegate that will invoked.</param>
+        /// <param name="action">The delegate that will be invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="action"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
@@ -326,7 +326,7 @@ namespace Proto.Promises
         /// Run the <paramref name="action"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise"/> that will be resolved when the <paramref name="action"/> returns successfully.
         /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
-        /// <param name="action">The delegate that will invoked.</param>
+        /// <param name="action">The delegate that will be invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="action"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise Run(Action action, SynchronizationContext synchronizationContext, bool forceAsync = true)
@@ -342,7 +342,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="action"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
         /// <param name="captureValue">The value that will be passed to <paramref name="action"/>.</param>
-        /// <param name="action">The delegate that will invoked.</param>
+        /// <param name="action">The delegate that will be invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="action"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationContext synchronizationContext, bool forceAsync = true)
@@ -357,7 +357,7 @@ namespace Proto.Promises
         /// Run the <paramref name="function"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise{T}"/> that will be resolved with the value returned by the <paramref name="function"/>.
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise<T> Run<T>(Func<T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
@@ -373,7 +373,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
         /// <param name="captureValue">The value that will be passed to <paramref name="function"/>.</param>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
@@ -388,7 +388,7 @@ namespace Proto.Promises
         /// Run the <paramref name="function"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise{T}"/> that will be resolved with the value returned by the <paramref name="function"/>.
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise<T> Run<T>(Func<T> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
@@ -404,7 +404,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
         /// <param name="captureValue">The value that will be passed to <paramref name="function"/>.</param>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
@@ -419,7 +419,7 @@ namespace Proto.Promises
         /// Run the <paramref name="function"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise"/> that will adopt the state of the <see cref="Promise"/> returned from the <paramref name="function"/>.
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise Run(Func<Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
@@ -437,7 +437,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
         /// <param name="captureValue">The value that will be passed to <paramref name="function"/>.</param>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
@@ -454,7 +454,7 @@ namespace Proto.Promises
         /// Run the <paramref name="function"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise"/> that will adopt the state of the <see cref="Promise"/> returned from the <paramref name="function"/>.
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise Run(Func<Promise> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
@@ -472,7 +472,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
         /// <param name="captureValue">The value that will be passed to <paramref name="function"/>.</param>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
@@ -489,7 +489,7 @@ namespace Proto.Promises
         /// Run the <paramref name="function"/> on the provided <paramref name="synchronizationOption"/> context. Returns a new <see cref="Promise{T}"/> that will adopt the state of the <see cref="Promise{T}"/> returned from the <paramref name="function"/>.
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
@@ -507,7 +507,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
         /// <param name="captureValue">The value that will be passed to <paramref name="function"/>.</param>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationOption">Indicates on which context the <paramref name="function"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
@@ -524,7 +524,7 @@ namespace Proto.Promises
         /// Run the <paramref name="function"/>  on the provided <paramref name="synchronizationContext"/>. Returns a new <see cref="Promise{T}"/> that will adopt the state of the <see cref="Promise{T}"/> returned from the <paramref name="function"/>.
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
@@ -542,7 +542,7 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="function"/> throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be canceled if it is an <see cref="OperationCanceledException"/>, or rejected with that <see cref="Exception"/>.
         /// </summary>
         /// <param name="captureValue">The value that will be passed to <paramref name="function"/>.</param>
-        /// <param name="function">The delegate that will invoked.</param>
+        /// <param name="function">The delegate that will be invoked.</param>
         /// <param name="synchronizationContext">The context on which the <paramref name="function"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
