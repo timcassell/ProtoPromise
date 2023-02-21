@@ -256,7 +256,7 @@ namespace ProtoPromiseTests.Threading
         {
             setup += () => { };
             teardown += () => { };
-            if (actions.Length <= 1)
+            if (actions.Length <= 1 && !expandToProcessorCount)
             {
                 setup.Invoke();
                 if (actions.Length == 1)

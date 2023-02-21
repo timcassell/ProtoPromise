@@ -22,7 +22,7 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        internal enum SynchronizationOption
+        internal enum SynchronizationOption : byte
         {
             Synchronous,
             Foreground,
