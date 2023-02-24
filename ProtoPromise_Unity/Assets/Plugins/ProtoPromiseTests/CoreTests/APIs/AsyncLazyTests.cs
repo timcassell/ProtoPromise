@@ -81,7 +81,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void AsyncLazy_WithSynchronousOption_CallsFuncDirectly_Then()
+        public void AsyncLazy_CallsFuncDirectly_Then()
         {
             var testThread = Thread.CurrentThread;
             Thread funcThread = null;
@@ -89,7 +89,7 @@ namespace ProtoPromiseTests.APIs
             {
                 funcThread = Thread.CurrentThread;
                 return Promise.Resolved(13);
-            }, SynchronizationOption.Synchronous);
+            });
 
             bool isComplete = false;
             lazy.Promise
@@ -266,15 +266,15 @@ namespace ProtoPromiseTests.APIs
 
 #if !UNITY_WEBGL
         [Test]
-        public void AsyncLazy_WithBackgroundOption_CallsFuncOnBackgroundContext_Then()
+        public void AsyncLazy_WithPromiseRun_CallsFuncOnBackgroundContext_Then()
         {
             var testThread = Thread.CurrentThread;
             Thread funcThread = null;
-            var lazy = new AsyncLazy<int>(() =>
+            var lazy = new AsyncLazy<int>(() => Promise.Run(() =>
             {
                 funcThread = Thread.CurrentThread;
                 return Promise.Resolved(13);
-            }, SynchronizationOption.Background);
+            }, SynchronizationOption.Background));
 
             Assert.AreEqual(13, lazy.Promise.WaitWithTimeout(TimeSpan.FromSeconds(1)));
 
@@ -284,13 +284,13 @@ namespace ProtoPromiseTests.APIs
 
 #if CSHARP_7_3_OR_NEWER
         [Test]
-        public void AsyncLazy_WithSynchronousOption_CallsFuncDirectly_Async()
+        public void AsyncLazy_CallsFuncDirectly_Async()
         {
-            AsyncLazy_WithSynchronousOption_CallsFuncDirectly_Core()
+            AsyncLazy_CallsFuncDirectly_Core()
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
-        private async Promise AsyncLazy_WithSynchronousOption_CallsFuncDirectly_Core()
+        private async Promise AsyncLazy_CallsFuncDirectly_Core()
         {
             var testThread = Thread.CurrentThread;
             Thread funcThread = null;
@@ -298,7 +298,7 @@ namespace ProtoPromiseTests.APIs
             {
                 funcThread = Thread.CurrentThread;
                 return Promise.Resolved(13);
-            }, SynchronizationOption.Synchronous);
+            });
 
             await lazy;
 
@@ -485,21 +485,22 @@ namespace ProtoPromiseTests.APIs
 
 #if !UNITY_WEBGL
         [Test]
-        public void AsyncLazy_WithBackgroundOption_CallsFuncOnBackgroundContext_Async()
+        public void AsyncLazy_SwitchToBackground_CallsFuncOnBackgroundContext_Async()
         {
-            AsyncLazy_WithBackgroundOption_CallsFuncOnBackgroundContext_Core()
+            AsyncLazy_SwitchToBackground_CallsFuncOnBackgroundContext_Core()
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
-        private async Promise AsyncLazy_WithBackgroundOption_CallsFuncOnBackgroundContext_Core()
+        private async Promise AsyncLazy_SwitchToBackground_CallsFuncOnBackgroundContext_Core()
         {
             var testThread = Thread.CurrentThread;
             Thread funcThread = null;
-            var lazy = new AsyncLazy<int>(() =>
+            var lazy = new AsyncLazy<int>(async () =>
             {
+                await Promise.SwitchToBackground(true);
                 funcThread = Thread.CurrentThread;
-                return Promise.Resolved(13);
-            }, SynchronizationOption.Background);
+                return 13;
+            });
 
             await lazy;
 

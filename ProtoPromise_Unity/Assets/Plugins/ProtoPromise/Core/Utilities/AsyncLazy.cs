@@ -17,7 +17,6 @@
 
 using System;
 using System.Diagnostics;
-using System.Threading;
 
 namespace Proto.Promises
 {
@@ -36,23 +35,12 @@ namespace Proto.Promises
         private T _result;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="AsyncLazy{T}"/> class that uses the specified initialization function and invoke option.
+        /// Initializes a new instance of the <see cref="AsyncLazy{T}"/> class that uses the specified initialization function.
         /// </summary>
         /// <param name="asyncValueFactory">The delegate that is invoked to produce the lazily initialized value when it is needed.</param>
-        /// <param name="invokeOption">The context on which to invoke the <paramref name="asyncValueFactory"/>.</param>
-        public AsyncLazy(Func<Promise<T>> asyncValueFactory, SynchronizationOption invokeOption = SynchronizationOption.Synchronous)
+        public AsyncLazy(Func<Promise<T>> asyncValueFactory)
         {
-            _lazyFields = new LazyFields(asyncValueFactory, null, (Internal.SynchronizationOption) invokeOption);
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="AsyncLazy{T}"/> class that uses the specified initialization function and invoke option.
-        /// </summary>
-        /// <param name="asyncValueFactory">The delegate that is invoked to produce the lazily initialized value when it is needed.</param>
-        /// <param name="invokeContext">The context on which to invoke the <paramref name="asyncValueFactory"/>.</param>
-        public AsyncLazy(Func<Promise<T>> asyncValueFactory, SynchronizationContext invokeContext)
-        {
-            _lazyFields = new LazyFields(asyncValueFactory, invokeContext, Internal.SynchronizationOption.Explicit);
+            _lazyFields = new LazyFields(asyncValueFactory);
         }
 
         /// <summary>
@@ -101,20 +89,18 @@ namespace Proto.Promises
         {
             private Promise<T> _promise;
             private readonly Func<Promise<T>> _asyncValueFactory;
-            private readonly SynchronizationContext _invokeContext;
-            private readonly Internal.SynchronizationOption _invokeOption;
             private bool _isComplete;
             internal bool _isStarted;
 
-            internal LazyFields(Func<Promise<T>> asyncValueFactory, SynchronizationContext invokeContext, Internal.SynchronizationOption invokeOption)
+            internal LazyFields(Func<Promise<T>> asyncValueFactory)
             {
                 _asyncValueFactory = asyncValueFactory;
-                _invokeContext = invokeContext;
-                _invokeOption = invokeOption;
             }
 
             internal Promise<T> GetOrStartPromise(AsyncLazy<T> owner)
             {
+                Promises.Promise.Deferred deferred;
+                Promise<T> promise;
                 lock (this)
                 {
                     if (_isComplete)
@@ -129,14 +115,10 @@ namespace Proto.Promises
                     }
 
                     _isStarted = true;
-
-                    // This may block other threads while the factory is executing if the invoke option is set to synchronous.
-                    // Users can work around the issue by providing a context that it should run on.
-
-                    // Same behavior as Promise.Run, but allows us to pass invokeOption and invokeContext together.
-                    Promise contextSwitchPromise = Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(new Promise(), _invokeOption, _invokeContext, true, default(CancelationToken));
+                    // We create a deferred so that we aren't invoking the factory delegate inside the lock.
+                    deferred = Promises.Promise.NewDeferred();
                     // Depth -1 to properly normalize the progress from the returned promise.
-                    var promise = new Promise(contextSwitchPromise._ref, contextSwitchPromise._id, Internal.NegativeOneDepth)
+                    _promise = promise = new Promise(deferred._ref, deferred._promiseId, Internal.NegativeOneDepth)
                         .Then(_asyncValueFactory)
                         // We have to cast the delegate type explicitly to appease the old .Net 3.5 compiler in Unity.
                         .ContinueWith(owner, (Promise<T>.ContinueFunc<AsyncLazy<T>, T>) ((_owner, rc) =>
@@ -178,20 +160,15 @@ namespace Proto.Promises
                             }
                             finally
                             {
-                                // The cached promise may not have been preserved if the factory promise completed immediately,
-                                // in which case the call to Forget will be a no-op.
                                 preservedPromise.Forget();
                             }
-                        }));
+                        }))
+                        .Preserve();
+                } // lock
 
-                    // We only want to preserve the promise if it did not complete immediately.
-                    if (_isComplete | !_isStarted)
-                    {
-                        return promise;
-                    }
-                    _promise = promise.Preserve();
-                    return _promise.Duplicate();
-                }
+                promise = promise.Duplicate();
+                deferred.TryResolve();
+                return promise;
             }
         } // class LazyFields
     } // class AsyncLazy<T>
