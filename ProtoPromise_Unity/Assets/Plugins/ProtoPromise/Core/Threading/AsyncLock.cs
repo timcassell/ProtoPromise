@@ -97,7 +97,7 @@ namespace Proto.Promises.Threading
                 ValidateAndGetOwner().ReleaseLock(_key);
             }
 
-            /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationToken"/>.</summary>
+            /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Key"/>.</summary>
             public bool Equals(Key other)
             {
                 return this == other;
