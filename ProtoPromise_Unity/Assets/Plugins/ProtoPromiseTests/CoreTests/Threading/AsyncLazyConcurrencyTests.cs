@@ -21,8 +21,7 @@ namespace ProtoPromiseTests.Threading
 
         [Test]
         public void AsyncLazy_AccessedConcurrently_DelegateIsInvokedOnlyOnce(
-            [Values] bool waitForDeferred,
-            [Values] SynchronizationType synchronizationType)
+            [Values] bool waitForDeferred)
         {
             int expectedResult = 42;
             int invokedCount = 0;
@@ -44,16 +43,13 @@ namespace ProtoPromiseTests.Threading
                     {
                         deferred = Promise.NewDeferred<int>();
                     }
-                    Func<Promise<int>> del = () =>
+                    lazy = new AsyncLazy<int>(() =>
                     {
                         Assert.AreEqual(1, Interlocked.Increment(ref invokedCount));
                         return waitForDeferred
                             ? deferred.Promise
                             : Promise.Resolved(expectedResult);
-                    };
-                    lazy = synchronizationType == SynchronizationType.Explicit
-                        ? new AsyncLazy<int>(del, TestHelper._foregroundContext)
-                        : new AsyncLazy<int>(del, (SynchronizationOption) synchronizationType);
+                    });
                 },
                 // teardown
                 () =>
@@ -71,8 +67,7 @@ namespace ProtoPromiseTests.Threading
         }
 
         [Test]
-        public void AsyncLazy_AccessedConcurrently_ResultIsExpected(
-            [Values] SynchronizationType synchronizationType)
+        public void AsyncLazy_AccessedConcurrently_ResultIsExpected()
         {
             int expectedResult = 42;
             int invokedCount = 0;
@@ -91,14 +86,11 @@ namespace ProtoPromiseTests.Threading
                 {
                     invokedCount = 0;
                     deferred = Promise.NewDeferred<int>();
-                    Func<Promise<int>> del = () =>
+                    lazy = new AsyncLazy<int>(() =>
                     {
                         Assert.AreEqual(1, Interlocked.Increment(ref invokedCount));
                         return deferred.Promise;
-                    };
-                    lazy = synchronizationType == SynchronizationType.Explicit
-                        ? new AsyncLazy<int>(del, TestHelper._foregroundContext)
-                        : new AsyncLazy<int>(del, (SynchronizationOption) synchronizationType);
+                    });
                 },
                 // teardown
                 () =>
