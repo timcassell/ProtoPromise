@@ -249,7 +249,10 @@ namespace Proto.Promises
 
                     other.WaitUntilStateIsNotPending();
                     _result = other.GetResult<TResult>();
-                    OnComplete(other._rejectContainerOrPreviousOrLink, other.State);
+                    var rejectContainer = other._rejectContainerOrPreviousOrLink;
+                    var state = other.State;
+                    other.MaybeDispose();
+                    OnComplete(rejectContainer, state);
                 }
             }
         } // class PromiseRefBase
