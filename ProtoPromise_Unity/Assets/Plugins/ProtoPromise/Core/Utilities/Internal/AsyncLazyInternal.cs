@@ -13,8 +13,6 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -26,32 +24,71 @@ namespace Proto.Promises
         // Must be volatile to prevent out-of-order memory read/write with the result.
         // This is set to null when we have successfully obtained the result, so we will have zero lock contention on future accesses,
         // and we release all resources that are no longer needed for lazy initialization.
-        volatile private LazyPromise _lazyPromise;
+        volatile private LazyFields _lazyFields;
         private T _result;
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        private sealed class LazyFields
+        {
+            internal Func<Promise<T>> _factory;
+            internal LazyPromise _lazyPromise;
+            
+            internal bool IsStarted
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return _lazyPromise != null; }
+            }
+
+            internal bool IsComplete
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return _factory == null; }
+            }
+
+            internal LazyFields(Func<Promise<T>> factory)
+            {
+                _factory = factory;
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal Promise<T> GetOrStartPromise(AsyncLazy<T> owner)
+            {
+                return LazyPromise.GetOrStartPromise(owner, this);
+            }
+        }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         private sealed class LazyPromise : Internal.PromiseRefBase.LazyPromise<T>
         {
-            private readonly AsyncLazy<T> _owner;
-            private readonly Func<Promise<T>> _factory;
-            private PromiseMultiAwait<T> _preservedPromise;
-            private bool _isComplete;
-            internal bool _isStarted;
+            private AsyncLazy<T> _owner;
+            internal PromiseMultiAwait<T> _preservedPromise;
 
-            internal LazyPromise(AsyncLazy<T> owner, Func<Promise<T>> factory)
+            [MethodImpl(Internal.InlineOption)]
+            private static LazyPromise GetOrCreate()
             {
-                // We don't use object pooling for this type.
-                _owner = owner;
-                _factory = factory;
-                // Suppress finalize to prevent errant errors reported if this is never started.
-                GC.SuppressFinalize(this);
+                var obj = Internal.ObjectPool.TryTakeOrInvalid<LazyPromise>();
+                return obj == InvalidAwaitSentinel.s_instance
+                    ? new LazyPromise()
+                    : obj.UnsafeAs<LazyPromise>();
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            private static LazyPromise GetOrCreate(AsyncLazy<T> owner)
+            {
+                var promise = GetOrCreate();
+                promise._owner = owner;
+                promise.Reset(0);
+                return promise;
             }
 
             internal override void MaybeDispose()
             {
-                // Do nothing, we don't use object pooling for this type. This is because another thread could try to read from it after we repooled it.
+                Dispose();
+                Internal.ObjectPool.MaybeRepool(this);
             }
 
             private static Promise<T> GetDuplicate(PromiseMultiAwait<T> preservedPromise)
@@ -62,30 +99,31 @@ namespace Proto.Promises
                 return new Promise<T>(duplicate, duplicate.Id, 0);
             }
 
-            internal Promise<T> GetOrStartPromise()
+            internal static Promise<T> GetOrStartPromise(AsyncLazy<T> owner, LazyFields lazyFields)
             {
+                LazyPromise lazyPromise;
                 PromiseMultiAwait<T> preservedPromise;
-                lock (this)
+                lock (lazyFields)
                 {
-                    if (_isComplete)
+                    if (lazyFields.IsComplete)
                     {
-                        return Promise<T>.Resolved(_result);
+                        return Promise<T>.Resolved(owner._result);
                     }
 
-                    if (_isStarted)
+                    if (lazyFields.IsStarted)
                     {
-                        return GetDuplicate(_preservedPromise);
+                        return GetDuplicate(lazyFields._lazyPromise._preservedPromise);
                     }
 
-                    _isStarted = true;
+                    lazyPromise = GetOrCreate(owner);
+                    lazyFields._lazyPromise = lazyPromise;
                     // Same thing as Promise.Preserve(), but more direct.
-                    _preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreate(0);
-                    Reset(0);
-                    HookupNewPromise(Id, _preservedPromise);
+                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreate(0);
+                    lazyPromise.HookupNewPromise(lazyPromise.Id, preservedPromise);
                     // Exit the lock before invoking the factory.
                 }
                 var promise = GetDuplicate(preservedPromise);
-                Start(_factory);
+                lazyPromise.Start(lazyFields._factory);
                 return promise;
             }
 
@@ -99,15 +137,16 @@ namespace Proto.Promises
 
             protected override void OnComplete(object rejectContainer, Promise.State state)
             {
+                var lazyFields = _owner._lazyFields;
                 PromiseMultiAwait<T> preservedPromise;
                 if (state != Promises.Promise.State.Resolved)
                 {
-                    lock (this)
+                    lock (lazyFields)
                     {
                         // Reset the state so that the factory will be ran again the next time the Promise is accessed.
                         preservedPromise = _preservedPromise;
                         _preservedPromise = null;
-                        _isStarted = false;
+                        lazyFields._lazyPromise = null;
                     }
 
                     ForgetPreserved(preservedPromise);
@@ -118,13 +157,13 @@ namespace Proto.Promises
                 // Release resources only when we have obtained the result successfully.
                 _owner._result = _result;
                 // This is a volatile write, so we don't need a full memory barrier to prevent the result write from moving after it.
-                _owner._lazyPromise = null;
+                _owner._lazyFields = null;
 
-                lock (this)
+                lock (lazyFields)
                 {
                     preservedPromise = _preservedPromise;
                     _preservedPromise = null;
-                    _isComplete = true;
+                    lazyFields._factory = null;
                 }
 
                 ForgetPreserved(preservedPromise);
@@ -154,7 +193,7 @@ namespace Proto.Promises
                     SetCurrentInvoker(this);
                     try
                     {
-                        WaitFor(factory.Invoke());
+                        WaitFor_Lazy(factory.Invoke());
                     }
                     catch (OperationCanceledException)
                     {
@@ -170,7 +209,8 @@ namespace Proto.Promises
 
                 protected abstract void OnComplete(object rejectContainer, Promise.State state);
 
-                private void WaitFor(Promise<TResult> other)
+                // This is the same logic as the normal WaitFor, except this will call OnComplete if necessary, instead of HandleNextInternal.
+                private void WaitFor_Lazy(Promise<TResult> other)
                 {
                     ValidateReturn(other);
                     if (other._ref != null)
@@ -200,7 +240,7 @@ namespace Proto.Promises
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
                 [MethodImpl(MethodImplOptions.NoInlining)]
-                protected void VerifyAndHandleSelf_Lazy(PromiseRefBase other, PromiseRefBase promiseSingleAwait)
+                private void VerifyAndHandleSelf_Lazy(PromiseRefBase other, PromiseRefBase promiseSingleAwait)
                 {
                     if (!VerifyWaiter(promiseSingleAwait))
                     {

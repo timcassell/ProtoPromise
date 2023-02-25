@@ -22,7 +22,7 @@ namespace Proto.Promises
         /// <param name="asyncValueFactory">The delegate that is invoked to produce the lazily initialized value when it is needed.</param>
         public AsyncLazy(Func<Promise<T>> asyncValueFactory)
         {
-            _lazyPromise = new LazyPromise(this, asyncValueFactory);
+            _lazyFields = new LazyFields(asyncValueFactory);
         }
 
         /// <summary>
@@ -33,8 +33,8 @@ namespace Proto.Promises
         {
             get
             {
-                var promise = _lazyPromise;
-                return promise == null || promise._isStarted;
+                var lazyFields = _lazyFields;
+                return lazyFields == null || lazyFields.IsStarted;
             }
         }
 
@@ -46,10 +46,10 @@ namespace Proto.Promises
             get
             {
                 // This is a volatile read, so we don't need a full memory barrier to prevent the result read from moving before it.
-                var promise = _lazyPromise;
-                return promise == null
+                var lazyFields = _lazyFields;
+                return lazyFields == null
                     ? Promise<T>.Resolved(_result)
-                    : promise.GetOrStartPromise();
+                    : lazyFields.GetOrStartPromise(this);
             }
         }
 
