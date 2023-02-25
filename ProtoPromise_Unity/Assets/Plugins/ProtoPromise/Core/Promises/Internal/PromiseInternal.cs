@@ -517,7 +517,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private void HandleNextInternal(object rejectContainer, Promise.State state)
+            protected void HandleNextInternal(object rejectContainer, Promise.State state)
             {
                 // We pass the rejectContainer and state to the waiter instead of setting it here,
                 // because we don't want to break the registered progress promises chain if this is registered to a progress listener.
