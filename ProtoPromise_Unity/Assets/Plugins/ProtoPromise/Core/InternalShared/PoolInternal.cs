@@ -78,7 +78,7 @@ namespace Proto.Promises
             {
                 var obj = Type<T>.TryTakeOrInvalid();
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                if (s_trackObjectsForRelease & obj == null)
+                if (s_trackObjectsForRelease & obj == PromiseRefBase.InvalidAwaitSentinel.s_instance)
                 {
                     // Create here via reflection so that the object can be tracked.
                     obj = Activator.CreateInstance(typeof(T), true).UnsafeAs<HandleablePromiseBase>();
@@ -95,7 +95,7 @@ namespace Proto.Promises
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 var obj = Type<T>.TryTakeOrInvalid();
-                if (s_trackObjectsForRelease & obj == null)
+                if (s_trackObjectsForRelease & obj == PromiseRefBase.InvalidAwaitSentinel.s_instance)
                 {
                     // Create here via reflection so that the object can be tracked.
                     obj = Activator.CreateInstance(typeof(TActual), true).UnsafeAs<HandleablePromiseBase>();
