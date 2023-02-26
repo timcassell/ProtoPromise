@@ -132,7 +132,7 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred();
             var lazy = new AsyncLazy<int>(() =>
             {
-                Interlocked.Increment(ref invokeCount);
+                Assert.AreEqual(1, Interlocked.Increment(ref invokeCount));
                 return deferred.Promise.Then(() => 13);
             });
 
@@ -337,7 +337,7 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred();
             var lazy = new AsyncLazy<int>(async () =>
             {
-                Interlocked.Increment(ref invokeCount);
+                Assert.AreEqual(1, Interlocked.Increment(ref invokeCount));
                 await deferred.Promise;
                 return 13;
             });

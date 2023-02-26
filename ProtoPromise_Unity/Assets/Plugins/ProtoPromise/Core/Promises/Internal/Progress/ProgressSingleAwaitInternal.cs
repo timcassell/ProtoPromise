@@ -141,6 +141,12 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                protected void SetSecondPreviousAndMaybeHookupProgress_Protected(PromiseRefBase secondPrevious, PromiseRefBase handler)
+                {
+                    SetSecondPreviousAndMaybeHookupProgress(secondPrevious, handler);
+                }
+
+                [MethodImpl(InlineOption)]
                 private void SetSecondPrevious(PromiseRefBase secondPrevious, PromiseRefBase handler)
                 {
                     // These are volatile writes, so their write order will not be changed.

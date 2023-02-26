@@ -1,4 +1,10 @@
-﻿using NUnit.Framework;
+﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+#endif
+
+using NUnit.Framework;
 using Proto.Promises;
 using System;
 using System.Threading;
@@ -63,7 +69,8 @@ namespace ProtoPromiseTests.Threading
                 parallelAction,
                 parallelAction,
                 parallelAction,
-                parallelAction);
+                parallelAction
+            );
         }
 
         [Test]
@@ -104,7 +111,96 @@ namespace ProtoPromiseTests.Threading
                 parallelAction,
                 parallelAction,
                 parallelAction,
-                parallelAction);
+                parallelAction
+            );
         }
+
+#if PROMISE_PROGRESS
+        private static ProgressHelper GetProgressHelper()
+        {
+            return new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, onProgress: p =>
+            {
+                Assert.GreaterOrEqual(p, 0);
+                Assert.LessOrEqual(p, 1);
+            });
+        }
+
+        [Test]
+        public void AsyncLazy_AccessedConcurrently_ProgressIsReportedProperly()
+        {
+            ProgressHelper progressHelper1 = GetProgressHelper();
+            ProgressHelper progressHelper2 = GetProgressHelper();
+            ProgressHelper progressHelper3 = GetProgressHelper();
+            ProgressHelper progressHelper4 = GetProgressHelper();
+
+            int expectedResult = 42;
+            int invokedCount = 0;
+            var deferred = default(Promise<int>.Deferred);
+            AsyncLazy<int> lazy = null;
+
+            new ThreadHelper().ExecuteParallelActionsWithOffsets(false,
+                // setup
+                () =>
+                {
+                    invokedCount = 0;
+                    deferred = Promise.NewDeferred<int>();
+                    lazy = new AsyncLazy<int>(() =>
+                    {
+                        Assert.AreEqual(1, Interlocked.Increment(ref invokedCount));
+                        return deferred.Promise;
+                    });
+                },
+                // teardown
+                () =>
+                {
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    progressHelper1.AssertCurrentProgress(0f);
+                    progressHelper2.AssertCurrentProgress(0f);
+                    progressHelper3.AssertCurrentProgress(0f);
+                    progressHelper4.AssertCurrentProgress(0f);
+                    deferred.ReportProgress(0.5f);
+                    progressHelper1.AssertCurrentProgress(0.5f);
+                    progressHelper2.AssertCurrentProgress(0.5f);
+                    progressHelper3.AssertCurrentProgress(0.5f);
+                    progressHelper4.AssertCurrentProgress(0.5f);
+                    deferred.Resolve(expectedResult);
+                    progressHelper1.AssertCurrentProgress(1f);
+                    progressHelper2.AssertCurrentProgress(1f);
+                    progressHelper3.AssertCurrentProgress(1f);
+                    progressHelper4.AssertCurrentProgress(1f);
+                    Assert.AreEqual(1, invokedCount);
+                },
+                // parallel actions
+                () =>
+                {
+                    lazy.Promise
+                        .SubscribeProgress(progressHelper1)
+                        .Then(v => Assert.AreEqual(expectedResult, v))
+                        .Forget();
+                },
+                () =>
+                {
+                    lazy.Promise
+                        .SubscribeProgress(progressHelper2)
+                        .Then(v => Assert.AreEqual(expectedResult, v))
+                        .Forget();
+                },
+                () =>
+                {
+                    lazy.Promise
+                        .SubscribeProgress(progressHelper3)
+                        .Then(v => Assert.AreEqual(expectedResult, v))
+                        .Forget();
+                },
+                () =>
+                {
+                    lazy.Promise
+                        .SubscribeProgress(progressHelper4)
+                        .Then(v => Assert.AreEqual(expectedResult, v))
+                        .Forget();
+                }
+            );
+        }
+#endif
     }
 }
