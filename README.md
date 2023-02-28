@@ -78,6 +78,12 @@ See [Release Notes](ReleaseNotes.md) for the full changelog.
     - [Sequence](#sequence)
 - [Configuration](#configuration)
     - [Compiler Options](#compiler-options)
+- [Additional Information](#additional-information)
+    - [Understanding Then](#understanding-then)
+    - [Finally](#finally)
+    - [ContinueWith](#continuewith)
+- [Task Interoperability](#task-interoperability)
+- [Unity Yield Instructions and Coroutines Interoperability](#unity-yield-instructions-and-coroutines-interoperability)
 - [Advanced](#advanced)
     - [Cancelations](#cancelations)
         - [Cancelation Source](#cancelation-source)
@@ -93,12 +99,6 @@ See [Release Notes](ReleaseNotes.md) for the full changelog.
     - [AsyncLocal Support](#asynclocal-support)
     - [Parallel Iterations](#parallel-iterations)
     - [Async Lock](#async-lock)
-- [Additional Information](#additional-information)
-    - [Understanding Then](#understanding-then)
-    - [Finally](#finally)
-    - [ContinueWith](#continuewith)
-- [Task Interoperability](#task-interoperability)
-- [Unity Yield Instructions and Coroutines Interoperability](#unity-yield-instructions-and-coroutines-interoperability)
 
 ## Package Installation
 
@@ -629,6 +629,89 @@ You can disable progress by adding `PROTO_PROMISE_PROGRESS_DISABLE` to your comp
 
 By default, debug options are tied to the `DEBUG` compiler symbol, which is defined by default in the Unity Editor and not defined in release builds. You can override that by defining `PROTO_PROMISE_DEBUG_ENABLE` to force debugging on in release builds, or `PROTO_PROMISE_DEBUG_DISABLE` to force debugging off in debug builds (or in the Unity Editor). If both symbols are defined, `ENABLE` takes precedence.
 
+
+## Additional Information
+
+### Understanding Then
+
+There are 144 overloads for the `Then` method (72 for `Promise` and another 72 for `Promise<T>`). Rather than trying to remember all 144 overloads, it's easier to remember these rules:
+
+- `Then` must always be given at least 1 delegate.
+- The first delegate is `onResolved`.
+- `onResolved` will be invoked if the promise is resolved.
+- If the promise provides a value (`Promise<T>`), onResolved may take that value as an argument.
+- If a capture value is provided to `onResolved`, the capture value must be the first argument to `Then` and the first argument to `onResolved`
+
+- A second delegate is optional. If it is provided, it is `onRejected`.
+- If `onRejected` does not accept any arguments, it will be invoked if the promise is rejected for any reason.
+- If `onRejected` accepts an argument without a capture value, it will be invoked if the promise is rejected with a reason that is convertible to that argument's type.
+- If a capture value is provided to `onRejected`, it must come after `onResolved` and before `onRejected` in the `Then` arguments, and it must be the first argument to `onRejected`.
+- If a capture value is provided to `onRejected` and that is the only argument `onRejected` accepts, it will be invoked if the promise is rejected for any reason.
+- If a capture value is provided to `onRejected` and `onRejected` accepts another argument, it will be invoked if the promise is rejected with a reason that is convertible to the second argument's type.
+
+- If `onResolved` does not return a value, or it returns a non-value `Promise`:
+    - the returned promise will be a non-value `Promise`.
+    - `onRejected` must not return a value, or it must return a non-value `Promise`.
+- If `onResolved` returns a value, or it returns a `Promise<T>`:
+    - the returned promise will be a `Promise<T>` of the type of that value (or the same type of promise).
+    - `onRejected` must return a value of the same type, or a `Promise<T>` of the same type.
+    
+- If either `onResolved` or `onRejected` return a promise, the promise returned from `Then` will adopt the state of that promise (waits until it completes).
+- If either `onResolved` or `onRejected` throws an `Exception`, the returned promise will be rejected with that exception, unless that exception is one of the [Special Exceptions](#special-exceptions).
+
+- You may optionally provide a `CancelationToken` as the last parameter.
+    - If the token is canceled while the promise is pending, the callback(s) will not be invoked, and the returned promise will be canceled.
+
+You may realize that `Catch(onRejected)` also works just like `onRejected` in `Then`. There is, however, one key difference: with `Then(onResolved, onRejected)`, only one of the callbacks will ever be invoked. With `Then(onResolved).Catch(onRejected)`, both callbacks can be invoked if `onResolved` throws an exception.
+
+### Finally
+
+`Finally` adds an `onFinally` delegate that will be invoked when the promise is resolved, rejected, or canceled. If the promise is rejected, that rejection will _not_ be handled by the finally callback. That way it works just like finally clauses in normal synchronous code. `Finally`, therefore, should be used to clean up resources, like `IDisposable`s.
+
+### ContinueWith
+
+`ContinueWith` adds an `onContinue` delegate that will be invoked when the promise is resolved, rejected, or canceled. A `Promise.ResultContainer` or `Promise<T>.ResultContainer` will be passed into the delegate that can be used to check the promise's state and result or reject reason. The promise returned from `ContinueWith` will be resolved/rejected/canceled with the same rules as `Then` in [Understanding Then](#understanding-then). `Promise.Rethrow` is an invalid operation during an `onContinue` invocation, instead you can use `resultContainer.RethrowIfRejected()` and `resultContainer.RethrowIfCanceled()`
+
+## Task Interoperability
+
+Promises can easily interoperate with Tasks simply by calling the `Promise.ToTask()` or `Task.ToPromise()` extension methods.
+
+Promises can also be converted to ValueTasks by calling `Promise.AsValueTask()` method, or by implicitly casting `ValueTask valueTask = promise`. ValueTasks can be converted to Promises by calling the `ValueTask.ToPromise()` extension method.
+
+`Proto.Promises.CancelationToken` can be converted to and from `System.Threading.CancellationToken` by calling `token.ToCancellationToken()` method or `token.ToCancelationToken()` extension method.
+
+## Unity Yield Instructions and Coroutines Interoperability
+
+If you are using coroutines, you can easily convert a promise to a yield instruction via `promise.ToYieldInstruction()` which you can yield return to wait until the promise has settled. You can also convert any yield instruction (including coroutines themselves) to a promise via `PromiseYielder.WaitFor(yieldInstruction)`. This will wait until the yieldInstruction has completed before resolving the promise.
+
+```cs
+public async Promise<Texture2D> DownloadTexture(string url)
+{
+    using (var www = UnityWebRequestTexture.GetTexture(url))
+    {
+        await PromiseYielder.WaitFor(www.SendWebRequest());
+        if (www.isHttpError || www.isNetworkError)
+        {
+            throw Promise.RejectException(www.error);
+        }
+        return ((DownloadHandlerTexture) www.downloadHandler).texture;
+    }
+}
+```
+
+```cs
+IEnumerator GetAndAssignTexture(Image image, string url)
+{
+    using (var textureYieldInstruction = DownloadTexture(url).ToYieldInstruction())
+    {
+        yield return textureYieldInstruction;
+        Texture2D texture = textureYieldInstruction.GetResult();
+        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+        image.sprite = sprite;
+    }
+}
+```
+
 ## Advanced
 
 ### Cancelations
@@ -1043,85 +1126,3 @@ WARNING: doing so may cause a deadlock if the async function that holds the lock
 WARNING: `AsyncLock` does _not_ support re-entrance (recursion). If you attempt to enter the lock while it is already entered, it will result in a deadlock.
 
 Note: `AsyncLock` and `AsyncMonitor` are only available in .Net Standard 2.1 (or Unity 2021.2) or newer platforms.
-
-## Additional Information
-
-### Understanding Then
-
-There are 144 overloads for the `Then` method (72 for `Promise` and another 72 for `Promise<T>`). Rather than trying to remember all 144 overloads, it's easier to remember these rules:
-
-- `Then` must always be given at least 1 delegate.
-- The first delegate is `onResolved`.
-- `onResolved` will be invoked if the promise is resolved.
-- If the promise provides a value (`Promise<T>`), onResolved may take that value as an argument.
-- If a capture value is provided to `onResolved`, the capture value must be the first argument to `Then` and the first argument to `onResolved`
-
-- A second delegate is optional. If it is provided, it is `onRejected`.
-- If `onRejected` does not accept any arguments, it will be invoked if the promise is rejected for any reason.
-- If `onRejected` accepts an argument without a capture value, it will be invoked if the promise is rejected with a reason that is convertible to that argument's type.
-- If a capture value is provided to `onRejected`, it must come after `onResolved` and before `onRejected` in the `Then` arguments, and it must be the first argument to `onRejected`.
-- If a capture value is provided to `onRejected` and that is the only argument `onRejected` accepts, it will be invoked if the promise is rejected for any reason.
-- If a capture value is provided to `onRejected` and `onRejected` accepts another argument, it will be invoked if the promise is rejected with a reason that is convertible to the second argument's type.
-
-- If `onResolved` does not return a value, or it returns a non-value `Promise`:
-    - the returned promise will be a non-value `Promise`.
-    - `onRejected` must not return a value, or it must return a non-value `Promise`.
-- If `onResolved` returns a value, or it returns a `Promise<T>`:
-    - the returned promise will be a `Promise<T>` of the type of that value (or the same type of promise).
-    - `onRejected` must return a value of the same type, or a `Promise<T>` of the same type.
-    
-- If either `onResolved` or `onRejected` return a promise, the promise returned from `Then` will adopt the state of that promise (waits until it completes).
-- If either `onResolved` or `onRejected` throws an `Exception`, the returned promise will be rejected with that exception, unless that exception is one of the [Special Exceptions](#special-exceptions).
-
-- You may optionally provide a `CancelationToken` as the last parameter.
-    - If the token is canceled while the promise is pending, the callback(s) will not be invoked, and the returned promise will be canceled.
-
-You may realize that `Catch(onRejected)` also works just like `onRejected` in `Then`. There is, however, one key difference: with `Then(onResolved, onRejected)`, only one of the callbacks will ever be invoked. With `Then(onResolved).Catch(onRejected)`, both callbacks can be invoked if `onResolved` throws an exception.
-
-### Finally
-
-`Finally` adds an `onFinally` delegate that will be invoked when the promise is resolved, rejected, or canceled. If the promise is rejected, that rejection will _not_ be handled by the finally callback. That way it works just like finally clauses in normal synchronous code. `Finally`, therefore, should be used to clean up resources, like `IDisposable`s.
-
-### ContinueWith
-
-`ContinueWith` adds an `onContinue` delegate that will be invoked when the promise is resolved, rejected, or canceled. A `Promise.ResultContainer` or `Promise<T>.ResultContainer` will be passed into the delegate that can be used to check the promise's state and result or reject reason. The promise returned from `ContinueWith` will be resolved/rejected/canceled with the same rules as `Then` in [Understanding Then](#understanding-then). `Promise.Rethrow` is an invalid operation during an `onContinue` invocation, instead you can use `resultContainer.RethrowIfRejected()` and `resultContainer.RethrowIfCanceled()`
-
-## Task Interoperability
-
-Promises can easily interoperate with Tasks simply by calling the `Promise.ToTask()` or `Task.ToPromise()` extension methods.
-
-Promises can also be converted to ValueTasks by calling `Promise.AsValueTask()` method, or by implicitly casting `ValueTask valueTask = promise`. ValueTasks can be converted to Promises by calling the `ValueTask.ToPromise()` extension method.
-
-`Proto.Promises.CancelationToken` can be converted to and from `System.Threading.CancellationToken` by calling `token.ToCancellationToken()` method or `token.ToCancelationToken()` extension method.
-
-## Unity Yield Instructions and Coroutines Interoperability
-
-If you are using coroutines, you can easily convert a promise to a yield instruction via `promise.ToYieldInstruction()` which you can yield return to wait until the promise has settled. You can also convert any yield instruction (including coroutines themselves) to a promise via `PromiseYielder.WaitFor(yieldInstruction)`. This will wait until the yieldInstruction has completed before resolving the promise.
-
-```cs
-public async Promise<Texture2D> DownloadTexture(string url)
-{
-    using (var www = UnityWebRequestTexture.GetTexture(url))
-    {
-        await PromiseYielder.WaitFor(www.SendWebRequest());
-        if (www.isHttpError || www.isNetworkError)
-        {
-            throw Promise.RejectException(www.error);
-        }
-        return ((DownloadHandlerTexture) www.downloadHandler).texture;
-    }
-}
-```
-
-```cs
-IEnumerator GetAndAssignTexture(Image image, string url)
-{
-    using (var textureYieldInstruction = DownloadTexture(url).ToYieldInstruction())
-    {
-        yield return textureYieldInstruction;
-        Texture2D texture = textureYieldInstruction.GetResult();
-        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
-        image.sprite = sprite;
-    }
-}
-```
