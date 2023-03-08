@@ -258,13 +258,16 @@ namespace Proto.Promises
 #endif
         internal sealed partial class AsyncLockInternal : ITraceable
         {
-            // We use a shared key generator to prevent false positives if a Key is torn.
-            private static long s_keyGenerator;
-
             // These must not be readonly.
             private ValueLinkedQueue<IAsyncLockPromise> _waitPulseQueue = new ValueLinkedQueue<IAsyncLockPromise>();
             private ValueLinkedQueue<IAsyncLockPromise> _queue = new ValueLinkedQueue<IAsyncLockPromise>();
-            private long _currentKey;
+            private long _currentKey; // 0 if there is no lock held, otherwise the key of the lock holder.
+
+            [MethodImpl(InlineOption)]
+            private void SetNextKey()
+            {
+                _currentKey = KeyGenerator<AsyncLockInternal>.Next();
+            }
 
             partial void SetTrace(ITraceable traceable);
             partial void AddWaitPulseKey(long key, int skipFrames);
@@ -352,22 +355,6 @@ namespace Proto.Promises
                 }
             }
 
-            private static long GenerateKey()
-            {
-                // We don't check for overflow to let the key generator wrap around for infinite re-use.
-                long newKey = Interlocked.Increment(ref s_keyGenerator);
-                return newKey != 0L ? newKey : Interlocked.Increment(ref s_keyGenerator); // Don't allow 0 key.
-            }
-
-            private static SynchronizationContext CaptureContext()
-            {
-                // We capture the current context to post the continuation. If it's null, we use the background context.
-                return ts_currentContext
-                    ?? SynchronizationContext.Current
-                    ?? Promise.Config.BackgroundContext
-                    ?? BackgroundSynchronizationContextSentinel.s_instance;
-            }
-
             internal Promise<AsyncLock.Key> LockAsync(bool isSynchronous, CancelationToken cancelationToken)
             {
                 if (cancelationToken.IsCancelationRequested)
@@ -381,7 +368,7 @@ namespace Proto.Promises
                 {
                     if (_currentKey == 0)
                     {
-                        _currentKey = GenerateKey();
+                        SetNextKey();
                         SetCreatedStacktraceInternal(this, 2);
                         return Promise.Resolved(new AsyncLock.Key(this, _currentKey));
                     }
@@ -399,7 +386,7 @@ namespace Proto.Promises
                 {
                     if (_currentKey == 0)
                     {
-                        _currentKey = GenerateKey();
+                        SetNextKey();
                         SetCreatedStacktraceInternal(this, 2);
                         key = new AsyncLock.Key(this, _currentKey);
                         return true;
@@ -427,7 +414,7 @@ namespace Proto.Promises
                         SetTrace(null);
                         return;
                     }
-                    _currentKey = GenerateKey();
+                    SetNextKey();
                     next = _queue.Dequeue();
 
                     SetTrace(next);
@@ -471,7 +458,7 @@ namespace Proto.Promises
                         _currentKey = 0;
                         return;
                     }
-                    _currentKey = GenerateKey();
+                    SetNextKey();
                     next = _queue.Dequeue();
 
                     SetTrace(next);
@@ -529,7 +516,7 @@ namespace Proto.Promises
                         return;
                     }
                     // The lock is not currently held, and there is at least 1 waiter attempting to take the lock, we need to resolve the next.
-                    _currentKey = GenerateKey();
+                    SetNextKey();
                     next = _queue.Dequeue();
 
                     SetTrace(next);
