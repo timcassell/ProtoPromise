@@ -86,17 +86,6 @@ namespace Proto.Promises
                 internal void MaybeHookupCancelation(CancelationToken cancelationToken)
                 {
                     ThrowIfInPool(this);
-                    if (cancelationToken.IsCancelationRequested)
-                    {
-                        if (Owner.TryUnregister(this))
-                        {
-                            // We know no continuations have been hooked up at this point, so we can just set the canceled state without worrying about handling the next waiter.
-                            // This is equivalent to `HandleNextInternal(null, Promise.State.Canceled)`, but without the extra branches.
-                            _next = PromiseCompletionSentinel.s_instance;
-                            SetCompletionState(null, Promise.State.Canceled);
-                        }
-                        return;
-                    }
                     cancelationToken.TryRegister(this, out _cancelationRegistration);
                 }
 
@@ -381,6 +370,11 @@ namespace Proto.Promises
 
             internal Promise<AsyncLock.Key> LockAsync(bool isSynchronous, CancelationToken cancelationToken)
             {
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    return Promise<AsyncLock.Key>.Canceled();
+                }
+
                 // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
                 PromiseRefBase.AsyncLockPromise promise;
                 lock (this)
@@ -456,7 +450,6 @@ namespace Proto.Promises
                     promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(this, key, isSynchronous ? null : CaptureContext());
                     _waitPulseQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
-                    // We don't release the lock until the promise has been awaited.
                 }
                 return new Promise<bool>(promise, promise.Id, 0);
             }
