@@ -109,7 +109,7 @@ namespace Proto.Promises.Threading
         /// Synchronously try to acquire the lock as an upgradeable reader. If successful, <paramref name="readerKey"/> is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="readerKey">If successful, the key that will release the lock when it is disposed.</param>
-        public bool UpgradeableTryEnterReaderLock(out UpgradeableReaderKey readerKey)
+        public bool TryEnterUpgradeableReaderLock(out UpgradeableReaderKey readerKey)
         {
             return _impl.TryEnterUpgradeableReaderLock(out readerKey);
         }

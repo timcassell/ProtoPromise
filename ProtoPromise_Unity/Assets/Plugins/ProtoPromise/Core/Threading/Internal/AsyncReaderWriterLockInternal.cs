@@ -91,6 +91,7 @@ namespace Proto.Promises
             internal static AsyncReaderLockPromise GetOrCreate(AsyncReaderWriterLockInternal owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
+                promise.Reset();
                 promise._result = new AsyncReaderWriterLock.ReaderKey(owner);
                 promise._callerContext = callerContext;
                 return promise;
@@ -105,17 +106,6 @@ namespace Proto.Promises
             internal void MaybeHookupCancelation(CancelationToken cancelationToken)
             {
                 ThrowIfInPool(this);
-                if (cancelationToken.IsCancelationRequested)
-                {
-                    if (Owner.TryUnregister(this))
-                    {
-                        // We know no continuations have been hooked up at this point, so we can just set the canceled state without worrying about handling the next waiter.
-                        // This is equivalent to `HandleNextInternal(null, Promise.State.Canceled)`, but without the extra branches.
-                        _next = PromiseCompletionSentinel.s_instance;
-                        SetCompletionState(null, Promise.State.Canceled);
-                    }
-                    return;
-                }
                 cancelationToken.TryRegister(this, out _cancelationRegistration);
             }
 
@@ -163,6 +153,7 @@ namespace Proto.Promises
             internal static AsyncWriterLockPromise GetOrCreate(AsyncReaderWriterLock.WriterKey key, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
+                promise.Reset();
                 promise._callerContext = callerContext;
                 promise._result = key; // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
@@ -177,17 +168,6 @@ namespace Proto.Promises
             internal void MaybeHookupCancelation(CancelationToken cancelationToken)
             {
                 ThrowIfInPool(this);
-                if (cancelationToken.IsCancelationRequested)
-                {
-                    if (Owner.TryUnregister(this))
-                    {
-                        // We know no continuations have been hooked up at this point, so we can just set the canceled state without worrying about handling the next waiter.
-                        // This is equivalent to `HandleNextInternal(null, Promise.State.Canceled)`, but without the extra branches.
-                        _next = PromiseCompletionSentinel.s_instance;
-                        SetCompletionState(null, Promise.State.Canceled);
-                    }
-                    return;
-                }
                 cancelationToken.TryRegister(this, out _cancelationRegistration);
             }
 
@@ -234,6 +214,7 @@ namespace Proto.Promises
             internal static AsyncUpgradeableReaderLockPromise GetOrCreate(AsyncReaderWriterLockInternal owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
+                promise.Reset();
                 promise._result = new AsyncReaderWriterLock.UpgradeableReaderKey(owner, 0);
                 promise._callerContext = callerContext;
                 return promise;
@@ -248,17 +229,6 @@ namespace Proto.Promises
             internal void MaybeHookupCancelation(CancelationToken cancelationToken)
             {
                 ThrowIfInPool(this);
-                if (cancelationToken.IsCancelationRequested)
-                {
-                    if (Owner.TryUnregister(this))
-                    {
-                        // We know no continuations have been hooked up at this point, so we can just set the canceled state without worrying about handling the next waiter.
-                        // This is equivalent to `HandleNextInternal(null, Promise.State.Canceled)`, but without the extra branches.
-                        _next = PromiseCompletionSentinel.s_instance;
-                        SetCompletionState(null, Promise.State.Canceled);
-                    }
-                    return;
-                }
                 cancelationToken.TryRegister(this, out _cancelationRegistration);
             }
 
@@ -346,6 +316,11 @@ namespace Proto.Promises
 
             internal Promise<AsyncReaderWriterLock.ReaderKey> ReaderLock(bool isSynchronous, CancelationToken cancelationToken)
             {
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    return Promise<AsyncReaderWriterLock.ReaderKey>.Canceled();
+                }
+
                 // Unchecked context since we're manually checking overflow.
                 unchecked
                 {
@@ -406,6 +381,11 @@ namespace Proto.Promises
 
             internal Promise<AsyncReaderWriterLock.WriterKey> WriterLock(bool isSynchronous, CancelationToken cancelationToken)
             {
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    return Promise<AsyncReaderWriterLock.WriterKey>.Canceled();
+                }
+
                 AsyncWriterLockPromise promise;
                 lock (this)
                 {
@@ -447,6 +427,11 @@ namespace Proto.Promises
 
             internal Promise<AsyncReaderWriterLock.UpgradeableReaderKey> UpgradeableReaderLock(bool isSynchronous, CancelationToken cancelationToken)
             {
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    return Promise<AsyncReaderWriterLock.UpgradeableReaderKey>.Canceled();
+                }
+
                 AsyncUpgradeableReaderLockPromise promise;
                 lock (this)
                 {
@@ -471,7 +456,6 @@ namespace Proto.Promises
                         return Promise.Resolved(new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey));
                     }
 
-                    ++_readerWaitCount;
                     promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, isSynchronous ? null : CaptureContext());
                     _upgradeQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
@@ -511,6 +495,11 @@ namespace Proto.Promises
 
             internal Promise<AsyncReaderWriterLock.WriterKey> UpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, bool isSynchronous, CancelationToken cancelationToken)
             {
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    return Promise<AsyncReaderWriterLock.WriterKey>.Canceled();
+                }
+
                 AsyncWriterLockPromise promise;
                 lock (this)
                 {
@@ -619,7 +608,8 @@ namespace Proto.Promises
                         _currentKey = 0L;
                         return;
                     }
-                }
+                } // lock
+
                 promise.Resolve(_currentKey);
             }
 
@@ -641,27 +631,49 @@ namespace Proto.Promises
                     {
                         _readerWaitCount += (uint) ((byte) _writerType >> 2);
                     }
+                    // If there are any readers waiting (including the upgradeable reader that is releasing its writer lock),
+                    // we resolve them, even if there are more writer waiters. This prevents writers from starving readers.
                     if (_readerWaitCount != 0)
                     {
                         if (_writerQueue.IsEmpty)
                         {
-                            _lockType &= ~AsyncReaderWriterLockType.Writer;
+                            _lockType = AsyncReaderWriterLockType.Reader | (_lockType & ~AsyncReaderWriterLockType.Writer);
                         }
+                        else
+                        {
+                            _lockType |= AsyncReaderWriterLockType.Reader;
+                        }
+                        var writerType = _writerType;
+                        _writerType = AsyncReaderWriterLockType.None;
                         _readerLockCount = _readerWaitCount;
                         _readerWaitCount = 0;
                         // This either sets the next key, or reverts the key, depending if it was an upgraded lock or a regular lock, without a branch.
                         SetNextKey();
                         readers = _readerQueue.MoveElementsToStack();
-                        goto ResolveReaders;
+                        if (writerType == AsyncReaderWriterLockType.Upgradeable | _upgradeQueue.IsEmpty)
+                        {
+                            goto ResolveReaders;
+                        }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                        checked
+#else
+                        unchecked
+#endif
+                        {
+                            ++_readerLockCount;
+                        }
+                        upgradeablePromise = _upgradeQueue.Dequeue();
+                        goto ResolveReadersAndUpgradeableReader;
                     }
 
-                    // At this point, we know it was a regular writer, so check upgrade queue before writer queue.
+                    // At this point, we know it was a regular writer, and there are no waiting normal readers.
+                    // Check upgrade queue before writer queue, to prevent writers from starving upgradeable readers.
                     if (_upgradeQueue.IsNotEmpty)
                     {
-                        if (_writerQueue.IsEmpty)
-                        {
-                            _lockType &= ~AsyncReaderWriterLockType.Writer;
-                        }
+                        _lockType = _writerQueue.IsEmpty
+                            ? AsyncReaderWriterLockType.Upgradeable
+                            : _lockType | AsyncReaderWriterLockType.Upgradeable;
+                        _writerType = AsyncReaderWriterLockType.None;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                         checked
 #else
@@ -685,9 +697,13 @@ namespace Proto.Promises
                         _currentKey = 0;
                         return;
                     }
-                }
+                } // lock
+
                 writerPromise.Resolve(_currentKey);
                 return;
+
+            ResolveReadersAndUpgradeableReader:
+                upgradeablePromise.Resolve(_currentKey);
 
             ResolveReaders:
                 while (readers.IsNotEmpty)
@@ -706,9 +722,16 @@ namespace Proto.Promises
                 AsyncWriterLockPromise writerPromise;
                 lock (this)
                 {
-                    if (_currentKey != key)
+                    if (_currentKey != key | _writerType == AsyncReaderWriterLockType.Upgradeable)
                     {
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                        if (_currentKey != key)
+                        {
+                            ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                        }
+                        else
+                        {
+                            ThrowUpgradeableKeyReleasedTooSoon(2);
+                        }
                     }
 
                     // We check for underflow, because multiple readers share the same key.
@@ -722,6 +745,7 @@ namespace Proto.Promises
                         // Otherwise, if there's an upgradeable reader waiting, resolve it.
                         if (_writerQueue.IsNotEmpty | _upgradeQueue.IsEmpty)
                         {
+                            _lockType &= ~AsyncReaderWriterLockType.Upgradeable;
                             return;
                         }
                         unchecked
@@ -736,6 +760,7 @@ namespace Proto.Promises
                     if (_writerQueue.IsNotEmpty)
                     {
                         writerPromise = _writerQueue.Dequeue();
+                        _lockType &= ~AsyncReaderWriterLockType.Upgradeable;
                         _writerType = AsyncReaderWriterLockType.Writer;
                         SetNextKey();
                     }
@@ -755,7 +780,8 @@ namespace Proto.Promises
                         _currentKey = 0;
                         return;
                     }
-                }
+                } // lock
+
                 writerPromise.Resolve(_currentKey);
                 return;
 
@@ -800,7 +826,13 @@ namespace Proto.Promises
                 string keyString = keyType == AsyncReaderWriterLockType.Reader ? "ReaderKey"
                     : keyType == AsyncReaderWriterLockType.Writer ? "WriterKey"
                     : "UpgradeableReaderKey";
-                throw new InvalidOperationException("The AsyncReaderWriterLock. " + keyString + " is invalid for this operation.", GetFormattedStacktrace(skipFrames + 1));
+                throw new InvalidOperationException("The AsyncReaderWriterLock." + keyString + " is invalid for this operation.", GetFormattedStacktrace(skipFrames + 1));
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            internal static void ThrowUpgradeableKeyReleasedTooSoon(int skipFrames)
+            {
+                throw new InvalidOperationException("The AsyncReaderWriterLock.UpgradeableReaderKey cannot be released before the upgraded writer is released.", GetFormattedStacktrace(skipFrames + 1));
             }
         } // class AsyncReaderWriterLockInternal
     } // class Internal
