@@ -51,16 +51,18 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void AsyncLock_PreCanceled_Unlocked_SynchronouslyTakesLock()
+        public void AsyncLock_PreCanceled_Unlocked_SynchronouslyCanceled()
         {
             var mutex = new AsyncLock();
             var token = CancelationToken.Canceled();
+            bool canceled = false;
 
-            var lockPromise = mutex.LockAsync(token);
+            mutex.LockAsync(token)
+                .CatchCancelation(() => canceled = true)
+                .Forget();
 
-            AsyncLock.Key key;
-            Assert.True(lockPromise.WaitForResult(TimeSpan.FromSeconds(1), out key));
-            key.Dispose();
+            Assert.True(canceled);
+            Assert.Catch<OperationCanceledException>(() => mutex.Lock(token));
         }
 
         [Test]
