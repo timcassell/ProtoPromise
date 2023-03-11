@@ -662,6 +662,7 @@ namespace Proto.Promises
                         {
                             ++_readerLockCount;
                         }
+                        _lockType |= AsyncReaderWriterLockType.Upgradeable;
                         upgradeablePromise = _upgradeQueue.Dequeue();
                         goto ResolveReadersAndUpgradeableReader;
                     }
@@ -722,16 +723,9 @@ namespace Proto.Promises
                 AsyncWriterLockPromise writerPromise;
                 lock (this)
                 {
-                    if (_currentKey != key | _writerType == AsyncReaderWriterLockType.Upgradeable)
+                    if (_currentKey != key | _writerType == AsyncReaderWriterLockType.Upgradeable | _upgradeWaiter != null)
                     {
-                        if (_currentKey != key)
-                        {
-                            ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                        }
-                        else
-                        {
-                            ThrowUpgradeableKeyReleasedTooSoon(2);
-                        }
+                        ThrowUpgradeableKeyReleasedTooSoon(key, 2);
                     }
 
                     // We check for underflow, because multiple readers share the same key.
@@ -830,9 +824,16 @@ namespace Proto.Promises
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
-            internal static void ThrowUpgradeableKeyReleasedTooSoon(int skipFrames)
+            internal void ThrowUpgradeableKeyReleasedTooSoon(long key, int skipFrames)
             {
-                throw new InvalidOperationException("The AsyncReaderWriterLock.UpgradeableReaderKey cannot be released before the upgraded writer is released.", GetFormattedStacktrace(skipFrames + 1));
+                if (_currentKey != key)
+                {
+                    ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                }
+                string message = _upgradeWaiter != null
+                    ? "The AsyncReaderWriterLock.UpgradeableReaderKey cannot be released before the UpgradeToWriterLockAsync promise is complete."
+                    : "The AsyncReaderWriterLock.UpgradeableReaderKey cannot be released before the upgraded writer is released.";
+                throw new InvalidOperationException(message, GetFormattedStacktrace(skipFrames + 1));
             }
         } // class AsyncReaderWriterLockInternal
     } // class Internal

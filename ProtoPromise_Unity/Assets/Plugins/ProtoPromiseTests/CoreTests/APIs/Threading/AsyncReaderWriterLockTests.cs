@@ -2,6 +2,7 @@
 using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 
 namespace ProtoPromiseTests.APIs
@@ -793,6 +794,207 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void AsyncReaderWriterLock_UpgradeableReadLocked_PreventsAnotherUpgradeableReaderLockUntilReleased_NoUpgrade_Async()
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var deferred1Continue = Promise.NewDeferred();
+
+            bool isUpgradeableReaderLocked = false;
+
+            Promise.Run(async () =>
+            {
+                using (await rwl.UpgradeableReaderLockAsync())
+                {
+                    isUpgradeableReaderLocked = true;
+                    await deferred1Continue.Promise;
+                }
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.True(isUpgradeableReaderLocked);
+
+            bool secondUpgradeableReaderIsComplete = false;
+
+            Promise.Run(async () =>
+            {
+                var promise = rwl.UpgradeableReaderLockAsync();
+                using (await promise) { }
+                secondUpgradeableReaderIsComplete = true;
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.False(secondUpgradeableReaderIsComplete);
+
+            deferred1Continue.Resolve();
+            // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.True(secondUpgradeableReaderIsComplete);
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_UpgradeableReadLocked_PreventsAnotherUpgradeableReaderLockUntilReleased_AfterDowngrade_Async()
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var deferred1Continue = Promise.NewDeferred();
+
+            bool isUpgradeableReaderDowngradedLocked = false;
+
+            Promise.Run(async () =>
+            {
+                using (var key = await rwl.UpgradeableReaderLockAsync())
+                {
+                    using (await rwl.UpgradeToWriterLockAsync(key)) { }
+                    isUpgradeableReaderDowngradedLocked = true;
+                    await deferred1Continue.Promise;
+                }
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.True(isUpgradeableReaderDowngradedLocked);
+
+            bool secondUpgradeableReaderIsComplete = false;
+
+            Promise.Run(async () =>
+            {
+                var promise = rwl.UpgradeableReaderLockAsync();
+                using (await promise) { }
+                secondUpgradeableReaderIsComplete = true;
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.False(secondUpgradeableReaderIsComplete);
+
+            deferred1Continue.Resolve();
+            // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.True(secondUpgradeableReaderIsComplete);
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_UpgradedWriterLocked_PreventsAnotherUpgradeableReaderLockUntilUpgradeableReaderLockReleased_Async()
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var deferred1Continue = Promise.NewDeferred();
+
+            bool isUpgradedWriterLocked = false;
+
+            Promise.Run(async () =>
+            {
+                using (var key = await rwl.UpgradeableReaderLockAsync())
+                {
+                    isUpgradedWriterLocked = true;
+                    using (await rwl.UpgradeToWriterLockAsync(key))
+                    {
+                        await deferred1Continue.Promise;
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.True(isUpgradedWriterLocked);
+
+            bool secondUpgradeableReaderIsComplete = false;
+
+            Promise.Run(async () =>
+            {
+                var promise = rwl.UpgradeableReaderLockAsync();
+                using (await promise) { }
+                secondUpgradeableReaderIsComplete = true;
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.False(secondUpgradeableReaderIsComplete);
+
+            deferred1Continue.Resolve();
+            // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.True(secondUpgradeableReaderIsComplete);
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_UpgradeableReaderLocksTakeLockInOrder_AfterNormalLockWithPendingReaderLock_Async()
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+            Promise.Run(async () =>
+            {
+                using (await rwl.WriterLockAsync())
+                {
+                    await promise;
+                }
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            bool enteredReadLock = false;
+
+            Promise.Run(async () =>
+            {
+                using (await rwl.ReaderLockAsync())
+                {
+                    enteredReadLock = true;
+                    await promise;
+                }
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            bool enteredFirstUpgradeableReadLock = false;
+            bool exitedFirstUpgradeableReadLock = false;
+
+            Promise.Run(async () =>
+            {
+                using (await rwl.UpgradeableReaderLockAsync())
+                {
+                    enteredFirstUpgradeableReadLock = true;
+                    await promise;
+                    exitedFirstUpgradeableReadLock = true;
+                }
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            Assert.False(enteredReadLock);
+            Assert.False(enteredFirstUpgradeableReadLock);
+
+            var d = deferred;
+            deferred = Promise.NewDeferred();
+            promise.Forget();
+            promise = deferred.Promise.Preserve();
+            d.Resolve();
+            // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
+            TestHelper.ExecuteForegroundCallbacks();
+
+            Assert.True(enteredReadLock);
+            Assert.True(enteredFirstUpgradeableReadLock);
+            Assert.False(exitedFirstUpgradeableReadLock);
+
+            bool enteredSecondUpgradeableReadLock = false;
+
+            Promise.Run(async () =>
+            {
+                using (await rwl.UpgradeableReaderLockAsync())
+                {
+                    enteredSecondUpgradeableReadLock = true;
+                }
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            Assert.False(exitedFirstUpgradeableReadLock);
+            Assert.False(enteredSecondUpgradeableReadLock);
+
+            deferred.Resolve();
+            promise.Forget();
+            // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
+            TestHelper.ExecuteForegroundCallbacks();
+        }
+
+        [Test]
         public void AsyncReaderWriterLock_UpgradedWriterLocked_PreventsReaderLockUntilReleased_Async()
         {
             var rwl = new AsyncReaderWriterLock();
@@ -1285,9 +1487,369 @@ namespace ProtoPromiseTests.APIs
             cts.Dispose();
         }
 
-        // TODO: test to make sure no type of lock gets starved.
+        [Test]
+        public void AsyncReaderWriterLock_ReleaseUpgradeableReaderLock_BeforeReleaseUpgradedWriterLock_Throws_Async()
+        {
+            var rwl = new AsyncReaderWriterLock();
+            bool didThrow = false;
 
-        // TODO: DEBUG test to make sure UpgradedWriterLock is released before UpgradeableReaderLock is released (or the promise is completed before the lock is released).
+            Promise.Run(async () =>
+            {
+                AsyncReaderWriterLock.UpgradeableReaderKey upgradeableReaderKey = default;
+                AsyncReaderWriterLock.WriterKey upgradedWriterKey = default;
+                try
+                {
+                    using (upgradeableReaderKey = await rwl.UpgradeableReaderLockAsync())
+                    {
+                        upgradedWriterKey = await rwl.UpgradeToWriterLockAsync(upgradeableReaderKey);
+                    }
+                }
+                catch (System.InvalidOperationException)
+                {
+                    didThrow = true;
+                }
+                // After we verify the bad case, dispose them properly.
+                upgradedWriterKey.Dispose();
+                upgradeableReaderKey.Dispose();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.True(didThrow);
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_ReleaseUpgradeableReaderLock_BeforeUpgradedWriterLockPromiseIsComplete_Throws_Async()
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var deferred = Promise.NewDeferred();
+            AsyncReaderWriterLock.UpgradeableReaderKey upgradeableReaderKey = default;
+            Promise<AsyncReaderWriterLock.WriterKey> upgradedWriterPromise = default;
+            bool didThrow = false;
+
+            Promise.Run(async () =>
+            {
+                using (await rwl.ReaderLockAsync())
+                {
+                    await deferred.Promise;
+                }
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            Promise.Run(async () =>
+            {
+                try
+                {
+                    using (upgradeableReaderKey = await rwl.UpgradeableReaderLockAsync())
+                    {
+                        upgradedWriterPromise = rwl.UpgradeToWriterLockAsync(upgradeableReaderKey);
+                    }
+                }
+                catch (System.InvalidOperationException)
+                {
+                    didThrow = true;
+                }
+                deferred.Resolve();
+            }, SynchronizationOption.Synchronous)
+                .Forget();
+
+            Promise.Run(async () =>
+            {
+                // After we verified the bad case, await and dispose them properly.
+                using (await upgradedWriterPromise) { }
+                upgradeableReaderKey.Dispose();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.True(didThrow);
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_ReaderLocksDoNotStarveWriterLocks_Async()
+        {
+            // A reader-preferring lock will fail this test, causing the readerRunner to loop forever, never allowing the writer lock access.
+
+            var rwl = new AsyncReaderWriterLock();
+            int writerCount = 0;
+            const int expectedWriterCount = 10;
+            var deferred = Promise.NewDeferred();
+
+            var readerRunner = Promise.Run(async () =>
+            {
+                // We take the reader lock first, then always take another reader lock before releasing the current.
+                var readerLockPromise = rwl.ReaderLockAsync();
+                Assert.AreEqual(0, writerCount);
+
+                await deferred.Promise; // Wait for the writer runner to start.
+
+                while (writerCount < expectedWriterCount)
+                {
+                    var temp = readerLockPromise;
+                    using (await temp)
+                    {
+                        readerLockPromise = rwl.ReaderLockAsync();
+                    }
+                }
+
+                using (await readerLockPromise) { }
+            }, SynchronizationOption.Synchronous);
+
+            var writerRunner = Promise.Run(async () =>
+            {
+                var writerLockPromise = rwl.WriterLockAsync();
+                deferred.Resolve();
+
+                using (await writerLockPromise)
+                {
+                    ++writerCount;
+                }
+
+                while (writerCount < expectedWriterCount)
+                {
+                    using (await rwl.WriterLockAsync())
+                    {
+                        ++writerCount;
+                    }
+                }
+            }, SynchronizationOption.Synchronous);
+
+            Promise.All(readerRunner, writerRunner)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            Assert.AreEqual(expectedWriterCount, writerCount);
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_WriterLocksDoNotStarveReaderLocks_Async()
+        {
+            // A writer-preferring lock will fail this test, causing the writerRunner to loop forever, never allowing the reader lock access.
+
+            var rwl = new AsyncReaderWriterLock();
+            int readerCount = 0;
+            const int expectedReaderCount = 10;
+            var deferred = Promise.NewDeferred();
+
+            var writerRunner = Promise.Run(async () =>
+            {
+                // We take the writer lock first, then always take another writer lock before releasing the current.
+                var writerLockPromise = rwl.WriterLockAsync();
+                Assert.AreEqual(0, readerCount);
+
+                await deferred.Promise; // Wait for the reader runner to start.
+
+                while (readerCount < expectedReaderCount)
+                {
+                    var temp = writerLockPromise;
+                    using (await temp)
+                    {
+                        writerLockPromise = rwl.WriterLockAsync();
+                    }
+                }
+
+                using (await writerLockPromise) { }
+            }, SynchronizationOption.Synchronous);
+
+            var readerRunner = Promise.Run(async () =>
+            {
+                var readerLockPromise = rwl.ReaderLockAsync();
+                deferred.Resolve();
+
+                using (await readerLockPromise)
+                {
+                    ++readerCount;
+                }
+
+                while (readerCount < expectedReaderCount)
+                {
+                    using (await rwl.ReaderLockAsync())
+                    {
+                        ++readerCount;
+                    }
+                }
+            }, SynchronizationOption.Synchronous);
+
+            Promise.All(readerRunner, writerRunner)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            Assert.AreEqual(expectedReaderCount, readerCount);
+        }
+
+        public enum ReaderWriterLockType
+        {
+            Reader,
+            Writer,
+            Upgradeable
+        }
+
+        public enum TakeNextUpgradeablePlace
+        {
+            BeforeUpgrade,
+            InsideWriterLock,
+            AfterDowngrade
+        }
+
+        private static IEnumerable<TestCaseData> DontStarveLocksCases()
+        {
+            TakeNextUpgradeablePlace[] upgradeablePlaces = new[]
+            {
+                TakeNextUpgradeablePlace.BeforeUpgrade,
+                TakeNextUpgradeablePlace.InsideWriterLock,
+                TakeNextUpgradeablePlace.AfterDowngrade
+            };
+            SynchronizationOption[] runnerOptions = new[]
+            {
+                SynchronizationOption.Synchronous,
+#if !UNITY_WEBGL
+                SynchronizationOption.Background
+#endif
+            };
+            foreach (var upgradeablePlace in upgradeablePlaces)
+            foreach (var runnerOption in runnerOptions)
+            {
+                yield return new TestCaseData(ReaderWriterLockType.Reader, ReaderWriterLockType.Writer, ReaderWriterLockType.Upgradeable, upgradeablePlace, runnerOption);
+                yield return new TestCaseData(ReaderWriterLockType.Reader, ReaderWriterLockType.Upgradeable, ReaderWriterLockType.Writer, upgradeablePlace, runnerOption);
+                yield return new TestCaseData(ReaderWriterLockType.Writer, ReaderWriterLockType.Reader, ReaderWriterLockType.Upgradeable, upgradeablePlace, runnerOption);
+                yield return new TestCaseData(ReaderWriterLockType.Writer, ReaderWriterLockType.Upgradeable, ReaderWriterLockType.Reader, upgradeablePlace, runnerOption);
+                yield return new TestCaseData(ReaderWriterLockType.Upgradeable, ReaderWriterLockType.Reader, ReaderWriterLockType.Writer, upgradeablePlace, runnerOption);
+                yield return new TestCaseData(ReaderWriterLockType.Upgradeable, ReaderWriterLockType.Writer, ReaderWriterLockType.Reader, upgradeablePlace, runnerOption);
+            }
+        }
+
+        [Test, TestCaseSource(nameof(DontStarveLocksCases))]
+        public void AsyncReaderWriterLock_LocksDoNotStarveOtherLocks_Async(
+            ReaderWriterLockType first,
+            ReaderWriterLockType second,
+            ReaderWriterLockType third,
+            TakeNextUpgradeablePlace upgradeablePlace,
+            SynchronizationOption runnerOption)
+        {
+            // A lock that does not balance the types of locks acquired will fail this test (reader-preferred or writer-preferred),
+            // causing the favored lock type to loop forever, never allowing the other lock types access.
+
+            var rwl = new AsyncReaderWriterLock();
+
+            int readerCount = 0;
+            int writerCount = 0;
+            int upgradeableReaderCount = 0;
+            int upgradedWriterCount = 0;
+            const int expectedCounts = 10;
+
+            var readerStartDeferred = Promise.NewDeferred();
+            var writerStartDeferred = Promise.NewDeferred();
+            var upgradeableReaderStartDeferred = Promise.NewDeferred();
+
+            var readerReadyDeferred = Promise.NewDeferred();
+            var writerReadyDeferred = Promise.NewDeferred();
+            var upgradeableReaderReadyDeferred = Promise.NewDeferred();
+            var allReadyPromise = Promise.All(readerReadyDeferred.Promise, writerReadyDeferred.Promise, upgradeableReaderReadyDeferred.Promise).Preserve();
+
+            var readerRunner = readerStartDeferred.Promise
+                .WaitAsync(runnerOption)
+                .Then(async () =>
+                {
+                    // We take the lock first, then always take another lock before releasing the current.
+                    var lockPromise = rwl.ReaderLockAsync();
+
+                    readerReadyDeferred.Resolve();
+                    await allReadyPromise.WaitAsync(runnerOption); // Wait for the other runners to start.
+
+                    while (readerCount < expectedCounts || writerCount < expectedCounts || upgradeableReaderCount < expectedCounts || upgradedWriterCount < expectedCounts)
+                    {
+                        using (await lockPromise)
+                        {
+                            ++readerCount;
+                            lockPromise = rwl.ReaderLockAsync();
+                        }
+                    }
+
+                    using (await lockPromise) { }
+                });
+
+            var writerRunner = writerStartDeferred.Promise
+                .WaitAsync(runnerOption)
+                .Then(async () =>
+                {
+                    // We take the lock first, then always take another lock before releasing the current.
+                    var lockPromise = rwl.WriterLockAsync();
+
+                    writerReadyDeferred.Resolve();
+                    await allReadyPromise.WaitAsync(runnerOption); // Wait for the other runners to start.
+
+                    while (readerCount < expectedCounts || writerCount < expectedCounts || upgradeableReaderCount < expectedCounts || upgradedWriterCount < expectedCounts)
+                    {
+                        using (await lockPromise)
+                        {
+                            ++writerCount;
+                            lockPromise = rwl.WriterLockAsync();
+                        }
+                    }
+
+                    using (await lockPromise) { }
+                });
+
+            var upgradeableReaderRunner = upgradeableReaderStartDeferred.Promise
+                .WaitAsync(runnerOption)
+                .Then(async () =>
+                {
+                    // We take the lock first, then always take another lock before releasing the current.
+                    var lockPromise = rwl.UpgradeableReaderLockAsync();
+
+                    upgradeableReaderReadyDeferred.Resolve();
+                    await allReadyPromise.WaitAsync(runnerOption); // Wait for the other runners to start.
+
+                    while (readerCount < expectedCounts || writerCount < expectedCounts || upgradeableReaderCount < expectedCounts || upgradedWriterCount < expectedCounts)
+                    {
+                        using (var key = await lockPromise)
+                        {
+                            ++upgradeableReaderCount;
+                            if (upgradeablePlace == TakeNextUpgradeablePlace.BeforeUpgrade)
+                            {
+                                lockPromise = rwl.UpgradeableReaderLockAsync();
+                            }
+                            using (await rwl.UpgradeToWriterLockAsync(key))
+                            {
+                                ++upgradedWriterCount;
+                                if (upgradeablePlace == TakeNextUpgradeablePlace.InsideWriterLock)
+                                {
+                                    lockPromise = rwl.UpgradeableReaderLockAsync();
+                                }
+                            }
+                            if (upgradeablePlace == TakeNextUpgradeablePlace.AfterDowngrade)
+                            {
+                                lockPromise = rwl.UpgradeableReaderLockAsync();
+                            }
+                        }
+                    }
+
+                    using (await lockPromise) { }
+                });
+
+            StartRunner(first);
+            StartRunner(second);
+            StartRunner(third);
+
+            Promise.All(readerRunner, writerRunner, upgradeableReaderRunner)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            allReadyPromise.Forget();
+
+            Assert.GreaterOrEqual(readerCount, expectedCounts);
+            Assert.GreaterOrEqual(writerCount, expectedCounts);
+            Assert.GreaterOrEqual(upgradeableReaderCount, expectedCounts);
+            Assert.GreaterOrEqual(upgradedWriterCount, expectedCounts);
+
+            void StartRunner(ReaderWriterLockType lockType)
+            {
+                if (lockType == ReaderWriterLockType.Reader)
+                {
+                    readerStartDeferred.Resolve();
+                }
+                else if (lockType == ReaderWriterLockType.Writer)
+                {
+                    writerStartDeferred.Resolve();
+                }
+                else
+                {
+                    upgradeableReaderStartDeferred.Resolve();
+                }
+            }
+        }
     }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 }

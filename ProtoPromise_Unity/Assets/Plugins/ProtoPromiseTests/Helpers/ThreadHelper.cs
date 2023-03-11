@@ -244,13 +244,13 @@ namespace ProtoPromiseTests.Threading
         }
 
         /// <summary>
-        /// Get how many actions will be invoked if parallel actions are expanded to processor count.
+        /// Get how many times each parallel action will be invoked if parallel actions are expanded to processor count.
         /// </summary>
         /// <param name="count"></param>
         /// <returns></returns>
         public static int GetExpandCount(int count)
         {
-            return Math.Max(Environment.ProcessorCount / count, 1) * count;
+            return Math.Max(Environment.ProcessorCount / count, 1);
         }
 
         /// <summary>
@@ -278,7 +278,7 @@ namespace ProtoPromiseTests.Threading
             }
 
             int actionCount = actions.Length;
-            int expandCount = expandToProcessorCount ? Math.Max(Environment.ProcessorCount / actionCount, 1) : 1;
+            int expandCount = expandToProcessorCount ? GetExpandCount(actionCount) : 1;
 
             foreach (var combo in GenerateCombinations(offsets, actionCount))
             {

@@ -27,7 +27,7 @@ namespace ProtoPromiseTests.Threading
             var mutex = new AsyncLock();
             int enteredCount = 0;
             int exitedCount = 0;
-            int expectedInvokes = ThreadHelper.GetExpandCount(4);
+            int expectedInvokes = ThreadHelper.GetExpandCount(4) * 4;
             Action syncLockAction = () =>
             {
                 using (mutex.Lock())
