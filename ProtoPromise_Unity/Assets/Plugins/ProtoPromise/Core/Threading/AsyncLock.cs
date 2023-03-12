@@ -2,8 +2,6 @@
 #define NET_LEGACY
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -62,7 +60,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<Key> LockAsync(CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<Key> LockAsync(CancelationToken cancelationToken = default)
         {
             return _locker.LockAsync(false, cancelationToken);
         }
@@ -72,7 +70,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
         [MethodImpl(Internal.InlineOption)]
-        public Key Lock(CancelationToken cancelationToken = default(CancelationToken))
+        public Key Lock(CancelationToken cancelationToken = default)
         {
             return _locker.LockAsync(true, cancelationToken).WaitForResult();
         }
@@ -83,53 +81,27 @@ namespace Proto.Promises.Threading
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct Key : IDisposable, IEquatable<Key>
+        public readonly partial struct Key : IDisposable, IEquatable<Key>
         {
             /// <summary>
             /// Release the lock on the associated <see cref="AsyncLock"/>.
             /// </summary>
-            public void Dispose()
-            {
-                ValidateAndGetOwner().ReleaseLock(_key);
-            }
+            public void Dispose() => Release();
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Key"/>.</summary>
-            public bool Equals(Key other)
-            {
-                return this == other;
-            }
+            public bool Equals(Key other) => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
-            public override bool Equals(object obj)
-            {
-#if CSHARP_7_3_OR_NEWER
-                return obj is Key token && Equals(token);
-#else
-                return obj is Key && Equals((Key) obj);
-#endif
-            }
+            public override bool Equals(object obj) => obj is Key token && Equals(token);
 
             /// <summary>Returns the hash code for this instance.</summary>
-            public override int GetHashCode()
-            {
-                return Internal.BuildHashCode(_owner, _key.GetHashCode(), 0);
-            }
+            public override int GetHashCode() => Internal.BuildHashCode(_owner, _key.GetHashCode(), 0);
 
             /// <summary>Returns a value indicating whether two <see cref="Key"/> values are equal.</summary>
-            public static bool operator ==(Key lhs, Key rhs)
-            {
-                return lhs._owner == rhs._owner & lhs._key == rhs._key;
-            }
+            public static bool operator ==(Key lhs, Key rhs) => lhs._owner == rhs._owner & lhs._key == rhs._key;
 
             /// <summary>Returns a value indicating whether two <see cref="Key"/> values are not equal.</summary>
-            public static bool operator !=(Key lhs, Key rhs)
-            {
-                return !(lhs == rhs);
-            }
+            public static bool operator !=(Key lhs, Key rhs) => !(lhs == rhs);
         }
     } // class AsyncLock
 

@@ -2,8 +2,6 @@
 #define NET_LEGACY
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-
 using System;
 using System.Diagnostics;
 
@@ -35,7 +33,7 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        public Promise<ReaderKey> ReaderLockAsync(CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<ReaderKey> ReaderLockAsync(CancelationToken cancelationToken = default)
         {
             return _impl.ReaderLock(false, cancelationToken);
         }
@@ -44,7 +42,7 @@ namespace Proto.Promises.Threading
         /// Synchronously acquire the lock as a reader. Returns the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
-        public ReaderKey ReaderLock(CancelationToken cancelationToken = default(CancelationToken))
+        public ReaderKey ReaderLock(CancelationToken cancelationToken = default)
         {
             return _impl.ReaderLock(true, cancelationToken).WaitForResult();
         }
@@ -63,7 +61,7 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        public Promise<WriterKey> WriterLockAsync(CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<WriterKey> WriterLockAsync(CancelationToken cancelationToken = default)
         {
             return _impl.WriterLock(false, cancelationToken);
         }
@@ -72,7 +70,7 @@ namespace Proto.Promises.Threading
         /// Synchronously acquire the lock as a writer. Returns the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
-        public WriterKey WriterLock(CancelationToken cancelationToken = default(CancelationToken))
+        public WriterKey WriterLock(CancelationToken cancelationToken = default)
         {
             return _impl.WriterLock(true, cancelationToken).WaitForResult();
         }
@@ -91,7 +89,7 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken = default)
         {
             return _impl.UpgradeableReaderLock(false, cancelationToken);
         }
@@ -100,7 +98,7 @@ namespace Proto.Promises.Threading
         /// Synchronously acquire the lock as an upgradeable reader. Returns the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
-        public UpgradeableReaderKey UpgradeableReaderLock(CancelationToken cancelationToken = default(CancelationToken))
+        public UpgradeableReaderKey UpgradeableReaderLock(CancelationToken cancelationToken = default)
         {
             return _impl.UpgradeableReaderLock(true, cancelationToken).WaitForResult();
         }
@@ -120,7 +118,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the upgrade. If the token is canceled before the lock has been upgraded, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        public Promise<WriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<WriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken = default)
         {
             return _impl.UpgradeToWriterLock(readerKey, false, cancelationToken);
         }
@@ -130,7 +128,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the upgrade. If the token is canceled before the lock has been upgraded, a <see cref="CanceledException"/> will be thrown.</param>
-        public WriterKey UpgradeToWriterLock(UpgradeableReaderKey readerKey, CancelationToken cancelationToken = default(CancelationToken))
+        public WriterKey UpgradeToWriterLock(UpgradeableReaderKey readerKey, CancelationToken cancelationToken = default)
         {
             return _impl.UpgradeToWriterLock(readerKey, true, cancelationToken).WaitForResult();
         }
