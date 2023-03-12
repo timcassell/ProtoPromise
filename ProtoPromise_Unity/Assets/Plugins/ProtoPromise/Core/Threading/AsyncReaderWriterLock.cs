@@ -151,53 +151,27 @@ namespace Proto.Promises.Threading
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct ReaderKey : IDisposable, IEquatable<ReaderKey>
+        public readonly partial struct ReaderKey : IDisposable, IEquatable<ReaderKey>
         {
             /// <summary>
             /// Release the lock on the associated <see cref="AsyncReaderWriterLock"/>.
             /// </summary>
-            public void Dispose()
-            {
-                ValidateAndGetOwner().ReleaseReaderLock(_key);
-            }
+            public void Dispose() => _impl.ReleaseReaderLock();
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="ReaderKey"/>.</summary>
-            public bool Equals(ReaderKey other)
-            {
-                return this == other;
-            }
+            public bool Equals(ReaderKey other) => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
-            public override bool Equals(object obj)
-            {
-#if CSHARP_7_3_OR_NEWER
-                return obj is ReaderKey token && Equals(token);
-#else
-                return obj is Key && Equals((ReaderKey) obj);
-#endif
-            }
+            public override bool Equals(object obj) => obj is ReaderKey token && Equals(token);
 
             /// <summary>Returns the hash code for this instance.</summary>
-            public override int GetHashCode()
-            {
-                return Internal.BuildHashCode(_owner, _key.GetHashCode(), 0);
-            }
+            public override int GetHashCode() => _impl.GetHashCode();
 
             /// <summary>Returns a value indicating whether two <see cref="ReaderKey"/> values are equal.</summary>
-            public static bool operator ==(ReaderKey lhs, ReaderKey rhs)
-            {
-                return lhs._owner == rhs._owner & lhs._key == rhs._key;
-            }
+            public static bool operator ==(ReaderKey lhs, ReaderKey rhs) => lhs._impl == rhs._impl;
 
             /// <summary>Returns a value indicating whether two <see cref="ReaderKey"/> values are not equal.</summary>
-            public static bool operator !=(ReaderKey lhs, ReaderKey rhs)
-            {
-                return !(lhs == rhs);
-            }
+            public static bool operator !=(ReaderKey lhs, ReaderKey rhs) => lhs._impl != rhs._impl;
         }
 
         /// <summary>
@@ -206,108 +180,56 @@ namespace Proto.Promises.Threading
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct WriterKey : IDisposable, IEquatable<WriterKey>
+        public readonly partial struct WriterKey : IDisposable, IEquatable<WriterKey>
         {
             /// <summary>
             /// Release the lock on the associated <see cref="AsyncReaderWriterLock"/>.
             /// </summary>
-            public void Dispose()
-            {
-                ValidateAndGetOwner().ReleaseWriterLock(_key);
-            }
+            public void Dispose() => _impl.ReleaseWriterLock();
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="WriterKey"/>.</summary>
-            public bool Equals(WriterKey other)
-            {
-                return this == other;
-            }
+            public bool Equals(WriterKey other) => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
-            public override bool Equals(object obj)
-            {
-#if CSHARP_7_3_OR_NEWER
-                return obj is WriterKey token && Equals(token);
-#else
-                return obj is Key && Equals((WriterKey) obj);
-#endif
-            }
+            public override bool Equals(object obj) => obj is WriterKey token && Equals(token);
 
             /// <summary>Returns the hash code for this instance.</summary>
-            public override int GetHashCode()
-            {
-                return Internal.BuildHashCode(_owner, _key.GetHashCode(), 0);
-            }
+            public override int GetHashCode() => _impl.GetHashCode();
 
             /// <summary>Returns a value indicating whether two <see cref="WriterKey"/> values are equal.</summary>
-            public static bool operator ==(WriterKey lhs, WriterKey rhs)
-            {
-                return lhs._owner == rhs._owner & lhs._key == rhs._key;
-            }
+            public static bool operator ==(WriterKey lhs, WriterKey rhs) => lhs._impl == rhs._impl;
 
             /// <summary>Returns a value indicating whether two <see cref="WriterKey"/> values are not equal.</summary>
-            public static bool operator !=(WriterKey lhs, WriterKey rhs)
-            {
-                return !(lhs == rhs);
-            }
+            public static bool operator !=(WriterKey lhs, WriterKey rhs) => lhs._impl != rhs._impl;
         }
 
         /// <summary>
-        /// A disposable object used to release the reader lock on the associated <see cref="AsyncReaderWriterLock"/>.
+        /// A disposable object used to release the upgradeable reader lock on the associated <see cref="AsyncReaderWriterLock"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct UpgradeableReaderKey : IDisposable, IEquatable<UpgradeableReaderKey>
+        public readonly partial struct UpgradeableReaderKey : IDisposable, IEquatable<UpgradeableReaderKey>
         {
             /// <summary>
             /// Release the lock on the associated <see cref="AsyncReaderWriterLock"/>.
             /// </summary>
-            public void Dispose()
-            {
-                ValidateAndGetOwner().ReleaseUpgradeableReaderLock(_key);
-            }
+            public void Dispose() => _impl.ReleaseUpgradeableReaderLock();
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="UpgradeableReaderKey"/>.</summary>
-            public bool Equals(UpgradeableReaderKey other)
-            {
-                return this == other;
-            }
+            public bool Equals(UpgradeableReaderKey other) => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
-            public override bool Equals(object obj)
-            {
-#if CSHARP_7_3_OR_NEWER
-                return obj is UpgradeableReaderKey token && Equals(token);
-#else
-                return obj is Key && Equals((UpgradeableReaderKey) obj);
-#endif
-            }
+            public override bool Equals(object obj) => obj is UpgradeableReaderKey token && Equals(token);
 
             /// <summary>Returns the hash code for this instance.</summary>
-            public override int GetHashCode()
-            {
-                return Internal.BuildHashCode(_owner, _key.GetHashCode(), 0);
-            }
+            public override int GetHashCode() => _impl.GetHashCode();
 
             /// <summary>Returns a value indicating whether two <see cref="UpgradeableReaderKey"/> values are equal.</summary>
-            public static bool operator ==(UpgradeableReaderKey lhs, UpgradeableReaderKey rhs)
-            {
-                return lhs._owner == rhs._owner & lhs._key == rhs._key;
-            }
+            public static bool operator ==(UpgradeableReaderKey lhs, UpgradeableReaderKey rhs) => lhs._impl == rhs._impl;
 
             /// <summary>Returns a value indicating whether two <see cref="UpgradeableReaderKey"/> values are not equal.</summary>
-            public static bool operator !=(UpgradeableReaderKey lhs, UpgradeableReaderKey rhs)
-            {
-                return !(lhs == rhs);
-            }
+            public static bool operator !=(UpgradeableReaderKey lhs, UpgradeableReaderKey rhs) => lhs._impl != rhs._impl;
         }
     } // class AsyncReaderWriterLock
 

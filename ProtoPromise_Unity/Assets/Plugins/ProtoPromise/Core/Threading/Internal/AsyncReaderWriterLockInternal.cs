@@ -68,6 +68,18 @@ namespace Proto.Promises
                 }
 
                 internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
+
+#if PROMISE_DEBUG
+                internal void Reject(IRejectContainer rejectContainer)
+                {
+                    Promise.Run(() =>
+                    {
+                        _cancelationRegistration.Dispose();
+                        HandleNextInternal(rejectContainer, Promise.State.Rejected);
+                    }, _callerContext, forceAsync: true)
+                        .Forget();
+                }
+#endif
             }
         }
 
@@ -77,7 +89,7 @@ namespace Proto.Promises
         internal sealed class AsyncReaderLockPromise : PromiseRefBase.AsyncReaderWriterLockPromise<AsyncReaderWriterLock.ReaderKey>, ICancelable, ILinked<AsyncReaderLockPromise>
         {
             AsyncReaderLockPromise ILinked<AsyncReaderLockPromise>.Next { get; set; }
-            private AsyncReaderWriterLockInternal Owner { get { return _result._owner; } }
+            private AsyncReaderWriterLockInternal Owner { get { return _result._impl._owner; } }
 
             [MethodImpl(InlineOption)]
             private static AsyncReaderLockPromise GetOrCreate()
@@ -92,7 +104,7 @@ namespace Proto.Promises
             {
                 var promise = GetOrCreate();
                 promise.Reset();
-                promise._result = new AsyncReaderWriterLock.ReaderKey(owner);
+                promise._result = new AsyncReaderWriterLock.ReaderKey(owner); ; // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 promise._callerContext = callerContext;
                 return promise;
             }
@@ -118,7 +130,7 @@ namespace Proto.Promises
                 // We just dispose to wait for the callback to complete before we continue.
                 _cancelationRegistration.Dispose();
 
-                _result = new AsyncReaderWriterLock.ReaderKey(Owner, currentKey);
+                _result = new AsyncReaderWriterLock.ReaderKey(Owner, currentKey, this);
                 Continue(Promise.State.Resolved);
             }
 
@@ -139,7 +151,7 @@ namespace Proto.Promises
         internal sealed class AsyncWriterLockPromise : PromiseRefBase.AsyncReaderWriterLockPromise<AsyncReaderWriterLock.WriterKey>, ICancelable, ILinked<AsyncWriterLockPromise>
         {
             AsyncWriterLockPromise ILinked<AsyncWriterLockPromise>.Next { get; set; }
-            private AsyncReaderWriterLockInternal Owner { get { return _result._owner; } }
+            private AsyncReaderWriterLockInternal Owner { get { return _result._impl._owner; } }
 
             [MethodImpl(InlineOption)]
             private static AsyncWriterLockPromise GetOrCreate()
@@ -150,12 +162,12 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncWriterLockPromise>();
             }
 
-            internal static AsyncWriterLockPromise GetOrCreate(AsyncReaderWriterLock.WriterKey key, SynchronizationContext callerContext)
+            internal static AsyncWriterLockPromise GetOrCreate(AsyncReaderWriterLockInternal owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset();
                 promise._callerContext = callerContext;
-                promise._result = key; // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
+                promise._result = new AsyncReaderWriterLock.WriterKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
             }
 
@@ -180,7 +192,7 @@ namespace Proto.Promises
                 // We just dispose to wait for the callback to complete before we continue.
                 _cancelationRegistration.Dispose();
 
-                _result = new AsyncReaderWriterLock.WriterKey(Owner, writerKey);
+                _result = new AsyncReaderWriterLock.WriterKey(Owner, writerKey, this);
                 Continue(Promise.State.Resolved);
             }
 
@@ -200,7 +212,7 @@ namespace Proto.Promises
         internal sealed class AsyncUpgradeableReaderLockPromise : PromiseRefBase.AsyncReaderWriterLockPromise<AsyncReaderWriterLock.UpgradeableReaderKey>, ICancelable, ILinked<AsyncUpgradeableReaderLockPromise>
         {
             AsyncUpgradeableReaderLockPromise ILinked<AsyncUpgradeableReaderLockPromise>.Next { get; set; }
-            private AsyncReaderWriterLockInternal Owner { get { return _result._owner; } }
+            private AsyncReaderWriterLockInternal Owner { get { return _result._impl._owner; } }
 
             [MethodImpl(InlineOption)]
             private static AsyncUpgradeableReaderLockPromise GetOrCreate()
@@ -215,7 +227,7 @@ namespace Proto.Promises
             {
                 var promise = GetOrCreate();
                 promise.Reset();
-                promise._result = new AsyncReaderWriterLock.UpgradeableReaderKey(owner, 0);
+                promise._result = new AsyncReaderWriterLock.UpgradeableReaderKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 promise._callerContext = callerContext;
                 return promise;
             }
@@ -241,7 +253,7 @@ namespace Proto.Promises
                 // We just dispose to wait for the callback to complete before we continue.
                 _cancelationRegistration.Dispose();
 
-                _result = new AsyncReaderWriterLock.UpgradeableReaderKey(Owner, currentKey);
+                _result = new AsyncReaderWriterLock.UpgradeableReaderKey(Owner, currentKey, this);
                 Continue(Promise.State.Resolved);
             }
 
@@ -268,7 +280,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncReaderWriterLockInternal
+        internal sealed partial class AsyncReaderWriterLockInternal
         {
             // If there is contention on the lock, we alternate between writers and readers, so one type of lock won't starve out the other.
             // We also alternate between upgraded writers and regular writers to prevent writer starvation.
@@ -302,7 +314,7 @@ namespace Proto.Promises
                 _currentKey = temp;
             }
 
-            private void VerifyReaderCounts()
+            private void ValidateReaderCounts()
             {
                 // Check to make sure the reader count doesn't overflow. Subtract 1 to leave room for an upgradeable reader lock.
                 // We could queue up reader locks that extend beyond the maximum value, but that would cost extra overhead that I don't think is worth it.
@@ -318,6 +330,8 @@ namespace Proto.Promises
             {
                 if (cancelationToken.IsCancelationRequested)
                 {
+                    ValidateNotAbandoned();
+
                     return Promise<AsyncReaderWriterLock.ReaderKey>.Canceled();
                 }
 
@@ -327,7 +341,9 @@ namespace Proto.Promises
                     AsyncReaderLockPromise promise;
                     lock (this)
                     {
-                        VerifyReaderCounts();
+                        ValidateNotAbandoned();
+
+                        ValidateReaderCounts();
 
                         // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
                         // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
@@ -339,7 +355,7 @@ namespace Proto.Promises
                                 SetNextKey();
                             }
                             _lockType |= AsyncReaderWriterLockType.Reader;
-                            return Promise.Resolved(new AsyncReaderWriterLock.ReaderKey(this, _currentKey));
+                            return Promise.Resolved(new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null));
                         }
 
                         ++_readerWaitCount;
@@ -355,7 +371,9 @@ namespace Proto.Promises
             {
                 lock (this)
                 {
-                    VerifyReaderCounts();
+                    ValidateNotAbandoned();
+
+                    ValidateReaderCounts();
 
                     // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
                     // If a writer lock is taken or waiting to be taken, we do not take the reader lock, to prevent starvation.
@@ -371,7 +389,7 @@ namespace Proto.Promises
                             SetNextKey();
                         }
                         _lockType |= AsyncReaderWriterLockType.Reader;
-                        readerKey = new AsyncReaderWriterLock.ReaderKey(this, _currentKey);
+                        readerKey = new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null);
                         return true;
                     }
                 }
@@ -383,12 +401,16 @@ namespace Proto.Promises
             {
                 if (cancelationToken.IsCancelationRequested)
                 {
+                    ValidateNotAbandoned();
+
                     return Promise<AsyncReaderWriterLock.WriterKey>.Canceled();
                 }
 
                 AsyncWriterLockPromise promise;
                 lock (this)
                 {
+                    ValidateNotAbandoned();
+
                     // Writer locks are mutually exclusive.
                     var lockType = _lockType;
                     _lockType = lockType | AsyncReaderWriterLockType.Writer;
@@ -396,10 +418,10 @@ namespace Proto.Promises
                     {
                         _writerType = AsyncReaderWriterLockType.Writer;
                         SetNextKey();
-                        return Promise.Resolved(new AsyncReaderWriterLock.WriterKey(this, _currentKey));
+                        return Promise.Resolved(new AsyncReaderWriterLock.WriterKey(this, _currentKey, null));
                     }
 
-                    promise = AsyncWriterLockPromise.GetOrCreate(new AsyncReaderWriterLock.WriterKey(this), isSynchronous ? null : CaptureContext());
+                    promise = AsyncWriterLockPromise.GetOrCreate(this, isSynchronous ? null : CaptureContext());
                     _writerQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
@@ -410,6 +432,8 @@ namespace Proto.Promises
             {
                 lock (this)
                 {
+                    ValidateNotAbandoned();
+
                     // Writer locks are mutually exclusive.
                     var lockType = _lockType;
                     _lockType = lockType | AsyncReaderWriterLockType.Writer;
@@ -417,7 +441,7 @@ namespace Proto.Promises
                     {
                         _writerType = AsyncReaderWriterLockType.Writer;
                         SetNextKey();
-                        writerKey = new AsyncReaderWriterLock.WriterKey(this, _currentKey);
+                        writerKey = new AsyncReaderWriterLock.WriterKey(this, _currentKey, null);
                         return true;
                     }
                 }
@@ -429,12 +453,16 @@ namespace Proto.Promises
             {
                 if (cancelationToken.IsCancelationRequested)
                 {
+                    ValidateNotAbandoned();
+
                     return Promise<AsyncReaderWriterLock.UpgradeableReaderKey>.Canceled();
                 }
 
                 AsyncUpgradeableReaderLockPromise promise;
                 lock (this)
                 {
+                    ValidateNotAbandoned();
+
                     // Normal reader locks can be taken simultaneously along with the upgradeable reader lock.
                     // Only 1 upgradeable reader lock is allowed at a time.
                     // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
@@ -453,7 +481,7 @@ namespace Proto.Promises
                             SetNextKey();
                         }
                         _lockType |= AsyncReaderWriterLockType.Upgradeable;
-                        return Promise.Resolved(new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey));
+                        return Promise.Resolved(new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey, null));
                     }
 
                     promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, isSynchronous ? null : CaptureContext());
@@ -467,6 +495,8 @@ namespace Proto.Promises
             {
                 lock (this)
                 {
+                    ValidateNotAbandoned();
+
                     // Normal reader locks can be taken simultaneously along with the upgradeable reader lock.
                     // Only 1 upgradeable reader lock is allowed at a time.
                     // If a writer lock is taken or waiting to be taken, we do not take the upgradeable reader lock, to prevent starvation.
@@ -485,7 +515,7 @@ namespace Proto.Promises
                             SetNextKey();
                         }
                         _lockType |= AsyncReaderWriterLockType.Upgradeable;
-                        readerKey = new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey);
+                        readerKey = new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey, null);
                         return true;
                     }
                 }
@@ -497,13 +527,17 @@ namespace Proto.Promises
             {
                 if (cancelationToken.IsCancelationRequested)
                 {
+                    ValidateNotAbandoned();
+
                     return Promise<AsyncReaderWriterLock.WriterKey>.Canceled();
                 }
 
                 AsyncWriterLockPromise promise;
                 lock (this)
                 {
-                    if (_currentKey != readerKey._key | this != readerKey._owner)
+                    ValidateNotAbandoned();
+
+                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
                     {
                         ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
                     }
@@ -523,10 +557,10 @@ namespace Proto.Promises
                         _writerType = AsyncReaderWriterLockType.Upgradeable;
                         // We cache the previous key for when the lock gets downgraded.
                         SetNextAndPreviousKeys();
-                        return Promise.Resolved(new AsyncReaderWriterLock.WriterKey(this, _currentKey));
+                        return Promise.Resolved(new AsyncReaderWriterLock.WriterKey(this, _currentKey, null));
                     }
 
-                    promise = AsyncWriterLockPromise.GetOrCreate(new AsyncReaderWriterLock.WriterKey(this), isSynchronous ? null : CaptureContext());
+                    promise = AsyncWriterLockPromise.GetOrCreate(this, isSynchronous ? null : CaptureContext());
                     _upgradeWaiter = promise;
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
@@ -537,7 +571,9 @@ namespace Proto.Promises
             {
                 lock (this)
                 {
-                    if (_currentKey != readerKey._key | this != readerKey._owner)
+                    ValidateNotAbandoned();
+
+                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
                     {
                         ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
                     }
@@ -557,7 +593,7 @@ namespace Proto.Promises
                         _writerType = AsyncReaderWriterLockType.Upgradeable;
                         // We cache the previous key for when the lock gets downgraded.
                         SetNextAndPreviousKeys();
-                        writerKey = new AsyncReaderWriterLock.WriterKey(this, _currentKey);
+                        writerKey = new AsyncReaderWriterLock.WriterKey(this, _currentKey, null);
                         return true;
                     }
                 }
@@ -723,9 +759,9 @@ namespace Proto.Promises
                 AsyncWriterLockPromise writerPromise;
                 lock (this)
                 {
-                    if (_currentKey != key | _writerType == AsyncReaderWriterLockType.Upgradeable | _upgradeWaiter != null)
+                    if (_currentKey != key | _upgradeWaiter != null)
                     {
-                        ThrowUpgradeableKeyReleasedTooSoon(key, 2);
+                        ThrowInvalidUpgradeableKeyReleased(key, 2);
                     }
 
                     // We check for underflow, because multiple readers share the same key.
@@ -817,25 +853,280 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal static void ThrowInvalidKey(AsyncReaderWriterLockType keyType, int skipFrames)
             {
-                string keyString = keyType == AsyncReaderWriterLockType.Reader ? "ReaderKey"
-                    : keyType == AsyncReaderWriterLockType.Writer ? "WriterKey"
-                    : "UpgradeableReaderKey";
-                throw new InvalidOperationException("The AsyncReaderWriterLock." + keyString + " is invalid for this operation.", GetFormattedStacktrace(skipFrames + 1));
+                throw new InvalidOperationException("The " + GetKeyTypeString(keyType) + " is invalid for this operation.", GetFormattedStacktrace(skipFrames + 1));
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
-            internal void ThrowUpgradeableKeyReleasedTooSoon(long key, int skipFrames)
+            internal void ThrowInvalidUpgradeableKeyReleased(long key, int skipFrames)
             {
-                if (_currentKey != key)
-                {
-                    ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                }
-                string message = _upgradeWaiter != null
-                    ? "The AsyncReaderWriterLock.UpgradeableReaderKey cannot be released before the UpgradeToWriterLockAsync promise is complete."
-                    : "The AsyncReaderWriterLock.UpgradeableReaderKey cannot be released before the upgraded writer is released.";
+                string message = _currentKey != key
+                    ? "The AsyncReaderWriterLock.UpgradeableReaderKey is invalid for this operation. Did you dispose it before the upgraded writer key?"
+                    : "The AsyncReaderWriterLock.UpgradeableReaderKey cannot be released before the UpgradeToWriterLockAsync promise is complete.";
                 throw new InvalidOperationException(message, GetFormattedStacktrace(skipFrames + 1));
             }
+
+            internal static string GetKeyTypeString(AsyncReaderWriterLockType keyType)
+            {
+                return keyType == AsyncReaderWriterLockType.Reader ? "AsyncReaderWriterLock.ReaderKey"
+                    : keyType == AsyncReaderWriterLockType.Writer ? "AsyncReaderWriterLock.WriterKey"
+                    : "AsyncReaderWriterLock.UpgradeableReaderKey";
+            }
+
+            partial void ValidateNotAbandoned();
+#if PROMISE_DEBUG
+            volatile private string _abandonedMessage;
+
+            partial void ValidateNotAbandoned()
+            {
+                if (_abandonedMessage != null)
+                {
+                    throw new AbandonedLockException(_abandonedMessage);
+                }
+            }
+
+            internal void NotifyAbandoned(string abandonedMessage, ITraceable traceable)
+            {
+                ValueLinkedStack<AsyncReaderLockPromise> readers;
+                ValueLinkedStack<AsyncWriterLockPromise> writers;
+                ValueLinkedStack<AsyncUpgradeableReaderLockPromise> upgradeables;
+                AsyncWriterLockPromise upgradeWaiter;
+                lock (this)
+                {
+                    if (_abandonedMessage != null)
+                    {
+                        // Additional abandoned keys could be caused by the first abandoned key, so do nothing.
+                        return;
+                    }
+                    _abandonedMessage = abandonedMessage;
+
+                    readers = _readerQueue.MoveElementsToStack();
+                    writers = _writerQueue.MoveElementsToStack();
+                    upgradeables = _upgradeQueue.MoveElementsToStack();
+                    upgradeWaiter = _upgradeWaiter;
+                    _upgradeWaiter = null;
+                }
+
+                var rejectContainer = CreateRejectContainer(new AbandonedLockException(abandonedMessage), int.MinValue, null, traceable);
+
+                while (readers.IsNotEmpty)
+                {
+                    readers.Pop().Reject(rejectContainer);
+                }
+                while (writers.IsNotEmpty)
+                {
+                    writers.Pop().Reject(rejectContainer);
+                }
+                while(upgradeables.IsNotEmpty)
+                {
+                    upgradeables.Pop().Reject(rejectContainer);
+                }
+                upgradeWaiter?.Reject(rejectContainer);
+
+                rejectContainer.ReportUnhandled();
+            }
+#endif // PROMISE_DEBUG
         } // class AsyncReaderWriterLockInternal
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly partial struct AsyncReaderWriterLockKey
+        {
+            // Never called, only added to make the compiler shut up.
+            public override bool Equals(object obj) => throw new System.InvalidOperationException();
+
+            [MethodImpl(InlineOption)]
+            public override int GetHashCode()
+            {
+                return BuildHashCode(_owner, _key.GetHashCode(), 0);
+            }
+
+            [MethodImpl(InlineOption)]
+            public static bool operator !=(AsyncReaderWriterLockKey lhs, AsyncReaderWriterLockKey rhs)
+            {
+                return !(lhs == rhs);
+            }
+        }
+
+        // We check to make sure every key is disposed exactly once in DEBUG mode.
+        // We don't verify this in RELEASE mode to avoid allocating on every lock enter.
+#if PROMISE_DEBUG
+        partial struct AsyncReaderWriterLockKey
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed class DisposedChecker : IDisposable, ITraceable
+            {
+                public CausalityTrace Trace { get; set; }
+
+                internal readonly AsyncReaderWriterLockInternal _owner;
+                private int _isDisposedFlag;
+                private readonly AsyncReaderWriterLockType _keyType;
+
+                internal DisposedChecker(AsyncReaderWriterLockInternal owner, AsyncReaderWriterLockType keyType, ITraceable traceable)
+                {
+                    _owner = owner;
+                    _keyType = keyType;
+                    if (traceable == null)
+                    {
+                        SetCreatedStacktrace(this, 3);
+                    }
+                    else
+                    {
+                        Trace = traceable.Trace;
+                    }
+                }
+
+                ~DisposedChecker()
+                {
+                    _owner.NotifyAbandoned("An " + AsyncReaderWriterLockInternal.GetKeyTypeString(_keyType) + " was never disposed.", this);
+                }
+
+                internal void ValidateNotDisposed()
+                {
+                    if (_isDisposedFlag != 0)
+                    {
+                        throw new ObjectDisposedException(AsyncReaderWriterLockInternal.GetKeyTypeString(_keyType));
+                    }
+                }
+
+                public void Dispose()
+                {
+                    _isDisposedFlag = 1;
+                    GC.SuppressFinalize(this);
+                }
+            }
+
+            internal readonly AsyncReaderWriterLockInternal _owner;
+            internal readonly long _key;
+            private readonly DisposedChecker _disposedChecker;
+
+            internal AsyncReaderWriterLockKey(AsyncReaderWriterLockInternal owner, long key, AsyncReaderWriterLockType lockType, ITraceable traceable)
+            {
+                _owner = owner;
+                _key = key;
+                _disposedChecker = new DisposedChecker(owner, lockType, traceable);
+            }
+
+            internal AsyncReaderWriterLockKey(AsyncReaderWriterLockInternal owner)
+            {
+                _owner = owner;
+                _key = 0;
+                _disposedChecker = null;
+            }
+
+            internal void ReleaseReaderLock()
+            {
+                var owner = _owner;
+                var disposedChecker = _disposedChecker;
+                if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
+                {
+                    AsyncReaderWriterLockInternal.ThrowInvalidKey(AsyncReaderWriterLockType.Reader, 2);
+                }
+                lock (owner)
+                {
+                    disposedChecker.ValidateNotDisposed();
+                    owner.ReleaseReaderLock(_key);
+                    disposedChecker.Dispose();
+                }
+            }
+
+            internal void ReleaseWriterLock()
+            {
+                var owner = _owner;
+                var disposedChecker = _disposedChecker;
+                if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
+                {
+                    AsyncReaderWriterLockInternal.ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
+                }
+                lock (owner)
+                {
+                    disposedChecker.ValidateNotDisposed();
+                    owner.ReleaseWriterLock(_key);
+                    disposedChecker.Dispose();
+                }
+            }
+
+            internal void ReleaseUpgradeableReaderLock()
+            {
+                var owner = _owner;
+                var disposedChecker = _disposedChecker;
+                if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
+                {
+                    AsyncReaderWriterLockInternal.ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                }
+                lock (owner)
+                {
+                    disposedChecker.ValidateNotDisposed();
+                    owner.ReleaseUpgradeableReaderLock(_key);
+                    disposedChecker.Dispose();
+                }
+            }
+
+            public static bool operator ==(AsyncReaderWriterLockKey lhs, AsyncReaderWriterLockKey rhs)
+            {
+                return lhs._owner == rhs._owner & lhs._key == rhs._key & lhs._disposedChecker == rhs._disposedChecker;
+            }
+        }
+#else // PROMISE_DEBUG
+        partial struct AsyncReaderWriterLockKey
+        {
+            internal readonly AsyncReaderWriterLockInternal _owner;
+            internal readonly long _key;
+
+            [MethodImpl(InlineOption)]
+            internal AsyncReaderWriterLockKey(AsyncReaderWriterLockInternal owner, long key, AsyncReaderWriterLockType lockType, ITraceable traceable)
+            {
+                _owner = owner;
+                _key = key;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal AsyncReaderWriterLockKey(AsyncReaderWriterLockInternal owner)
+            {
+                _owner = owner;
+                _key = 0;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void ReleaseReaderLock()
+            {
+                ValidateAndGetOwner(Internal.AsyncReaderWriterLockType.Reader).ReleaseReaderLock(_key);
+
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void ReleaseWriterLock()
+            {
+                ValidateAndGetOwner(Internal.AsyncReaderWriterLockType.Writer).ReleaseWriterLock(_key);
+
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void ReleaseUpgradeableReaderLock()
+            {
+                ValidateAndGetOwner(Internal.AsyncReaderWriterLockType.Upgradeable).ReleaseUpgradeableReaderLock(_key);
+
+            }
+
+            private Internal.AsyncReaderWriterLockInternal ValidateAndGetOwner(AsyncReaderWriterLockType lockType)
+            {
+                var owner = _owner;
+                if (owner == null)
+                {
+                    AsyncReaderWriterLockInternal.ThrowInvalidKey(lockType, 3);
+                }
+                return owner;
+            }
+
+            [MethodImpl(InlineOption)]
+            public static bool operator ==(AsyncReaderWriterLockKey lhs, AsyncReaderWriterLockKey rhs)
+            {
+                return lhs._owner == rhs._owner & lhs._key == rhs._key;
+            }
+        }
+#endif // PROMISE_DEBUG
     } // class Internal
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 
@@ -849,85 +1140,52 @@ namespace Proto.Promises
 
             partial struct ReaderKey
             {
-                internal readonly Internal.AsyncReaderWriterLockInternal _owner;
-                internal readonly long _key;
+                internal readonly Internal.AsyncReaderWriterLockKey _impl;
 
-                internal ReaderKey(Internal.AsyncReaderWriterLockInternal owner, long key)
+                [MethodImpl(Internal.InlineOption)]
+                internal ReaderKey(Internal.AsyncReaderWriterLockInternal owner, long key, Internal.ITraceable traceable)
                 {
-                    _owner = owner;
-                    _key = key;
+                    _impl = new Internal.AsyncReaderWriterLockKey(owner, key, Internal.AsyncReaderWriterLockType.Reader, traceable);
                 }
 
+                [MethodImpl(Internal.InlineOption)]
                 internal ReaderKey(Internal.AsyncReaderWriterLockInternal owner)
                 {
-                    _owner = owner;
-                    _key = 0;
-                }
-
-                private Internal.AsyncReaderWriterLockInternal ValidateAndGetOwner()
-                {
-                    var owner = _owner;
-                    if (owner == null)
-                    {
-                        Internal.AsyncReaderWriterLockInternal.ThrowInvalidKey(Internal.AsyncReaderWriterLockType.Reader, 2);
-                    }
-                    return owner;
+                    _impl = new Internal.AsyncReaderWriterLockKey(owner);
                 }
             }
 
             partial struct WriterKey
             {
-                internal readonly Internal.AsyncReaderWriterLockInternal _owner;
-                internal readonly long _key;
+                internal readonly Internal.AsyncReaderWriterLockKey _impl;
 
-                internal WriterKey(Internal.AsyncReaderWriterLockInternal owner, long key)
+                [MethodImpl(Internal.InlineOption)]
+                internal WriterKey(Internal.AsyncReaderWriterLockInternal owner, long key, Internal.ITraceable traceable)
                 {
-                    _owner = owner;
-                    _key = key;
+                    _impl = new Internal.AsyncReaderWriterLockKey(owner, key, Internal.AsyncReaderWriterLockType.Writer, traceable);
                 }
 
+                [MethodImpl(Internal.InlineOption)]
                 internal WriterKey(Internal.AsyncReaderWriterLockInternal owner)
                 {
-                    _owner = owner;
-                    _key = 0;
-                }
-
-                private Internal.AsyncReaderWriterLockInternal ValidateAndGetOwner()
-                {
-                    var owner = _owner;
-                    if (owner == null)
-                    {
-                        Internal.AsyncReaderWriterLockInternal.ThrowInvalidKey(Internal.AsyncReaderWriterLockType.Writer, 2);
-                    }
-                    return owner;
+                    _impl = new Internal.AsyncReaderWriterLockKey(owner);
                 }
             }
 
             partial struct UpgradeableReaderKey
             {
-                internal readonly Internal.AsyncReaderWriterLockInternal _owner;
-                internal readonly long _key;
+                internal readonly Internal.AsyncReaderWriterLockKey _impl;
 
-                internal UpgradeableReaderKey(Internal.AsyncReaderWriterLockInternal owner, long key)
+                [MethodImpl(Internal.InlineOption)]
+                internal UpgradeableReaderKey(Internal.AsyncReaderWriterLockInternal owner, long key, Internal.ITraceable traceable)
                 {
-                    _owner = owner;
-                    _key = key;
+                    _impl = new Internal.AsyncReaderWriterLockKey(owner, key, Internal.AsyncReaderWriterLockType.Upgradeable, traceable);
                 }
 
+                [MethodImpl(Internal.InlineOption)]
                 internal UpgradeableReaderKey(Internal.AsyncReaderWriterLockInternal owner)
                 {
-                    _owner = owner;
-                    _key = 0;
-                }
-
-                private Internal.AsyncReaderWriterLockInternal ValidateAndGetOwner()
-                {
-                    var owner = _owner;
-                    if (owner == null)
-                    {
-                        Internal.AsyncReaderWriterLockInternal.ThrowInvalidKey(Internal.AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-                    return owner;
+                    _impl = new Internal.AsyncReaderWriterLockKey(owner);
                 }
             }
         } // class AsyncReaderWriterLock

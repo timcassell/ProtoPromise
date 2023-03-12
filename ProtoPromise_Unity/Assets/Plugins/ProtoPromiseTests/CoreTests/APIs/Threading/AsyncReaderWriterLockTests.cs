@@ -1,8 +1,15 @@
-﻿using NUnit.Framework;
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace ProtoPromiseTests.APIs
@@ -1850,6 +1857,121 @@ namespace ProtoPromiseTests.APIs
                 }
             }
         }
+
+#if PROMISE_DEBUG
+        [Test]
+        public void AsyncReaderWriterLock_AbandonedLockIsReported()
+        {
+            var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            AbandonedLockException abandonedLockException = null;
+            Promise.Config.UncaughtRejectionHandler = ex =>
+            {
+                abandonedLockException = ex.Value as AbandonedLockException;
+            };
+
+            var rwl = new AsyncReaderWriterLock();
+            EnterAndAbandonReaderLock(rwl);
+
+            TestHelper.GcCollectAndWaitForFinalizers();
+            Assert.IsNotNull(abandonedLockException);
+            AssertThrowsAbandoned(rwl);
+
+            abandonedLockException = null;
+            rwl = new AsyncReaderWriterLock();
+            var upgradeableReaderKey = rwl.UpgradeableReaderLock();
+            EnterAndAbandonReaderLock(rwl);
+
+            TestHelper.GcCollectAndWaitForFinalizers();
+            Assert.IsNotNull(abandonedLockException);
+            AssertThrowsAbandoned(rwl, upgradeableReaderKey);
+            upgradeableReaderKey.Dispose();
+
+
+            abandonedLockException = null;
+            rwl = new AsyncReaderWriterLock();
+            EnterAndAbandonWriterLock(rwl);
+
+            TestHelper.GcCollectAndWaitForFinalizers();
+            Assert.IsNotNull(abandonedLockException);
+            AssertThrowsAbandoned(rwl);
+
+
+            abandonedLockException = null;
+            rwl = new AsyncReaderWriterLock();
+            EnterAndAbandonUpgradeableReaderLock(rwl);
+
+            TestHelper.GcCollectAndWaitForFinalizers();
+            Assert.IsNotNull(abandonedLockException);
+            AssertThrowsAbandoned(rwl);
+
+
+            abandonedLockException = null;
+            rwl = new AsyncReaderWriterLock();
+            upgradeableReaderKey = rwl.UpgradeableReaderLock();
+            EnterAndAbandonUpgradedWriterLock(rwl, upgradeableReaderKey);
+
+            TestHelper.GcCollectAndWaitForFinalizers();
+            Assert.IsNotNull(abandonedLockException);
+            AssertThrowsAbandoned(rwl);
+            // Upgraded writer is never released, so releasing the reader should throw.
+            Assert.Catch<System.InvalidOperationException>(() => upgradeableReaderKey.Dispose());
+
+            Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
+        }
+
+        private void AssertThrowsAbandoned(AsyncReaderWriterLock rwl)
+        {
+            Assert.Throws<AbandonedLockException>(() => rwl.ReaderLock());
+            Assert.Throws<AbandonedLockException>(() => rwl.ReaderLockAsync());
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterReaderLock(out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.WriterLock());
+            Assert.Throws<AbandonedLockException>(() => rwl.WriterLockAsync());
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterWriterLock(out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.UpgradeableReaderLock());
+            Assert.Throws<AbandonedLockException>(() => rwl.UpgradeableReaderLockAsync());
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterUpgradeableReaderLock(out _));
+        }
+
+        private void AssertThrowsAbandoned(AsyncReaderWriterLock rwl, AsyncReaderWriterLock.UpgradeableReaderKey upgradeableReaderKey)
+        {
+            Assert.Throws<AbandonedLockException>(() => rwl.ReaderLock());
+            Assert.Throws<AbandonedLockException>(() => rwl.ReaderLockAsync());
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterReaderLock(out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.WriterLock());
+            Assert.Throws<AbandonedLockException>(() => rwl.WriterLockAsync());
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterWriterLock(out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.UpgradeableReaderLock());
+            Assert.Throws<AbandonedLockException>(() => rwl.UpgradeableReaderLockAsync());
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterUpgradeableReaderLock(out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.UpgradeToWriterLock(upgradeableReaderKey));
+            Assert.Throws<AbandonedLockException>(() => rwl.UpgradeToWriterLockAsync(upgradeableReaderKey));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryUpgradeToWriterLock(upgradeableReaderKey, out _));
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void EnterAndAbandonReaderLock(AsyncReaderWriterLock rwl)
+        {
+            rwl.ReaderLock();
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void EnterAndAbandonWriterLock(AsyncReaderWriterLock rwl)
+        {
+            rwl.WriterLock();
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void EnterAndAbandonUpgradeableReaderLock(AsyncReaderWriterLock rwl)
+        {
+            rwl.UpgradeableReaderLock();
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void EnterAndAbandonUpgradedWriterLock(AsyncReaderWriterLock rwl, AsyncReaderWriterLock.UpgradeableReaderKey upgradeableReaderKey)
+        {
+            rwl.UpgradeToWriterLock(upgradeableReaderKey);
+        }
+#endif // PROMISE_DEBUG
     }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 }
