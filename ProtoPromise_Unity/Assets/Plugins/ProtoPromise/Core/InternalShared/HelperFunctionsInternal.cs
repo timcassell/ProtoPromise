@@ -239,5 +239,14 @@ namespace Proto.Promises
             return false;
         }
 #endif
+
+        internal static SynchronizationContext CaptureContext()
+        {
+            // We capture the current context to post the continuation. If it's null, we use the background context.
+            return ts_currentContext
+                ?? SynchronizationContext.Current
+                ?? Promise.Config.BackgroundContext
+                ?? BackgroundSynchronizationContextSentinel.s_instance;
+        }
     } // class Internal
 } // namespace Proto.Promises
