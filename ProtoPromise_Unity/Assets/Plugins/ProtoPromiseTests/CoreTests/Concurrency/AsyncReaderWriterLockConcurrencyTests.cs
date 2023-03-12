@@ -69,6 +69,7 @@ namespace ProtoPromiseTests.Threading
             var rwl = new AsyncReaderWriterLock();
 
             int lockCount = 0; // 0 for unlocked, -1 for writer locked, otherwise the count of readers.
+            int upgradeableLockCount = 0;
             int lockEnteredCount = 0;
 
             void InsideReaderLock()
@@ -87,6 +88,9 @@ namespace ProtoPromiseTests.Threading
 
             async Promise InsideUpgradeableLock(AsyncReaderWriterLock.UpgradeableReaderKey key, int upgradeType)
             {
+                var upgradeableCount = Interlocked.Increment(ref upgradeableLockCount);
+                Assert.AreEqual(1, upgradeableCount);
+
                 InsideReaderLock();
                 if (upgradeType == 0)
                 {
@@ -112,6 +116,8 @@ namespace ProtoPromiseTests.Threading
                     }
                 }
                 InsideReaderLock();
+
+                Assert.AreEqual(0, Interlocked.Decrement(ref upgradeableLockCount));
             }
 
             List<Action> actions = new List<Action>(6);
