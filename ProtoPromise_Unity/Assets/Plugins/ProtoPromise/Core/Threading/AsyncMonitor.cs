@@ -2,8 +2,6 @@
 #define NET_LEGACY
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -29,7 +27,7 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLock">The async lock instance that is being entered.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
         [MethodImpl(Internal.InlineOption)]
-        public static Promise<AsyncLock.Key> EnterAsync(AsyncLock asyncLock, CancelationToken cancelationToken = default(CancelationToken))
+        public static Promise<AsyncLock.Key> EnterAsync(AsyncLock asyncLock, CancelationToken cancelationToken = default)
         {
             return asyncLock.LockAsync(cancelationToken);
         }
@@ -40,7 +38,7 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLock">The async lock instance that is being entered.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, <see cref="CanceledException"/> will be thrown.</param>
         [MethodImpl(Internal.InlineOption)]
-        public static AsyncLock.Key Enter(AsyncLock asyncLock, CancelationToken cancelationToken = default(CancelationToken))
+        public static AsyncLock.Key Enter(AsyncLock asyncLock, CancelationToken cancelationToken = default)
         {
             return asyncLock.Lock(cancelationToken);
         }
@@ -78,7 +76,7 @@ namespace Proto.Promises.Threading
         /// false if the lock was re-acquired after the <paramref name="cancelationToken"/> was canceled
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
-        public static Promise<bool> WaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken = default(CancelationToken))
+        public static Promise<bool> WaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken = default)
         {
             return asyncLockKey.WaitAsync(cancelationToken);
         }
@@ -94,7 +92,7 @@ namespace Proto.Promises.Threading
         /// false if the lock was re-acquired after the <paramref name="cancelationToken"/> was canceled
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
-        public static bool Wait(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken = default(CancelationToken))
+        public static bool Wait(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken = default)
         {
             return asyncLockKey.Wait(cancelationToken);
         }

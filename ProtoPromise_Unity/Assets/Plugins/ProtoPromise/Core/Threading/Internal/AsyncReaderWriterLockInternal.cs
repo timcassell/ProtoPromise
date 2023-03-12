@@ -13,7 +13,6 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0180 // Use tuple to swap values
 
@@ -46,7 +45,7 @@ namespace Proto.Promises
                 {
                     base.Dispose();
                     _callerContext = null;
-                    _cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default;
                 }
 
                 protected void Continue(Promise.State state)
@@ -393,7 +392,7 @@ namespace Proto.Promises
                         return true;
                     }
                 }
-                readerKey = default(AsyncReaderWriterLock.ReaderKey);
+                readerKey = default;
                 return false;
             }
 
@@ -445,7 +444,7 @@ namespace Proto.Promises
                         return true;
                     }
                 }
-                writerKey = default(AsyncReaderWriterLock.WriterKey);
+                writerKey = default;
                 return false;
             }
 
@@ -519,7 +518,7 @@ namespace Proto.Promises
                         return true;
                     }
                 }
-                readerKey = default(AsyncReaderWriterLock.UpgradeableReaderKey);
+                readerKey = default;
                 return false;
             }
 
@@ -597,7 +596,7 @@ namespace Proto.Promises
                         return true;
                     }
                 }
-                writerKey = default(AsyncReaderWriterLock.WriterKey);
+                writerKey = default;
                 return false;
             }
 
@@ -1024,7 +1023,7 @@ namespace Proto.Promises
                 {
                     AsyncReaderWriterLockInternal.ThrowInvalidKey(AsyncReaderWriterLockType.Reader, 2);
                 }
-                lock (owner)
+                lock (disposedChecker)
                 {
                     disposedChecker.ValidateNotDisposed();
                     owner.ReleaseReaderLock(_key);
@@ -1040,7 +1039,7 @@ namespace Proto.Promises
                 {
                     AsyncReaderWriterLockInternal.ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
                 }
-                lock (owner)
+                lock (disposedChecker)
                 {
                     disposedChecker.ValidateNotDisposed();
                     owner.ReleaseWriterLock(_key);
@@ -1056,7 +1055,7 @@ namespace Proto.Promises
                 {
                     AsyncReaderWriterLockInternal.ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
                 }
-                lock (owner)
+                lock (disposedChecker)
                 {
                     disposedChecker.ValidateNotDisposed();
                     owner.ReleaseUpgradeableReaderLock(_key);
@@ -1076,7 +1075,9 @@ namespace Proto.Promises
             internal readonly long _key;
 
             [MethodImpl(InlineOption)]
+#pragma warning disable IDE0060 // Remove unused parameter
             internal AsyncReaderWriterLockKey(AsyncReaderWriterLockInternal owner, long key, AsyncReaderWriterLockType lockType, ITraceable traceable)
+#pragma warning restore IDE0060 // Remove unused parameter
             {
                 _owner = owner;
                 _key = key;

@@ -27,24 +27,6 @@ namespace ProtoPromiseTests.APIs
             TestHelper.Cleanup();
         }
 
-#if PROMISE_DEBUG
-        [Test]
-        public void AsyncMonitor_ReleaseLock_BeforeWaitAsyncCompletes_Throws()
-        {
-            var mutex = new AsyncLock();
-            mutex.LockAsync()
-                .Then(key =>
-                {
-                    var waitpromise = AsyncMonitor.WaitAsync(key);
-                    Assert.Catch<System.InvalidOperationException>(key.Dispose);
-                    waitpromise
-                        .Catch((System.InvalidOperationException e) => { }) // The promise is also rejected along with the throw, so we catch it here.
-                        .Forget();
-                })
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-#endif
-
         [Test]
         public void AsyncMonitor_TryEnter_ReturnsTrueIfLockIsNotHeld()
         {
@@ -609,7 +591,6 @@ namespace ProtoPromiseTests.APIs
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
-#if CSHARP_7_3_OR_NEWER
         [Test]
         public void AsyncMonitor_Pulse_ReleasesOneAsyncWaiter_AsyncAwait()
         {
@@ -709,8 +690,35 @@ namespace ProtoPromiseTests.APIs
 
             Assert.AreEqual(2, completed);
         }
-#endif // CSHARP_7_3_OR_NEWER
 #endif // !UNITY_WEBGL
+
+#if PROMISE_DEBUG
+        [Test]
+        public void AsyncMonitor_ReleaseLock_BeforeWaitAsyncCompletes_Throws()
+        {
+            var mutex = new AsyncLock();
+            var waitPromise = mutex.LockAsync()
+                .Then(key =>
+                {
+                    var promise = AsyncMonitor.WaitAsync(key)
+                        .Then(() => key);
+                    Assert.Catch<System.InvalidOperationException>(key.Dispose);
+                    return promise;
+                })
+                .Then(key => key.Dispose());
+
+            mutex.LockAsync()
+                .Then(secondKey =>
+                {
+                    AsyncMonitor.Pulse(secondKey);
+                    secondKey.Dispose();
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            waitPromise
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+#endif
     }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 }

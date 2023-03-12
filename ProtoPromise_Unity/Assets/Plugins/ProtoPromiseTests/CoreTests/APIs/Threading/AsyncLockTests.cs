@@ -1,7 +1,14 @@
-﻿using NUnit.Framework;
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace ProtoPromiseTests.APIs
@@ -308,7 +315,6 @@ namespace ProtoPromiseTests.APIs
         }
 #endif // !UNITY_WEBGL
 
-#if CSHARP_7_3_OR_NEWER
         [Test]
         public void AsyncLock_CanceledLock_ThrowsException_AsyncAwait()
         {
@@ -560,7 +566,38 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.Dispose();
         }
 #endif // !UNITY_WEBGL
-#endif // CSHARP_7_3_OR_NEWER
+
+#if PROMISE_DEBUG
+        [Test]
+        public void AsyncMonitor_AbandonedLockIsReported()
+        {
+            var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            AbandonedLockException abandonedLockException = null;
+            Promise.Config.UncaughtRejectionHandler = ex =>
+            {
+                abandonedLockException = ex.Value as AbandonedLockException;
+            };
+
+            var mutex = new AsyncLock();
+            EnterAndAbandonLock(mutex);
+
+            TestHelper.GcCollectAndWaitForFinalizers();
+            Assert.IsNotNull(abandonedLockException);
+            Assert.Throws<AbandonedLockException>(() => mutex.Lock());
+            Assert.Throws<AbandonedLockException>(() => mutex.LockAsync());
+            Assert.Throws<AbandonedLockException>(() => AsyncMonitor.Enter(mutex));
+            Assert.Throws<AbandonedLockException>(() => AsyncMonitor.EnterAsync(mutex));
+            Assert.Throws<AbandonedLockException>(() => AsyncMonitor.TryEnter(mutex, out _));
+
+            Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void EnterAndAbandonLock(AsyncLock mutex)
+        {
+            mutex.Lock();
+        }
+#endif
     }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 }

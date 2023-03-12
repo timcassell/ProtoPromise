@@ -13,11 +13,10 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable IDE0031 // Use null propagation
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using Proto.Promises.Threading;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -33,7 +32,7 @@ namespace Proto.Promises
         {
             void Resolve(ref long currentKey);
 #if PROMISE_DEBUG
-            long KeyForDebug { get; }
+            void Reject(IRejectContainer rejectContainer);
 #endif
         }
 
@@ -42,19 +41,64 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class AsyncLockPromise : PromiseSingleAwait<AsyncLock.Key>, IAsyncLockPromise, ICancelable
+            internal abstract class AsyncLockPromiseBase<TResult> : PromiseSingleAwait<TResult>, IAsyncLockPromise
             {
-                // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
-                private SynchronizationContext _callerContext;
-                private CancelationRegistration _cancelationRegistration;
-                // We have to store the previous state in a separate field until the next awaiter is ready to be invoked on the proper context.
-                private Promise.State _tempState;
-                internal AsyncLockInternal Owner { get { return _result._owner; } }
                 IAsyncLockPromise ILinked<IAsyncLockPromise>.Next { get; set; }
 
+                // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
+                protected SynchronizationContext _callerContext;
+                protected CancelationRegistration _cancelationRegistration;
+                // We have to store the state in a separate field until the next awaiter is ready to be invoked on the proper context.
+                private Promise.State _tempState;
+
+                new protected void Dispose()
+                {
+                    base.Dispose();
+                    _callerContext = null;
+                    _cancelationRegistration = default;
+                }
+
+                protected void Continue(Promise.State state)
+                {
+                    if (_callerContext == null)
+                    {
+                        // It was a synchronous lock, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
+                        HandleNextInternal(null, state);
+                        return;
+                    }
+                    // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
+                    _tempState = state;
+                    ScheduleForHandle(this, _callerContext);
+                }
+
+                internal override sealed void HandleFromContext()
+                {
+                    HandleNextInternal(null, _tempState);
+                }
+
+                public abstract void Resolve(ref long currentKey);
+
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
+
 #if PROMISE_DEBUG
-                long IAsyncLockPromise.KeyForDebug { get { return 0; } }
+                void IAsyncLockPromise.Reject(IRejectContainer rejectContainer)
+                {
+                    Promise.Run(() =>
+                    {
+                        _cancelationRegistration.Dispose();
+                        HandleNextInternal(rejectContainer, Promise.State.Rejected);
+                    }, _callerContext, forceAsync: true)
+                        .Forget();
+                }
 #endif
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed class AsyncLockPromise : AsyncLockPromiseBase<AsyncLock.Key>, ICancelable
+            {
+                internal AsyncLockInternal Owner { get { return _result._owner; } }
 
                 [MethodImpl(InlineOption)]
                 private static AsyncLockPromise GetOrCreate()
@@ -71,15 +115,13 @@ namespace Proto.Promises
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callerContext = callerContext;
-                    promise._result = new AsyncLock.Key(owner, 0); // This will be overwritten when this is resolved, we just store the owner here for cancelation.
+                    promise._result = new AsyncLock.Key(owner); // This will be overwritten when this is resolved, we just store the owner here for cancelation.
                     return promise;
                 }
 
                 internal override void MaybeDispose()
                 {
                     Dispose();
-                    _callerContext = null;
-                    _cancelationRegistration = default(CancelationRegistration);
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -89,25 +131,7 @@ namespace Proto.Promises
                     cancelationToken.TryRegister(this, out _cancelationRegistration);
                 }
 
-                private void Continue(Promise.State state)
-                {
-                    if (_callerContext == null)
-                    {
-                        // It was a synchronous lock, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
-                        HandleNextInternal(null, state);
-                        return;
-                    }
-                    // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
-                    _tempState = state;
-                    ScheduleForHandle(this, _callerContext);
-                }
-
-                internal override void HandleFromContext()
-                {
-                    HandleNextInternal(null, _tempState);
-                }
-
-                public void Resolve(ref long currentKey)
+                public override void Resolve(ref long currentKey)
                 {
                     ThrowIfInPool(this);
 
@@ -116,7 +140,7 @@ namespace Proto.Promises
                     // We just dispose to wait for the callback to complete before we continue.
                     _cancelationRegistration.Dispose();
 
-                    _result = new AsyncLock.Key(Owner, currentKey);
+                    _result = new AsyncLock.Key(Owner, currentKey, this);
                     Continue(Promise.State.Resolved);
                 }
 
@@ -129,35 +153,15 @@ namespace Proto.Promises
                     }
                     Continue(Promise.State.Canceled);
                 }
-
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class AsyncLockWaitPromise : PromiseSingleAwait<bool>, IAsyncLockPromise, ICancelable
+            internal sealed class AsyncLockWaitPromise : AsyncLockPromiseBase<bool>, ICancelable
             {
                 private AsyncLockInternal _owner;
                 private long _key;
-                // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
-                private SynchronizationContext _callerContext;
-                private CancelationRegistration _cancelationRegistration;
-                IAsyncLockPromise ILinked<IAsyncLockPromise>.Next { get; set; }
-
-#if PROMISE_DEBUG
-                long IAsyncLockPromise.KeyForDebug { get { return _key; } }
-
-                internal void RejectFromEarlyLockRelease(InvalidOperationException exception)
-                {
-                    // This can only happen with an AsyncMonitor.WaitAsync call. Synchronous waits cannot be misused.
-                    ThrowIfInPool(this);
-                    _cancelationRegistration.Dispose();
-                    var rejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
-                    Promise.Run(() => HandleNextInternal(rejectContainer, Promise.State.Rejected), _callerContext, forceAsync: true)
-                        .Forget();
-                }
-#endif
 
                 [MethodImpl(InlineOption)]
                 private static AsyncLockWaitPromise GetOrCreate()
@@ -184,8 +188,6 @@ namespace Proto.Promises
                 {
                     Dispose();
                     _owner = null;
-                    _callerContext = null;
-                    _cancelationRegistration = default(CancelationRegistration);
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -196,7 +198,7 @@ namespace Proto.Promises
                     cancelationToken.TryRegister(this, out _cancelationRegistration);
                 }
 
-                public void Resolve(ref long currentKey)
+                public override void Resolve(ref long currentKey)
                 {
                     ThrowIfInPool(this);
 
@@ -204,20 +206,7 @@ namespace Proto.Promises
                     _cancelationRegistration.Dispose();
 
                     currentKey = _key;
-                    if (_callerContext == null)
-                    {
-                        // It was a synchronous wait, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
-                        HandleNextInternal(null, Promise.State.Resolved);
-                        return;
-                    }
-                    // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
-                    ScheduleForHandle(this, _callerContext);
-                }
-
-                internal override void HandleFromContext()
-                {
-                    // We only continue with resolved state here. If this was rejected due to mis-use, the rejection is posted via Promise.Run.
-                    HandleNextInternal(null, Promise.State.Resolved);
+                    Continue(Promise.State.Resolved);
                 }
 
                 void ICancelable.Cancel()
@@ -248,15 +237,13 @@ namespace Proto.Promises
                     previousWaiter = PendingAwaitSentinel.s_instance;
                     return null; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
                 }
-
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
             }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed partial class AsyncLockInternal : ITraceable
+        internal sealed partial class AsyncLockInternal
         {
             // These must not be readonly.
             private ValueLinkedQueue<IAsyncLockPromise> _waitPulseQueue = new ValueLinkedQueue<IAsyncLockPromise>();
@@ -267,92 +254,6 @@ namespace Proto.Promises
             private void SetNextKey()
             {
                 _currentKey = KeyGenerator<AsyncLockInternal>.Next();
-            }
-
-            partial void SetTrace(ITraceable traceable);
-            partial void AddWaitPulseKey(long key, int skipFrames);
-            partial void RemoveWaitPulseKey(IAsyncLockPromise promise);
-            partial void ValidateKeyRelease(long key, int skipFrames);
-#if PROMISE_DEBUG
-            // This is to help debug where a Key was left undisposed.
-            private CausalityTrace _trace;
-            CausalityTrace ITraceable.Trace
-            {
-                get { return _trace; }
-                set { _trace = value; }
-            }
-
-            partial void SetTrace(ITraceable traceable)
-            {
-                _trace = traceable == null ? null : traceable.Trace;
-            }
-
-            // This is used to tell if a key was disposed before all wait promises were resolved.
-            private readonly HashSet<long> _waitPulseKeys = new HashSet<long>();
-
-            partial void AddWaitPulseKey(long key, int skipFrames)
-            {
-                if (!_waitPulseKeys.Add(key))
-                {
-                    throw new InvalidOperationException("Cannot AsyncMonitor.Wait(Async) while the previous AsyncMonitor.WaitAsync has not completed.", GetFormattedStacktrace(skipFrames + 1));
-                }
-            }
-
-            partial void RemoveWaitPulseKey(IAsyncLockPromise promise)
-            {
-                long key = promise.KeyForDebug;
-                if (key != 0 && !_waitPulseKeys.Remove(key))
-                {
-                    // This should never happen.
-                    throw new System.InvalidOperationException("Could not remove key: " + key);
-                }
-            }
-
-            partial void ValidateKeyRelease(long key, int skipFrames)
-            {
-                if (!_waitPulseKeys.Contains(key))
-                {
-                    return;
-                }
-
-                // We make sure there can only be 1 wait promise per key at a time, validated in AddWaitPulseKey, so we only need to remove 1 when it's found.
-                IAsyncLockPromise matchedPromise = null;
-                foreach (var promise in _waitPulseQueue)
-                {
-                    if (promise.KeyForDebug == key)
-                    {
-                        matchedPromise = promise;
-                        break;
-                    }
-                }
-                if (matchedPromise != null)
-                {
-                    _waitPulseQueue.TryRemove(matchedPromise);
-                }
-                else
-                {
-                    foreach (var promise in _queue)
-                    {
-                        if (promise.KeyForDebug == key)
-                        {
-                            matchedPromise = promise;
-                            break;
-                        }
-                    }
-                    _queue.TryRemove(matchedPromise);
-                }
-                var exception = new InvalidOperationException("AsyncLock.Key was disposed before an AsyncMonitor.WaitAsync promise was complete.", GetFormattedStacktrace(skipFrames + 1));
-                ((PromiseRefBase.AsyncLockWaitPromise) matchedPromise).RejectFromEarlyLockRelease(exception);
-                throw exception;
-            }
-#endif
-
-            ~AsyncLockInternal()
-            {
-                if (_currentKey != 0)
-                {
-                    ReportRejection(new UnreleasedObjectException("An AsyncLock.Key was not disposed. Any code waiting on the AsyncLock will never continue."), this);
-                }
             }
 
             internal Promise<AsyncLock.Key> LockAsync(bool isSynchronous, CancelationToken cancelationToken)
@@ -366,11 +267,12 @@ namespace Proto.Promises
                 PromiseRefBase.AsyncLockPromise promise;
                 lock (this)
                 {
+                    ValidateNotAbandoned();
+
                     if (_currentKey == 0)
                     {
                         SetNextKey();
-                        SetCreatedStacktraceInternal(this, 2);
-                        return Promise.Resolved(new AsyncLock.Key(this, _currentKey));
+                        return Promise.Resolved(new AsyncLock.Key(this, _currentKey, null));
                     }
 
                     promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, isSynchronous ? null : CaptureContext());
@@ -384,15 +286,16 @@ namespace Proto.Promises
             {
                 lock (this)
                 {
+                    ValidateNotAbandoned();
+
                     if (_currentKey == 0)
                     {
                         SetNextKey();
-                        SetCreatedStacktraceInternal(this, 2);
-                        key = new AsyncLock.Key(this, _currentKey);
+                        key = new AsyncLock.Key(this, _currentKey, null);
                         return true;
                     }
                 }
-                key = default(AsyncLock.Key);
+                key = default;
                 return false;
             }
 
@@ -405,20 +308,15 @@ namespace Proto.Promises
                     {
                         ThrowInvalidKey(2);
                     }
-                    ValidateKeyRelease(key, 2);
 
                     // We keep the lock until there are no more waiters.
                     if (_queue.IsEmpty)
                     {
                         _currentKey = 0;
-                        SetTrace(null);
                         return;
                     }
                     SetNextKey();
                     next = _queue.Dequeue();
-
-                    SetTrace(next);
-                    RemoveWaitPulseKey(next);
                 }
                 next.Resolve(ref _currentKey);
             }
@@ -432,7 +330,6 @@ namespace Proto.Promises
                     {
                         ThrowInvalidKey(3);
                     }
-                    AddWaitPulseKey(key, 3);
 
                     promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(this, key, isSynchronous ? null : CaptureContext());
                     _waitPulseQueue.Enqueue(promise);
@@ -460,9 +357,6 @@ namespace Proto.Promises
                     }
                     SetNextKey();
                     next = _queue.Dequeue();
-
-                    SetTrace(next);
-                    RemoveWaitPulseKey(next);
                 }
                 next.Resolve(ref _currentKey);
             }
@@ -518,9 +412,6 @@ namespace Proto.Promises
                     // The lock is not currently held, and there is at least 1 waiter attempting to take the lock, we need to resolve the next.
                     SetNextKey();
                     next = _queue.Dequeue();
-
-                    SetTrace(next);
-                    RemoveWaitPulseKey(next);
                 }
                 next.Resolve(ref _currentKey);
             }
@@ -530,6 +421,50 @@ namespace Proto.Promises
             {
                 throw new InvalidOperationException("The AsyncLock.Key is invalid for this operation.", GetFormattedStacktrace(skipFrames + 1));
             }
+
+            partial void ValidateNotAbandoned();
+#if PROMISE_DEBUG
+            volatile private string _abandonedMessage;
+
+            partial void ValidateNotAbandoned()
+            {
+                if (_abandonedMessage != null)
+                {
+                    throw new AbandonedLockException(_abandonedMessage);
+                }
+            }
+
+            internal void NotifyAbandoned(string abandonedMessage, ITraceable traceable)
+            {
+                ValueLinkedStack<IAsyncLockPromise> waitPulses;
+                ValueLinkedStack<IAsyncLockPromise> queue;
+                lock (this)
+                {
+                    if (_abandonedMessage != null)
+                    {
+                        // Additional abandoned keys could be caused by the first abandoned key, so do nothing.
+                        return;
+                    }
+                    _abandonedMessage = abandonedMessage;
+
+                    waitPulses = _waitPulseQueue.MoveElementsToStack();
+                    queue = _queue.MoveElementsToStack();
+                }
+
+                var rejectContainer = CreateRejectContainer(new AbandonedLockException(abandonedMessage), int.MinValue, null, traceable);
+
+                while (waitPulses.IsNotEmpty)
+                {
+                    waitPulses.Pop().Reject(rejectContainer);
+                }
+                while (queue.IsNotEmpty)
+                {
+                    queue.Pop().Reject(rejectContainer);
+                }
+
+                rejectContainer.ReportUnhandled();
+            }
+#endif // PROMISE_DEBUG
         } // class AsyncLockInternal
     }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
@@ -548,24 +483,185 @@ namespace Proto.Promises
                 return _locker.TryEnter(out key);
             }
 
+            // We check to make sure every key is disposed exactly once in DEBUG mode.
+            // We don't verify this in RELEASE mode to avoid allocating on every lock enter.
+#if PROMISE_DEBUG
+            partial struct Key
+            {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+                [DebuggerNonUserCode, StackTraceHidden]
+#endif
+                private sealed class DisposedChecker : IDisposable, Internal.ITraceable
+                {
+                    public Internal.CausalityTrace Trace { get; set; }
+
+                    internal readonly Internal.AsyncLockInternal _owner;
+                    private int _isDisposedFlag;
+                    private Internal.PromiseRefBase _waitPromise;
+
+                    internal DisposedChecker(Internal.AsyncLockInternal owner, Internal.ITraceable traceable)
+                    {
+                        _owner = owner;
+                        if (traceable == null)
+                        {
+                            Internal.SetCreatedStacktraceInternal(this, 3);
+                        }
+                        else
+                        {
+                            Trace = traceable.Trace;
+                        }
+                    }
+
+                    ~DisposedChecker()
+                    {
+                        _owner.NotifyAbandoned("An AsyncLock.Key was never disposed.", this);
+                    }
+
+                    internal Promise<bool> WaitAsync(long key, bool isSynchronous, CancelationToken cancelationToken)
+                    {
+                        ValidateCall();
+
+                        var promise = _owner.WaitAsync(key, isSynchronous, cancelationToken);
+                        _waitPromise = promise._ref;
+                        return promise
+                            .Finally(this, _this => _this._waitPromise = null);
+                    }
+
+                    internal void ValidateCall()
+                    {
+                        if (_isDisposedFlag != 0 | _waitPromise != null)
+                        {
+                            throw _isDisposedFlag != 0
+                                ? new ObjectDisposedException("AsyncLock.Key")
+                                : new InvalidOperationException(
+                                    "This AsyncLock.Key instance has a pending AsyncMonitor.Wait(Async) associated with it. No other operation is permitted on this instance until it is complete.",
+                                    Internal.GetFormattedStacktrace(2));
+                        }
+                    }
+
+                    public void Dispose()
+                    {
+                        _isDisposedFlag = 1;
+                        GC.SuppressFinalize(this);
+                    }
+                }
+
+                internal readonly Internal.AsyncLockInternal _owner;
+                private readonly long _key;
+                private readonly DisposedChecker _disposedChecker;
+
+                internal Key(Internal.AsyncLockInternal owner, long key, Internal.ITraceable traceable)
+                {
+                    _owner = owner;
+                    _key = key;
+                    _disposedChecker = new DisposedChecker(owner, traceable);
+                }
+
+                internal Key(Internal.AsyncLockInternal owner)
+                {
+                    _owner = owner;
+                    _key = 0;
+                    _disposedChecker = null;
+                }
+
+                private void Release()
+                {
+                    var copy = this;
+                    copy.ValidateOwnerAndDisposedChecker();
+                    lock (copy._disposedChecker)
+                    {
+                        copy._disposedChecker.ValidateCall();
+                        copy._owner.ReleaseLock(copy._key);
+                        copy._disposedChecker.Dispose();
+                    }
+                }
+
+                internal Promise<bool> WaitAsync(CancelationToken cancelationToken)
+                {
+                    var copy = this;
+                    copy.ValidateOwnerAndDisposedChecker();
+                    lock (copy._disposedChecker)
+                    {
+                        return copy._disposedChecker.WaitAsync(copy._key, false, cancelationToken);
+                    }
+                }
+
+                internal bool Wait(CancelationToken cancelationToken)
+                {
+                    var copy = this;
+                    copy.ValidateOwnerAndDisposedChecker();
+                    lock (copy._disposedChecker)
+                    {
+                        return copy._disposedChecker.WaitAsync(copy._key, true, cancelationToken).WaitForResult();
+                    }
+                }
+
+                internal void Pulse()
+                {
+                    var copy = this;
+                    copy.ValidateOwnerAndDisposedChecker();
+                    lock (copy._disposedChecker)
+                    {
+                        copy._disposedChecker.ValidateCall();
+                        copy._owner.Pulse(copy._key);
+                    }
+                }
+
+                internal void PulseAll()
+                {
+                    var copy = this;
+                    copy.ValidateOwnerAndDisposedChecker();
+                    lock (copy._disposedChecker)
+                    {
+                        copy._disposedChecker.ValidateCall();
+                        copy._owner.PulseAll(copy._key);
+                    }
+                }
+
+                private void ValidateOwnerAndDisposedChecker()
+                {
+                    var owner = _owner;
+                    var disposedChecker = _disposedChecker;
+                    if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
+                    {
+                        Internal.AsyncLockInternal.ThrowInvalidKey(2);
+                    }
+                }
+            }
+#else // PROMISE_DEBUG
             partial struct Key
             {
                 internal readonly Internal.AsyncLockInternal _owner;
                 private readonly long _key;
 
                 [MethodImpl(Internal.InlineOption)]
-                internal Key(Internal.AsyncLockInternal owner, long key)
+#pragma warning disable IDE0060 // Remove unused parameter
+                internal Key(Internal.AsyncLockInternal owner, long key, Internal.ITraceable traceable)
+#pragma warning restore IDE0060 // Remove unused parameter
                 {
                     _owner = owner;
                     _key = key;
                 }
 
-                internal Promise<bool> WaitAsync(CancelationToken cancelationToken = default(CancelationToken))
+                [MethodImpl(Internal.InlineOption)]
+                internal Key(Internal.AsyncLockInternal owner)
+                {
+                    _owner = owner;
+                    _key = 0;
+                }
+
+                [MethodImpl(Internal.InlineOption)]
+                private void Release()
+                {
+                    ValidateAndGetOwner().ReleaseLock(_key);
+                }
+
+                internal Promise<bool> WaitAsync(CancelationToken cancelationToken)
                 {
                     return ValidateAndGetOwner().WaitAsync(_key, false, cancelationToken);
                 }
 
-                internal bool Wait(CancelationToken cancelationToken = default(CancelationToken))
+                internal bool Wait(CancelationToken cancelationToken)
                 {
                     return ValidateAndGetOwner().WaitAsync(_key, true, cancelationToken).WaitForResult();
                 }
@@ -590,6 +686,7 @@ namespace Proto.Promises
                     return owner;
                 }
             }
+#endif // PROMISE_DEBUG
         } // class AsyncLock
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     } // namespace Threading
