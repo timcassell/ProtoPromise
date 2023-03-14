@@ -89,6 +89,10 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
+        /// <remarks>
+        /// Upgradeable reader locks may be entered concurrently with normal reader locks, but they are mutually exclusive with respect to other upgradeable reader locks and writer locks.
+        /// Only 1 upgradeable reader lock may be entered at a time.
+        /// </remarks>
         public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken = default)
         {
             return _impl.UpgradeableReaderLock(false, cancelationToken);
@@ -98,6 +102,10 @@ namespace Proto.Promises.Threading
         /// Synchronously acquire the lock as an upgradeable reader. Returns the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
+        /// <remarks>
+        /// Upgradeable reader locks may be entered concurrently with normal reader locks, but they are mutually exclusive with respect to other upgradeable reader locks and writer locks.
+        /// Only 1 upgradeable reader lock may be entered at a time.
+        /// </remarks>
         public UpgradeableReaderKey UpgradeableReaderLock(CancelationToken cancelationToken = default)
         {
             return _impl.UpgradeableReaderLock(true, cancelationToken).WaitForResult();
@@ -107,6 +115,10 @@ namespace Proto.Promises.Threading
         /// Synchronously try to acquire the lock as an upgradeable reader. If successful, <paramref name="readerKey"/> is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="readerKey">If successful, the key that will release the lock when it is disposed.</param>
+        /// <remarks>
+        /// Upgradeable reader locks may be entered concurrently with normal reader locks, but they are mutually exclusive with respect to other upgradeable reader locks and writer locks.
+        /// Only 1 upgradeable reader lock may be entered at a time.
+        /// </remarks>
         public bool TryEnterUpgradeableReaderLock(out UpgradeableReaderKey readerKey)
         {
             return _impl.TryEnterUpgradeableReaderLock(out readerKey);
@@ -152,7 +164,7 @@ namespace Proto.Promises.Threading
         public readonly partial struct ReaderKey : IDisposable, IEquatable<ReaderKey>
         {
             /// <summary>
-            /// Release the lock on the associated <see cref="AsyncReaderWriterLock"/>.
+            /// Release the reader lock on the associated <see cref="AsyncReaderWriterLock"/>.
             /// </summary>
             public void Dispose() => _impl.ReleaseReaderLock();
 
@@ -181,7 +193,7 @@ namespace Proto.Promises.Threading
         public readonly partial struct WriterKey : IDisposable, IEquatable<WriterKey>
         {
             /// <summary>
-            /// Release the lock on the associated <see cref="AsyncReaderWriterLock"/>.
+            /// Release the writer lock on the associated <see cref="AsyncReaderWriterLock"/>. If the lock was upgraded from an upgradeable reader lock, it will be downgraded back to an upgradeable reader lock.
             /// </summary>
             public void Dispose() => _impl.ReleaseWriterLock();
 
@@ -210,7 +222,7 @@ namespace Proto.Promises.Threading
         public readonly partial struct UpgradeableReaderKey : IDisposable, IEquatable<UpgradeableReaderKey>
         {
             /// <summary>
-            /// Release the lock on the associated <see cref="AsyncReaderWriterLock"/>.
+            /// Release the upgradeable reader lock on the associated <see cref="AsyncReaderWriterLock"/>.
             /// </summary>
             public void Dispose() => _impl.ReleaseUpgradeableReaderLock();
 
