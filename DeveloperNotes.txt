@@ -17,8 +17,8 @@ To create the UnityPackage for releases:
 
 Unity version may need to be updated to use the earliest version that the Asset Store Tools supports.
 
-
-By default, ProtoPromise types are marked with the `DebuggerNonUserCodeAttribute`, making it impossible to step into the library code with Visual Studio's debugger. To disable this (or rather, to enable debugging), define the compiler symbol `PROTO_PROMISE_DEVELOPER_MODE` in Unity, or change `<DeveloperMode>` to `true` in the non-unity csproj.
+For the 2018 unity package (for both GitHub and Unity Asset Store), rename the `Samples~` to `Demo`.
+Leave it as `Samples~` for the 2019-and-newer package version.
 
 
 To convert markdown to pdf:
@@ -27,3 +27,8 @@ To convert markdown to pdf:
 2. Use browser to print html to pdf
 3. Merge the pages to a single page (can use an online tool).
 4. Crop the outline (including the title) that grip created.
+
+
+For Debugging:
+
+By default, ProtoPromise types are marked with the `DebuggerNonUserCodeAttribute`, making the debugger skip over the library code instead of stepping into it. To disable this behavior and to get more detailed stack traces, define the compiler symbol `PROTO_PROMISE_DEVELOPER_MODE` in Unity, or change `<DeveloperMode>` to `true` in the non-unity csproj.
