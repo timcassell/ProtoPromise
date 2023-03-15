@@ -8,6 +8,13 @@
         "name": "Tim Cassell",
         "url": "https://www.linkedin.com/in/timothy-cassell/"
     },
+    "samples": [
+        {
+            "displayName": "Download Texture",
+            "description": "Contains example for downloading and displaying a texture using promises.",
+            "path": "Samples~"
+        }
+    ],
     "keywords": [
         "promise",
         "promises",
