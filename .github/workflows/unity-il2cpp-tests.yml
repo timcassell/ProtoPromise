@@ -54,7 +54,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: IL2CPP_Tests/IL2CPP_Tests_${{ matrix.unityVersion }}/Library
-          key: Library-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.unityVersion }}
+          key: Library-${{ matrix.unityVersion }}
           restore-keys: |
             Library-
 

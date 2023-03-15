@@ -69,6 +69,14 @@ jobs:
           ApiReplace="  apiCompatibilityLevel: ${{ matrix.scriptingRuntime.apiLevel }}"
           sed -i "{s/$ApiOriginal/$ApiReplace/g}" IL2CPP_Tests/WebGL_Builds_2018_4/ProjectSettings/ProjectSettings.asset
 
+      - name: Cache Unity Library
+        uses: actions/cache@v3
+        with:
+          path: IL2CPP_Tests/WebGL_Builds_2018_4/Library
+          key: Library-${{ matrix.scriptingRuntime }}
+          restore-keys: |
+            Library-
+
       - name: Build Project
         uses: game-ci/unity-builder@v2
         env:

@@ -76,6 +76,14 @@ jobs:
           ApiReplace="  apiCompatibilityLevel: ${{ matrix.apiCompatibilityLevel }}"
           sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
+      - name: Cache Unity Library
+        uses: actions/cache@v3
+        with:
+          path: ProtoPromise_Unity/Library
+          key: Library-${{ matrix.buildTarget }}-${{ matrix.scriptingRuntime }}
+          restore-keys: |
+            Library-
+
       - name: Run tests
         id: tests
         uses: game-ci/unity-test-runner@v2 #timcassell/unity-test-runner@targetPlatform
