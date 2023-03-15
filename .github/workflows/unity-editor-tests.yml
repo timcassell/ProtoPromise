@@ -8,12 +8,13 @@ concurrency:
 
 jobs:
   unity-tests:
+    name: Build (${{ matrix.scriptingRuntime }}, ${{ matrix.mode }}, ${{ matrix.progress }}, ${{ matrix.pooling }})
     runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
       matrix:
-        # Disabled Standalone and WebGL as they do not work in a docker image.
+        # Disabled Standalone and WebGL because unity-test-runner does not support them.
         buildTarget: [Editor] #, Standalone, WebGL]
         scriptingRuntime: [Net3.5, Net4.x]
         mode: [Release, Debug]

@@ -59,22 +59,22 @@ jobs:
           DefineSymbols="${{ matrix.mode.symbol }};${{ matrix.progress.symbol }}"
           DefineOriginal="  scriptingDefineSymbols: {}"
           DefineReplace="  scriptingDefineSymbols: \\n    13: $DefineSymbols"
-          sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
+          sed -i "{s/$DefineOriginal/$DefineReplace/g}" IL2CPP_Tests/WebGL_Builds_2018_4/ProjectSettings/ProjectSettings.asset
 
           RuntimeOriginal="  scriptingRuntimeVersion: 0"
           RuntimeReplace="  scriptingRuntimeVersion: ${{ matrix.scriptingRuntime.version }}"
-          sed -i "{s/$RuntimeOriginal/$RuntimeReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
+          sed -i "{s/$RuntimeOriginal/$RuntimeReplace/g}" IL2CPP_Tests/WebGL_Builds_2018_4/ProjectSettings/ProjectSettings.asset
 
           ApiOriginal="  apiCompatibilityLevel: 2"
           ApiReplace="  apiCompatibilityLevel: ${{ matrix.scriptingRuntime.apiLevel }}"
-          sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
+          sed -i "{s/$ApiOriginal/$ApiReplace/g}" IL2CPP_Tests/WebGL_Builds_2018_4/ProjectSettings/ProjectSettings.asset
 
       - name: Build Project
         uses: game-ci/unity-builder@v2
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}
         with:
-          projectPath: ProtoPromise_Unity
+          projectPath: IL2CPP_Tests/WebGL_Builds_2018_4
           targetPlatform: WebGL
           buildMethod: UnityBuilderAction.BuildScript.Build
           allowDirtyBuild: true
