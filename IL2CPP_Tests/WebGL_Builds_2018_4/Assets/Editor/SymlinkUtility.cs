@@ -7,6 +7,7 @@ using System.Diagnostics;
 
 namespace Parabox
 {
+#if UNITY_EDITOR_WIN || UNITY_EDITOR_OSX
     /**
 	 *	An editor utility for easily creating symlinks in your project.
 	 *
@@ -262,4 +263,5 @@ namespace Parabox
             }
         }
     }
+#endif // UNITY_EDITOR_WIN || UNITY_EDITOR_OSX
 }
