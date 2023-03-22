@@ -146,7 +146,7 @@ namespace Proto.Promises
                 private CanceledPromiseSentinel()
                 {
                     _next = InvalidAwaitSentinel.s_instance;
-                    _promiseId = -5; // Set an id that is unlikely to match (though this should never be used in a Promise struct).
+                    _promiseId = -5; // Set an id that is unlikely to accidentally match.
                     _state = Promise.State.Canceled;
                     // If we don't suppress, the finalizer can run when the AppDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
                     System.GC.SuppressFinalize(this);
@@ -168,11 +168,13 @@ namespace Proto.Promises
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
+                    ValidateId(promiseId, this, 2);
                     return true;
                 }
 
                 internal override PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth)
                 {
+                    ValidateId(promiseId, this, 2);
                     return this;
                 }
 
@@ -188,6 +190,7 @@ namespace Proto.Promises
 
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId)
                 {
+                    ValidateId(promiseId, this, 2);
                     // Do nothing.
                 }
 
@@ -198,6 +201,10 @@ namespace Proto.Promises
 
                 internal override void Forget(short promiseId)
                 {
+                    if (!GetIsValid(promiseId))
+                    {
+                        throw new InvalidOperationException("Cannot forget an invalid promise.", GetFormattedStacktrace(2));
+                    }
                     // Do nothing.
                 }
             } // CanceledPromiseSentinel
