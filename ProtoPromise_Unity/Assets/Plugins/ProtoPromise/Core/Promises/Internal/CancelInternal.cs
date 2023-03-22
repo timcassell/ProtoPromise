@@ -105,7 +105,7 @@ namespace Proto.Promises
                     // Do nothing.
                 }
 
-                protected override void OnForget(short promiseId)
+                internal override void Forget(short promiseId)
                 {
                     // Do nothing.
                 }
