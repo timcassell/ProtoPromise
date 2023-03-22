@@ -108,7 +108,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class CanceledPromise<TResult>
+            partial class CanceledPromiseSentinel<TResult>
             {
                 public override System.Threading.Tasks.Sources.ValueTaskSourceStatus GetStatus(short token)
                 {
@@ -1975,7 +1975,7 @@ namespace Proto.Promises
             promise.CancelDirect();
 #else
             // Use a singleton promise for efficiency.
-            var promise = PromiseRefBase.CanceledPromise<VoidResult>.GetOrCreate();
+            var promise = PromiseRefBase.CanceledPromiseSentinel<VoidResult>.s_instance;
 #endif
             return new Promise(promise, promise.Id, 0);
         }
@@ -1989,7 +1989,7 @@ namespace Proto.Promises
             promise.CancelDirect();
 #else
             // Use a singleton promise for efficiency.
-            var promise = PromiseRefBase.CanceledPromise<T>.GetOrCreate();
+            var promise = PromiseRefBase.CanceledPromiseSentinel<T>.s_instance;
 #endif
             return new Promise<T>(promise, promise.Id, 0);
         }

@@ -378,9 +378,10 @@ namespace Proto.Promises
                         return shouldComplete;
                     }
 
-                    if (handler is ICanceledPromise)
+                    // We have to special-case check for the singleton canceled promise.
+                    // This is checked after the common case, so it shouldn't affect execution time in most cases.
+                    if (handler is ICanceledPromiseSentinel)
                     {
-                        // The handler is the singleton canceled promise.
                         target = null;
                         negativeDetachedCount = 0;
                         return true;
