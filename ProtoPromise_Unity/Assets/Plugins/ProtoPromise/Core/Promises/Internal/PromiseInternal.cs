@@ -107,6 +107,15 @@ namespace Proto.Promises
                     }
                 }
             }
+
+            partial class CanceledPromise<TResult>
+            {
+                public override System.Threading.Tasks.Sources.ValueTaskSourceStatus GetStatus(short token)
+                {
+                    ValidateId(token, this, 2);
+                    return System.Threading.Tasks.Sources.ValueTaskSourceStatus.Canceled;
+                }
+            }
         }
 #endif
 
@@ -1960,6 +1969,34 @@ namespace Proto.Promises
             // Make a promise on the stack for efficiency.
             return new Promise<T>(null, 0, depth, value);
 #endif
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static Promise CreateCanceled()
+        {
+#if PROMISE_DEBUG
+            // Make a new promise to capture causality trace and help with debugging.
+            var promise = PromiseRefBase.DeferredPromise<VoidResult>.GetOrCreate();
+            promise.CancelDirect();
+#else
+            // Use a singleton promise for efficiency.
+            var promise = PromiseRefBase.CanceledPromise<VoidResult>.GetOrCreate();
+#endif
+            return new Promise(promise, promise.Id, 0);
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static Promise<T> CreateCanceled<T>()
+        {
+#if PROMISE_DEBUG
+            // Make a new promise to capture causality trace and help with debugging.
+            var promise = PromiseRefBase.DeferredPromise<T>.GetOrCreate();
+            promise.CancelDirect();
+#else
+            // Use a singleton promise for efficiency.
+            var promise = PromiseRefBase.CanceledPromise<T>.GetOrCreate();
+#endif
+            return new Promise<T>(promise, promise.Id, 0);
         }
     } // Internal
 }

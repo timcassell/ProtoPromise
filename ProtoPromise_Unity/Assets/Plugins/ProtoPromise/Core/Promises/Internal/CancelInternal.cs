@@ -15,6 +15,7 @@
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
+using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -39,6 +40,74 @@ namespace Proto.Promises
                     // We don't report unhandled rejection here unless none of the waiters suppressed.
                     // This way we only report it once in case multiple waiters were canceled.
                     MaybeDispose();
+                }
+            }
+
+            internal sealed partial class CanceledPromise<TResult> : PromiseRef<TResult>
+            {
+                private static readonly CanceledPromise<TResult> s_instance;
+
+                static CanceledPromise()
+                {
+                    s_instance = new CanceledPromise<TResult>() { _next = InvalidAwaitSentinel.s_instance, _state = Promise.State.Canceled };
+#pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
+                    // If we don't suppress, the finalizer can run when the AppDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
+                    GC.SuppressFinalize(s_instance);
+#pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
+                }
+
+                internal static CanceledPromise<TResult> GetOrCreate()
+                {
+                    return s_instance;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    // Do nothing.
+                }
+
+                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
+                {
+                    // Set the previous waiter to pending await sentinel so the caller will do nothing.
+                    previousWaiter = PendingAwaitSentinel.s_instance;
+                    // Immediately handle the waiter.
+                    waiter.Handle(this, null, Promise.State.Canceled);
+                    return null;
+                }
+
+                internal override bool GetIsCompleted(short promiseId)
+                {
+                    return true;
+                }
+
+                internal override PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth)
+                {
+                    return this;
+                }
+
+                internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth)
+                {
+                    return this;
+                }
+
+                internal override bool GetIsValid(short promiseId)
+                {
+                    return promiseId == Id;
+                }
+
+                internal override void MaybeMarkAwaitedAndDispose(short promiseId)
+                {
+                    // Do nothing.
+                }
+
+                internal override void MaybeReportUnhandledAndDispose(object rejectContainer, Promise.State state)
+                {
+                    // Do nothing.
+                }
+
+                protected override void OnForget(short promiseId)
+                {
+                    // Do nothing.
                 }
             }
 

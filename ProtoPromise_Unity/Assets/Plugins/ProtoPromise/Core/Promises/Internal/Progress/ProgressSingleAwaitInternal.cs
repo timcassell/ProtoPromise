@@ -295,6 +295,20 @@ namespace Proto.Promises
                 }
             } // AsyncPromiseRef
 
+            partial class CanceledPromise<TResult>
+            {
+                internal override PromiseRefBase AddProgressWaiter(short promiseId, out HandleablePromiseBase previousWaiter, ref ProgressHookupValues progressHookupValues)
+                {
+                    return AddWaiter(promiseId, progressHookupValues.ProgressListener, out previousWaiter);
+                }
+
+                internal override bool TryHookupProgressListenerAndGetPrevious(ref ProgressHookupValues progressHookupValues)
+                {
+                    progressHookupValues._previous = null;
+                    return false;
+                }
+            }
+
             [MethodImpl(InlineOption)]
             private void SetPreviousAndMaybeHookupAsyncProgress(PromiseRefBase waiter, float minProgress, float maxProgress, ref AsyncPromiseFields asyncFields)
             {

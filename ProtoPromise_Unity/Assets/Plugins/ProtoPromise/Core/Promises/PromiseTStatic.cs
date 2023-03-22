@@ -946,9 +946,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Canceled()
         {
-            var deferred = NewDeferred();
-            deferred.Cancel();
-            return deferred.Promise;
+            return Internal.CreateCanceled<T>();
         }
 
         [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
