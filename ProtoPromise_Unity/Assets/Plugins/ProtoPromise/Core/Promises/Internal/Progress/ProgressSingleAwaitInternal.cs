@@ -295,7 +295,10 @@ namespace Proto.Promises
                 }
             } // AsyncPromiseRef
 
-            partial class CanceledPromise<TResult>
+            // Used to check for the singleton when the progress listener is completed from it.
+            internal interface ICanceledPromise { }
+
+            partial class CanceledPromise<TResult> : ICanceledPromise
             {
                 internal override PromiseRefBase AddProgressWaiter(short promiseId, out HandleablePromiseBase previousWaiter, ref ProgressHookupValues progressHookupValues)
                 {

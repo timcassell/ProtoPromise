@@ -378,6 +378,14 @@ namespace Proto.Promises
                         return shouldComplete;
                     }
 
+                    if (handler is ICanceledPromise)
+                    {
+                        // The handler is the singleton canceled promise.
+                        target = null;
+                        negativeDetachedCount = 0;
+                        return true;
+                    }
+
                     // Uncommon case, the handler was canceled from a CancelationToken and broke the promise chain,
                     // so we iterate over the chain to unregister the handlers and try to restore the old waiters.
                     UnregisterHandlers(handler, progressListener, out target, out negativeDetachedCount);
