@@ -107,6 +107,15 @@ namespace Proto.Promises
                     }
                 }
             }
+
+            partial class CanceledPromiseSentinel<TResult>
+            {
+                public override System.Threading.Tasks.Sources.ValueTaskSourceStatus GetStatus(short token)
+                {
+                    ValidateId(token, this, 2);
+                    return System.Threading.Tasks.Sources.ValueTaskSourceStatus.Canceled;
+                }
+            }
         }
 #endif
 
@@ -238,7 +247,7 @@ namespace Proto.Promises
             internal abstract void MaybeMarkAwaitedAndDispose(short promiseId);
             internal abstract void MaybeDispose();
             internal abstract bool GetIsCompleted(short promiseId);
-            protected abstract void OnForget(short promiseId);
+            internal abstract void Forget(short promiseId);
             internal abstract PromiseRefBase GetDuplicate(short promiseId, ushort depth);
             internal abstract PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter);
             internal abstract bool GetIsValid(short promiseId);
@@ -303,11 +312,6 @@ namespace Proto.Promises
                     // This should never happen.
                     ReportRejection(e, this);
                 }
-            }
-
-            internal void Forget(short promiseId)
-            {
-                OnForget(promiseId);
             }
 
             [MethodImpl(InlineOption)]
@@ -540,14 +544,14 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseSingleAwait<TResult> : PromiseRef<TResult>
             {
-                protected sealed override void OnForget(short promiseId)
+                internal sealed override void Forget(short promiseId)
                 {
                     HookupExistingWaiter(promiseId, PromiseForgetSentinel.s_instance);
                 }
 
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId)
                 {
-                    OnForget(promiseId);
+                    Forget(promiseId);
                 }
 
                 internal override bool GetIsCompleted(short promiseId)
@@ -614,7 +618,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     handler.SetCompletionState(rejectContainer, state);
-                    
+
                     bool invokingRejected = false;
                     SetCurrentInvoker(this);
                     try
@@ -771,7 +775,7 @@ namespace Proto.Promises
                     return promiseId == Id & !WasAwaitedOrForgotten;
                 }
 
-                protected override void OnForget(short promiseId)
+                internal override void Forget(short promiseId)
                 {
                     lock (this)
                     {
@@ -1960,6 +1964,34 @@ namespace Proto.Promises
             // Make a promise on the stack for efficiency.
             return new Promise<T>(null, 0, depth, value);
 #endif
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static Promise CreateCanceled()
+        {
+#if PROMISE_DEBUG
+            // Make a new promise to capture causality trace and help with debugging.
+            var promise = PromiseRefBase.DeferredPromise<VoidResult>.GetOrCreate();
+            promise.CancelDirect();
+#else
+            // Use a singleton promise for efficiency.
+            var promise = PromiseRefBase.CanceledPromiseSentinel<VoidResult>.s_instance;
+#endif
+            return new Promise(promise, promise.Id, 0);
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static Promise<T> CreateCanceled<T>()
+        {
+#if PROMISE_DEBUG
+            // Make a new promise to capture causality trace and help with debugging.
+            var promise = PromiseRefBase.DeferredPromise<T>.GetOrCreate();
+            promise.CancelDirect();
+#else
+            // Use a singleton promise for efficiency.
+            var promise = PromiseRefBase.CanceledPromiseSentinel<T>.s_instance;
+#endif
+            return new Promise<T>(promise, promise.Id, 0);
         }
     } // Internal
 }

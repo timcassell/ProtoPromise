@@ -13,6 +13,8 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
+
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -149,7 +151,7 @@ namespace Proto.Promises
                         lazyFields._lazyPromise = null;
                     }
 
-                    ForgetPreserved(preservedPromise);
+                    preservedPromise.Forget(preservedPromise.Id);
                     HandleNextInternal(rejectContainer, state);
                     return;
                 }
@@ -166,7 +168,7 @@ namespace Proto.Promises
                     lazyFields._factory = null;
                 }
 
-                ForgetPreserved(preservedPromise);
+                preservedPromise.Forget(preservedPromise.Id);
                 HandleNextInternal(rejectContainer, state);
             }
         } // class LazyPromise
@@ -181,12 +183,6 @@ namespace Proto.Promises
 #endif
             internal abstract class LazyPromise<TResult> : PromiseWaitPromise<TResult>
             {
-                [MethodImpl(InlineOption)]
-                protected static void ForgetPreserved(PromiseMultiAwait<TResult> preservedPromise)
-                {
-                    preservedPromise.OnForget(preservedPromise.Id);
-                }
-
                 [MethodImpl(InlineOption)]
                 protected void Start(Func<Promise<TResult>> factory)
                 {

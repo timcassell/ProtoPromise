@@ -48,7 +48,10 @@ namespace Proto.Promises
                 // A singleton instance used to cap off the promise and prevent further awaits.
                 internal static readonly PromiseForgetSentinel s_instance = new PromiseForgetSentinel();
 
-                private PromiseForgetSentinel() { }
+                private PromiseForgetSentinel()
+                {
+                    _next = InvalidAwaitSentinel.s_instance;
+                }
 
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
                 {
@@ -80,7 +83,7 @@ namespace Proto.Promises
 
                 internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
                 internal override void MaybeReportUnhandledAndDispose(object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
-                protected override void OnForget(short promiseId) { throw new System.InvalidOperationException(); }
+                internal override void Forget(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsCompleted(short promiseId) { throw new System.InvalidOperationException(); }
@@ -99,6 +102,7 @@ namespace Proto.Promises
 
                 private PendingAwaitSentinel()
                 {
+                    _next = InvalidAwaitSentinel.s_instance;
                     _promiseId = -5; // Set an id that is unlikely to match (though this should never be used in a Promise struct).
                     // If we don't suppress, the finalizer can run when the AppDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
                     System.GC.SuppressFinalize(this);
@@ -125,7 +129,7 @@ namespace Proto.Promises
 
                 internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
                 internal override void MaybeReportUnhandledAndDispose(object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
-                protected override void OnForget(short promiseId) { throw new System.InvalidOperationException(); }
+                internal override void Forget(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsCompleted(short promiseId) { throw new System.InvalidOperationException(); }
@@ -133,6 +137,77 @@ namespace Proto.Promises
                 internal override PromiseRefBase GetPreserved(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId) { throw new System.InvalidOperationException(); }
             }
+
+            internal sealed partial class CanceledPromiseSentinel<TResult> : PromiseRef<TResult>
+            {
+                // A singleton instance indicating that a promise is already canceled.
+                internal static readonly CanceledPromiseSentinel<TResult> s_instance = new CanceledPromiseSentinel<TResult>();
+
+                private CanceledPromiseSentinel()
+                {
+                    _next = InvalidAwaitSentinel.s_instance;
+                    _promiseId = -5; // Set an id that is unlikely to accidentally match.
+                    _state = Promise.State.Canceled;
+                    // If we don't suppress, the finalizer can run when the AppDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
+                    System.GC.SuppressFinalize(this);
+                }
+
+                internal override void MaybeDispose()
+                {
+                    // Do nothing.
+                }
+
+                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
+                {
+                    // Set the previous waiter to pending await sentinel so the caller will do nothing.
+                    previousWaiter = PendingAwaitSentinel.s_instance;
+                    // Immediately handle the waiter.
+                    waiter.Handle(this, null, Promise.State.Canceled);
+                    return null;
+                }
+
+                internal override bool GetIsCompleted(short promiseId)
+                {
+                    ValidateId(promiseId, this, 2);
+                    return true;
+                }
+
+                internal override PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth)
+                {
+                    ValidateId(promiseId, this, 2);
+                    return this;
+                }
+
+                internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth)
+                {
+                    return this;
+                }
+
+                internal override bool GetIsValid(short promiseId)
+                {
+                    return promiseId == Id;
+                }
+
+                internal override void MaybeMarkAwaitedAndDispose(short promiseId)
+                {
+                    ValidateId(promiseId, this, 2);
+                    // Do nothing.
+                }
+
+                internal override void MaybeReportUnhandledAndDispose(object rejectContainer, Promise.State state)
+                {
+                    // Do nothing.
+                }
+
+                internal override void Forget(short promiseId)
+                {
+                    if (!GetIsValid(promiseId))
+                    {
+                        throw new InvalidOperationException("Cannot forget an invalid promise.", GetFormattedStacktrace(2));
+                    }
+                    // Do nothing.
+                }
+            } // CanceledPromiseSentinel
         } // PromiseRefBase
 
         internal class BackgroundSynchronizationContextSentinel : SynchronizationContext

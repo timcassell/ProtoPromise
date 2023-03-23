@@ -295,6 +295,23 @@ namespace Proto.Promises
                 }
             } // AsyncPromiseRef
 
+            // Used to check for the singleton when the progress listener is completed from it.
+            internal interface ICanceledPromiseSentinel { }
+
+            partial class CanceledPromiseSentinel<TResult> : ICanceledPromiseSentinel
+            {
+                internal override PromiseRefBase AddProgressWaiter(short promiseId, out HandleablePromiseBase previousWaiter, ref ProgressHookupValues progressHookupValues)
+                {
+                    return AddWaiter(promiseId, progressHookupValues.ProgressListener, out previousWaiter);
+                }
+
+                internal override bool TryHookupProgressListenerAndGetPrevious(ref ProgressHookupValues progressHookupValues)
+                {
+                    progressHookupValues._previous = null;
+                    return false;
+                }
+            }
+
             [MethodImpl(InlineOption)]
             private void SetPreviousAndMaybeHookupAsyncProgress(PromiseRefBase waiter, float minProgress, float maxProgress, ref AsyncPromiseFields asyncFields)
             {
