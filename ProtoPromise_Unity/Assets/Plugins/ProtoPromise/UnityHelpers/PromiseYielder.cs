@@ -1,8 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -572,16 +568,16 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             bool IWaitInstruction.GetIsComplete(Promise.Deferred deferred)
             {
-                var isComplete = _counter >= _max;
+                var counter = _counter;
                 unchecked
                 {
                     ++_counter;
                 }
-                if (isComplete)
+                if (counter >= _max)
                 {
                     return true;
                 }
-                deferred.TryReportProgress((float) _counter / _max);
+                deferred.TryReportProgress((float) counter / _max);
                 return false;
             }
         }

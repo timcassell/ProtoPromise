@@ -1,5 +1,11 @@
 ﻿#if UNITY_5_5_OR_NEWER
 
+#if !PROTO_PROMISE_PROGRESS_DISABLE
+#define PROMISE_PROGRESS
+#else
+#undef PROMISE_PROGRESS
+#endif
+
 using NUnit.Framework;
 using Proto.Promises;
 using System.Collections;
@@ -175,6 +181,29 @@ namespace ProtoPromiseTests.Unity
                 : waitFramesCount / 2;
             Assert.AreEqual(currentFrame + expectedWaitFrames, continuedFrame);
         }
+
+#if PROMISE_PROGRESS
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForFrames_ReportsProgress()
+        {
+            const int waitFramesCount = 10;
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+
+            PromiseYielder.WaitForFrames(waitFramesCount)
+                .SubscribeProgress(progressHelper)
+                .Forget();
+
+            
+            for (int currentFrame = 0; currentFrame < waitFramesCount; ++currentFrame)
+            {
+                yield return null;
+                progressHelper.AssertCurrentProgress((float) currentFrame / waitFramesCount, false);
+            }
+            yield return null;
+            progressHelper.AssertCurrentProgress(1f, false);
+        }
+#endif // PROMISE_PROGRESS
     }
 }
 
