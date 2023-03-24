@@ -399,6 +399,18 @@ namespace Proto.Promises
                 return head;
             }
 
+            /// <summary>
+            /// Should only be used when it is known that the queue contains 2 or more items. 
+            /// </summary>
+            internal T DequeueUnsafe()
+            {
+                T head = _head;
+                _head = head.Next;
+
+                MarkRemovedFromCollection(head);
+                return head;
+            }
+
             internal bool TryRemove(T item)
             {
                 if (IsEmpty)
@@ -433,6 +445,44 @@ namespace Proto.Promises
                     next = node.Next;
                 }
                 return false;
+            }
+
+            internal int RemoveAndGetIndexOf(T item)
+            {
+                if (IsEmpty)
+                {
+                    return -1;
+                }
+                if (item == _head)
+                {
+                    _head = _head.Next;
+                    if (item == _tail)
+                    {
+                        _tail = null;
+                    }
+                    MarkRemovedFromCollection(item);
+                    return 0;
+                }
+                int index = 1;
+                T node = _head;
+                T next = node.Next;
+                while (next != null)
+                {
+                    if (next == item)
+                    {
+                        node.Next = next.Next;
+                        if (item == _tail)
+                        {
+                            _tail = node;
+                        }
+                        MarkRemovedFromCollection(item);
+                        return index;
+                    }
+                    node = next;
+                    next = node.Next;
+                    ++index;
+                }
+                return -1;
             }
 
             internal ValueLinkedStack<T> MoveElementsToStack()

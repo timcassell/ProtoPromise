@@ -6,7 +6,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromiseTests.Unity
 {
     public class PromiseYielderTestBehaviour : MonoBehaviour
     {
@@ -58,32 +58,64 @@ namespace ProtoPromiseTests.APIs
             return runnerType == RunnerType.Default ? null : behaviour;
         }
 
-        [UnityTest]
-        public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrame([Values] RunnerType runnerType)
+        public enum CancelType
         {
-            int currentFrame = Time.frameCount;
-            int continuedFrame = -1;
-
-            var promise = PromiseYielder.WaitOneFrame(GetRunner(runnerType))
-                .Then(() => continuedFrame = Time.frameCount);
-            using (var yieldInstruction = promise.ToYieldInstruction())
-            {
-                yield return yieldInstruction;
-            }
-            Assert.AreEqual(currentFrame + 1, continuedFrame);
+            None,
+            Immediate,
+            Delayed
         }
 
         [UnityTest]
-        public IEnumerator PromiseYielderWaitFor_WaitsOnce([Values] RunnerType runnerType)
+        public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrame(
+            [Values] RunnerType runnerType,
+            [Values] CancelType cancelType)
         {
-            var instruction = new MoveNextCounterInstruction();
+            int currentFrame = Time.frameCount;
+            int continuedFrame = -1;
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
 
-            var promise = PromiseYielder.WaitFor(instruction, GetRunner(runnerType));
+            var promise = PromiseYielder.WaitOneFrame(GetRunner(runnerType), cancelToken)
+                .Finally(() => continuedFrame = Time.frameCount);
             using (var yieldInstruction = promise.ToYieldInstruction())
             {
+                if (cancelType == CancelType.Delayed)
+                {
+                    cancelSource.Cancel();
+                }
                 yield return yieldInstruction;
+                Assert.AreEqual(cancelType == CancelType.None ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
             }
-            Assert.AreEqual(1, instruction.count);
+            cancelSource.Dispose();
+            Assert.AreEqual(currentFrame + (cancelType == CancelType.None ? 1 : 0), continuedFrame);
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitFor_WaitsOnce(
+            [Values] RunnerType runnerType,
+            [Values] CancelType cancelType)
+        {
+            var instruction = new MoveNextCounterInstruction();
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            var promise = PromiseYielder.WaitFor(instruction, GetRunner(runnerType), cancelToken);
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                if (cancelType == CancelType.Delayed)
+                {
+                    cancelSource.Cancel();
+                }
+                yield return yieldInstruction;
+                Assert.AreEqual(cancelType == CancelType.None ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
+            }
+            cancelSource.Dispose();
+            // The yield instruction's keepWaiting is still called immediately, even though we cancel the promise before the coroutine completed on the next frame.
+            Assert.AreEqual(cancelType == CancelType.Immediate ? 0 : 1, instruction.count);
         }
 
         [UnityTest]
@@ -91,13 +123,57 @@ namespace ProtoPromiseTests.APIs
         {
             var instruction = new MoveNextCounterInstruction();
 
-            var promise = PromiseYielder.WaitFor(instruction)
-                .Then(() => PromiseYielder.WaitFor(instruction, behaviour));
+            var behaviour2 = new GameObject("PromiseYielderTestBehaviour2").AddComponent<PromiseYielderTestBehaviour>();
+
+            try
+            {
+                var promise = PromiseYielder.WaitFor(instruction)
+                  .Then(() => PromiseYielder.WaitFor(instruction, behaviour))
+                  .Then(() => PromiseYielder.WaitFor(instruction, behaviour2));
+                using (var yieldInstruction = promise.ToYieldInstruction())
+                {
+                    yield return yieldInstruction;
+                }
+                Assert.AreEqual(3, instruction.count);
+            }
+            finally
+            {
+                Object.Destroy(behaviour2.gameObject);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForFrames_WaitsCorrectFrameCount([Values] CancelType cancelType)
+        {
+            const int waitFramesCount = 10;
+            int currentFrame = Time.frameCount;
+            int continuedFrame = -1;
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            var promise = PromiseYielder.WaitForFrames(waitFramesCount, cancelToken)
+                .Finally(() => continuedFrame = Time.frameCount);
             using (var yieldInstruction = promise.ToYieldInstruction())
             {
+                if (cancelType == CancelType.Delayed)
+                {
+                    // Wait for half the frames before canceling the token.
+                    for (int i = 0; i < waitFramesCount / 2; ++i)
+                    {
+                        yield return null;
+                    }
+                    cancelSource.Cancel();
+                }
                 yield return yieldInstruction;
+                Assert.AreEqual(cancelType == CancelType.None ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
             }
-            Assert.AreEqual(2, instruction.count);
+            cancelSource.Dispose();
+            int expectedWaitFrames = cancelType == CancelType.None ? waitFramesCount
+                : cancelType == CancelType.Immediate ? 0
+                : waitFramesCount / 2;
+            Assert.AreEqual(currentFrame + expectedWaitFrames, continuedFrame);
         }
     }
 }
