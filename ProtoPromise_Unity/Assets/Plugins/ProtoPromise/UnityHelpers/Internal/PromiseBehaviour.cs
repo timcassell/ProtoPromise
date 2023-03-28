@@ -1,9 +1,9 @@
 ﻿#pragma warning disable IDE0051 // Remove unused private members
 
 using Proto.Promises.Threading;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using UnityEngine;
 
@@ -21,24 +21,29 @@ namespace Proto.Promises
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         internal static void InitializePromiseConfig()
         {
-            PromiseBehaviour.Init();
+            PromiseBehaviour.Initialize();
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         [AddComponentMenu("")] // Hide this in the add component menu.
-        internal sealed class PromiseBehaviour : MonoBehaviour
+        internal sealed partial class PromiseBehaviour : MonoBehaviour
         {
             internal static bool s_isApplicationQuitting = false;
 
             private static PromiseBehaviour s_instance;
+            internal static PromiseBehaviour Instance
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return s_instance; }
+            }
 
-            private readonly PromiseSynchronizationContext _syncContext = new PromiseSynchronizationContext();
+            internal readonly PromiseSynchronizationContext _syncContext = new PromiseSynchronizationContext();
             private Queue<UnhandledException> _currentlyReportingExceptions = new Queue<UnhandledException>();
             private Queue<UnhandledException> _unhandledExceptions = new Queue<UnhandledException>();
 
-            internal static void Init()
+            internal static void Initialize()
             {
                 // Even though we try to initialize this as early as possible, it is possible for other code to run before this.
                 // So we need to be careful to not overwrite non-default values.
@@ -88,8 +93,10 @@ namespace Proto.Promises
                 DontDestroyOnLoad(gameObject);
                 gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
                 s_instance = this;
-                StartCoroutine(UpdateRoutine());
+                Init();
             }
+
+            partial void Init();
 
             // This should never be called except when the application is shutting down.
             // Users would have to go out of their way to find and destroy the PromiseBehaviour instance.
@@ -127,27 +134,18 @@ namespace Proto.Promises
                 }
             }
 
-            // Execute SynchronizationContext callback in Coroutine rather than in Update.
-            private IEnumerator UpdateRoutine()
-            {
-                // We end up missing the first frame here, but that's not a big deal.
-                while (true)
-                {
-                    yield return null;
-                    try
-                    {
-                        _syncContext.Execute();
-                    }
-                    // In case someone clears `Promise.Config.UncaughtRejectionHandler`, we catch the AggregateException here and log it so that the coroutine won't stop.
-                    catch (AggregateException e)
-                    {
-                        UnityEngine.Debug.LogException(e);
-                    }
-                }
-            }
-
             private void Update()
             {
+                try
+                {
+                    _syncContext.Execute();
+                }
+                // In case someone clears `Promise.Config.UncaughtRejectionHandler`, we catch the AggregateException here and log it.
+                catch (AggregateException e)
+                {
+                    UnityEngine.Debug.LogException(e);
+                }
+
                 // Pop and pass to UnityEngine.Debug here so Unity won't add extra stackframes that we don't care about.
                 object locker = _unhandledExceptions;
                 lock (locker)

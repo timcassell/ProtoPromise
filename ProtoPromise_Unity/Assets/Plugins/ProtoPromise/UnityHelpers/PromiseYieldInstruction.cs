@@ -161,7 +161,7 @@ namespace Proto.Promises
         internal sealed class YieldInstructionVoid : PromiseYieldInstruction, Internal.ILinked<YieldInstructionVoid>
         {
             // These must not be readonly.
-            private static Internal.ValueLinkedStack<YieldInstructionVoid> s_pool;
+            private static Internal.ValueLinkedStack<YieldInstructionVoid> s_pool = new Internal.ValueLinkedStack<YieldInstructionVoid>();
             private static Internal.SpinLocker s_spinLocker;
 
             private int _disposeChecker; // To detect if Dispose is called from multiple threads.
@@ -232,7 +232,7 @@ namespace Proto.Promises
         internal sealed class YieldInstruction<T> : PromiseYieldInstruction<T>, Internal.ILinked<YieldInstruction<T>>
         {
             // These must not be readonly.
-            private static Internal.ValueLinkedStack<YieldInstruction<T>> s_pool;
+            private static Internal.ValueLinkedStack<YieldInstruction<T>> s_pool = new Internal.ValueLinkedStack<YieldInstruction<T>>();
             private static Internal.SpinLocker s_spinLocker;
 
             private int _disposeChecker; // To detect if Dispose is called from multiple threads.
