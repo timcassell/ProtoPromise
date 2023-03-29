@@ -211,7 +211,7 @@ namespace Proto.Promises
                     return newValue;
                 }
 
-                internal void ReportProgress(float oldProgress, ref ProgressReportValues progressReportValues)
+                internal void UpdateProgress(float oldProgress, ref ProgressReportValues progressReportValues)
                 {
                     ThrowIfInPool(this);
 
@@ -232,17 +232,24 @@ namespace Proto.Promises
                         WaitForHookup();
                     }
 
-                    // We only report the progress if the handler was not the last completed.
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
+                    // Update progress before decrementing retains to fix race condition with other threads.
+                    var progressReportValues = new ProgressReportValues(null, this, lockedObject, maxProgress);
+                    UpdateProgress(oldProgress, ref progressReportValues);
+
+                    // We only report the progress if the handler was not the last completed, and the state is resolved.
+                    // We check the more common case first.
+                    bool isComplete = InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0;
+                    if (!isComplete & state == Promise.State.Resolved)
                     {
-                        Monitor.Exit(lockedObject);
-                        Dispose();
+                        progressReportValues.ReportProgressToAllListeners();
                     }
                     else
                     {
-                        var progressReportValues = new ProgressReportValues(null, this, lockedObject, maxProgress);
-                        ReportProgress(oldProgress, ref progressReportValues);
-                        progressReportValues.ReportProgressToAllListeners();
+                        Monitor.Exit(lockedObject);
+                        if (isComplete)
+                        {
+                            Dispose();
+                        }
                     }
                     _targetMergePromise.Handle(handler, rejectContainer, state, index);
                 }
@@ -410,7 +417,7 @@ namespace Proto.Promises
                     float oldProgress = _currentProgress;
                     _currentProgress = (float) Lerp(_progressFields._min, _progressFields._max, _progressFields._current);
                     var progressReportValues = new ProgressReportValues(null, _target, this, _currentProgress);
-                    _target.ReportProgress(oldProgress, ref progressReportValues);
+                    _target.UpdateProgress(oldProgress, ref progressReportValues);
                     progressReportValues.ReportProgressToAllListeners();
                 }
 
@@ -456,7 +463,7 @@ namespace Proto.Promises
                     float newProgress = (float) Lerp(_progressFields._min, _progressFields._max, _progressFields._current);
                     _currentProgress = newProgress;
                     progressReportValues._progress = newProgress;
-                    _target.ReportProgress(oldProgress, ref progressReportValues);
+                    _target.UpdateProgress(oldProgress, ref progressReportValues);
                 }
 
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)

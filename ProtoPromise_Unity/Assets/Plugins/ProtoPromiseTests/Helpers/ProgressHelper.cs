@@ -1,4 +1,5 @@
-﻿using Proto.Promises;
+﻿using NUnit.Framework;
+using Proto.Promises;
 using System;
 using System.Threading;
 
@@ -104,6 +105,21 @@ namespace ProtoPromiseTests
 
         public void AssertCurrentProgress(float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            if (!waitForInvoke)
+            {
+                // If waitForInvoke is false, it means the value is expected to be unchanged.
+                lock (_locker)
+                {
+                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                }
+                if (executeForeground)
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                }
+                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                return;
+            }
+
             if (!GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout))
             {
                 WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
@@ -139,7 +155,7 @@ namespace ProtoPromiseTests
                 timeout = TimeSpan.FromSeconds(2);
             }
             float current = float.NaN;
-            if (!SpinWait.SpinUntil(() => { current = _currentProgress; return current == expectedProgress; }, timeout))
+            if (!SpinWait.SpinUntil(() => { current = _currentProgress; return AreEqual(expectedProgress, current); }, timeout))
             {
                 throw new TimeoutException("Progress was not invoked with expected progress " + expectedProgress + " after " + timeout + ", _currentProgress: " + _currentProgress + ", current thread is background: " + Thread.CurrentThread.IsBackground);
             }
@@ -156,6 +172,22 @@ namespace ProtoPromiseTests
 
         public void ReportProgressAndAssertResult(Promise.DeferredBase deferred, float reportValue, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            if (!waitForInvoke)
+            {
+                // If waitForInvoke is false, it means the value is expected to be unchanged.
+                lock (_locker)
+                {
+                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                    deferred.ReportProgress(reportValue);
+                }
+                if (executeForeground)
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                }
+                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                return;
+            }
+
             bool areEqual;
             lock (_locker)
             {
@@ -171,6 +203,22 @@ namespace ProtoPromiseTests
 
         public void RejectAndAssertResult<TReject>(Promise.DeferredBase deferred, TReject reason, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            if (!waitForInvoke)
+            {
+                // If waitForInvoke is false, it means the value is expected to be unchanged.
+                lock (_locker)
+                {
+                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                    deferred.Reject(reason);
+                }
+                if (executeForeground)
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                }
+                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                return;
+            }
+
             bool areEqual;
             lock (_locker)
             {
@@ -186,6 +234,22 @@ namespace ProtoPromiseTests
 
         public void CancelAndAssertResult(Promise.DeferredBase deferred, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            if (!waitForInvoke)
+            {
+                // If waitForInvoke is false, it means the value is expected to be unchanged.
+                lock (_locker)
+                {
+                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                    deferred.Cancel();
+                }
+                if (executeForeground)
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                }
+                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                return;
+            }
+
             bool areEqual;
             lock (_locker)
             {
@@ -201,6 +265,22 @@ namespace ProtoPromiseTests
 
         public void CancelAndAssertResult(CancelationSource cancelationSource, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            if (!waitForInvoke)
+            {
+                // If waitForInvoke is false, it means the value is expected to be unchanged.
+                lock (_locker)
+                {
+                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                    cancelationSource.Cancel();
+                }
+                if (executeForeground)
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                }
+                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                return;
+            }
+
             bool areEqual;
             lock (_locker)
             {
@@ -216,6 +296,22 @@ namespace ProtoPromiseTests
 
         public void ResolveAndAssertResult(Promise.Deferred deferred, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            if (!waitForInvoke)
+            {
+                // If waitForInvoke is false, it means the value is expected to be unchanged.
+                lock (_locker)
+                {
+                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                    deferred.Resolve();
+                }
+                if (executeForeground)
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                }
+                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                return;
+            }
+
             bool areEqual;
             lock (_locker)
             {
@@ -231,6 +327,22 @@ namespace ProtoPromiseTests
 
         public void ResolveAndAssertResult<T>(Promise<T>.Deferred deferred, T result, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
+            if (!waitForInvoke)
+            {
+                // If waitForInvoke is false, it means the value is expected to be unchanged.
+                lock (_locker)
+                {
+                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                    deferred.Resolve(result);
+                }
+                if (executeForeground)
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                }
+                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                return;
+            }
+
             bool areEqual;
             lock (_locker)
             {

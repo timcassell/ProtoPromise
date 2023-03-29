@@ -22,9 +22,6 @@ jobs:
             pooling: POOL_ENABLE
           - config: Debug_NoProgress
             pooling: POOL_ENABLE
-            # We only need to test each config for developer mode, not all pool types.
-          - developerMode: true
-            pooling: POOL_ENABLE
         include:
           - developerMode: true
             devString: devMode
