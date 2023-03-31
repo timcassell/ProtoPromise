@@ -892,18 +892,8 @@ namespace ProtoPromiseTests.APIs
                     .Forget();
             }, invokeContext == SynchronizationType.Foreground);
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
 #if CSHARP_7_3_OR_NEWER
@@ -942,18 +932,8 @@ namespace ProtoPromiseTests.APIs
                 }
             }, invokeContext == SynchronizationType.Foreground);
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 #endif // CSHARP_7_3_OR_NEWER
 

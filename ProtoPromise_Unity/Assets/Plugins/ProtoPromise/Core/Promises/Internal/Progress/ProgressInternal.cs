@@ -602,7 +602,8 @@ namespace Proto.Promises
                                 {
                                     callback = _progress;
                                     reportProgress = Lerp(_progressFields._min, _progressFields._max, _progressFields._current);
-                                    // Exit the lock before invoking so we're not holding the lock while user code runs.
+                                    // Retain and exit the lock before invoking so we're not holding the lock while user code runs.
+                                    InterlockedAddWithUnsignedOverflowCheck(ref _progressFields._retainCounter, 1);
                                     goto InvokeProgressSynchronous;
                                 }
 
@@ -624,6 +625,7 @@ namespace Proto.Promises
                     {
                         CallbackHelperVoid.InvokeAndCatchProgress(callback, (float) reportProgress, this);
                     }
+                    MaybeDispose();
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -650,57 +652,57 @@ namespace Proto.Promises
                         return;
                     }
 
-                    TProgress callback;
-                    float reportMin, reportMax, reportT;
-                    HandleablePromiseBase reporter;
-                    lock (this)
+                    Monitor.Enter(this);
+                    // In case of promise completion on another thread,
+                    // make sure this is still hooked up to current, and another registered promise has not broken the chain.
+                    if (current._next != this | _progressFields._registeredPromisesHead != current)
                     {
-                        // In case of promise completion on another thread,
-                        // make sure this is still hooked up to current, and another registered promise has not broken the chain.
-                        if (current._next != this | _progressFields._registeredPromisesHead != current)
-                        {
-                            return;
-                        }
-                        // We only check this is not in the pool after we verified the promise is still registered, otherwise it is valid for this to be in the pool.
-                        ThrowIfInPool(this);
-
-                        _hookingUp = true;
-                        double min = Lerp(listenerProgressRange._min, listenerProgressRange._max, userProgressRange._min);
-                        double max = Lerp(listenerProgressRange._min, listenerProgressRange._max, userProgressRange._max);
-                        var progressHookupValues = new ProgressHookupValues(this, current, awaited.Depth, min, max, _progressFields._registeredPromisesHead);
-                        if (!awaited.TryHookupProgressListenerAndGetPrevious(ref progressHookupValues))
-                        {
-                            // The awaited promise is already complete, or this was already registered to it on another thread, do nothing else.
-                            _hookingUp = false;
-                            return;
-                        }
-
-                        progressHookupValues.ListenForProgressOnRoots(ref _progressFields);
-                        reporter = _progressFields._currentReporter;
-                        _hookingUp = false;
-
-                        reportMin = _progressFields._min;
-                        reportMax = _progressFields._max;
-                        reportT = _progressFields._current;
-
-                        if (!ShouldInvokeSynchronous())
-                        {
-                            MaybeScheduleProgress();
-
-                            goto PropagateProgress;
-                        }
-
-                        callback = _progress;
-                        // Exit the lock before invoking so we're not holding the lock while user code runs.
+                        Monitor.Exit(this);
+                        return;
                     }
+                    // We only check this is not in the pool after we verified the promise is still registered, otherwise it is valid for this to be in the pool.
+                    ThrowIfInPool(this);
+
+                    _hookingUp = true;
+                    double min = Lerp(listenerProgressRange._min, listenerProgressRange._max, userProgressRange._min);
+                    double max = Lerp(listenerProgressRange._min, listenerProgressRange._max, userProgressRange._max);
+                    var progressHookupValues = new ProgressHookupValues(this, current, awaited.Depth, min, max, _progressFields._registeredPromisesHead);
+                    if (!awaited.TryHookupProgressListenerAndGetPrevious(ref progressHookupValues))
+                    {
+                        // The awaited promise is already complete, or this was already registered to it on another thread, do nothing else.
+                        _hookingUp = false;
+                        Monitor.Exit(this);
+                        return;
+                    }
+
+                    progressHookupValues.ListenForProgressOnRoots(ref _progressFields);
+                    var reporter = _progressFields._currentReporter;
+                    _hookingUp = false;
+
+                    var reportMin = _progressFields._min;
+                    var reportMax = _progressFields._max;
+                    var reportT = _progressFields._current;
+
+                    if (!ShouldInvokeSynchronous())
+                    {
+                        MaybeScheduleProgress();
+
+                        // Report progress to next PromiseProgress listeners.
+                        var progress = Lerp(reportMin, reportMax, reportT);
+                        var progressReportValues = new ProgressReportValues(_next, this, this, progress);
+                        progressReportValues.ReportProgressToAllListeners();
+                        return;
+                    }
+
+                    // Retain and exit the lock before invoking so we're not holding the lock while user code runs.
+                    InterlockedAddWithUnsignedOverflowCheck(ref _progressFields._retainCounter, 1);
+                    Monitor.Exit(this);
 
                     if (!IsInvoking1 & !IsCanceled & !_cancelationRegistration.Token.IsCancelationRequested)
                     {
                         var reportProgress = (float) Lerp(reportMin, reportMax, reportT);
-                        CallbackHelperVoid.InvokeAndCatchProgress(callback, reportProgress, this);
+                        CallbackHelperVoid.InvokeAndCatchProgress(_progress, reportProgress, this);
                     }
-
-                PropagateProgress:
 
                     Monitor.Enter(this);
                     // Because we exited the lock and re-entered, some values may have changed on another thread (or even on the same thread from user code).
@@ -710,13 +712,16 @@ namespace Proto.Promises
                         | IsInvoking1 | IsCanceled | _cancelationRegistration.Token.IsCancelationRequested)
                     {
                         Monitor.Exit(this);
-                        return;
+                        MaybeDispose();
                     }
-
-                    // Report progress to next PromiseProgress listeners.
-                    var progress = Lerp(reportMin, reportMax, reportT);
-                    var progressReportValues = new ProgressReportValues(_next, this, this, progress);
-                    progressReportValues.ReportProgressToAllListeners();
+                    else
+                    {
+                        // Report progress to next PromiseProgress listeners.
+                        var progress = Lerp(reportMin, reportMax, reportT);
+                        var progressReportValues = new ProgressReportValues(_next, this, this, progress);
+                        MaybeDispose();
+                        progressReportValues.ReportProgressToAllListeners();
+                    }
                 }
 
                 internal override PromiseRefBase AddProgressWaiter(short promiseId, out HandleablePromiseBase previousWaiter, ref ProgressHookupValues progressHookupValues)
@@ -856,11 +861,11 @@ namespace Proto.Promises
                         return;
                     }
 
-                    TProgress callback = _progress;
-                    // Exit the lock before invoking so we're not holding the lock while user code runs.
+                    // Retain and exit the lock before invoking so we're not holding the lock while user code runs.
+                    InterlockedAddWithUnsignedOverflowCheck(ref _progressFields._retainCounter, 1);
                     Monitor.Exit(this);
 
-                    CallbackHelperVoid.InvokeAndCatchProgress(callback, (float) progressReportValues._progress, this);
+                    CallbackHelperVoid.InvokeAndCatchProgress(_progress, (float) progressReportValues._progress, this);
 
                     Monitor.Enter(this);
                     // Because we exited the lock and re-entered, some values may have changed on another thread (or even on the same thread from user code).
@@ -871,9 +876,11 @@ namespace Proto.Promises
                     {
                         Monitor.Exit(this);
                         progressReportValues._progressListener = null;
+                        MaybeDispose();
                         return;
                     }
                     progressReportValues._progressListener = _next;
+                    MaybeDispose();
                 }
 
                 internal override void HandleFromContext()

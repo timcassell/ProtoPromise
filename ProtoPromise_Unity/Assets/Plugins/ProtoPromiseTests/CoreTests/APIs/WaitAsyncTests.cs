@@ -379,8 +379,8 @@ namespace ProtoPromiseTests.APIs
                     TestHelper.GetTryCompleterVoid(firstCompleteType, rejectValue).Invoke(firstDeferred, firstCancelationSource);
                 },
                 firstReportType == SynchronizationType.Foreground);
-            TestHelper.ExecuteForegroundCallbacks();
 
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             if (firstWaitType != (SynchronizationType) SynchronizationOption.Background)
             {
                 Assert.AreEqual(expectedFirstInvokes, firstInvokeCounter);
@@ -388,10 +388,7 @@ namespace ProtoPromiseTests.APIs
             else
             {
                 // We check >= instead of == because of race conditions
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter >= expectedFirstInvokes, timeout))
-                {
-                    Assert.Fail("Timed out after " + timeout + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
-                }
+                Assert.GreaterOrEqual(firstInvokeCounter, expectedFirstInvokes);
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
@@ -612,8 +609,8 @@ namespace ProtoPromiseTests.APIs
                     TestHelper.GetTryCompleterT(firstCompleteType, 1, rejectValue).Invoke(firstDeferred, firstCancelationSource);
                 },
                 firstReportType == SynchronizationType.Foreground);
-            TestHelper.ExecuteForegroundCallbacks();
 
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             if (firstWaitType != (SynchronizationType) SynchronizationOption.Background)
             {
                 Assert.AreEqual(expectedFirstInvokes, firstInvokeCounter);
@@ -621,10 +618,7 @@ namespace ProtoPromiseTests.APIs
             else
             {
                 // We check >= instead of == because of race conditions
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter >= expectedFirstInvokes, timeout))
-                {
-                    Assert.Fail("Timed out after " + timeout + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
-                }
+                Assert.GreaterOrEqual(firstInvokeCounter, expectedFirstInvokes);
             }
 
             threadHelper.ExecuteSynchronousOrOnThread(
@@ -750,19 +744,9 @@ namespace ProtoPromiseTests.APIs
                     TestHelper.GetTryCompleterVoid(firstCompleteType, rejectValue).Invoke(firstDeferred, firstCancelationSource);
                 },
                 firstReportType == SynchronizationType.Foreground);
-            TestHelper.ExecuteForegroundCallbacks();
 
-            if (firstWaitType != (SynchronizationType) SynchronizationOption.Background)
-            {
-                Assert.AreEqual(expectedFirstInvokes, firstInvokeCounter);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, timeout))
-                {
-                    Assert.Fail("Timed out after " + timeout + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.AreEqual(expectedFirstInvokes, firstInvokeCounter);
 
             threadHelper.ExecuteSynchronousOrOnThread(
                 () =>
@@ -883,19 +867,9 @@ namespace ProtoPromiseTests.APIs
                     TestHelper.GetTryCompleterT(firstCompleteType, 1, rejectValue).Invoke(firstDeferred, firstCancelationSource);
                 },
                 firstReportType == SynchronizationType.Foreground);
-            TestHelper.ExecuteForegroundCallbacks();
 
-            if (firstWaitType != (SynchronizationType) SynchronizationOption.Background)
-            {
-                Assert.AreEqual(expectedFirstInvokes, firstInvokeCounter);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedFirstInvokes, timeout))
-                {
-                    Assert.Fail("Timed out after " + timeout + ", expectedFirstInvokes: " + expectedFirstInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.AreEqual(expectedFirstInvokes, firstInvokeCounter);
 
             threadHelper.ExecuteSynchronousOrOnThread(
                 () =>
@@ -972,19 +946,9 @@ namespace ProtoPromiseTests.APIs
             threadHelper.ExecuteSynchronousOrOnThread(
                 () => TestHelper.GetTryCompleterVoid(completeType, rejectValue).Invoke(deferred, cancelationSource),
                 reportType == SynchronizationType.Foreground);
-            TestHelper.ExecuteForegroundCallbacks();
 
-            if (waitType != (SynchronizationType) SynchronizationOption.Background)
-            {
-                Assert.AreEqual(expectedInvokes, invokeCounter);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, timeout))
-                {
-                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.AreEqual(expectedInvokes, invokeCounter);
 
             promise.Forget();
             cancelationSource.TryDispose();
@@ -1035,19 +999,9 @@ namespace ProtoPromiseTests.APIs
             threadHelper.ExecuteSynchronousOrOnThread(
                 () => TestHelper.GetTryCompleterT(completeType, 1, rejectValue).Invoke(deferred, cancelationSource),
                 reportType == SynchronizationType.Foreground);
-            TestHelper.ExecuteForegroundCallbacks();
 
-            if (waitType != (SynchronizationType) SynchronizationOption.Background)
-            {
-                Assert.AreEqual(expectedInvokes, invokeCounter);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, timeout))
-                {
-                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.AreEqual(expectedInvokes, invokeCounter);
 
             promise.Forget();
             cancelationSource.TryDispose();
@@ -1100,19 +1054,9 @@ namespace ProtoPromiseTests.APIs
             threadHelper.ExecuteSynchronousOrOnThread(
                 () => TestHelper.GetTryCompleterVoid(completeType, rejectValue).Invoke(deferred, cancelationSource),
                 reportType == SynchronizationType.Foreground);
-            TestHelper.ExecuteForegroundCallbacks();
 
-            if (waitType != (SynchronizationType) SynchronizationOption.Background)
-            {
-                Assert.AreEqual(expectedInvokes, invokeCounter);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, timeout))
-                {
-                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.AreEqual(expectedInvokes, invokeCounter);
 
             promise.Forget();
             cancelationSource.TryDispose();
@@ -1165,19 +1109,9 @@ namespace ProtoPromiseTests.APIs
             threadHelper.ExecuteSynchronousOrOnThread(
                 () => TestHelper.GetTryCompleterT(completeType, 1, rejectValue).Invoke(deferred, cancelationSource),
                 reportType == SynchronizationType.Foreground);
-            TestHelper.ExecuteForegroundCallbacks();
 
-            if (waitType != (SynchronizationType) SynchronizationOption.Background)
-            {
-                Assert.AreEqual(expectedInvokes, invokeCounter);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invokeCounter == expectedInvokes, timeout))
-                {
-                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + invokeCounter);
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.AreEqual(expectedInvokes, invokeCounter);
 
             promise.Forget();
             cancelationSource.TryDispose();
@@ -1389,19 +1323,9 @@ namespace ProtoPromiseTests.APIs
                     TestHelper.GetTryCompleterVoid(firstCompleteType, rejectValue).Invoke(firstDeferred, firstCancelationSource);
                 },
                 firstReportType == SynchronizationType.Foreground);
-            TestHelper.ExecuteForegroundCallbacks();
 
-            if (firstWaitType != (SynchronizationType) SynchronizationOption.Background)
-            {
-                Assert.AreEqual(expectedInvokes, firstInvokeCounter);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedInvokes, timeout))
-                {
-                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.AreEqual(expectedInvokes, firstInvokeCounter);
 
             threadHelper.ExecuteSynchronousOrOnThread(
                 () =>
@@ -1524,19 +1448,9 @@ namespace ProtoPromiseTests.APIs
                     TestHelper.GetTryCompleterT(firstCompleteType, 1, rejectValue).Invoke(firstDeferred, firstCancelationSource);
                 },
                 firstReportType == SynchronizationType.Foreground);
-            TestHelper.ExecuteForegroundCallbacks();
 
-            if (firstWaitType != (SynchronizationType) SynchronizationOption.Background)
-            {
-                Assert.AreEqual(expectedInvokes, firstInvokeCounter);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => firstInvokeCounter == expectedInvokes, timeout))
-                {
-                    Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", firstInvokeCounter: " + firstInvokeCounter);
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.AreEqual(expectedInvokes, firstInvokeCounter);
 
             threadHelper.ExecuteSynchronousOrOnThread(
                 () =>
