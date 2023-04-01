@@ -44,8 +44,10 @@ namespace ProtoPromiseTests.APIs
                 .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
 
-            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
-            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
+            deferred.ReportProgress(0.25f);
+            progressHelper.AssertCurrentProgress(0f, false, false);
+            deferred.ReportProgress(0.5f);
+            progressHelper.AssertCurrentProgress(0f, false, false);
             progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 0.75f);
 
             deferred.Resolve();
@@ -62,9 +64,11 @@ namespace ProtoPromiseTests.APIs
             deferred.Promise
                 .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
-            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
+            
+            deferred.ReportProgress(0.25f);
+            progressHelper.AssertCurrentProgress(0f, false, false);
+            deferred.ReportProgress(0.5f);
+            progressHelper.AssertCurrentProgress(0f, false, false);
             progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 0.75f);
 
             deferred.Resolve();
@@ -82,8 +86,10 @@ namespace ProtoPromiseTests.APIs
                 .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
 
-            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
-            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
+            deferred.ReportProgress(0.25f);
+            progressHelper.AssertCurrentProgress(0f, false, false);
+            deferred.ReportProgress(0.5f);
+            progressHelper.AssertCurrentProgress(0f, false, false);
             progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 0.75f);
             
             deferred.Resolve(1);
@@ -101,8 +107,10 @@ namespace ProtoPromiseTests.APIs
                 .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
 
-            progressHelper.ReportProgressAndAssertResult(deferred, 0.25f, 0f, false, false);
-            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0f, false, false);
+            deferred.ReportProgress(0.25f);
+            progressHelper.AssertCurrentProgress(0f, false, false);
+            deferred.ReportProgress(0.5f);
+            progressHelper.AssertCurrentProgress(0f, false, false);
             progressHelper.ReportProgressAndAssertResult(deferred, 0.75f, 0.75f);
 
             deferred.Resolve(1);

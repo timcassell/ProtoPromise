@@ -9,6 +9,7 @@ using NUnit.Framework;
 using System.Threading;
 using ProtoPromiseTests.Threading;
 using System.Collections.Generic;
+using System;
 
 namespace ProtoPromiseTests.APIs
 {
@@ -125,26 +126,12 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (!SpinWait.SpinUntil(() => invoked || deferred.IsValidAndPending, System.TimeSpan.FromSeconds(1)))
-            {
-                throw new System.TimeoutException();
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred, default(CancelationSource));
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
         [Test, TestCaseSource("GetArgs_New")]
@@ -206,26 +193,12 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (!SpinWait.SpinUntil(() => invoked || deferred.IsValidAndPending, System.TimeSpan.FromSeconds(1)))
-            {
-                throw new System.TimeoutException();
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred, default(CancelationSource));
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
         [Test, TestCaseSource("GetArgs_New")]
@@ -287,26 +260,12 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (!SpinWait.SpinUntil(() => invoked || deferred.IsValidAndPending, System.TimeSpan.FromSeconds(1)))
-            {
-                throw new System.TimeoutException();
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred, default(CancelationSource));
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
         [Test, TestCaseSource("GetArgs_New")]
@@ -370,26 +329,12 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (!SpinWait.SpinUntil(() => invoked || deferred.IsValidAndPending, System.TimeSpan.FromSeconds(1)))
-            {
-                throw new System.TimeoutException();
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred, default(CancelationSource));
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
 
@@ -482,18 +427,8 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
         [Test, TestCaseSource("GetArgs_Run")]
@@ -552,18 +487,8 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
         [Test, TestCaseSource("GetArgs_Run")]
@@ -623,18 +548,8 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
         [Test, TestCaseSource("GetArgs_Run")]
@@ -696,18 +611,8 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
 
@@ -832,11 +737,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (!SpinWait.SpinUntil(() => invoked || deferred.IsValidAndPending, System.TimeSpan.FromSeconds(1)))
-            {
-                throw new System.TimeoutException();
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             if (isPending)
             {
@@ -857,18 +758,8 @@ namespace ProtoPromiseTests.APIs
             }
             cancelationSource.TryDispose();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
         [Test, TestCaseSource("GetArgs_RunAdopt")]
@@ -946,11 +837,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (!SpinWait.SpinUntil(() => invoked || deferred.IsValidAndPending, System.TimeSpan.FromSeconds(1)))
-            {
-                throw new System.TimeoutException();
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             if (isPending)
             {
@@ -971,18 +858,8 @@ namespace ProtoPromiseTests.APIs
             }
             cancelationSource.TryDispose();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
         [Test, TestCaseSource("GetArgs_RunAdopt")]
@@ -1060,11 +937,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (!SpinWait.SpinUntil(() => invoked || deferred.IsValidAndPending, System.TimeSpan.FromSeconds(1)))
-            {
-                throw new System.TimeoutException();
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             if (isPending)
             {
@@ -1080,23 +953,13 @@ namespace ProtoPromiseTests.APIs
                     progressHelper.AssertCurrentProgress(0.5f, false, false);
                 }
 #else
-                TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred, cancelationSource);
+            TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred, cancelationSource);
 #endif
             }
             cancelationSource.TryDispose();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
         [Test, TestCaseSource("GetArgs_RunAdopt")]
@@ -1176,11 +1039,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (!SpinWait.SpinUntil(() => invoked || deferred.IsValidAndPending, System.TimeSpan.FromSeconds(1)))
-            {
-                throw new System.TimeoutException();
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             if (isPending)
             {
@@ -1201,18 +1060,8 @@ namespace ProtoPromiseTests.APIs
             }
             cancelationSource.TryDispose();
 
-            TestHelper.ExecuteForegroundCallbacks();
-            if (synchronizationType != TestHelper.backgroundType)
-            {
-                Assert.True(invoked);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() => invoked, System.TimeSpan.FromSeconds(1)))
-                {
-                    throw new System.TimeoutException();
-                }
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
     }
 }

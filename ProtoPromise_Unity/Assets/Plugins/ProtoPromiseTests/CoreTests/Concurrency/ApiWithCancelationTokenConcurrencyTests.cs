@@ -293,16 +293,9 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
-                        TestHelper.ExecuteForegroundCallbacks();
+                        TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                        Assert.IsTrue(completed);
                         cancelationSource.Dispose();
-                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
-                        {
-                            Assert.IsTrue(completed);
-                        }
-                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
-                        {
-                            throw new TimeoutException();
-                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
@@ -352,16 +345,9 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
-                        TestHelper.ExecuteForegroundCallbacks();
+                        TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                        Assert.IsTrue(completed);
                         cancelationSource.Dispose();
-                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
-                        {
-                            Assert.IsTrue(completed);
-                        }
-                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
-                        {
-                            throw new TimeoutException();
-                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
@@ -411,16 +397,9 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
-                        TestHelper.ExecuteForegroundCallbacks();
+                        TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                        Assert.IsTrue(completed);
                         cancelationSource.Dispose();
-                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
-                        {
-                            Assert.IsTrue(completed);
-                        }
-                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
-                        {
-                            throw new TimeoutException();
-                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
@@ -470,16 +449,9 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
-                        TestHelper.ExecuteForegroundCallbacks();
+                        TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                        Assert.IsTrue(completed);
                         cancelationSource.Dispose();
-                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
-                        {
-                            Assert.IsTrue(completed);
-                        }
-                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
-                        {
-                            throw new TimeoutException();
-                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
@@ -531,16 +503,9 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
-                        TestHelper.ExecuteForegroundCallbacks();
+                        TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                        Assert.IsTrue(completed);
                         cancelationSource.Dispose();
-                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
-                        {
-                            Assert.IsTrue(completed);
-                        }
-                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
-                        {
-                            throw new TimeoutException();
-                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
@@ -592,16 +557,9 @@ namespace ProtoPromiseTests.Threading
                     // Teardown
                     () =>
                     {
-                        TestHelper.ExecuteForegroundCallbacks();
+                        TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                        Assert.IsTrue(completed);
                         cancelationSource.Dispose();
-                        if (configureAwaitType != (ConfigureAwaitType) TestHelper.backgroundType)
-                        {
-                            Assert.IsTrue(completed);
-                        }
-                        else if (!SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1)))
-                        {
-                            throw new TimeoutException();
-                        }
                     },
                     // Parallel actions
                     () => cancelationSource.Cancel(),
@@ -652,15 +610,8 @@ namespace ProtoPromiseTests.Threading
                     invoked = false;
                     cancelationSource.Dispose();
                     deferred.Resolve();
-                    TestHelper.ExecuteForegroundCallbacks();
-                    if (synchronizationType == SynchronizationType.Background)
-                    {
-                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
-                    }
-                    else
-                    {
-                        Assert.IsTrue(completed);
-                    }
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    Assert.IsTrue(completed);
                     Assert.IsFalse(invoked);
                 },
                 // Parallel actions
@@ -700,15 +651,8 @@ namespace ProtoPromiseTests.Threading
                     invoked = false;
                     cancelationSource.Dispose();
                     deferred.Resolve(1);
-                    TestHelper.ExecuteForegroundCallbacks();
-                    if (synchronizationType == SynchronizationType.Background)
-                    {
-                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
-                    }
-                    else
-                    {
-                        Assert.IsTrue(completed);
-                    }
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    Assert.IsTrue(completed);
                     Assert.IsFalse(invoked);
                 },
                 // Parallel actions
@@ -747,15 +691,8 @@ namespace ProtoPromiseTests.Threading
                     invoked = false;
                     cancelationSource.Dispose();
                     deferred.Resolve();
-                    TestHelper.ExecuteForegroundCallbacks();
-                    if (synchronizationType == SynchronizationType.Background)
-                    {
-                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
-                    }
-                    else
-                    {
-                        Assert.IsTrue(completed);
-                    }
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    Assert.IsTrue(completed);
                     Assert.IsFalse(invoked);
                 },
                 // Parallel actions
@@ -798,15 +735,8 @@ namespace ProtoPromiseTests.Threading
                     invoked = false;
                     cancelationSource.Dispose();
                     deferred.Resolve(1);
-                    TestHelper.ExecuteForegroundCallbacks();
-                    if (synchronizationType == SynchronizationType.Background)
-                    {
-                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
-                    }
-                    else
-                    {
-                        Assert.IsTrue(completed);
-                    }
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    Assert.IsTrue(completed);
                     Assert.IsFalse(invoked);
                 },
                 // Parallel actions
@@ -855,15 +785,8 @@ namespace ProtoPromiseTests.Threading
                     cancelationSource1.Dispose();
                     cancelationSource2.Dispose();
                     deferred.Resolve();
-                    TestHelper.ExecuteForegroundCallbacks();
-                    if (synchronizationType == SynchronizationType.Background)
-                    {
-                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
-                    }
-                    else
-                    {
-                        Assert.IsTrue(completed);
-                    }
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    Assert.IsTrue(completed);
                 },
                 // Parallel actions
                 () => cancelationSource1.Cancel(),
@@ -908,15 +831,8 @@ namespace ProtoPromiseTests.Threading
                     cancelationSource1.Dispose();
                     cancelationSource2.Dispose();
                     deferred.Resolve(1);
-                    TestHelper.ExecuteForegroundCallbacks();
-                    if (synchronizationType == SynchronizationType.Background)
-                    {
-                        SpinWait.SpinUntil(() => completed, TimeSpan.FromSeconds(1));
-                    }
-                    else
-                    {
-                        Assert.IsTrue(completed);
-                    }
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    Assert.IsTrue(completed);
                 },
                 // Parallel actions
                 () => cancelationSource1.Cancel(),

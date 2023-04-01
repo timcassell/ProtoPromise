@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+    <!-- NUnit3 adapter, for documentation, see https://docs.nunit.org/articles/vs-test-adapter/Tips-And-Tricks.html -->
+    <NUnit>
+        <AssemblySelectLimit>10000</AssemblySelectLimit>
+    </NUnit>
+
+</RunSettings>

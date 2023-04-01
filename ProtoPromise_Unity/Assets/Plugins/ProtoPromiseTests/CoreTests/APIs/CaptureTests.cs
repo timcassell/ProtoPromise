@@ -609,20 +609,9 @@ namespace ProtoPromiseTests.APIs
 
             deferred.ReportProgress(0.5f);
             deferred.Resolve();
-            TestHelper.ExecuteForegroundCallbacks();
 
-            if (synchronizationOption == SynchronizationOption.Background)
-            {
-                SpinWait.SpinUntil(() =>
-                {
-                    Thread.MemoryBarrier();
-                    return invoked;
-                }, TimeSpan.FromSeconds(1));
-            }
-            else
-            {
-                Assert.IsTrue(invoked);
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 
         [Test]
@@ -644,20 +633,9 @@ namespace ProtoPromiseTests.APIs
 
             deferred.ReportProgress(0.5f);
             deferred.Resolve(1);
-            TestHelper.ExecuteForegroundCallbacks();
 
-            if (synchronizationOption == SynchronizationOption.Background)
-            {
-                SpinWait.SpinUntil(() =>
-                {
-                    Thread.MemoryBarrier();
-                    return invoked;
-                }, TimeSpan.FromSeconds(1));
-            }
-            else
-            {
-                Assert.IsTrue(invoked);
-            }
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.True(invoked);
         }
 #endif
 
