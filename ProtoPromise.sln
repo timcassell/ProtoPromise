@@ -15,7 +15,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		ProtoPromise_Unity\Assets\Plugins\ProtoPromise\package.json = ProtoPromise_Unity\Assets\Plugins\ProtoPromise\package.json
 		README.md = README.md
 		ReleaseNotes.md = ReleaseNotes.md
-		ProtoPromiseTests\UnitTestRunsettings.runsettings = ProtoPromiseTests\UnitTestRunsettings.runsettings
 	EndProjectSection
 EndProject
 Global

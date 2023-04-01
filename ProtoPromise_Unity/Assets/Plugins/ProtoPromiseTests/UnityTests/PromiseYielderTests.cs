@@ -1,6 +1,4 @@
-﻿#if UNITY_5_5_OR_NEWER
-
-#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
@@ -206,5 +204,3 @@ namespace ProtoPromiseTests.Unity
 #endif // PROMISE_PROGRESS
     }
 }
-
-#endif // UNITY_5_5_OR_NEWER

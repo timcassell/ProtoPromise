@@ -53,6 +53,7 @@
   <ItemGroup>
     <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromiseTests\**/*.cs" />
     <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromiseTests\Helpers\ForOldRuntime\**/*" />
+    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromiseTests\UnityTests\**/*" />
   </ItemGroup>
 
 </Project>
