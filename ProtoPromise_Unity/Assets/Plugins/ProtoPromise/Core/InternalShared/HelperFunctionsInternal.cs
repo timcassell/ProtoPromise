@@ -29,10 +29,6 @@ namespace Proto.Promises
 #endif
     internal static partial class Internal
     {
-        // This is used to detect if we're currently executing on the context we're going to schedule to, so we can just invoke synchronously instead.
-        [ThreadStatic]
-        internal static SynchronizationContext ts_currentContext;
-
         private static readonly SendOrPostCallback s_synchronizationContextHandleCallback = HandleFromContext;
         private static readonly WaitCallback s_threadPoolHandleCallback = HandleFromContext;
 
@@ -243,8 +239,7 @@ namespace Proto.Promises
         internal static SynchronizationContext CaptureContext()
         {
             // We capture the current context to post the continuation. If it's null, we use the background context.
-            return ts_currentContext
-                ?? SynchronizationContext.Current
+            return SynchronizationContext.Current
                 ?? Promise.Config.BackgroundContext
                 ?? BackgroundSynchronizationContextSentinel.s_instance;
         }

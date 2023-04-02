@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 
 #pragma warning disable CA1507 // Use nameof to express symbol names
@@ -29,9 +30,7 @@ namespace Proto.Promises.Threading
 #endif
         private sealed class SyncCallback : Internal.HandleablePromiseBase
         {
-#if !NET_LEGACY
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo _capturedInfo;
-#endif
+            ExceptionDispatchInfo _capturedInfo;
             private SendOrPostCallback _callback;
             private object _state;
             private bool _needsPulse;
@@ -71,12 +70,10 @@ namespace Proto.Promises.Threading
                     {
                         InvokeWithoutDispose();
                     }
-#if !NET_LEGACY
                     catch (Exception e)
                     {
-                        _capturedInfo = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(e);
+                        _capturedInfo = ExceptionDispatchInfo.Capture(e);
                     }
-#endif
                     finally
                     {
                         Monitor.Pulse(this);
@@ -91,9 +88,7 @@ namespace Proto.Promises.Threading
 
             internal void Send(PromiseSynchronizationContext parent)
             {
-#if !NET_LEGACY
-                System.Runtime.ExceptionServices.ExceptionDispatchInfo capturedInfo;
-#endif
+                ExceptionDispatchInfo capturedInfo;
                 lock (this)
                 {
                     parent._syncLocker.Enter();
@@ -101,13 +96,17 @@ namespace Proto.Promises.Threading
                     parent._syncLocker.Exit();
 
                     Monitor.Wait(this);
-#if !NET_LEGACY
                     capturedInfo = _capturedInfo;
-#endif
                 }
 
                 Dispose(); // Dispose after invoke.
-#if !NET_LEGACY
+#if NET_LEGACY
+                // Old runtime does not support ExceptionDispatchInfo, so we have to wrap the exception to preserve its stacktrace.
+                if (capturedInfo.SourceException != null)
+                {
+                    throw new Exception("An exception was thrown from the invoked delegate.", capturedInfo.SourceException);
+                }
+#else
                 if (capturedInfo != null)
                 {
                     capturedInfo.Throw();
@@ -125,9 +124,7 @@ namespace Proto.Promises.Threading
 
             private void Dispose()
             {
-#if !NET_LEGACY
-                _capturedInfo = null;
-#endif
+                _capturedInfo = default(ExceptionDispatchInfo);
                 _callback = null;
                 _state = null;
                 Internal.ObjectPool.MaybeRepool(this);
@@ -215,12 +212,8 @@ namespace Proto.Promises.Threading
                     : "Execute invoked recursively. This is not supported.");
             }
 
-            var currentContextInternal = Internal.ts_currentContext;
-            var currentContextGlobal = Current;
             try
             {
-                Internal.ts_currentContext = this;
-                SetSynchronizationContext(this);
                 _isInvoking = true;
 
                 while (true)
@@ -261,8 +254,6 @@ namespace Proto.Promises.Threading
             finally
             {
                 _isInvoking = false;
-                Internal.ts_currentContext = currentContextInternal;
-                SetSynchronizationContext(currentContextGlobal);
             }
         }
     }
