@@ -6,6 +6,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -52,7 +53,7 @@ namespace ProtoPromiseTests.Unity
         [TearDown]
         public void Teardown()
         {
-            Object.Destroy(behaviour.gameObject);
+            UnityEngine.Object.Destroy(behaviour.gameObject);
 
             TestHelper.Cleanup();
         }
@@ -70,30 +71,152 @@ namespace ProtoPromiseTests.Unity
         }
 
         [UnityTest]
-        public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrame(
-            [Values] RunnerType runnerType,
-            [Values] CancelType cancelType)
+        public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrame()
         {
             int currentFrame = Time.frameCount;
             int continuedFrame = -1;
-            var cancelSource = CancelationSource.New();
-            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
-                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
-                : CancelationToken.None;
 
-            var promise = PromiseYielder.WaitOneFrame(GetRunner(runnerType), cancelToken)
+            var promise = PromiseYielder.WaitOneFrame().ToPromise()
                 .Finally(() => continuedFrame = Time.frameCount);
             using (var yieldInstruction = promise.ToYieldInstruction())
             {
-                if (cancelType == CancelType.Delayed)
-                {
-                    cancelSource.Cancel();
-                }
                 yield return yieldInstruction;
-                Assert.AreEqual(cancelType == CancelType.None ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
+                yieldInstruction.GetResult();
             }
-            cancelSource.Dispose();
-            Assert.AreEqual(currentFrame + (cancelType == CancelType.None ? 1 : 0), continuedFrame);
+            Assert.AreEqual(currentFrame + 1, continuedFrame);
+        }
+
+        public class WaitOneFrameTestBehaviour : MonoBehaviour
+        {
+            private Func<Promise> _updateWaitOneFrameFunc;
+            private Promise<ValueTuple<int, int>>.Deferred _updateDeferred;
+            private Func<Promise> _eofWaitOneFrameFunc;
+            private Promise<ValueTuple<int, int>>.Deferred _eofDeferred;
+
+            public Promise<ValueTuple<int, int>> WaitOneFrameFromUpdate(Func<Promise> waitOneFrameFunc)
+            {
+                _updateWaitOneFrameFunc = waitOneFrameFunc;
+                _updateDeferred = Promise<ValueTuple<int, int>>.NewDeferred();
+                return _updateDeferred.Promise;
+            }
+
+            public Promise<ValueTuple<int, int>> WaitOneFrameFromEndOfFrame(Func<Promise> waitOneFrameFunc)
+            {
+                _eofWaitOneFrameFunc = waitOneFrameFunc;
+                _eofDeferred = Promise<ValueTuple<int, int>>.NewDeferred();
+                return _eofDeferred.Promise;
+            }
+
+            private IEnumerator Start()
+            {
+                var endOfFrame = new WaitForEndOfFrame();
+                while (true)
+                {
+                    yield return endOfFrame;
+
+                    if (_eofDeferred.IsValidAndPending)
+                    {
+                        var deferred = _eofDeferred;
+                        _eofDeferred = default(Promise<ValueTuple<int, int>>.Deferred);
+                        _eofWaitOneFrameFunc()
+                            .Then(ValueTuple.Create(deferred, Time.frameCount), cv => deferred.Resolve(ValueTuple.Create(cv.Item2, Time.frameCount)))
+                            .Forget();
+                    }
+                }
+            }
+
+            private void Update()
+            {
+                if (_updateDeferred.IsValidAndPending)
+                {
+                    var deferred = _updateDeferred;
+                    _updateDeferred = default(Promise<ValueTuple<int, int>>.Deferred);
+                    _updateWaitOneFrameFunc()
+                        .Then(ValueTuple.Create(deferred, Time.frameCount), cv => deferred.Resolve(ValueTuple.Create(cv.Item2, Time.frameCount)))
+                        .Forget();
+                }
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrame_FromUpdate()
+        {
+            // Update runs before the PromiseYielder frame processor, so this test makes sure WaitOneFrame doesn't resolve in the same frame.    
+            var testBehaviour = behaviour.gameObject.AddComponent<WaitOneFrameTestBehaviour>();
+            try
+            {
+                var promise = testBehaviour.WaitOneFrameFromUpdate(() => PromiseYielder.WaitOneFrame().ToPromise())
+                    .Then(cv => Assert.AreEqual(cv.Item1 + 1, cv.Item2));
+                using (var yieldInstruction = promise.ToYieldInstruction())
+                {
+                    yield return yieldInstruction;
+                    yieldInstruction.GetResult();
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(testBehaviour);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrame_FromEndOfFrame()
+        {
+            // End of Frame runs after everything else, so this test makes sure WaitOneFrame resolves in the next frame (doesn't skip a frame).
+            if (Application.isBatchMode)
+            {
+                Assert.Inconclusive("Application is running in batchmode, WaitForEndOfFrame will not run.");
+                yield break;
+            }
+
+            var testBehaviour = behaviour.gameObject.AddComponent<WaitOneFrameTestBehaviour>();
+            try
+            {
+                var promise = testBehaviour.WaitOneFrameFromEndOfFrame(() => PromiseYielder.WaitOneFrame().ToPromise())
+                    .Then(cv => Assert.AreEqual(cv.Item1 + 1, cv.Item2));
+                using (var yieldInstruction = promise.ToYieldInstruction())
+                {
+                    yield return yieldInstruction;
+                    yieldInstruction.GetResult();
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(testBehaviour);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrameMultiple()
+        {
+            int currentFrame = Time.frameCount;
+
+            var promise = PromiseYielder.WaitOneFrame().ToPromise()
+                .Then(() =>
+                {
+                    Assert.AreEqual(currentFrame + 1, Time.frameCount);
+                    return PromiseYielder.WaitOneFrame().ToPromise();
+                })
+                .Then(() =>
+                {
+                    Assert.AreEqual(currentFrame + 2, Time.frameCount);
+                    return PromiseYielder.WaitOneFrame().ToPromise();
+                })
+                .Then(() =>
+                {
+                    Assert.AreEqual(currentFrame + 3, Time.frameCount);
+                    return PromiseYielder.WaitOneFrame().ToPromise();
+                })
+                .Then(() =>
+                {
+                    Assert.AreEqual(currentFrame + 4, Time.frameCount);
+                });
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
         }
 
         [UnityTest]
@@ -108,14 +231,16 @@ namespace ProtoPromiseTests.Unity
                 : CancelationToken.None;
 
             var promise = PromiseYielder.WaitFor(instruction, GetRunner(runnerType), cancelToken);
+            if (cancelType == CancelType.Delayed)
+            {
+                cancelSource.Cancel();
+            }
             using (var yieldInstruction = promise.ToYieldInstruction())
             {
-                if (cancelType == CancelType.Delayed)
-                {
-                    cancelSource.Cancel();
-                }
                 yield return yieldInstruction;
                 Assert.AreEqual(cancelType == CancelType.None ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
             }
             cancelSource.Dispose();
             // The yield instruction's keepWaiting is still called immediately, even though we cancel the promise before the coroutine completed on the next frame.
@@ -137,19 +262,22 @@ namespace ProtoPromiseTests.Unity
                 using (var yieldInstruction = promise.ToYieldInstruction())
                 {
                     yield return yieldInstruction;
+                    if (yieldInstruction.State == Promise.State.Rejected)
+                        yieldInstruction.GetResult();
                 }
                 Assert.AreEqual(3, instruction.count);
             }
             finally
             {
-                Object.Destroy(behaviour2.gameObject);
+                UnityEngine.Object.Destroy(behaviour2.gameObject);
             }
         }
 
         [UnityTest]
-        public IEnumerator PromiseYielderWaitForFrames_WaitsCorrectFrameCount([Values] CancelType cancelType)
+        public IEnumerator PromiseYielderWaitForFrames_WaitsCorrectFrameCount(
+            [Values] CancelType cancelType,
+            [Values(0, 10)] int waitFramesCount)
         {
-            const int waitFramesCount = 10;
             int currentFrame = Time.frameCount;
             int continuedFrame = -1;
             var cancelSource = CancelationSource.New();
@@ -157,21 +285,25 @@ namespace ProtoPromiseTests.Unity
                 : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
                 : CancelationToken.None;
 
-            var promise = PromiseYielder.WaitForFrames(waitFramesCount, cancelToken)
+            var promise = PromiseYielder.WaitForFrames((uint) waitFramesCount).ToPromise(cancelToken)
                 .Finally(() => continuedFrame = Time.frameCount);
+            if (cancelType == CancelType.Delayed)
+            {
+                // Wait for half the frames before canceling the token.
+                // Subtract 1 frame since this Coroutine runs after the PromiseYielder Coroutine.
+                for (int i = 0; i < waitFramesCount / 2 - 1; ++i)
+                {
+                    yield return null;
+                }
+                cancelSource.Cancel();
+            }
             using (var yieldInstruction = promise.ToYieldInstruction())
             {
-                if (cancelType == CancelType.Delayed)
-                {
-                    // Wait for half the frames before canceling the token.
-                    for (int i = 0; i < waitFramesCount / 2; ++i)
-                    {
-                        yield return null;
-                    }
-                    cancelSource.Cancel();
-                }
                 yield return yieldInstruction;
-                Assert.AreEqual(cancelType == CancelType.None ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
+                bool expectResolved = cancelType == CancelType.None || (waitFramesCount == 0f && cancelType != CancelType.Immediate);
+                Assert.AreEqual(expectResolved ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
             }
             cancelSource.Dispose();
             int expectedWaitFrames = cancelType == CancelType.None ? waitFramesCount
@@ -179,6 +311,351 @@ namespace ProtoPromiseTests.Unity
                 : waitFramesCount / 2;
             Assert.AreEqual(currentFrame + expectedWaitFrames, continuedFrame);
         }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForTime_WaitsCorrectTime(
+            [Values] CancelType cancelType,
+            [Values(0.5f, 1f, 2f)] float timeScale,
+            [Values(0f, 2f)] float waitSeconds)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            float startTime = Time.time;
+            float continuedTime = float.NaN;
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            var promise = PromiseYielder.WaitForTime(TimeSpan.FromSeconds(waitSeconds)).ToPromise(cancelToken)
+                .Finally(() => continuedTime = Time.time);
+            if (cancelType == CancelType.Delayed)
+            {
+                // Wait for half the time before canceling the token.
+                PromiseYielder.WaitForTime(TimeSpan.FromSeconds(waitSeconds / 2f)).ToPromise()
+                    .Finally(cancelSource.Cancel)
+                    .Forget();
+            }
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                bool expectResolved = cancelType == CancelType.None || (waitSeconds == 0f && cancelType != CancelType.Immediate);
+                Assert.AreEqual(expectResolved ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+
+            // Fairly large delta due to engine frames. This expects at least 10 fps.
+            const float delta = 1f / 10f;
+            if (waitSeconds == 0f || cancelType == CancelType.Immediate)
+            {
+                Assert.AreEqual(0f, continuedTime - startTime);
+            }
+            else if (cancelType == CancelType.None)
+            {
+                Assert.GreaterOrEqual(delta + continuedTime - startTime, waitSeconds);
+            }
+            else if (cancelType == CancelType.Immediate)
+            {
+                Assert.GreaterOrEqual(delta + continuedTime - startTime, waitSeconds / 2f);
+            }
+
+            Time.timeScale = oldTimeScale;
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForRealTime_WaitsCorrectTime(
+            [Values] CancelType cancelType,
+            [Values(0.5f, 1f, 2f)] float timeScale,
+            [Values(0f, 2f)] float waitSeconds)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            float startTime = Time.realtimeSinceStartup;
+            float continuedTime = float.NaN;
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            var promise = PromiseYielder.WaitForRealTime(TimeSpan.FromSeconds(waitSeconds)).ToPromise(cancelToken)
+                .Finally(() => continuedTime = Time.realtimeSinceStartup);
+            if (cancelType == CancelType.Delayed)
+            {
+                // Wait for half the time before canceling the token.
+                PromiseYielder.WaitForRealTime(TimeSpan.FromSeconds(waitSeconds / 2f)).ToPromise()
+                    .Finally(cancelSource.Cancel)
+                    .Forget();
+            }
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                bool expectResolved = cancelType == CancelType.None || (waitSeconds == 0f && cancelType != CancelType.Immediate);
+                Assert.AreEqual(expectResolved ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+
+            // Fairly large delta due to engine frames. This expects at least 10 fps.
+            const float delta = 1f / 10f;
+            if (waitSeconds == 0f || cancelType == CancelType.Immediate)
+            {
+                Assert.AreEqual(0f, continuedTime - startTime, delta);
+            }
+            else if (cancelType == CancelType.None)
+            {
+                Assert.GreaterOrEqual(delta + continuedTime - startTime, waitSeconds);
+            }
+            else if (cancelType == CancelType.Immediate)
+            {
+                Assert.GreaterOrEqual(delta + continuedTime - startTime, waitSeconds / 2f);
+            }
+
+            Time.timeScale = oldTimeScale;
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitUntil_WaitsCorrectly([Values] CancelType cancelType)
+        {
+            bool keepWaiting = true;
+            bool didContinue = false;
+
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            var promise = PromiseYielder.WaitUntil(() => !keepWaiting).ToPromise(cancelToken)
+                .Finally(() => didContinue = true);
+
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            if (cancelType == CancelType.Delayed)
+            {
+                cancelSource.Cancel();
+                // Continuation won't be invoked until the next cycle.
+                Assert.IsFalse(didContinue);
+            }
+            else
+            {
+                Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            }
+
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+
+            yield return null;
+            keepWaiting = false;
+
+            yield return null;
+            Assert.IsTrue(didContinue);
+
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitUntil_WaitsCorrectlyWithCaptureValue([Values] CancelType cancelType)
+        {
+            bool keepWaiting = true;
+            bool didContinue = false;
+            const int captureValue = 42;
+
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            var promise = PromiseYielder.WaitUntil(captureValue, cv =>
+                {
+                    Assert.AreEqual(captureValue, cv);
+                    return !keepWaiting;
+                }).ToPromise(cancelToken)
+                .Finally(() => didContinue = true);
+
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            if (cancelType == CancelType.Delayed)
+            {
+                cancelSource.Cancel();
+                // Continuation won't be invoked until the next cycle.
+                Assert.IsFalse(didContinue);
+            }
+            else
+            {
+                Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            }
+
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+
+            yield return null;
+            keepWaiting = false;
+
+            yield return null;
+            Assert.IsTrue(didContinue);
+
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitWhile_WaitsCorrectly([Values] CancelType cancelType)
+        {
+            bool keepWaiting = true;
+            bool didContinue = false;
+
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            var promise = PromiseYielder.WaitWhile(() => keepWaiting).ToPromise(cancelToken)
+                .Finally(() => didContinue = true);
+
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            if (cancelType == CancelType.Delayed)
+            {
+                cancelSource.Cancel();
+                // Continuation won't be invoked until the next cycle.
+                Assert.IsFalse(didContinue);
+            }
+            else
+            {
+                Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            }
+
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+
+            yield return null;
+            keepWaiting = false;
+
+            yield return null;
+            Assert.IsTrue(didContinue);
+
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitWhile_WaitsCorrectlyWithCaptureValue([Values] CancelType cancelType)
+        {
+            bool keepWaiting = true;
+            bool didContinue = false;
+            const int captureValue = 42;
+
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            var promise = PromiseYielder.WaitWhile(captureValue, cv =>
+            {
+                Assert.AreEqual(captureValue, cv);
+                return keepWaiting;
+            }).ToPromise(cancelToken)
+                .Finally(() => didContinue = true);
+
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            if (cancelType == CancelType.Delayed)
+            {
+                cancelSource.Cancel();
+                // Continuation won't be invoked until the next cycle.
+                Assert.IsFalse(didContinue);
+            }
+            else
+            {
+                Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            }
+
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+
+            yield return null;
+            keepWaiting = false;
+
+            yield return null;
+            Assert.IsTrue(didContinue);
+
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForFixedUpdate_CompletesInFixedUpdate()
+        {
+            var promise = PromiseYielder.WaitForFixedUpdate().ToPromise()
+                .Finally(() => Assert.IsTrue(Time.inFixedTimeStep));
+
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+        }
+
+        // Not testing WaitForEndOfFrame as there is no way to assert that it is actually in that execution stage.
+        // Not testing WaitForAsyncOperation as I don't want to have to load something for unit testing.
 
 #if PROMISE_PROGRESS
         [UnityTest]
@@ -188,19 +665,730 @@ namespace ProtoPromiseTests.Unity
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
 
-            PromiseYielder.WaitForFrames(waitFramesCount)
+            PromiseYielder.WaitForFrames(waitFramesCount).ToPromise()
                 .SubscribeProgress(progressHelper)
                 .Forget();
 
-            
             for (int currentFrame = 0; currentFrame < waitFramesCount; ++currentFrame)
             {
-                yield return null;
                 progressHelper.AssertCurrentProgress((float) currentFrame / waitFramesCount, false);
+                yield return null;
             }
-            yield return null;
             progressHelper.AssertCurrentProgress(1f, false);
         }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForTime_ReportsProgress([Values(0.5f, 1f, 2f)] float timeScale)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            const float waitSeconds = 2f;
+
+            // Timing can be off a bit, so give it a large delta.
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: 1f / 10f);
+
+            var promise = PromiseYielder.WaitForTime(TimeSpan.FromSeconds(waitSeconds)).ToPromise()
+                .SubscribeProgress(progressHelper);
+
+            for (float currentTime = 0f; currentTime < waitSeconds; currentTime += Time.deltaTime)
+            {
+                progressHelper.AssertCurrentProgress(currentTime / waitSeconds, false);
+                yield return null;
+            }
+            // Timing can be off a bit, so we explicitly wait for the promise to complete.
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                yieldInstruction.GetResult();
+            }
+            progressHelper.AssertCurrentProgress(1f, false);
+
+            Time.timeScale = oldTimeScale;
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForRealTime_ReportsProgress([Values(0.5f, 1f, 2f)] float timeScale)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            const float waitSeconds = 2f;
+
+            // Timing can be off a bit, so give it a large delta.
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: 1f / 10f);
+
+            var promise = PromiseYielder.WaitForRealTime(TimeSpan.FromSeconds(waitSeconds)).ToPromise()
+                .SubscribeProgress(progressHelper);
+
+            for (float currentTime = 0f; currentTime < waitSeconds; currentTime += Time.unscaledDeltaTime)
+            {
+                progressHelper.AssertCurrentProgress(currentTime / waitSeconds, false);
+                yield return null;
+            }
+            // Timing can be off a bit, so we explicitly wait for the promise to complete.
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                yieldInstruction.GetResult();
+            }
+            progressHelper.AssertCurrentProgress(1f, false);
+
+            Time.timeScale = oldTimeScale;
+        }
 #endif // PROMISE_PROGRESS
+
+#if CSHARP_7_3_OR_NEWER
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrame_Async()
+        {
+            int currentFrame = Time.frameCount;
+            int continuedFrame = -1;
+
+            async Promise Func()
+            {
+                await PromiseYielder.WaitOneFrame();
+            }
+
+            var promise = Func()
+                .Finally(() => continuedFrame = Time.frameCount);
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                yieldInstruction.GetResult();
+            }
+            Assert.AreEqual(currentFrame + 1, continuedFrame);
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrame_FromUpdate_Async()
+        {
+            // Update runs before the PromiseYielder frame processor, so this test makes sure WaitOneFrame doesn't resolve in the same frame.    
+            var testBehaviour = behaviour.gameObject.AddComponent<WaitOneFrameTestBehaviour>();
+            try
+            {
+                async Promise Func()
+                {
+                    await PromiseYielder.WaitOneFrame();
+                }
+
+                var promise = testBehaviour.WaitOneFrameFromUpdate(Func)
+                    .Then(cv => Assert.AreEqual(cv.Item1 + 1, cv.Item2));
+                using (var yieldInstruction = promise.ToYieldInstruction())
+                {
+                    yield return yieldInstruction;
+                    yieldInstruction.GetResult();
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(testBehaviour);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrame_FromEndOfFrame_Async()
+        {
+            // End of Frame runs after everything else, so this test makes sure WaitOneFrame resolves in the next frame (doesn't skip a frame).
+            if (Application.isBatchMode)
+            {
+                Assert.Inconclusive("Application is running in batchmode, WaitForEndOfFrame will not run.");
+                yield break;
+            }
+
+            var testBehaviour = behaviour.gameObject.AddComponent<WaitOneFrameTestBehaviour>();
+            try
+            {
+                async Promise Func()
+                {
+                    await PromiseYielder.WaitOneFrame();
+                }
+
+                var promise = testBehaviour.WaitOneFrameFromEndOfFrame(Func)
+                    .Then(cv => Assert.AreEqual(cv.Item1 + 1, cv.Item2));
+                using (var yieldInstruction = promise.ToYieldInstruction())
+                {
+                    yield return yieldInstruction;
+                    yieldInstruction.GetResult();
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(testBehaviour);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrameMultiple_Async()
+        {
+            int currentFrame = Time.frameCount;
+
+            async Promise Func()
+            {
+                await PromiseYielder.WaitOneFrame();
+                Assert.AreEqual(currentFrame + 1, Time.frameCount);
+
+                await PromiseYielder.WaitOneFrame();
+                Assert.AreEqual(currentFrame + 2, Time.frameCount);
+
+                await PromiseYielder.WaitOneFrame();
+                Assert.AreEqual(currentFrame + 3, Time.frameCount);
+
+                await PromiseYielder.WaitOneFrame();
+                Assert.AreEqual(currentFrame + 4, Time.frameCount);
+            }
+
+            using (var yieldInstruction = Func().ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForFrames_WaitsCorrectFrameCount_Async(
+            [Values] CancelType cancelType,
+            [Values(0, 10)] int waitFramesCount)
+        {
+            int currentFrame = Time.frameCount;
+            int continuedFrame = -1;
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            async Promise Func()
+            {
+                if (cancelType == CancelType.None)
+                    await PromiseYielder.WaitForFrames((uint) waitFramesCount);
+                else
+                    await PromiseYielder.WaitForFrames((uint) waitFramesCount).WithCancelation(cancelToken);
+            }
+
+            var promise = Func()
+                .Finally(() => continuedFrame = Time.frameCount);
+            if (cancelType == CancelType.Delayed)
+            {
+                // Wait for half the frames before canceling the token.
+                // Subtract 1 frame since this Coroutine runs after the PromiseYielder Coroutine.
+                for (int i = 0; i < waitFramesCount / 2 - 1; ++i)
+                {
+                    yield return null;
+                }
+                cancelSource.Cancel();
+            }
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                bool expectResolved = cancelType == CancelType.None || (waitFramesCount == 0f && cancelType != CancelType.Immediate);
+                Assert.AreEqual(expectResolved ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+            int expectedWaitFrames = cancelType == CancelType.None ? waitFramesCount
+                : cancelType == CancelType.Immediate ? 0
+                : waitFramesCount / 2;
+            Assert.AreEqual(currentFrame + expectedWaitFrames, continuedFrame);
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForTime_WaitsCorrectTime_Async(
+            [Values] CancelType cancelType,
+            [Values(0.5f, 1f, 2f)] float timeScale,
+            [Values(0f, 2f)] float waitSeconds)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            float startTime = Time.time;
+            float continuedTime = float.NaN;
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            async Promise Func()
+            {
+                if (cancelType == CancelType.None)
+                    await PromiseYielder.WaitForTime(TimeSpan.FromSeconds(waitSeconds));
+                else
+                    await PromiseYielder.WaitForTime(TimeSpan.FromSeconds(waitSeconds)).WithCancelation(cancelToken);
+            }
+
+            var promise = Func()
+                .Finally(() => continuedTime = Time.time);
+            if (cancelType == CancelType.Delayed)
+            {
+                // Wait for half the time before canceling the token.
+                PromiseYielder.WaitForTime(TimeSpan.FromSeconds(waitSeconds / 2f)).ToPromise()
+                    .Finally(cancelSource.Cancel)
+                    .Forget();
+            }
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                bool expectResolved = cancelType == CancelType.None || (waitSeconds == 0f && cancelType != CancelType.Immediate);
+                Assert.AreEqual(expectResolved ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+
+            // Fairly large delta due to engine frames. This expects at least 10 fps.
+            const float delta = 1f / 10f;
+            if (waitSeconds == 0f || cancelType == CancelType.Immediate)
+            {
+                Assert.AreEqual(0f, continuedTime - startTime);
+            }
+            else if (cancelType == CancelType.None)
+            {
+                Assert.GreaterOrEqual(delta + continuedTime - startTime, waitSeconds);
+            }
+            else if (cancelType == CancelType.Immediate)
+            {
+                Assert.GreaterOrEqual(delta + continuedTime - startTime, waitSeconds / 2f);
+            }
+
+            Time.timeScale = oldTimeScale;
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForRealTime_WaitsCorrectTime_Async(
+            [Values] CancelType cancelType,
+            [Values(0.5f, 1f, 2f)] float timeScale,
+            [Values(0f, 2f)] float waitSeconds)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            float startTime = Time.realtimeSinceStartup;
+            float continuedTime = float.NaN;
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            async Promise Func()
+            {
+                if (cancelType == CancelType.None)
+                    await PromiseYielder.WaitForRealTime(TimeSpan.FromSeconds(waitSeconds));
+                else
+                    await PromiseYielder.WaitForRealTime(TimeSpan.FromSeconds(waitSeconds)).WithCancelation(cancelToken);
+            }
+
+            var promise = Func()
+                .Finally(() => continuedTime = Time.realtimeSinceStartup);
+            if (cancelType == CancelType.Delayed)
+            {
+                // Wait for half the time before canceling the token.
+                PromiseYielder.WaitForRealTime(TimeSpan.FromSeconds(waitSeconds / 2f)).ToPromise()
+                    .Finally(cancelSource.Cancel)
+                    .Forget();
+            }
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                bool expectResolved = cancelType == CancelType.None || (waitSeconds == 0f && cancelType != CancelType.Immediate);
+                Assert.AreEqual(expectResolved ? Promise.State.Resolved : Promise.State.Canceled, yieldInstruction.State);
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+
+            // Fairly large delta due to engine frames. This expects at least 10 fps.
+            const float delta = 1f / 10f;
+            if (waitSeconds == 0f || cancelType == CancelType.Immediate)
+            {
+                Assert.AreEqual(0f, continuedTime - startTime, delta);
+            }
+            else if (cancelType == CancelType.None)
+            {
+                Assert.GreaterOrEqual(delta + continuedTime - startTime, waitSeconds);
+            }
+            else if (cancelType == CancelType.Immediate)
+            {
+                Assert.GreaterOrEqual(delta + continuedTime - startTime, waitSeconds / 2f);
+            }
+
+            Time.timeScale = oldTimeScale;
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitUntil_WaitsCorrectly_Async([Values] CancelType cancelType)
+        {
+            bool keepWaiting = true;
+            bool didContinue = false;
+
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            async Promise Func()
+            {
+                if (cancelType == CancelType.None)
+                    await PromiseYielder.WaitUntil(() => !keepWaiting);
+                else
+                    await PromiseYielder.WaitUntil(() => !keepWaiting).WithCancelation(cancelToken);
+            }
+
+            var promise = Func()
+                .Finally(() => didContinue = true);
+
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            if (cancelType == CancelType.Delayed)
+            {
+                cancelSource.Cancel();
+                // Continuation won't be invoked until the next cycle.
+                Assert.IsFalse(didContinue);
+            }
+            else
+            {
+                Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            }
+
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+
+            yield return null;
+            keepWaiting = false;
+
+            yield return null;
+            Assert.IsTrue(didContinue);
+
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitUntil_WaitsCorrectlyWithCaptureValue_Async([Values] CancelType cancelType)
+        {
+            bool keepWaiting = true;
+            bool didContinue = false;
+            const int captureValue = 42;
+
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            async Promise Func()
+            {
+                var waitUntil = PromiseYielder.WaitUntil(captureValue, cv =>
+                {
+                    Assert.AreEqual(captureValue, cv);
+                    return !keepWaiting;
+                });
+                if (cancelType == CancelType.None)
+                    await waitUntil;
+                else
+                    await waitUntil.WithCancelation(cancelToken);
+            }
+
+            var promise = Func()
+                .Finally(() => didContinue = true);
+
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            if (cancelType == CancelType.Delayed)
+            {
+                cancelSource.Cancel();
+                // Continuation won't be invoked until the next cycle.
+                Assert.IsFalse(didContinue);
+            }
+            else
+            {
+                Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            }
+
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+
+            yield return null;
+            keepWaiting = false;
+
+            yield return null;
+            Assert.IsTrue(didContinue);
+
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitWhile_WaitsCorrectly_Async([Values] CancelType cancelType)
+        {
+            bool keepWaiting = true;
+            bool didContinue = false;
+
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            async Promise Func()
+            {
+                if (cancelType == CancelType.None)
+                    await PromiseYielder.WaitWhile(() => keepWaiting);
+                else
+                    await PromiseYielder.WaitWhile(() => keepWaiting).WithCancelation(cancelToken);
+            }
+
+            var promise = Func()
+                .Finally(() => didContinue = true);
+
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            if (cancelType == CancelType.Delayed)
+            {
+                cancelSource.Cancel();
+                // Continuation won't be invoked until the next cycle.
+                Assert.IsFalse(didContinue);
+            }
+            else
+            {
+                Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            }
+
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+
+            yield return null;
+            keepWaiting = false;
+
+            yield return null;
+            Assert.IsTrue(didContinue);
+
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitWhile_WaitsCorrectlyWithCaptureValue_Async([Values] CancelType cancelType)
+        {
+            bool keepWaiting = true;
+            bool didContinue = false;
+            const int captureValue = 42;
+
+            var cancelSource = CancelationSource.New();
+            var cancelToken = cancelType == CancelType.Delayed ? cancelSource.Token
+                : cancelType == CancelType.Immediate ? CancelationToken.Canceled()
+                : CancelationToken.None;
+
+            async Promise Func()
+            {
+                var waitUntil = PromiseYielder.WaitWhile(captureValue, cv =>
+                {
+                    Assert.AreEqual(captureValue, cv);
+                    return keepWaiting;
+                });
+                if (cancelType == CancelType.None)
+                    await waitUntil;
+                else
+                    await waitUntil.WithCancelation(cancelToken);
+            }
+
+            var promise = Func()
+                .Finally(() => didContinue = true);
+
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+
+            yield return null;
+            if (cancelType == CancelType.Delayed)
+            {
+                cancelSource.Cancel();
+                // Continuation won't be invoked until the next cycle.
+                Assert.IsFalse(didContinue);
+            }
+            else
+            {
+                Assert.AreEqual(cancelType == CancelType.Immediate, didContinue);
+            }
+
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+            yield return null;
+            Assert.AreEqual(cancelType != CancelType.None, didContinue);
+
+            yield return null;
+            keepWaiting = false;
+
+            yield return null;
+            Assert.IsTrue(didContinue);
+
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+            cancelSource.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForFixedUpdate_CompletesInFixedUpdate_Async()
+        {
+            async Promise Func()
+            {
+                await PromiseYielder.WaitForFixedUpdate();
+
+                Assert.IsTrue(Time.inFixedTimeStep);
+            }
+
+            using (var yieldInstruction = Func().ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                if (yieldInstruction.State == Promise.State.Rejected)
+                    yieldInstruction.GetResult();
+            }
+        }
+
+        // Not testing WaitForEndOfFrame as there is no way to assert that it is actually in that execution stage.
+        // Not testing WaitForAsyncOperation as I don't want to have to load something for unit testing.
+
+#if PROMISE_PROGRESS
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForFrames_ReportsProgress_Async()
+        {
+            const int waitFramesCount = 10;
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+
+            async Promise Func()
+            {
+                await PromiseYielder.WaitForFrames(waitFramesCount).AwaitWithProgress(1f);
+            }
+
+            Func()
+                .SubscribeProgress(progressHelper)
+                .Forget();
+
+            for (int currentFrame = 0; currentFrame < waitFramesCount; ++currentFrame)
+            {
+                progressHelper.AssertCurrentProgress((float) currentFrame / waitFramesCount, false);
+                yield return null;
+            }
+            progressHelper.AssertCurrentProgress(1f, false);
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForTime_ReportsProgress_Async([Values(0.5f, 1f, 2f)] float timeScale)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            const float waitSeconds = 2f;
+
+            // Timing can be off a bit, so give it a large delta.
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: 1f / 10f);
+
+            async Promise Func()
+            {
+                await PromiseYielder.WaitForTime(TimeSpan.FromSeconds(waitSeconds)).AwaitWithProgress(1f);
+            }
+
+            var promise = Func()
+                .SubscribeProgress(progressHelper);
+
+            for (float currentTime = 0f; currentTime < waitSeconds; currentTime += Time.deltaTime)
+            {
+                progressHelper.AssertCurrentProgress(currentTime / waitSeconds, false);
+                yield return null;
+            }
+            // Timing can be off a bit, so we explicitly wait for the promise to complete.
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                yieldInstruction.GetResult();
+            }
+            progressHelper.AssertCurrentProgress(1f, false);
+
+            Time.timeScale = oldTimeScale;
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForRealTime_ReportsProgress_Async([Values(0.5f, 1f, 2f)] float timeScale)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            const float waitSeconds = 2f;
+
+            // Timing can be off a bit, so give it a large delta.
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: 1f / 10f);
+
+            async Promise Func()
+            {
+                await PromiseYielder.WaitForRealTime(TimeSpan.FromSeconds(waitSeconds)).AwaitWithProgress(1f);
+            }
+
+            var promise = Func()
+                .SubscribeProgress(progressHelper);
+
+            for (float currentTime = 0f; currentTime < waitSeconds; currentTime += Time.unscaledDeltaTime)
+            {
+                progressHelper.AssertCurrentProgress(currentTime / waitSeconds, false);
+                yield return null;
+            }
+            // Timing can be off a bit, so we explicitly wait for the promise to complete.
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                yieldInstruction.GetResult();
+            }
+            progressHelper.AssertCurrentProgress(1f, false);
+
+            Time.timeScale = oldTimeScale;
+        }
+#endif // PROMISE_PROGRESS
+
+#endif // CSHARP_7_3_OR_NEWER
     }
 }

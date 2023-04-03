@@ -122,7 +122,7 @@ namespace ProtoPromiseTests
 
             if (!GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout))
             {
-                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
             }
         }
 
@@ -139,15 +139,11 @@ namespace ProtoPromiseTests
             }
         }
 
-        private void WaitForExpectedProgress(float expectedProgress, bool waitForInvoke, bool executeForeground, TimeSpan timeout = default(TimeSpan))
+        private void WaitForExpectedProgress(float expectedProgress, bool executeForeground, TimeSpan timeout = default(TimeSpan))
         {
             if (executeForeground)
             {
                 TestHelper.ExecuteForegroundCallbacks();
-            }
-            if (!waitForInvoke)
-            {
-                return;
             }
 
             if (timeout <= TimeSpan.Zero)
@@ -197,7 +193,7 @@ namespace ProtoPromiseTests
             }
             if (!areEqual)
             {
-                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
             }
         }
 
@@ -228,7 +224,7 @@ namespace ProtoPromiseTests
             }
             if (!areEqual)
             {
-                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
             }
         }
 
@@ -259,7 +255,7 @@ namespace ProtoPromiseTests
             }
             if (!areEqual)
             {
-                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
             }
         }
 
@@ -290,7 +286,7 @@ namespace ProtoPromiseTests
             }
             if (!areEqual)
             {
-                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
             }
         }
 
@@ -321,7 +317,7 @@ namespace ProtoPromiseTests
             }
             if (!areEqual)
             {
-                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
             }
         }
 
@@ -352,7 +348,7 @@ namespace ProtoPromiseTests
             }
             if (!areEqual)
             {
-                WaitForExpectedProgress(expectedProgress, waitForInvoke, executeForeground, timeout);
+                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
             }
         }
 
@@ -367,7 +363,7 @@ namespace ProtoPromiseTests
             }
             if (!areEqual)
             {
-                WaitForExpectedProgress(expectedProgress, true, true, timeout);
+                WaitForExpectedProgress(expectedProgress, true, timeout);
             }
             return promise;
         }
@@ -383,7 +379,7 @@ namespace ProtoPromiseTests
             }
             if (!areEqual)
             {
-                WaitForExpectedProgress(expectedProgress, true, true, timeout);
+                WaitForExpectedProgress(expectedProgress, true, timeout);
             }
             return promise;
         }
