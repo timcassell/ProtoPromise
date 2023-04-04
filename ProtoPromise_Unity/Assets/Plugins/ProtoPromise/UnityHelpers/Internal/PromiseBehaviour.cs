@@ -79,6 +79,7 @@ namespace Proto.Promises
                 // We store the old context in case this gets destroyed for some reason.
                 _oldContext = SynchronizationContext.Current;
                 SynchronizationContext.SetSynchronizationContext(_syncContext);
+                Internal.ts_currentContext = _syncContext;
             }
 
             private void Start()
@@ -116,6 +117,10 @@ namespace Proto.Promises
                     if (Promise.Config.UncaughtRejectionHandler == HandleRejection)
                     {
                         Promise.Config.UncaughtRejectionHandler = null;
+                    }
+                    if (Internal.ts_currentContext == _syncContext)
+                    {
+                        Internal.ts_currentContext = null;
                     }
                     if (SynchronizationContext.Current == _syncContext)
                     {

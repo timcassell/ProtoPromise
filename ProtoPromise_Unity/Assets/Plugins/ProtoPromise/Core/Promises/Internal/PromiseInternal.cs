@@ -1014,7 +1014,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private bool ShouldContinueSynchronous()
                 {
-                    return !_forceAsync & _synchronizationContext == SynchronizationContext.Current;
+                    return !_forceAsync & _synchronizationContext == ts_currentContext;
                 }
 
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
@@ -1104,9 +1104,14 @@ namespace Proto.Promises
 
                 internal override void HandleFromContext()
                 {
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
+
                     TryUnregisterCancelationAndSetTempState();
                     // We don't need to synchronize access here because this is only called when the previous promise completed or the token canceled, and the waiter has already been added, so there are no race conditions.
                     HandleNext(_next, _tempRejectContainer, _tempState);
+
+                    ts_currentContext = currentContext;
                 }
 
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)

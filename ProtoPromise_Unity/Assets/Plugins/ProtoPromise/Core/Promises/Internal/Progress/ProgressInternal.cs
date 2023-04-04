@@ -553,7 +553,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private bool ShouldInvokeSynchronous()
                 {
-                    return _isSynchronous | (!_forceAsync & _synchronizationContext == SynchronizationContext.Current);
+                    return _isSynchronous | (!_forceAsync & _synchronizationContext == ts_currentContext);
                 }
 
                 internal override void MaybeDispose()
@@ -776,12 +776,17 @@ namespace Proto.Promises
                         // Exit the lock before invoking so we're not holding the lock while user code runs.
                     }
 
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
+
                     float value = (float) Lerp(min, max, t);
                     if (!IsInvoking1 & !IsCanceled & !_cancelationRegistration.Token.IsCancelationRequested)
                     {
                         CallbackHelperVoid.InvokeAndCatchProgress(_progress, value, this);
                     }
                     MaybeDispose();
+
+                    ts_currentContext = currentContext;
                 }
 
                 private void MaybeScheduleProgress()
@@ -881,7 +886,12 @@ namespace Proto.Promises
                 internal override void HandleFromContext()
                 {
                     ThrowIfInPool(this);
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
+
                     Invoke1(_previousState);
+
+                    ts_currentContext = currentContext;
                 }
 
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
