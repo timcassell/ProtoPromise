@@ -5,6 +5,8 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -42,6 +44,18 @@ namespace Proto.Promises
             public static void ClearObjectPool()
             {
                 Internal.ClearPool();
+            }
+
+            /// <summary>
+            /// The <see cref="SynchronizationContext"/> for the current thread, used internally to execute continuations synchronously if the supplied context matches this.
+            /// </summary>
+            /// <remarks>It is recommended to set this at application startup, at the same as you set <see cref="Config.ForegroundContext"/>.</remarks>
+            public static SynchronizationContext ThreadStaticSynchronizationContext
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return Internal.ts_currentContext; }
+                [MethodImpl(Internal.InlineOption)]
+                set { Internal.ts_currentContext = value; }
             }
 
             [Obsolete, EditorBrowsable(EditorBrowsableState.Never)]

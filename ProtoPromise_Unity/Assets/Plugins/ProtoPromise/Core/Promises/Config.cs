@@ -146,7 +146,7 @@ namespace Proto.Promises
             /// <summary>
             /// The <see cref="SynchronizationContext"/> used to marshal work to the UI thread.
             /// </summary>
-            /// <remarks>It is recommended to set this at application startup.</remarks>
+            /// <remarks>It is recommended to set this at application startup. It is also recommended to set <see cref="Manager.ThreadStaticSynchronizationContext"/> at the same time.</remarks>
             /// <example>
             /// <code>
             /// Promise.Config.ForegroundContext = SynchronizationContext.Current;
@@ -201,18 +201,6 @@ namespace Proto.Promises
             private static void ThrowCannotDisableAsyncFlow()
             {
                 throw new InvalidOperationException("Cannot disable AsyncFlowExecutionContext. It may only be enabled.");
-            }
-
-            /// <summary>
-            /// The <see cref="SynchronizationContext"/> for the current thread, used internally to execute continuations synchronously if the supplied context matches this.
-            /// </summary>
-            /// <remarks>It is recommended to set this at application startup, at the same as you set <see cref="ForegroundContext"/>.</remarks>
-            public static SynchronizationContext ThreadStaticSynchronizationContext
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get { return Internal.ts_currentContext; }
-                [MethodImpl(Internal.InlineOption)]
-                set { Internal.ts_currentContext = value; }
             }
 
             [Obsolete, EditorBrowsable(EditorBrowsableState.Never)]
