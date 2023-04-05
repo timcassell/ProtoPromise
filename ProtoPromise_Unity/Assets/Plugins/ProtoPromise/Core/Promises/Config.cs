@@ -130,8 +130,10 @@ namespace Proto.Promises
 
             /// <summary>
             /// Uncaught rejections get routed through this delegate.
-            /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>.
             /// </summary>
+            /// <remarks>
+            /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>.
+            /// </remarks>
             public static Action<UnhandledException> UncaughtRejectionHandler
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -144,6 +146,12 @@ namespace Proto.Promises
             /// <summary>
             /// The <see cref="SynchronizationContext"/> used to marshal work to the UI thread.
             /// </summary>
+            /// <remarks>It is recommended to set this at application startup. It is also recommended to set <see cref="Manager.ThreadStaticSynchronizationContext"/> at the same time.</remarks>
+            /// <example>
+            /// <code>
+            /// Promise.Config.ForegroundContext = SynchronizationContext.Current;
+            /// </code>
+            /// </example>
             public static SynchronizationContext ForegroundContext
             {
                 [MethodImpl(Internal.InlineOption)]

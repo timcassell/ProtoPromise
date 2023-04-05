@@ -42,6 +42,7 @@ namespace Proto.Promises
             internal readonly PromiseSynchronizationContext _syncContext = new PromiseSynchronizationContext();
             private Queue<UnhandledException> _currentlyReportingExceptions = new Queue<UnhandledException>();
             private Queue<UnhandledException> _unhandledExceptions = new Queue<UnhandledException>();
+            private SynchronizationContext _oldContext;
 
             internal static void Initialize()
             {
@@ -71,15 +72,14 @@ namespace Proto.Promises
                 }
                 if (Promise.Config.UncaughtRejectionHandler == null)
                 {
-                    // Intercept uncaught rejections and report them in Update instead of directly sending them to UnityEngine.Debug.LogException
-                    // so that we can minimize the extra stack frames in the logs that we don't care about.
                     Promise.Config.UncaughtRejectionHandler = HandleRejection;
                 }
 
-                if (SynchronizationContext.Current == null)
-                {
-                    SynchronizationContext.SetSynchronizationContext(_syncContext);
-                }
+                // We set the current context even when UnitySynchronizationContext exists, because it has a poor implementation.
+                // We store the old context in case this gets destroyed for some reason.
+                _oldContext = SynchronizationContext.Current;
+                SynchronizationContext.SetSynchronizationContext(_syncContext);
+                Promise.Manager.ThreadStaticSynchronizationContext = _syncContext;
             }
 
             private void Start()
@@ -118,9 +118,13 @@ namespace Proto.Promises
                     {
                         Promise.Config.UncaughtRejectionHandler = null;
                     }
+                    if (Promise.Manager.ThreadStaticSynchronizationContext == _syncContext)
+                    {
+                        Promise.Manager.ThreadStaticSynchronizationContext = null;
+                    }
                     if (SynchronizationContext.Current == _syncContext)
                     {
-                        SynchronizationContext.SetSynchronizationContext(null);
+                        SynchronizationContext.SetSynchronizationContext(_oldContext);
                     }
                     _syncContext.Execute(); // Clear out any pending callbacks.
                 }
@@ -128,6 +132,8 @@ namespace Proto.Promises
 
             private void HandleRejection(UnhandledException exception)
             {
+                // We report uncaught rejections in Update instead of directly sending them to UnityEngine.Debug.LogException,
+                // so that we can minimize the extra stack frames in the logs that we don't care about.
                 lock (_unhandledExceptions)
                 {
                     _unhandledExceptions.Enqueue(exception);

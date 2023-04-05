@@ -30,6 +30,7 @@ namespace Proto.Promises
     internal static partial class Internal
     {
         // This is used to detect if we're currently executing on the context we're going to schedule to, so we can just invoke synchronously instead.
+        // TODO: If we ever drop support for .Net Framework/old Mono, this can be replaced with `SynchronizationContext.Current`.
         [ThreadStatic]
         internal static SynchronizationContext ts_currentContext;
 

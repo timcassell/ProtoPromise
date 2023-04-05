@@ -294,7 +294,8 @@ namespace ProtoPromiseTests.APIs
                         }
                     },
                     configureAwaitType: (ConfigureAwaitType) firstWaitType,
-                    waitAsyncCancelationToken: configureAwaitCancelationToken1
+                    waitAsyncCancelationToken: configureAwaitCancelationToken1,
+                    configureAwaitForceAsync: true
                 );
             }
             TestHelper.AddCallbacksWithCancelation<int, object, string>(firstPromise,
@@ -366,7 +367,8 @@ namespace ProtoPromiseTests.APIs
                     }
                 },
                 configureAwaitType: (ConfigureAwaitType) firstWaitType,
-                waitAsyncCancelationToken: configureAwaitCancelationToken1
+                waitAsyncCancelationToken: configureAwaitCancelationToken1,
+                configureAwaitForceAsync: true
             );
 
             threadHelper.ExecuteSynchronousOrOnThread(
@@ -524,7 +526,8 @@ namespace ProtoPromiseTests.APIs
                         }
                     },
                     configureAwaitType: (ConfigureAwaitType) firstWaitType,
-                    waitAsyncCancelationToken: configureAwaitCancelationToken1
+                    waitAsyncCancelationToken: configureAwaitCancelationToken1,
+                    configureAwaitForceAsync: true
                 );
             }
             TestHelper.AddCallbacksWithCancelation<int, int, object, string>(firstPromise,
@@ -596,7 +599,8 @@ namespace ProtoPromiseTests.APIs
                     }
                 },
                 configureAwaitType: (ConfigureAwaitType) firstWaitType,
-                waitAsyncCancelationToken: configureAwaitCancelationToken1
+                waitAsyncCancelationToken: configureAwaitCancelationToken1,
+                configureAwaitForceAsync: true
             );
 
             threadHelper.ExecuteSynchronousOrOnThread(
@@ -731,7 +735,8 @@ namespace ProtoPromiseTests.APIs
                     promise = promise.ContinueWith(_ => { onSecondCallback(); return 2; });
                 },
                 configureAwaitType: (ConfigureAwaitType) firstWaitType,
-                waitAsyncCancelationToken: configureAwaitCancelationToken1
+                waitAsyncCancelationToken: configureAwaitCancelationToken1,
+                configureAwaitForceAsync: true
             );
 
             threadHelper.ExecuteSynchronousOrOnThread(
@@ -854,7 +859,8 @@ namespace ProtoPromiseTests.APIs
                     promise = promise.ContinueWith(_ => { onSecondCallback(); return 2; });
                 },
                 configureAwaitType: (ConfigureAwaitType) firstWaitType,
-                waitAsyncCancelationToken: configureAwaitCancelationToken1
+                waitAsyncCancelationToken: configureAwaitCancelationToken1,
+                configureAwaitForceAsync: true
             );
 
             threadHelper.ExecuteSynchronousOrOnThread(
@@ -1287,7 +1293,7 @@ namespace ProtoPromiseTests.APIs
             {
                 try
                 {
-                    await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, false, configureAwaitCancelationToken1);
+                    await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, true, configureAwaitCancelationToken1);
                 }
                 catch { }
                 finally
@@ -1412,7 +1418,7 @@ namespace ProtoPromiseTests.APIs
             {
                 try
                 {
-                    _ = await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, false, configureAwaitCancelationToken1);
+                    _ = await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, true, configureAwaitCancelationToken1);
                 }
                 catch { }
                 finally

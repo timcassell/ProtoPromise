@@ -638,7 +638,7 @@ namespace ProtoPromiseTests
                 default(CancelationToken), default(CancelationToken),
                 onCancel,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
 
             CancelationSource cancelationSource = CancelationSource.New();
@@ -651,7 +651,7 @@ namespace ProtoPromiseTests
                 cancelationSource.Token, cancelationSource.Token,
                 onCancel,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
             cancelationSource.Dispose();
 
@@ -794,7 +794,7 @@ namespace ProtoPromiseTests
                 default(CancelationToken), default(CancelationToken),
                 onCancel,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
 
             CancelationSource cancelationSource = CancelationSource.New();
@@ -807,7 +807,7 @@ namespace ProtoPromiseTests
                 cancelationSource.Token, cancelationSource.Token,
                 onCancel,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
             cancelationSource.Dispose();
 
@@ -952,7 +952,7 @@ namespace ProtoPromiseTests
                 onCancel,
                 onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedCatch,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
 
             CancelationSource cancelationSource = CancelationSource.New();
@@ -966,7 +966,7 @@ namespace ProtoPromiseTests
                 onCancel,
                 onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedCatch,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
             cancelationSource.Dispose();
 
@@ -1733,7 +1733,7 @@ namespace ProtoPromiseTests
                 onCancel,
                 onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedT,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedT,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
 
             CancelationSource cancelationSource = CancelationSource.New();
@@ -1747,7 +1747,7 @@ namespace ProtoPromiseTests
                 onCancel,
                 onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedT,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedT,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
             cancelationSource.Dispose();
 
@@ -2521,7 +2521,7 @@ namespace ProtoPromiseTests
                 default(CancelationToken), default(CancelationToken),
                 onCancel,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
 
             CancelationSource cancelationSource = CancelationSource.New();
@@ -2534,7 +2534,7 @@ namespace ProtoPromiseTests
                 cancelationSource.Token, cancelationSource.Token,
                 onCancel,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
             cancelationSource.Dispose();
 
@@ -2677,7 +2677,7 @@ namespace ProtoPromiseTests
                 default(CancelationToken), default(CancelationToken),
                 onCancel,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
 
             CancelationSource cancelationSource = CancelationSource.New();
@@ -2690,7 +2690,7 @@ namespace ProtoPromiseTests
                 cancelationSource.Token, cancelationSource.Token,
                 onCancel,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType
+                configureAwaitType, configureAwaitForceAsync
             );
             cancelationSource.Dispose();
 
