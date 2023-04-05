@@ -130,8 +130,10 @@ namespace Proto.Promises
 
             /// <summary>
             /// Uncaught rejections get routed through this delegate.
-            /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>.
             /// </summary>
+            /// <remarks>
+            /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>.
+            /// </remarks>
             public static Action<UnhandledException> UncaughtRejectionHandler
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -144,6 +146,12 @@ namespace Proto.Promises
             /// <summary>
             /// The <see cref="SynchronizationContext"/> used to marshal work to the UI thread.
             /// </summary>
+            /// <remarks>It is recommended to set this at application startup.</remarks>
+            /// <example>
+            /// <code>
+            /// Promise.Config.ForegroundContext = SynchronizationContext.Current;
+            /// </code>
+            /// </example>
             public static SynchronizationContext ForegroundContext
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -193,6 +201,18 @@ namespace Proto.Promises
             private static void ThrowCannotDisableAsyncFlow()
             {
                 throw new InvalidOperationException("Cannot disable AsyncFlowExecutionContext. It may only be enabled.");
+            }
+
+            /// <summary>
+            /// The <see cref="SynchronizationContext"/> for the current thread, used internally to execute continuations synchronously if the supplied context matches this.
+            /// </summary>
+            /// <remarks>It is recommended to set this at application startup, at the same as you set <see cref="ForegroundContext"/>.</remarks>
+            public static SynchronizationContext ThreadStaticSynchronizationContext
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return Internal.ts_currentContext; }
+                [MethodImpl(Internal.InlineOption)]
+                set { Internal.ts_currentContext = value; }
             }
 
             [Obsolete, EditorBrowsable(EditorBrowsableState.Never)]
