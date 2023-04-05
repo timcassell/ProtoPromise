@@ -245,7 +245,14 @@ namespace Proto.Promises
         {
             // We capture the current context to post the continuation. If it's null, we use the background context.
             return ts_currentContext
+                // TODO: Unity hasn't adopted .Net Core yet, and they most certainly will not use the NETCOREAPP compilation symbol, so we'll have to update the compilation symbols here once Unity finally does adopt it.
+#if NETCOREAPP
                 ?? SynchronizationContext.Current
+#else
+                // Old .Net Framework/Mono includes `SynchronizationContext.Current` in the `ExecutionContext`, so it may not be null on a background thread.
+                // We check for that case to not unnecessarily invoke continuations on a foreground thread when they can continue on a background thread.
+                ?? (Thread.CurrentThread.IsBackground ? null : SynchronizationContext.Current)
+#endif
                 ?? Promise.Config.BackgroundContext
                 ?? BackgroundSynchronizationContextSentinel.s_instance;
         }
