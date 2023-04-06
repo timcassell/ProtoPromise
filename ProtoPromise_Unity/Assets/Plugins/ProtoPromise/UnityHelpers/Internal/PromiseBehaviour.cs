@@ -30,8 +30,6 @@ namespace Proto.Promises
         [AddComponentMenu("")] // Hide this in the add component menu.
         internal sealed partial class PromiseBehaviour : MonoBehaviour
         {
-            internal static bool s_isApplicationQuitting = false;
-
             private static PromiseBehaviour s_instance;
             internal static PromiseBehaviour Instance
             {
@@ -43,6 +41,7 @@ namespace Proto.Promises
             private Queue<UnhandledException> _currentlyReportingExceptions = new Queue<UnhandledException>();
             private Queue<UnhandledException> _unhandledExceptions = new Queue<UnhandledException>();
             private SynchronizationContext _oldContext;
+            private bool _isApplicationQuitting = false;
 
             internal static void Initialize()
             {
@@ -102,31 +101,10 @@ namespace Proto.Promises
             // Users would have to go out of their way to find and destroy the PromiseBehaviour instance.
             private void OnDestroy()
             {
-                if (s_isApplicationQuitting)
-                {
-                    return;
-                }
-                if (s_instance == this)
+                if (!_isApplicationQuitting & s_instance == this)
                 {
                     UnityEngine.Debug.LogWarning("PromiseBehaviour destroyed! Removing PromiseSynchronizationContext from Promise.Config.ForegroundContext.");
-                    s_instance = null;
-                    if (Promise.Config.ForegroundContext == _syncContext)
-                    {
-                        Promise.Config.ForegroundContext = null;
-                    }
-                    if (Promise.Config.UncaughtRejectionHandler == HandleRejection)
-                    {
-                        Promise.Config.UncaughtRejectionHandler = null;
-                    }
-                    if (Promise.Manager.ThreadStaticSynchronizationContext == _syncContext)
-                    {
-                        Promise.Manager.ThreadStaticSynchronizationContext = null;
-                    }
-                    if (SynchronizationContext.Current == _syncContext)
-                    {
-                        SynchronizationContext.SetSynchronizationContext(_oldContext);
-                    }
-                    _syncContext.Execute(); // Clear out any pending callbacks.
+                    Reset();
                 }
             }
 
@@ -171,7 +149,35 @@ namespace Proto.Promises
 
             private void OnApplicationQuit()
             {
-                s_isApplicationQuitting = true;
+                _isApplicationQuitting = true;
+                if (Application.isEditor & s_instance == this)
+                {
+                    // AppDomain reload could be disabled in editor, so we need to explicitly reset static fields and destroy this to prevent a memory leak. See https://github.com/timcassell/ProtoPromise/issues/204
+                    Reset();
+                    Destroy(this);
+                }
+            }
+
+            private void Reset()
+            {
+                s_instance = null;
+                if (Promise.Config.ForegroundContext == _syncContext)
+                {
+                    Promise.Config.ForegroundContext = null;
+                }
+                if (Promise.Config.UncaughtRejectionHandler == HandleRejection)
+                {
+                    Promise.Config.UncaughtRejectionHandler = null;
+                }
+                if (Promise.Manager.ThreadStaticSynchronizationContext == _syncContext)
+                {
+                    Promise.Manager.ThreadStaticSynchronizationContext = null;
+                }
+                if (SynchronizationContext.Current == _syncContext)
+                {
+                    SynchronizationContext.SetSynchronizationContext(_oldContext);
+                }
+                _syncContext.Execute(); // Clear out any pending callbacks.
             }
         }
     }
