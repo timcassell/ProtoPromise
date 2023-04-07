@@ -126,6 +126,11 @@ namespace Proto.Promises
                 StartCoroutine(EndOfFrameRoutine());
             }
 
+            partial void ResetProcessors()
+            {
+                _updateProcessor.ResetProcessors();
+            }
+
             private IEnumerator UpdateRoutine()
             {
                 while (true)
@@ -158,16 +163,11 @@ namespace Proto.Promises
             }
         }
 
-        private interface IInstructionProcessor
-        {
-            void Process();
-        }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         // InstructionProcessor optimized for instructions that never need to keep waiting.
-        internal sealed class SingleInstructionProcessor : IInstructionProcessor
+        internal sealed class SingleInstructionProcessor
         {
             // We use 3 queues, 1 for the currently executing, another for the next update,
             // and a third for the following, because WaitOneFrame needs to be able to wait for 2 updates to not be completed later in the same frame.
@@ -222,7 +222,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            public void Process()
+            internal void Process()
             {
                 // Store the next in a local for iteration, and rotate queues.
                 var current = _nextQueue;
@@ -283,6 +283,21 @@ namespace Proto.Promises
                 {
                     _processors[i].Process();
                 }
+            }
+
+            internal void ResetProcessors()
+            {
+                // We reset the generic static fields through the interface.
+                for (int i = 0, max = _processors.Count; i < max; ++i)
+                {
+                    _processors[i].Reset();
+                }
+            }
+
+            private interface IInstructionProcessor
+            {
+                void Process();
+                void Reset();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -382,6 +397,12 @@ namespace Proto.Promises
                         _nextQueue[_nextCount] = instruction;
                         ++_nextCount;
                     }
+                }
+
+                void IInstructionProcessor.Reset()
+                {
+                    // We reset the static field.
+                    s_instance = null;
                 }
             }
         }

@@ -1,4 +1,5 @@
 ﻿#pragma warning disable IDE0051 // Remove unused private members
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 using Proto.Promises.Threading;
 using System.Collections.Generic;
@@ -103,8 +104,8 @@ namespace Proto.Promises
             {
                 if (!_isApplicationQuitting & s_instance == this)
                 {
-                    UnityEngine.Debug.LogWarning("PromiseBehaviour destroyed! Removing PromiseSynchronizationContext from Promise.Config.ForegroundContext.");
-                    Reset();
+                    UnityEngine.Debug.LogError("PromiseBehaviour destroyed! Removing PromiseSynchronizationContext from Promise.Config.ForegroundContext. PromiseYielder functions will stop working.");
+                    ResetConfig();
                 }
             }
 
@@ -152,13 +153,17 @@ namespace Proto.Promises
                 _isApplicationQuitting = true;
                 if (Application.isEditor & s_instance == this)
                 {
-                    // AppDomain reload could be disabled in editor, so we need to explicitly reset static fields and destroy this to prevent a memory leak. See https://github.com/timcassell/ProtoPromise/issues/204
-                    Reset();
+                    // AppDomain reload could be disabled in editor, so we need to explicitly reset static fields. See https://github.com/timcassell/ProtoPromise/issues/204
+                    ResetProcessors();
+                    ResetConfig();
+                    // Destroy this to prevent a memory leak.
                     Destroy(this);
                 }
             }
 
-            private void Reset()
+            partial void ResetProcessors();
+
+            private void ResetConfig()
             {
                 s_instance = null;
                 if (Promise.Config.ForegroundContext == _syncContext)
