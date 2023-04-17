@@ -73,6 +73,7 @@ namespace ProtoPromiseTests
     {
         public const SynchronizationType backgroundType = (SynchronizationType) 2;
 
+        private static Thread _foregroundContextThread;
         public static PromiseSynchronizationContext _foregroundContext;
         public static BackgroundSynchronizationContext _backgroundContext;
         private static readonly List<Exception> _uncaughtExceptions = new List<Exception>();
@@ -90,7 +91,8 @@ namespace ProtoPromiseTests
 #endif
 
                 // Set the foreground context to execute foreground promise callbacks.
-                Promise.Config.ForegroundContext = _foregroundContext = new PromiseSynchronizationContext();
+                _foregroundContextThread = Thread.CurrentThread;
+                Promise.Config.ForegroundContext = _foregroundContext = new PromiseSynchronizationContext(_foregroundContextThread);
                 // Used instead of ThreadPool, because ThreadPool has issues in old runtime, causing tests to fail.
                 // This also allows us to wait for all background threads to complete for validation purposes.
                 Promise.Config.BackgroundContext = _backgroundContext = new BackgroundSynchronizationContext();
@@ -176,7 +178,11 @@ namespace ProtoPromiseTests
         {
             _backgroundContext.WaitForAllThreadsToComplete();
 
-            ExecuteForegroundCallbacks();
+            // Some tests execute in a separate thread (like tests with a [Timeout]), so we can't execute the context on that thread.
+            if (_foregroundContextThread == Thread.CurrentThread)
+            {
+                ExecuteForegroundCallbacks();
+            }
             GcCollectAndWaitForFinalizers();
         }
 
