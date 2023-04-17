@@ -125,6 +125,7 @@ namespace ProtoPromiseTests
             }
 
             SynchronizationContext.SetSynchronizationContext(_foregroundContext);
+            Promise.Manager.ThreadStaticSynchronizationContext = _foregroundContext;
             TestContext.Progress.WriteLine("Begin time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
         }
 
