@@ -39,7 +39,7 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred = Promise.NewDeferred();
 
-            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
+            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground, forceAsync: true);
             deferred.Promise
                 .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
@@ -60,7 +60,7 @@ namespace ProtoPromiseTests.APIs
             var cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred(cancelationSource.Token);
 
-            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
+            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground, forceAsync: true);
             deferred.Promise
                 .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
@@ -81,7 +81,7 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred = Promise.NewDeferred<int>();
 
-            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
+            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground, forceAsync: true);
             deferred.Promise
                 .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
@@ -102,7 +102,7 @@ namespace ProtoPromiseTests.APIs
             var cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
 
-            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground);
+            ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground, forceAsync: true);
             deferred.Promise
                 .SubscribeProgressAndAssert(progressHelper, 0f)
                 .Forget();
@@ -1753,7 +1753,8 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void ProgressChainSubscribedWillBeInvokedInOrder_Resolved_void(
             // This test is unverifiable when progress is executed on background threads.
-            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption,
+            [Values] bool forceAsync)
         {
             Promise promise = Promise.Resolved();
             int[] results = new int[MultiProgressCount];
@@ -1762,7 +1763,7 @@ namespace ProtoPromiseTests.APIs
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 int num = i;
-                promise = promise.Progress(v => { results[index++] = num; }, synchronizationOption);
+                promise = promise.Progress(v => { results[index++] = num; }, synchronizationOption, forceAsync: forceAsync);
             }
 
             promise.Forget();
@@ -1773,7 +1774,8 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void ProgressChainSubscribedWillBeInvokedInOrder_Resolved_T(
             // This test is unverifiable when progress is executed on background threads.
-            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption)
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption synchronizationOption,
+            [Values] bool forceAsync)
         {
             Promise<int> promise = Promise.Resolved(1);
             int[] results = new int[MultiProgressCount];
@@ -1782,7 +1784,7 @@ namespace ProtoPromiseTests.APIs
             for (int i = 0; i < MultiProgressCount; ++i)
             {
                 int num = i;
-                promise = promise.Progress(v => { results[index++] = num; }, synchronizationOption);
+                promise = promise.Progress(v => { results[index++] = num; }, synchronizationOption, forceAsync: forceAsync);
             }
 
             promise.Forget();

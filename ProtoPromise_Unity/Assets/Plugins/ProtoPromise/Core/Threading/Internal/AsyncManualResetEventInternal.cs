@@ -114,6 +114,11 @@ namespace Proto.Promises
                 AsyncResetEventPromise promise;
                 lock (this)
                 {
+                    // Check the flag again inside the lock to resolve race condition with Set().
+                    if (_isSet)
+                    {
+                        return Promise.Resolved();
+                    }
                     promise = AsyncResetEventPromise.GetOrCreate(this, CaptureContext());
                     _waiters.Enqueue(promise);
                 }
@@ -132,6 +137,11 @@ namespace Proto.Promises
                 AsyncResetEventPromise promise;
                 lock (this)
                 {
+                    // Check the flag again inside the lock to resolve race condition with Set().
+                    if (_isSet)
+                    {
+                        return Promise.Resolved(true);
+                    }
                     promise = AsyncResetEventPromise.GetOrCreate(this, CaptureContext());
                     _waiters.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
@@ -167,6 +177,11 @@ namespace Proto.Promises
                 AsyncResetEventPromise promise;
                 lock (this)
                 {
+                    // Check the flag again inside the lock to resolve race condition with Set().
+                    if (_isSet)
+                    {
+                        return;
+                    }
                     promise = AsyncResetEventPromise.GetOrCreate(this, null);
                     _waiters.Enqueue(promise);
                 }
@@ -198,6 +213,11 @@ namespace Proto.Promises
                 AsyncResetEventPromise promise;
                 lock (this)
                 {
+                    // Check the flag again inside the lock to resolve race condition with Set().
+                    if (_isSet)
+                    {
+                        return true;
+                    }
                     promise = AsyncResetEventPromise.GetOrCreate(this, null);
                     _waiters.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
