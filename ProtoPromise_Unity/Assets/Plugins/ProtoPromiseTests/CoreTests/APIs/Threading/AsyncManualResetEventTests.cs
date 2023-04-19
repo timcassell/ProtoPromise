@@ -7,11 +7,11 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
-using ProtoPromiseTests.Threading;
+using ProtoPromiseTests.Concurrency;
 using System;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromiseTests.APIs.Threading
 {
     public class AsyncManualResetEventTests
     {

@@ -1,10 +1,9 @@
 ﻿using NUnit.Framework;
-using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
 using System.Threading;
 
-namespace ProtoPromiseTests.Threading
+namespace ProtoPromiseTests.Concurrency.Threading
 {
 #if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public class AsyncLockConcurrencyTests
