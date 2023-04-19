@@ -11,7 +11,7 @@ using Proto.Promises;
 using System;
 using System.Threading;
 
-namespace ProtoPromiseTests.Threading
+namespace ProtoPromiseTests.Concurrency
 {
     public class AwaitConcurrencyTests
     {

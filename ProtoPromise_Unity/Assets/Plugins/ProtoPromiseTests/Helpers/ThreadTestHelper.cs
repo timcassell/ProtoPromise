@@ -13,7 +13,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 // These help test all method for threaded concurrency.
-namespace ProtoPromiseTests.Threading
+namespace ProtoPromiseTests.Concurrency
 {
     public class MaybeValuesAttribute : ValuesAttribute
     {

@@ -10,7 +10,7 @@ using Proto.Promises.Threading;
 using System;
 using System.Threading;
 
-namespace ProtoPromiseTests.Threading
+namespace ProtoPromiseTests.Concurrency.Threading
 {
     public class AsyncManualResetEventConcurrencyTests
     {

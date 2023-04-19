@@ -12,7 +12,7 @@ using System;
 using System.Linq;
 using System.Threading;
 
-namespace ProtoPromiseTests.Threading
+namespace ProtoPromiseTests.Concurrency
 {
     public class ApiWithCancelationTokenConcurrencyTests
     {

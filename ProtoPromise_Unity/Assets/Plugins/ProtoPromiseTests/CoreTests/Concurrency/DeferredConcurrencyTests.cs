@@ -10,7 +10,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using System.Threading;
 
-namespace ProtoPromiseTests.Threading
+namespace ProtoPromiseTests.Concurrency
 {
     public class DeferredConcurrencyTests
     {

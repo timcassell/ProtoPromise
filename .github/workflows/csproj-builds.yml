@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  dotnet-core-tests:
+  csproj-build:
     runs-on: ubuntu-latest
     
     strategy:

@@ -7,7 +7,7 @@
 using Proto.Promises;
 using NUnit.Framework;
 using System.Threading;
-using ProtoPromiseTests.Threading;
+using ProtoPromiseTests.Concurrency;
 using System.Collections.Generic;
 using System;
 
