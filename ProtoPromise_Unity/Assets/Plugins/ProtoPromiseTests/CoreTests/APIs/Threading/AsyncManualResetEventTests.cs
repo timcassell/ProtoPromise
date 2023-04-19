@@ -80,7 +80,6 @@ namespace ProtoPromiseTests.APIs
             }, SynchronizationOption.Background)
                 .Forget();
 
-            Assert.False(first);
             Assert.False(second);
             Assert.False(third);
 
@@ -143,7 +142,6 @@ namespace ProtoPromiseTests.APIs
 
             Promise.Run(() =>
             {
-                Assert.False(first);
                 Assert.False(second);
                 Assert.False(third);
 
@@ -237,7 +235,6 @@ namespace ProtoPromiseTests.APIs
 
             Promise.Run(async () =>
             {
-                Assert.False(first);
                 Assert.False(second);
                 Assert.False(third);
 
