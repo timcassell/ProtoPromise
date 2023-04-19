@@ -349,20 +349,12 @@ namespace Proto.Promises
 #endif
             internal partial struct ProgressListenerFields
             {
+                private static readonly Stack<Dictionary<PromiseRefBase, HandleablePromiseBase>> s_unregisteredDictPool = new Stack<Dictionary<PromiseRefBase, HandleablePromiseBase>>();
+
                 // Detached count is negative because we use it to decrement the listener's retain counter via Interlocked.Add.
                 internal bool UnregisterHandlerAndGetShouldComplete(PromiseRefBase handler, HandleablePromiseBase progressListener, out HandleablePromiseBase target, out int negativeDetachedCount)
                 {
                     // The lock is already held when this is called.
-
-                    if (_unregisteredPromises != null && _unregisteredPromises.Remove(handler, out target))
-                    {
-                        negativeDetachedCount = -1;
-                        return false;
-                    }
-
-                    // We only null the current reporter if the handler was not already detached.
-                    // This stops any further progress reports from that reporter.
-                    _currentReporter = null;
 
                     // The progress listener is attached as the tail element in the linked-list,
                     // but we don't remove it since we only check if it's linked from the handler,
@@ -372,6 +364,9 @@ namespace Proto.Promises
                     if (_registeredPromisesHead == handler)
                     {
                         // Common case, the handler was the first element.
+                        
+                        // Null the current reporter to stop any further progress reports from that reporter.
+                        _currentReporter = null;
                         _registeredPromisesHead = _registeredPromisesHead.UnsafeAs<PromiseRefBase>()._rejectContainerOrPreviousOrLink.UnsafeAs<HandleablePromiseBase>();
                         target = _registeredPromisesHead;
                         negativeDetachedCount = -1;
@@ -386,6 +381,17 @@ namespace Proto.Promises
                         negativeDetachedCount = 0;
                         return true;
                     }
+
+                    // Check for the rare case of the handler was already unregistered on another thread.
+                    if (_unregisteredPromises != null && TryRemoveHandlerFromUnregisteredDict(handler, out target))
+                    {
+                        negativeDetachedCount = -1;
+                        return false;
+                    }
+
+                    // We only null the current reporter if the handler was not already detached.
+                    // This stops any further progress reports from that reporter.
+                    _currentReporter = null;
 
                     // Uncommon case, the handler was canceled from a CancelationToken and broke the promise chain,
                     // so we iterate over the chain to unregister the handlers and try to restore the old waiters.
@@ -429,12 +435,35 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(MethodImplOptions.NoInlining)]
+                private bool TryRemoveHandlerFromUnregisteredDict(PromiseRefBase handler, out HandleablePromiseBase target)
+                {
+                    bool removed = _unregisteredPromises.Remove(handler, out target);
+                    if (_unregisteredPromises.Count == 0)
+                    {
+                        // We remove the dictionary if there are no more elements in it to not unnecessarily slow down future operations.
+                        var dict = _unregisteredPromises;
+                        _unregisteredPromises = null;
+                        lock (s_unregisteredDictPool)
+                        {
+                            s_unregisteredDictPool.Push(dict);
+                        }
+                    }
+                    return removed;
+                }
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
                 private void AddDetachedHandler(PromiseRefBase handler, HandleablePromiseBase target)
                 {
                     // We lazy initialize the dictionary since this is a rare occurrence.
                     if (_unregisteredPromises == null)
                     {
-                        _unregisteredPromises = new Dictionary<PromiseRefBase, HandleablePromiseBase>();
+                        // Try to get from the pool, otherwise create.
+                        Dictionary<PromiseRefBase, HandleablePromiseBase> dict;
+                        lock (s_unregisteredDictPool)
+                        {
+                            dict = s_unregisteredDictPool.Count > 0 ? s_unregisteredDictPool.Pop() : null;
+                        }
+                        _unregisteredPromises = dict ?? new Dictionary<PromiseRefBase, HandleablePromiseBase>();
                     }
                     _unregisteredPromises.Add(handler, target);
                 }
