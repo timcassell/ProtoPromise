@@ -20,16 +20,18 @@ namespace ProtoPromiseTests
         private readonly object _locker = new object();
         private readonly ProgressType _progressType;
         private readonly SynchronizationType _synchronizationType;
+        private readonly bool _forceAsync;
         private readonly Action<float> _onProgress;
         volatile private bool _wasInvoked;
         volatile private float _currentProgress = float.NaN;
 
-        public ProgressHelper(ProgressType progressType, SynchronizationType synchronizationType, Action<float> onProgress = null, float delta = float.NaN)
+        public ProgressHelper(ProgressType progressType, SynchronizationType synchronizationType, Action<float> onProgress = null, float delta = float.NaN, bool forceAsync = false)
         {
             _progressType = progressType;
             _synchronizationType = synchronizationType;
             _onProgress = onProgress;
             _delta = float.IsNaN(delta) ? TestHelper.progressEpsilon : delta;
+            _forceAsync = forceAsync;
         }
 
         public void MaybeEnterLock()
@@ -391,11 +393,11 @@ namespace ProtoPromiseTests
                 switch (_progressType)
                 {
                     case ProgressType.Callback:
-                        return promise.Progress(Report, TestHelper._foregroundContext, cancelationToken);
+                        return promise.Progress(Report, TestHelper._foregroundContext, cancelationToken, _forceAsync);
                     case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), TestHelper._foregroundContext, cancelationToken);
+                        return promise.Progress(this, (helper, v) => helper.Report(v), TestHelper._foregroundContext, cancelationToken, _forceAsync);
                     default:
-                        return promise.Progress(this, TestHelper._foregroundContext, cancelationToken);
+                        return promise.Progress(this, TestHelper._foregroundContext, cancelationToken, _forceAsync);
                 }
             }
             else
@@ -403,11 +405,11 @@ namespace ProtoPromiseTests
                 switch (_progressType)
                 {
                     case ProgressType.Callback:
-                        return promise.Progress(Report, (SynchronizationOption) _synchronizationType, cancelationToken);
+                        return promise.Progress(Report, (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
                     case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), (SynchronizationOption) _synchronizationType, cancelationToken);
+                        return promise.Progress(this, (helper, v) => helper.Report(v), (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
                     default:
-                        return promise.Progress(this, (SynchronizationOption) _synchronizationType, cancelationToken);
+                        return promise.Progress(this, (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
                 }
             }
         }
@@ -419,11 +421,11 @@ namespace ProtoPromiseTests
                 switch (_progressType)
                 {
                     case ProgressType.Callback:
-                        return promise.Progress(Report, TestHelper._foregroundContext, cancelationToken);
+                        return promise.Progress(Report, TestHelper._foregroundContext, cancelationToken, _forceAsync);
                     case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), TestHelper._foregroundContext, cancelationToken);
+                        return promise.Progress(this, (helper, v) => helper.Report(v), TestHelper._foregroundContext, cancelationToken, _forceAsync);
                     default:
-                        return promise.Progress(this, TestHelper._foregroundContext, cancelationToken);
+                        return promise.Progress(this, TestHelper._foregroundContext, cancelationToken, _forceAsync);
                 }
             }
             else
@@ -431,11 +433,11 @@ namespace ProtoPromiseTests
                 switch (_progressType)
                 {
                     case ProgressType.Callback:
-                        return promise.Progress(Report, (SynchronizationOption) _synchronizationType, cancelationToken);
+                        return promise.Progress(Report, (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
                     case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), (SynchronizationOption) _synchronizationType, cancelationToken);
+                        return promise.Progress(this, (helper, v) => helper.Report(v), (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
                     default:
-                        return promise.Progress(this, (SynchronizationOption) _synchronizationType, cancelationToken);
+                        return promise.Progress(this, (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
                 }
             }
         }

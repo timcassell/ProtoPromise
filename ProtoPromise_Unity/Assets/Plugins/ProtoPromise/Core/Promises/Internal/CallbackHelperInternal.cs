@@ -1359,6 +1359,11 @@ namespace Proto.Promises
                                 {
                                     _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
                                 }
+                                if (!forceAsync & synchronizationContext == ts_currentContext)
+                                {
+                                    InvokeAndCatchProgress(progress, 1, null);
+                                    return CreateResolved(_this.Depth);
+                                }
                                 promise = PromiseProgress<VoidResult, TProgress>.GetOrCreateFromResolved(progress, new VoidResult(), _this.Depth, synchronizationContext, forceAsync, cancelationToken);
                                 ScheduleForHandle(promise, synchronizationContext);
                                 return new Promise(promise, promise.Id, _this.Depth);
@@ -1430,6 +1435,11 @@ namespace Proto.Promises
                             if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                             {
                                 TResult result = GetResultFromResolved(_this);
+                                if (!forceAsync & synchronizationContext == ts_currentContext)
+                                {
+                                    InvokeAndCatchProgress(progress, 1, null);
+                                    return CreateResolved(result, _this.Depth);
+                                }
                                 promise = PromiseProgress<TResult, TProgress>.GetOrCreateFromResolved(progress, result, _this.Depth, synchronizationContext, forceAsync, cancelationToken);
                                 ScheduleForHandle(promise, synchronizationContext);
                                 return new Promise<TResult>(promise, promise.Id, _this.Depth);

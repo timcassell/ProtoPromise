@@ -41,55 +41,14 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract class AsyncLockPromiseBase<TResult> : PromiseSingleAwait<TResult>, IAsyncLockPromise
+            internal abstract class AsyncLockPromiseBase<TResult> : AsyncSynchronizationPromiseBase<TResult>, IAsyncLockPromise
             {
                 IAsyncLockPromise ILinked<IAsyncLockPromise>.Next { get; set; }
 
-                // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
-                protected SynchronizationContext _callerContext;
-                protected CancelationRegistration _cancelationRegistration;
-                // We have to store the state in a separate field until the next awaiter is ready to be invoked on the proper context.
-                private Promise.State _tempState;
-
-                new protected void Dispose()
-                {
-                    base.Dispose();
-                    _callerContext = null;
-                    _cancelationRegistration = default;
-                }
-
-                protected void Continue(Promise.State state)
-                {
-                    if (_callerContext == null)
-                    {
-                        // It was a synchronous lock, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
-                        HandleNextInternal(null, state);
-                        return;
-                    }
-                    // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
-                    _tempState = state;
-                    ScheduleForHandle(this, _callerContext);
-                }
-
-                internal override sealed void HandleFromContext()
-                {
-                    HandleNextInternal(null, _tempState);
-                }
-
                 public abstract void Resolve(ref long currentKey);
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
-
 #if PROMISE_DEBUG
-                void IAsyncLockPromise.Reject(IRejectContainer rejectContainer)
-                {
-                    Promise.Run(() =>
-                    {
-                        _cancelationRegistration.Dispose();
-                        HandleNextInternal(rejectContainer, Promise.State.Rejected);
-                    }, _callerContext, forceAsync: true)
-                        .Forget();
-                }
+                void IAsyncLockPromise.Reject(IRejectContainer rejectContainer) { Reject(rejectContainer); }
 #endif
             }
 
