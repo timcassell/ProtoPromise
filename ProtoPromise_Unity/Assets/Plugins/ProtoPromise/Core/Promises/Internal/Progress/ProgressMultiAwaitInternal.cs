@@ -95,8 +95,9 @@ namespace Proto.Promises
 
                 internal override bool TryRestoreWaiter(HandleablePromiseBase waiter, HandleablePromiseBase expected)
                 {
-                    if (_owner.TryRestoreWaiter(waiter, expected))
+                    if (_owner.TryRestoreWaiter(waiter, this))
                     {
+                        State = Promise.State.Resolved;
                         MaybeDispose();
                         return true;
                     }
@@ -465,15 +466,11 @@ namespace Proto.Promises
                             if (_nextBranches[i] == expected)
                             {
                                 _nextBranches[i] = waiter;
-                                goto DisposePassthrough;
+                                return true;
                             }
                         }
                     }
                     return false;
-
-                DisposePassthrough:
-                    expected.UnsafeAs<IndividualPromisePassThrough<TResult>>().MaybeDispose();
-                    return true;
                 }
             } // PromiseMultiAwait
         } // PromiseRefBase

@@ -356,16 +356,6 @@ namespace Proto.Promises
                 {
                     // The lock is already held when this is called.
 
-                    if (_unregisteredPromises != null && TryRemoveHandlerFromUnregisteredDict(handler, out target))
-                    {
-                        negativeDetachedCount = -1;
-                        return false;
-                    }
-
-                    // We only null the current reporter if the handler was not already detached.
-                    // This stops any further progress reports from that reporter.
-                    _currentReporter = null;
-
                     // The progress listener is attached as the tail element in the linked-list,
                     // but we don't remove it since we only check if it's linked from the handler,
                     // and we use it to stop iterating while we're detaching handlers (this is cheaper than adding an extra branch to remove it).
@@ -374,6 +364,9 @@ namespace Proto.Promises
                     if (_registeredPromisesHead == handler)
                     {
                         // Common case, the handler was the first element.
+                        
+                        // Null the current reporter to stop any further progress reports from that reporter.
+                        _currentReporter = null;
                         _registeredPromisesHead = _registeredPromisesHead.UnsafeAs<PromiseRefBase>()._rejectContainerOrPreviousOrLink.UnsafeAs<HandleablePromiseBase>();
                         target = _registeredPromisesHead;
                         negativeDetachedCount = -1;
@@ -388,6 +381,17 @@ namespace Proto.Promises
                         negativeDetachedCount = 0;
                         return true;
                     }
+
+                    // Check for the rare case of the handler was already unregistered on another thread.
+                    if (_unregisteredPromises != null && TryRemoveHandlerFromUnregisteredDict(handler, out target))
+                    {
+                        negativeDetachedCount = -1;
+                        return false;
+                    }
+
+                    // We only null the current reporter if the handler was not already detached.
+                    // This stops any further progress reports from that reporter.
+                    _currentReporter = null;
 
                     // Uncommon case, the handler was canceled from a CancelationToken and broke the promise chain,
                     // so we iterate over the chain to unregister the handlers and try to restore the old waiters.

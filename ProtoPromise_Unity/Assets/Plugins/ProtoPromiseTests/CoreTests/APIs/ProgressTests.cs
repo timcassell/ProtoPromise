@@ -617,6 +617,58 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenTokenIsCanceled_ChainIsBrokenAfterPreserved_void(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred();
+            var cancelationSource = CancelationSource.New();
+            var progressHelper = new ProgressHelper(progressType, synchronizationType);
+
+            var promise = deferred.Promise.Preserve();
+
+            promise
+                .ThenDuplicate()
+                .WaitAsync(cancelationSource.Token)
+                .ThenDuplicate()
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 0.5f, false);
+            progressHelper.ResolveAndAssertResult(deferred, 0.5f, false);
+
+            promise.Forget();
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void OnProgressWillNoLongerBeInvokedWhenTokenIsCanceled_ChainIsBrokenAfterPreserved_T(
+            [Values] ProgressType progressType,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var cancelationSource = CancelationSource.New();
+            var progressHelper = new ProgressHelper(progressType, synchronizationType);
+
+            var promise = deferred.Promise.Preserve();
+
+            promise
+                .ThenDuplicate()
+                .WaitAsync(cancelationSource.Token)
+                .ThenDuplicate()
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
+            progressHelper.CancelAndAssertResult(cancelationSource, 0.5f, false);
+            progressHelper.ResolveAndAssertResult(deferred, 1, 0.5f, false);
+
+            promise.Forget();
+            cancelationSource.Dispose();
+        }
+
+        [Test]
         public void OnProgressWillNoLongerBeInvokedWhenTokenIsCanceled_void(
             [Values] ProgressType progressType,
             [Values] SynchronizationType synchronizationType)
