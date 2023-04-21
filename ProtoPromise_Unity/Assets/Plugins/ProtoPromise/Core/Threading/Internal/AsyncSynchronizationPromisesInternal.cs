@@ -79,7 +79,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class AsyncResetEventPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<VoidResult>, ICancelable, ILinked<AsyncResetEventPromise>
+        internal abstract class AsyncResetEventPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<bool>, ICancelable, ILinked<AsyncResetEventPromise>
         {
             AsyncResetEventPromise ILinked<AsyncResetEventPromise>.Next { get; set; }
 
@@ -92,6 +92,7 @@ namespace Proto.Promises
                 // We just dispose to wait for the callback to complete before we continue.
                 _cancelationRegistration.Dispose();
 
+                _result = true;
                 Continue(Promise.State.Resolved);
             }
 

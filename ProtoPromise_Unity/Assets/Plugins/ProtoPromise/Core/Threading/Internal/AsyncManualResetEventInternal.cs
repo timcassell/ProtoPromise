@@ -85,7 +85,8 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                Continue(Promise.State.Canceled);
+                _result = false;
+                Continue(Promise.State.Resolved);
             }
         }
 
@@ -171,12 +172,7 @@ namespace Proto.Promises
                     _waiters.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise(promise, promise.Id, 0)
-                    .ContinueWith(r =>
-                    {
-                        r.RethrowIfRejected();
-                        return r.State == Promise.State.Resolved;
-                    });
+                return new Promise<bool>(promise, promise.Id, 0);
             }
 
             internal void WaitSync()
@@ -247,13 +243,7 @@ namespace Proto.Promises
                     _waiters.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise(promise, promise.Id, 0)
-                    .ContinueWith(r =>
-                    {
-                        r.RethrowIfRejected();
-                        return r.State == Promise.State.Resolved;
-                    })
-                    .WaitForResult();
+                return new Promise<bool>(promise, promise.Id, 0).WaitForResult();
             }
 
             internal void Set()
