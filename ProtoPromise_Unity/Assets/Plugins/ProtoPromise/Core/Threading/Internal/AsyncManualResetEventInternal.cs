@@ -13,8 +13,10 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0019 // Use pattern matching
 #pragma warning disable IDE0090 // Use 'new(...)'
 
+using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -26,82 +28,106 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncResetEventPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<VoidResult>, ICancelable, ILinked<AsyncResetEventPromise>
+        internal sealed class AsyncManualResetEventPromise : AsyncResetEventPromise
         {
-            AsyncResetEventPromise ILinked<AsyncResetEventPromise>.Next { get; set; }
+#if PROMISE_DEBUG
+            // We use a weak reference in DEBUG mode so the MRE's finalizer can still run if it's dropped.
+            private readonly WeakReference _ownerReference = new WeakReference(null, false);
+#else
             private AsyncManualResetEventInternal _owner;
+#endif
 
             [MethodImpl(InlineOption)]
-            private static AsyncResetEventPromise GetOrCreate()
+            private static AsyncManualResetEventPromise GetOrCreate()
             {
-                var obj = ObjectPool.TryTakeOrInvalid<AsyncResetEventPromise>();
+                var obj = ObjectPool.TryTakeOrInvalid<AsyncManualResetEventPromise>();
                 return obj == InvalidAwaitSentinel.s_instance
-                    ? new AsyncResetEventPromise()
-                    : obj.UnsafeAs<AsyncResetEventPromise>();
+                    ? new AsyncManualResetEventPromise()
+                    : obj.UnsafeAs<AsyncManualResetEventPromise>();
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncResetEventPromise GetOrCreate(AsyncManualResetEventInternal owner, SynchronizationContext callerContext)
+            internal static AsyncManualResetEventPromise GetOrCreate(AsyncManualResetEventInternal owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset();
                 promise._callerContext = callerContext;
+#if PROMISE_DEBUG
+                promise._ownerReference.Target = owner;
+#else
                 promise._owner = owner;
+#endif
                 return promise;
             }
 
             internal override void MaybeDispose()
             {
                 Dispose();
+#if PROMISE_DEBUG
+                _ownerReference.Target = null;
+#else
                 _owner = null;
+#endif
                 ObjectPool.MaybeRepool(this);
             }
 
-            internal void Resolve()
+            public override void Cancel()
             {
                 ThrowIfInPool(this);
-
-                // We don't need to check if the unregister was successful or not.
-                // The fact that this was called means the cancelation was unable to unregister this from the lock.
-                // We just dispose to wait for the callback to complete before we continue.
-                _cancelationRegistration.Dispose();
-
-                Continue(Promise.State.Resolved);
-            }
-
-            internal void MaybeHookupCancelation(CancelationToken cancelationToken)
-            {
-                ThrowIfInPool(this);
-                cancelationToken.TryRegister(this, out _cancelationRegistration);
-            }
-
-            void ICancelable.Cancel()
-            {
-                ThrowIfInPool(this);
+#if PROMISE_DEBUG
+                var _owner = _ownerReference.Target as AsyncManualResetEventInternal;
+                if (_owner == null)
+                {
+                    return;
+                }
+#endif
                 if (!_owner.TryRemoveWaiter(this))
                 {
                     return;
                 }
-                Continue(Promise.State.Canceled);
+                _result = false;
+                Continue(Promise.State.Resolved);
             }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncManualResetEventInternal
+        internal sealed class AsyncManualResetEventInternal : ITraceable
         {
             // This must not be readonly.
             private ValueLinkedQueue<AsyncResetEventPromise> _waiters = new ValueLinkedQueue<AsyncResetEventPromise>();
             volatile internal bool _isSet;
 
-            internal AsyncManualResetEventInternal(bool set)
+            internal AsyncManualResetEventInternal(bool initialState)
             {
-                _isSet = set;
+                _isSet = initialState;
+                SetCreatedStacktrace(this, 2);
             }
 
-            // I'm unsure if there is a legitimate case for dropping a MRE without setting it, causing the waiters to never continue,
-            // so not adding a finalizer for validation.
+#if PROMISE_DEBUG
+            CausalityTrace ITraceable.Trace { get; set; }
+
+            ~AsyncManualResetEventInternal()
+            {
+                ValueLinkedStack<AsyncResetEventPromise> waiters;
+                lock (this)
+                {
+                    waiters = _waiters.MoveElementsToStack();
+                }
+                if (waiters.IsEmpty)
+                {
+                    return;
+                }
+
+                var rejectContainer = CreateRejectContainer(new Threading.AbandonedResetEventException("An AsyncManualResetEvent was collected with waiters still pending."), int.MinValue, null, this);
+                do
+                {
+                    waiters.Pop().Reject(rejectContainer);
+                } while (waiters.IsNotEmpty);
+                rejectContainer.ReportUnhandled();
+            }
+#endif // PROMISE_DEBUG
 
             internal Promise WaitAsync()
             {
@@ -111,7 +137,7 @@ namespace Proto.Promises
                     return Promise.Resolved();
                 }
 
-                AsyncResetEventPromise promise;
+                AsyncManualResetEventPromise promise;
                 lock (this)
                 {
                     // Check the flag again inside the lock to resolve race condition with Set().
@@ -119,7 +145,7 @@ namespace Proto.Promises
                     {
                         return Promise.Resolved();
                     }
-                    promise = AsyncResetEventPromise.GetOrCreate(this, CaptureContext());
+                    promise = AsyncManualResetEventPromise.GetOrCreate(this, CaptureContext());
                     _waiters.Enqueue(promise);
                 }
                 return new Promise(promise, promise.Id, 0);
@@ -134,7 +160,7 @@ namespace Proto.Promises
                     return Promise.Resolved(isSet);
                 }
 
-                AsyncResetEventPromise promise;
+                AsyncManualResetEventPromise promise;
                 lock (this)
                 {
                     // Check the flag again inside the lock to resolve race condition with Set().
@@ -142,16 +168,11 @@ namespace Proto.Promises
                     {
                         return Promise.Resolved(true);
                     }
-                    promise = AsyncResetEventPromise.GetOrCreate(this, CaptureContext());
+                    promise = AsyncManualResetEventPromise.GetOrCreate(this, CaptureContext());
                     _waiters.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise(promise, promise.Id, 0)
-                    .ContinueWith(r =>
-                    {
-                        r.RethrowIfRejected();
-                        return r.State == Promise.State.Resolved;
-                    });
+                return new Promise<bool>(promise, promise.Id, 0);
             }
 
             internal void WaitSync()
@@ -174,7 +195,7 @@ namespace Proto.Promises
                     return;
                 }
 
-                AsyncResetEventPromise promise;
+                AsyncManualResetEventPromise promise;
                 lock (this)
                 {
                     // Check the flag again inside the lock to resolve race condition with Set().
@@ -182,7 +203,7 @@ namespace Proto.Promises
                     {
                         return;
                     }
-                    promise = AsyncResetEventPromise.GetOrCreate(this, null);
+                    promise = AsyncManualResetEventPromise.GetOrCreate(this, null);
                     _waiters.Enqueue(promise);
                 }
                 new Promise(promise, promise.Id, 0).Wait();
@@ -210,7 +231,7 @@ namespace Proto.Promises
                     return isSet;
                 }
 
-                AsyncResetEventPromise promise;
+                AsyncManualResetEventPromise promise;
                 lock (this)
                 {
                     // Check the flag again inside the lock to resolve race condition with Set().
@@ -218,17 +239,11 @@ namespace Proto.Promises
                     {
                         return true;
                     }
-                    promise = AsyncResetEventPromise.GetOrCreate(this, null);
+                    promise = AsyncManualResetEventPromise.GetOrCreate(this, null);
                     _waiters.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise(promise, promise.Id, 0)
-                    .ContinueWith(r =>
-                    {
-                        r.RethrowIfRejected();
-                        return r.State == Promise.State.Resolved;
-                    })
-                    .WaitForResult();
+                return new Promise<bool>(promise, promise.Id, 0).WaitForResult();
             }
 
             internal void Set()
@@ -253,7 +268,7 @@ namespace Proto.Promises
                 _isSet = false;
             }
 
-            internal bool TryRemoveWaiter(AsyncResetEventPromise waiter)
+            internal bool TryRemoveWaiter(AsyncManualResetEventPromise waiter)
             {
                 lock (this)
                 {

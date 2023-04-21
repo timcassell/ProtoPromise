@@ -12,7 +12,7 @@ using System.Threading;
 
 namespace ProtoPromiseTests.APIs.Threading
 {
-    public class AsyncManualResetEventTests
+    public class AsyncAutoResetEventTests
     {
         [SetUp]
         public void Setup()
@@ -27,9 +27,9 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 
         [Test]
-        public void AsyncManualResetEvent_StateTrans([Values] bool init)
+        public void AsyncAutoResetEvent_StateTrans([Values] bool init)
         {
-            AsyncManualResetEvent ev = new AsyncManualResetEvent(init);
+            AsyncAutoResetEvent ev = new AsyncAutoResetEvent(init);
             Assert.AreEqual(init, ev.IsSet);
 
             if (!init)
@@ -48,58 +48,54 @@ namespace ProtoPromiseTests.APIs.Threading
             }
         }
 
+        [Test, Timeout(1000)]
+        public void AsyncAutoResetEvent_SetAndResetTest()
+        {
+            var e = new AsyncAutoResetEvent(true);
+            e.Reset();
+            Assert.False(e.Wait(CancelationToken.Canceled()));
+            Assert.False(e.Wait(CancelationToken.Canceled()));
+            e.Reset();
+            Assert.False(e.Wait(CancelationToken.Canceled()));
+            e.Set();
+            Assert.True(e.Wait(CancelationToken.Canceled()));
+            Assert.False(e.Wait(CancelationToken.Canceled()));
+            e.Set();
+            e.Set();
+            Assert.True(e.Wait(CancelationToken.Canceled()));
+        }
+
 #if !UNITY_WEBGL
         [Test]
-        // Uses 3 events to coordinate between two threads.
-        public void AsyncManualResetEvent_2ThreadCoordination()
+        public void AsyncAutoResetEvent_PingPong()
         {
-            AsyncManualResetEvent ev1 = new AsyncManualResetEvent(false);
-            AsyncManualResetEvent ev2 = new AsyncManualResetEvent(false);
-            AsyncManualResetEvent ev3 = new AsyncManualResetEvent(false);
-
-            bool first = false, second = false, third = false;
-
-            Promise.Run(() =>
-            {
-                Assert.False(first);
-                Assert.False(second);
-                Assert.False(third);
-
-                first = true;
-                ev1.Set();
-                // No asserts here, race condition with other thread until we wait.
-                ev2.Wait();
-                Assert.True(first);
-                Assert.True(second);
-                Assert.False(third);
-
-                third = true;
-                ev3.Set();
-                // No asserts here, other thread will assert after wait completes.
-            }, SynchronizationOption.Background)
-                .Forget();
-
-            Assert.False(second);
-            Assert.False(third);
-
-            ev1.Wait();
-            Assert.True(first);
-            Assert.False(second);
-            Assert.False(third);
-
-            second = true;
-            ev2.Set();
-            // No asserts here, race condition with other thread until we wait.
-            ev3.Wait();
-            Assert.True(first);
-            Assert.True(second);
-            Assert.True(third);
+            const int Iters = 10;
+            var are1 = new AsyncAutoResetEvent(true);
+            var are2 = new AsyncAutoResetEvent(false);
+            Promise.All(
+                Promise.Run(() =>
+                {
+                    for (int i = 0; i < Iters; i++)
+                    {
+                        are1.Wait();
+                        are2.Set();
+                    }
+                }, SynchronizationOption.Background, forceAsync: true),
+                Promise.Run(() =>
+                {
+                    for (int i = 0; i < Iters; i++)
+                    {
+                        are2.Wait();
+                        are1.Set();
+                    }
+                }, SynchronizationOption.Background, forceAsync: true))
+                .WaitWithTimeout(TimeSpan.FromSeconds(Iters));
         }
 
         [Test]
-        public void AsyncManualResetEvent_CancelAfterWait()
+        public void AsyncAutoResetEvent_CancelAfterWait()
         {
-            AsyncManualResetEvent mre = new AsyncManualResetEvent();
+            AsyncAutoResetEvent are = new AsyncAutoResetEvent();
             CancelationSource cs = CancelationSource.New();
             bool isAboutToWait = false;
 
@@ -112,28 +108,28 @@ namespace ProtoPromiseTests.APIs.Threading
                 .Forget();
 
             isAboutToWait = true;
-            Assert.False(mre.Wait(cs.Token));
+            Assert.False(are.Wait(cs.Token));
 
             cs.Dispose();
         }
 #endif
 
         [Test]
-        public void AsyncManualResetEvent_CancelBeforeWait()
+        public void AsyncAutoResetEvent_CancelBeforeWait()
         {
-            AsyncManualResetEvent mre = new AsyncManualResetEvent();
+            AsyncAutoResetEvent are = new AsyncAutoResetEvent();
             CancelationSource cs = CancelationSource.New();
             cs.Cancel();
 
-            Assert.False(mre.Wait(cs.Token));
+            Assert.False(are.Wait(cs.Token));
 
             cs.Dispose();
         }
 
         [Test]
-        public void AsyncManualResetEvent_CancelAfterSetAndBeforeWait()
+        public void AsyncAutoResetEvent_CancelAfterSetAndBeforeWait()
         {
-            AsyncManualResetEvent are = new AsyncManualResetEvent();
+            AsyncAutoResetEvent are = new AsyncAutoResetEvent();
             are.Set();
             CancelationSource cs = CancelationSource.New();
             cs.Cancel();
@@ -144,11 +140,11 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 
         [Test]
-        public void AsyncManualResetEvent_AsyncCoordination_Then()
+        public void AsyncAutoResetEvent_AsyncCoordination_Then()
         {
-            AsyncManualResetEvent ev1 = new AsyncManualResetEvent(false);
-            AsyncManualResetEvent ev2 = new AsyncManualResetEvent(false);
-            AsyncManualResetEvent ev3 = new AsyncManualResetEvent(false);
+            AsyncAutoResetEvent ev1 = new AsyncAutoResetEvent(false);
+            AsyncAutoResetEvent ev2 = new AsyncAutoResetEvent(false);
+            AsyncAutoResetEvent ev3 = new AsyncAutoResetEvent(false);
 
             bool first = false, second = false, third = false;
 
@@ -209,12 +205,12 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 
         [Test]
-        public void AsyncManualResetEvent_CancelAfterWaitAsync()
+        public void AsyncAutoResetEvent_CancelAfterWaitAsync()
         {
-            AsyncManualResetEvent mre = new AsyncManualResetEvent();
+            AsyncAutoResetEvent are = new AsyncAutoResetEvent();
             CancelationSource cs = CancelationSource.New();
 
-            var promise = mre.WaitAsync(cs.Token);
+            var promise = are.WaitAsync(cs.Token);
 
             cs.Cancel();
 
@@ -224,21 +220,21 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 
         [Test]
-        public void AsyncManualResetEvent_CancelBeforeWaitAsync()
+        public void AsyncAutoResetEvent_CancelBeforeWaitAsync()
         {
-            AsyncManualResetEvent mre = new AsyncManualResetEvent();
+            AsyncAutoResetEvent are = new AsyncAutoResetEvent();
             CancelationSource cs = CancelationSource.New();
             cs.Cancel();
 
-            Assert.False(mre.WaitAsync(cs.Token).WaitWithTimeout(TimeSpan.FromSeconds(1)));
+            Assert.False(are.WaitAsync(cs.Token).WaitWithTimeout(TimeSpan.FromSeconds(1)));
 
             cs.Dispose();
         }
 
         [Test]
-        public void AsyncManualResetEvent_CancelAfterSetAndBeforeWaitAsync()
+        public void AsyncAutoResetEvent_CancelAfterSetAndBeforeWaitAsync()
         {
-            AsyncManualResetEvent are = new AsyncManualResetEvent();
+            AsyncAutoResetEvent are = new AsyncAutoResetEvent();
             are.Set();
             CancelationSource cs = CancelationSource.New();
             cs.Cancel();
@@ -250,11 +246,11 @@ namespace ProtoPromiseTests.APIs.Threading
 
 #if CSHARP_7_3_OR_NEWER
         [Test]
-        public void AsyncManualResetEvent_AsyncCoordination_Async()
+        public void AsyncAutoResetEvent_AsyncCoordination_Async()
         {
-            AsyncManualResetEvent ev1 = new AsyncManualResetEvent(false);
-            AsyncManualResetEvent ev2 = new AsyncManualResetEvent(false);
-            AsyncManualResetEvent ev3 = new AsyncManualResetEvent(false);
+            AsyncAutoResetEvent ev1 = new AsyncAutoResetEvent(false);
+            AsyncAutoResetEvent ev2 = new AsyncAutoResetEvent(false);
+            AsyncAutoResetEvent ev3 = new AsyncAutoResetEvent(false);
 
             bool first = false, second = false, third = false;
 
@@ -307,14 +303,14 @@ namespace ProtoPromiseTests.APIs.Threading
 #endif // CSHARP_7_3_OR_NEWER
 
         [Test]
-        public void AsyncManualResetEvent_WaitAsync_AfterSet_IsCompleted()
+        public void AsyncAutoResetEvent_WaitAsync_AfterSet_IsCompleted()
         {
-            var mre = new AsyncManualResetEvent();
+            var are = new AsyncAutoResetEvent();
 
-            mre.Set();
+            are.Set();
 
             bool isComplete = false;
-            mre.WaitAsync()
+            are.WaitAsync()
                 .Then(() => isComplete = true)
                 .Forget();
 
@@ -322,21 +318,21 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 
         [Test, Timeout(1000)]
-        public void AsyncManualResetEvent_Wait_AfterSet_IsCompleted()
+        public void AsyncAutoResetEvent_Wait_AfterSet_IsCompleted()
         {
-            var mre = new AsyncManualResetEvent();
+            var are = new AsyncAutoResetEvent();
 
-            mre.Set();
-            mre.Wait();
+            are.Set();
+            are.Wait();
         }
 
         [Test]
-        public void AsyncManualResetEvent_WaitAsync_Set_IsCompleted()
+        public void AsyncAutoResetEvent_WaitAsync_Set_IsCompleted()
         {
-            var mre = new AsyncManualResetEvent(true);
+            var are = new AsyncAutoResetEvent(true);
 
             bool isComplete = false;
-            mre.WaitAsync()
+            are.WaitAsync()
                 .Then(() => isComplete = true)
                 .Forget();
 
@@ -344,68 +340,59 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 
         [Test, Timeout(1000)]
-        public void AsyncManualResetEvent_Wait_Set_IsCompleted()
+        public void AsyncAutoResetEvent_Wait_Set_IsCompleted()
         {
-            var mre = new AsyncManualResetEvent(true);
+            var are = new AsyncAutoResetEvent(true);
 
-            mre.Wait();
+            are.Wait();
         }
 
         [Test]
-        public void AsyncManualResetEvent_MultipleWaitAsync_AfterSet_IsCompleted()
+        public void AsyncAutoResetEvent_MultipleWaitAsync_AfterSet_OnlyOneIsCompleted()
         {
-            var mre = new AsyncManualResetEvent();
+            var are = new AsyncAutoResetEvent();
 
-            mre.Set();
+            are.Set();
 
             bool isComplete = false;
-            mre.WaitAsync()
+            are.WaitAsync()
                 .Then(() => isComplete = true)
                 .Forget();
             Assert.True(isComplete);
 
             isComplete = false;
-            mre.WaitAsync()
+            are.WaitAsync()
                 .Then(() => isComplete = true)
                 .Forget();
+            Assert.False(isComplete);
+            Assert.False(are.IsSet);
+
+            are.Set();
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.True(isComplete);
         }
 
-        [Test, Timeout(1000)]
-        public void AsyncManualResetEvent_MultipleWait_AfterSet_IsCompleted()
-        {
-            var mre = new AsyncManualResetEvent();
-
-            mre.Set();
-            mre.Wait();
-            mre.Wait();
-        }
-
         [Test]
-        public void AsyncManualResetEvent_MultipleWaitAsync_Set_IsCompleted()
+        public void AsyncAutoResetEvent_MultipleWaitAsync_Set_OnlyOneIsCompleted()
         {
-            var mre = new AsyncManualResetEvent(true);
+            var are = new AsyncAutoResetEvent(true);
 
             bool isComplete = false;
-            mre.WaitAsync()
+            are.WaitAsync()
                 .Then(() => isComplete = true)
                 .Forget();
             Assert.True(isComplete);
 
             isComplete = false;
-            mre.WaitAsync()
+            are.WaitAsync()
                 .Then(() => isComplete = true)
                 .Forget();
+            Assert.False(isComplete);
+            Assert.False(are.IsSet);
+
+            are.Set();
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.True(isComplete);
-        }
-
-        [Test, Timeout(1000)]
-        public void AsyncManualResetEvent_MultipleWait_Set_IsCompleted()
-        {
-            var mre = new AsyncManualResetEvent(true);
-
-            mre.Wait();
-            mre.Wait();
         }
     }
 }

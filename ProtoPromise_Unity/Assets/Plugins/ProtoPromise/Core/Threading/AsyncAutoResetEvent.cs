@@ -8,29 +8,29 @@ using System.Runtime.CompilerServices;
 namespace Proto.Promises.Threading
 {
     /// <summary>
-    /// An async-compatible manual-reset event.
+    /// An async-compatible auto-reset event.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public sealed class AsyncManualResetEvent
+    public sealed class AsyncAutoResetEvent
     {
         // We wrap the impl with another class so that we can lock on it safely.
-        private readonly Internal.AsyncManualResetEventInternal _impl;
+        private readonly Internal.AsyncAutoResetEventInternal _impl;
 
         /// <summary>
-        /// Creates an async-compatible manual-reset event.
+        /// Creates an async-compatible auto-reset event.
         /// </summary>
-        /// <param name="initialState">Whether the manual-reset event is initially set or unset.</param>
-        public AsyncManualResetEvent(bool initialState)
+        /// <param name="initialState">Whether the auto-reset event is initially set or unset.</param>
+        public AsyncAutoResetEvent(bool initialState)
         {
-            _impl = new Internal.AsyncManualResetEventInternal(initialState);
+            _impl = new Internal.AsyncAutoResetEventInternal(initialState);
         }
 
         /// <summary>
-        /// Creates an async-compatible manual-reset event that is initially unset.
+        /// Creates an async-compatible auto-reset event that is initially unset.
         /// </summary>
-        public AsyncManualResetEvent() : this(false)
+        public AsyncAutoResetEvent() : this(false)
         {
         }
 
@@ -90,9 +90,10 @@ namespace Proto.Promises.Threading
         }
 
         /// <summary>
-        /// Sets this event, completing every wait.
+        /// Sets this event, completing a waiter.
         /// </summary>
         /// <remarks>
+        /// If there are any pending waiters, this event will be reset, and a single waiter will be completed atomically.
         /// If this event is already set, this does nothing.
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
@@ -114,7 +115,7 @@ namespace Proto.Promises.Threading
         }
 
         /// <summary>
-        /// Asynchronous infrastructure support. This method permits instances of <see cref="AsyncManualResetEvent"/> to be awaited.
+        /// Asynchronous infrastructure support. This method permits instances of <see cref="AsyncAutoResetEvent"/> to be awaited.
         /// </summary>
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         public Async.CompilerServices.PromiseAwaiterVoid GetAwaiter()

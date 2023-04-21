@@ -27,7 +27,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract class AsyncSynchronizationPromiseBase<TResult> : PromiseSingleAwait<TResult>
+            internal abstract class AsyncSynchronizationPromiseBase<TResult> : PromiseRefBase.PromiseSingleAwait<TResult>
             {
                 // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
                 protected SynchronizationContext _callerContext;
@@ -74,6 +74,35 @@ namespace Proto.Promises
                 }
 #endif
             }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal abstract class AsyncResetEventPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<bool>, ICancelable, ILinked<AsyncResetEventPromise>
+        {
+            AsyncResetEventPromise ILinked<AsyncResetEventPromise>.Next { get; set; }
+
+            internal void Resolve()
+            {
+                ThrowIfInPool(this);
+
+                // We don't need to check if the unregister was successful or not.
+                // The fact that this was called means the cancelation was unable to unregister this from the lock.
+                // We just dispose to wait for the callback to complete before we continue.
+                _cancelationRegistration.Dispose();
+
+                _result = true;
+                Continue(Promise.State.Resolved);
+            }
+
+            internal void MaybeHookupCancelation(CancelationToken cancelationToken)
+            {
+                ThrowIfInPool(this);
+                cancelationToken.TryRegister(this, out _cancelationRegistration);
+            }
+
+            public abstract void Cancel();
         }
     }
 }
