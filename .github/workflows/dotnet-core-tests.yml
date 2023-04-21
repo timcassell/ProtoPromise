@@ -8,25 +8,42 @@ concurrency:
 
 jobs:
   dotnet-core-tests:
+    name: Test (${{ matrix.config }}, ${{ matrix.objectPooling.name }}, ${{ matrix.devMode.name }})
     runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
       matrix:
         config: [Release, Release_NoProgress, Debug, Debug_NoProgress]
-        pooling: [POOL_ENABLE, POOL_DISABLE]
-        developerMode: [true, false]
+        objectPooling:
+          - {
+              name: Pool_Enabled,
+              symbol: PROTO_PROMISE_POOL_ENABLE
+            }
+          - {
+              name: Pool_Disabled,
+              symbol: PROTO_PROMISE_POOL_DISABLE
+            }
+        devMode:
+          - {
+              name: devMode,
+              value: true
+            }
+          - {
+              name: userMode,
+              value: false
+            }
+
         exclude:
-            # DEBUG mode forces pooling disabled.
-          - config: Debug
-            pooling: POOL_ENABLE
-          - config: Debug_NoProgress
-            pooling: POOL_ENABLE
-        include:
-          - developerMode: true
-            devString: devMode
-          - developerMode: false
-            devString: userMode
+          # DEBUG mode forces pooling disabled.
+          - {
+              config: Debug,
+              objectPooling: { name: Pool_Enabled }
+            }
+          - {
+              config: Debug_NoProgress,
+              objectPooling: { name: Pool_Enabled }
+            }
 
     steps:
       - name: Checkout
@@ -40,17 +57,17 @@ jobs:
       - name: Run Tests
         timeout-minutes: 180
         run: |
-          dotnet test -c ${{ matrix.config }} -f net6.0 --logger "trx;logfilename=dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}.trx" -p:ExtraDefineConstants=PROTO_PROMISE_${{ matrix.pooling }} -p:DeveloperMode=${{ matrix.developerMode }} --results-directory "./TestResults"
+          dotnet test -c ${{ matrix.config }} -f net6.0 --logger "trx;logfilename=dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} -p:DeveloperMode=${{ matrix.devMode.value }} --results-directory "./TestResults"
 
       - uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
+          name: dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}
           path: TestResults/*.trx
           reporter: dotnet-trx
 
       - uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.pooling }}-${{ matrix.devString }}
+          name: dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}
           path: TestResults

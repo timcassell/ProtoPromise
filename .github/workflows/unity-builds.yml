@@ -24,12 +24,12 @@ jobs:
           - {
               name: Net3.5,
               version: 0,
-              apiLevel: 2
+              apiCompatibilityLevel: 2
             }
           - {
               name: Net4.x,
               version: 1,
-              apiLevel: 6
+              apiCompatibilityLevel: 6
             }
         mode:
           - {
@@ -66,7 +66,7 @@ jobs:
           sed -i "{s/$RuntimeOriginal/$RuntimeReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
           ApiOriginal="  apiCompatibilityLevel: 2"
-          ApiReplace="  apiCompatibilityLevel: ${{ matrix.scriptingRuntime.apiLevel }}"
+          ApiReplace="  apiCompatibilityLevel: ${{ matrix.scriptingRuntime.apiCompatibilityLevel }}"
           sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
       - name: Build Project
