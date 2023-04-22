@@ -1,4 +1,4 @@
-name: Unity Editor Tests
+name: Unity Tests
 
 on: [pull_request]
 
@@ -8,53 +8,114 @@ concurrency:
 
 jobs:
   unity-tests:
+    name: Test (${{ matrix.testMode.name }}, ${{ matrix.scriptingRuntime.name }}, ${{ matrix.mode.name }}, ${{ matrix.progress.name }}, ${{ matrix.objectPooling.name }}, ${{ matrix.unityVersion }}, ${{ matrix.devMode }})
     runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
       matrix:
-        # Disabled Standalone and WebGL as they do not work in a docker image.
-        buildTarget: [Editor] #, Standalone, WebGL]
-        scriptingRuntime: [Net3.5, Net4.x]
-        mode: [Release, Debug]
-        progress: [Progress_Enabled, Progress_Disabled]
-        pooling: [Pool_Enabled, Pool_Disabled]
-        # DEBUG mode forces pooling disabled.
+        testMode:
+          - {
+              name: Editor,
+              value: PlayMode,
+              buildTargetId: 1
+            }
+          - {
+              name: Standalone,
+              value: Standalone,
+              buildTargetId: 1
+            }
+          # Not testing WebGL as unity-test-runner does not support it.
+          #- {
+          #    name: WebGL,
+          #    value: WebGL,
+          #    buildTargetId: 13
+          #  }
+        scriptingRuntime:
+          - {
+              name: Net3.5,
+              version: 0,
+              apiCompatibilityLevel: 2,
+            }
+          - {
+              name: Net4.x,
+              version: 1,
+              apiCompatibilityLevel: 6
+            }
+        mode:
+          - {
+              name: Release,
+              symbol: PROTO_PROMISE_DEBUG_DISABLE
+            }
+          - {
+              name: Debug,
+              symbol: PROTO_PROMISE_DEBUG_ENABLE
+            }
+        progress:
+          - {
+              name: Progress_Enabled,
+              symbol: PROTO_PROMISE_PROGRESS_ENABLE
+            }
+          - {
+              name: Progress_Disabled,
+              symbol: PROTO_PROMISE_PROGRESS_DISABLE
+            }
+        objectPooling:
+          - {
+              name: Pool_Enabled,
+              symbol: PROTO_PROMISE_POOL_ENABLE
+            }
+          - {
+              name: Pool_Disabled,
+              symbol: PROTO_PROMISE_POOL_DISABLE
+            }
+        # Editor uses 2018.4 to test Net3.5 and Net4.x.
+        # Standalone uses 2019.4 and 2021.3 to test IL2CPP with netstandard 2.0 and netstandard2.1.
+        unityVersion: [2018.4.36f1, 2019.4.40f1, 2021.3.15f1]
+        devMode:
+          - {
+              name: devMode,
+              symbol: PROTO_PROMISE_DEVELOPER_MODE
+            }
+          - {
+              name: userMode,
+              symbol: PROTO_PROMISE_DEVELOPER_MODE_DISABLE
+            }
+
         exclude:
-          - mode: Debug
-            pooling: Pool_Enabled
-        include:
-          - buildTarget: Editor
-            buildTargetId: 1
-            testMode: PlayMode
-          #- buildTarget: Standalone
-          #  buildTargetId: 1
-          #  testMode: StandaloneLinux64
-          #- buildTarget: WebGL
-          #  buildTargetId: 13
-          #  testMode: WebGL
-            
-          - mode: Release
-            modeSymbol: PROTO_PROMISE_DEBUG_DISABLE
-          - mode: Debug
-            modeSymbol: PROTO_PROMISE_DEBUG_ENABLE
-
-          - progress: Progress_Enabled
-            progressSymbol: PROTO_PROMISE_PROGRESS_ENABLE
-          - progress: Progress_Disabled
-            progressSymbol: PROTO_PROMISE_PROGRESS_DISABLE
-
-          - pooling: Pool_Enabled
-            poolingSymbol: PROTO_PROMISE_POOL_ENABLE
-          - pooling: Pool_Disabled
-            poolingSymbol: PROTO_PROMISE_POOL_DISABLE
-            
-          - scriptingRuntime: Net3.5
-            scriptingRuntimeVersion: 0
-            apiCompatibilityLevel: 2
-          - scriptingRuntime: Net4.x
-            scriptingRuntimeVersion: 1
-            apiCompatibilityLevel: 6
+          # DEBUG mode forces pooling disabled.
+          - {
+              mode: { name: Debug },
+              objectPooling: { name: Pool_Enabled }
+            }
+          # Editor tests only run in 2018.4 to test Net3.5 and Net4.x.
+          - {
+              testMode: { name: Editor },
+              unityVersion: 2019.4.40f1
+            }
+          - {
+              testMode: { name: Editor },
+              unityVersion: 2021.3.15f1
+            }
+          # Standalone with IL2CPP can only be built with 2019.4+ (unity-builder docker images constraint), which doesn't support Net3.5.
+          - {
+              testMode: { name: Standalone },
+              unityVersion: 2018.4.36f1
+            }
+          - {
+              testMode: { name: Standalone },
+              scriptingRuntime: { name: Net3.5 }
+            }
+          # Only test devMode in Net3.5 in editor, and 2021.3 IL2CPP
+          - {
+              devMode: { name: devMode },
+              testMode: { name: Editor },
+              scriptingRuntime: { name: Net4.x }
+            }
+          - {
+              devMode: { name: devMode },
+              unityVersion: 2019.4.40f1
+            }
 
     steps:
       - name: Checkout
@@ -62,28 +123,38 @@ jobs:
 
       - name: Rewrite ProjectSettings
         run: |
-          DefineSymbols="${{ matrix.modeSymbol }};${{ matrix.progressSymbol }};${{ matrix.poolingSymbol }}"
+          DefineSymbols="${{ matrix.testMode.symbol }};${{ matrix.progress.symbol }};${{ matrix.objectPooling.symbol }};${{ matrix.devMode.symbol }}"
           DefineOriginal="  scriptingDefineSymbols: {}"
-          DefineReplace="  scriptingDefineSymbols: \\n    ${{ matrix.buildTargetId }}: $DefineSymbols"
+          DefineReplace="  scriptingDefineSymbols: \\n    ${{ matrix.testMode.buildTargetId }}: $DefineSymbols"
           sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
           RuntimeOriginal="  scriptingRuntimeVersion: 0"
-          RuntimeReplace="  scriptingRuntimeVersion: ${{ matrix.scriptingRuntimeVersion }}"
+          RuntimeReplace="  scriptingRuntimeVersion: ${{ matrix.scriptingRuntime.version }}"
           sed -i "{s/$RuntimeOriginal/$RuntimeReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
           ApiOriginal="  apiCompatibilityLevel: 2"
-          ApiReplace="  apiCompatibilityLevel: ${{ matrix.apiCompatibilityLevel }}"
+          ApiReplace="  apiCompatibilityLevel: ${{ matrix.scriptingRuntime.apiCompatibilityLevel }}"
           sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
+
+      - name: Cache Unity Library
+        uses: actions/cache@v3
+        with:
+          path: ProtoPromise_Unity/Library
+          key: Library-${{ matrix.unityVersion }}-${{ matrix.scriptingRuntime.name }}
+          restore-keys: |
+            Library-
 
       - name: Run tests
         id: tests
-        uses: game-ci/unity-test-runner@v2 #timcassell/unity-test-runner@targetPlatform
+        # The commit that added standalone support (new version has not yet been released).
+        uses: game-ci/unity-test-runner@31086d985910613d75c32ba965f657df9c298820
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}
         with:
           projectPath: ProtoPromise_Unity
-          testMode: ${{ matrix.testMode }}
-        timeout-minutes: 180
+          testMode: ${{ matrix.testMode.value }}
+          unityVersion: ${{ matrix.unityVersion }}
+        timeout-minutes: 90
 
       # Workaround for NUnit XML (see https://github.com/dorny/test-reporter/issues/98#issuecomment-867106931)
       - name: Install NUnit
@@ -112,12 +183,12 @@ jobs:
       - uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "unity-test-results-${{ matrix.buildTarget }}-${{ matrix.scriptingRuntime }}-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.pooling }}"
+          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.progress.name }}-${{ matrix.objectPooling.name }}
           path: "*_junit.xml"
           reporter: java-junit
 
       - uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: unity-test-results-${{ matrix.buildTarget }}-${{ matrix.scriptingRuntime }}-${{ matrix.mode }}-${{ matrix.progress }}-${{ matrix.pooling }}
+          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.progress.name }}-${{ matrix.objectPooling.name }}
           path: artifacts
