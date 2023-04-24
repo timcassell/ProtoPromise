@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -957,9 +958,20 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        public static Deferred NewDeferred()
+        {
+            return Deferred.New();
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Promise{T}.Deferred"/> is pending, it and the <see cref="Promise{T}"/> will be canceled with its reason.
         /// </summary>
-        public static Deferred NewDeferred(CancelationToken cancelationToken = default(CancelationToken))
+        [MethodImpl(Internal.InlineOption)]
+        [Obsolete("You should instead register a callback on the CancelationToken to cancel the deferred directly.", false), EditorBrowsable(EditorBrowsableState.Never)]
+        public static Deferred NewDeferred(CancelationToken cancelationToken)
         {
             return Deferred.New(cancelationToken);
         }

@@ -58,7 +58,8 @@ namespace ProtoPromiseTests.APIs
             [Values] ProgressType progressType)
         {
             var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground, forceAsync: true);
             deferred.Promise
@@ -100,7 +101,8 @@ namespace ProtoPromiseTests.APIs
             [Values] ProgressType progressType)
         {
             var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, SynchronizationType.Foreground, forceAsync: true);
             deferred.Promise
@@ -379,7 +381,8 @@ namespace ProtoPromiseTests.APIs
             [Values] SynchronizationType synchronizationType)
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
             deferred.Promise
@@ -432,7 +435,8 @@ namespace ProtoPromiseTests.APIs
             [Values] SynchronizationType synchronizationType)
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
             deferred.Promise
@@ -571,7 +575,8 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred = Promise.NewDeferred();
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred2);
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
             deferred.Promise
@@ -597,7 +602,8 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred = Promise.NewDeferred();
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred2);
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
             deferred.Promise

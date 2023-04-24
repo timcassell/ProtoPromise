@@ -368,7 +368,8 @@ namespace ProtoPromiseTests.APIs
         {
             CancelationSource cancelationSource = CancelationSource.New();
 
-            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred1 = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred1);
             var deferred2 = Promise.NewDeferred();
 
             bool canceled = false;
@@ -394,7 +395,8 @@ namespace ProtoPromiseTests.APIs
         {
             CancelationSource cancelationSource = CancelationSource.New();
 
-            var deferred1 = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred1 = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred1);
             var deferred2 = Promise.NewDeferred<int>();
 
             bool canceled = false;
@@ -420,7 +422,8 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred1 = Promise.NewDeferred();
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred2);
 
             bool canceled = false;
 
@@ -445,7 +448,8 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred1 = Promise.NewDeferred<int>();
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred2);
 
             bool canceled = false;
 
@@ -471,8 +475,10 @@ namespace ProtoPromiseTests.APIs
             CancelationSource cancelationSource1 = CancelationSource.New();
             CancelationSource cancelationSource2 = CancelationSource.New();
 
-            var deferred1 = Promise.NewDeferred(cancelationSource1.Token);
-            var deferred2 = Promise.NewDeferred(cancelationSource2.Token);
+            var deferred1 = Promise.NewDeferred();
+            cancelationSource1.Token.Register(deferred1);
+            var deferred2 = Promise.NewDeferred();
+            cancelationSource2.Token.Register(deferred2);
 
             bool canceled = false;
 
@@ -499,8 +505,10 @@ namespace ProtoPromiseTests.APIs
             CancelationSource cancelationSource1 = CancelationSource.New();
             CancelationSource cancelationSource2 = CancelationSource.New();
 
-            var deferred1 = Promise.NewDeferred<int>(cancelationSource1.Token);
-            var deferred2 = Promise.NewDeferred<int>(cancelationSource2.Token);
+            var deferred1 = Promise.NewDeferred<int>();
+            cancelationSource1.Token.Register(deferred1);
+            var deferred2 = Promise.NewDeferred<int>();
+            cancelationSource2.Token.Register(deferred2);
 
             bool canceled = false;
 
@@ -897,7 +905,8 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred1 = Promise.NewDeferred();
             var cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred2);
             var deferred3 = Promise.NewDeferred();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
@@ -924,7 +933,8 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred1 = Promise.NewDeferred<int>();
             var cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred2);
             var deferred3 = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);

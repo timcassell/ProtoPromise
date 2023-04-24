@@ -30,10 +30,8 @@ namespace ProtoPromiseTests.Concurrency
         [Test]
         public void DeferredReportProgressMayBeCalledConcurrently_void(
             [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType,
-            [Values] bool withCancelationToken)
+            [Values] SynchronizationType synchronizationType)
         {
-            var cancelationSource = CancelationSource.New();
             var deferred = default(Promise.Deferred);
 
             var progressHelper = default(ProgressHelper);
@@ -43,9 +41,7 @@ namespace ProtoPromiseTests.Concurrency
                 // Setup
                 () =>
                 {
-                    deferred = withCancelationToken
-                        ? Promise.NewDeferred(cancelationSource.Token)
-                        : Promise.NewDeferred();
+                    deferred = Promise.NewDeferred();
                     progressHelper = new ProgressHelper(progressType, synchronizationType);
 
                     deferred.Promise
@@ -72,17 +68,13 @@ namespace ProtoPromiseTests.Concurrency
                 () => deferred.ReportProgress(0.3f),
                 () => deferred.ReportProgress(0.4f)
             );
-
-            cancelationSource.Dispose();
         }
 
         [Test]
         public void DeferredReportProgressMayBeCalledConcurrently_T(
             [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType,
-            [Values] bool withCancelationToken)
+            [Values] SynchronizationType synchronizationType)
         {
-            var cancelationSource = CancelationSource.New();
             var deferred = default(Promise<int>.Deferred);
 
             var progressHelper = default(ProgressHelper);
@@ -92,9 +84,7 @@ namespace ProtoPromiseTests.Concurrency
                 // Setup
                 () =>
                 {
-                    deferred = withCancelationToken
-                        ? Promise.NewDeferred<int>(cancelationSource.Token)
-                        : Promise.NewDeferred<int>();
+                    deferred = Promise.NewDeferred<int>();
                     progressHelper = new ProgressHelper(progressType, synchronizationType);
 
                     deferred.Promise
@@ -121,13 +111,11 @@ namespace ProtoPromiseTests.Concurrency
                 () => deferred.ReportProgress(0.3f),
                 () => deferred.ReportProgress(0.4f)
             );
-         
-            cancelationSource.Dispose();
         }
 #endif
 
         [Test]
-        public void DeferredResolveMayNotBeCalledConcurrently_void0()
+        public void DeferredResolveMayNotBeCalledConcurrently_void()
         {
             int invokedCount = 0;
             var deferred = Promise.NewDeferred();
@@ -150,33 +138,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredResolveMayNotBeCalledConcurrently_void1()
-        {
-            int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            deferred.Promise
-                .Then(() => { Interlocked.Increment(ref invokedCount); })
-                .Forget();
-            int failedTryResolveCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() =>
-            {
-                if (!deferred.TryResolve())
-                {
-                    Interlocked.Increment(ref failedTryResolveCount);
-                }
-            });
-
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.AreEqual(1, invokedCount);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void DeferredResolveMayNotBeCalledConcurrently_T0()
+        public void DeferredResolveMayNotBeCalledConcurrently_T()
         {
             int invokedCount = 0;
             var deferred = Promise.NewDeferred<int>();
@@ -199,33 +161,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredResolveMayNotBeCalledConcurrently_T1()
-        {
-            int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-            deferred.Promise
-                .Then(v => { Interlocked.Increment(ref invokedCount); })
-                .Forget();
-            int failedTryResolveCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() =>
-            {
-                if (!deferred.TryResolve(1))
-                {
-                    Interlocked.Increment(ref failedTryResolveCount);
-                }
-            });
-
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.AreEqual(1, invokedCount);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void DeferredRejectMayNotBeCalledConcurrently_void0()
+        public void DeferredRejectMayNotBeCalledConcurrently_void()
         {
             int invokedCount = 0;
             var deferred = Promise.NewDeferred();
@@ -248,33 +184,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredRejectMayNotBeCalledConcurrently_void1()
-        {
-            int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            deferred.Promise
-                .Catch(() => { Interlocked.Increment(ref invokedCount); })
-                .Forget();
-            int failedTryResolveCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() =>
-            {
-                if (!deferred.TryReject("Reject"))
-                {
-                    Interlocked.Increment(ref failedTryResolveCount);
-                }
-            });
-
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.AreEqual(1, invokedCount);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void DeferredRejectMayNotBeCalledConcurrently_T0()
+        public void DeferredRejectMayNotBeCalledConcurrently_T()
         {
             int invokedCount = 0;
             var deferred = Promise.NewDeferred<int>();
@@ -297,33 +207,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredRejectMayNotBeCalledConcurrently_T1()
-        {
-            int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-            deferred.Promise
-                .Catch(() => { Interlocked.Increment(ref invokedCount); })
-                .Forget();
-            int failedTryResolveCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() =>
-            {
-                if (!deferred.TryReject("Reject"))
-                {
-                    Interlocked.Increment(ref failedTryResolveCount);
-                }
-            });
-
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.AreEqual(1, invokedCount);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void DeferredCancelMayNotBeCalledConcurrently_void0()
+        public void DeferredCancelMayNotBeCalledConcurrently_void()
         {
             int invokedCount = 0;
             var deferred = Promise.NewDeferred();
@@ -346,33 +230,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredCancelMayNotBeCalledConcurrently_void1()
-        {
-            int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
-            deferred.Promise
-                .CatchCancelation(() => { Interlocked.Increment(ref invokedCount); })
-                .Forget();
-            int failedTryResolveCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() =>
-            {
-                if (!deferred.TryCancel())
-                {
-                    Interlocked.Increment(ref failedTryResolveCount);
-                }
-            });
-
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.AreEqual(1, invokedCount);
-
-            cancelationSource.Dispose();
-        }
-
-        [Test]
-        public void DeferredCancelMayNotBeCalledConcurrently_T0()
+        public void DeferredCancelMayNotBeCalledConcurrently_T()
         {
             int invokedCount = 0;
             var deferred = Promise.NewDeferred<int>();
@@ -392,43 +250,15 @@ namespace ProtoPromiseTests.Concurrency
 
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
             Assert.AreEqual(1, invokedCount);
-        }
-
-        [Test]
-        public void DeferredCancelMayNotBeCalledConcurrently_T1()
-        {
-            int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-            deferred.Promise
-                .CatchCancelation(() => { Interlocked.Increment(ref invokedCount); })
-                .Forget();
-            int failedTryResolveCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() =>
-            {
-                if (!deferred.TryCancel())
-                {
-                    Interlocked.Increment(ref failedTryResolveCount);
-                }
-            });
-
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
-            Assert.AreEqual(1, invokedCount);
-
-            cancelationSource.Dispose();
         }
 
 #if PROMISE_PROGRESS
         [Test]
         public void DeferredMayReportProgressAndPromiseMaySubscribeProgressConcurrently_void(
             [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType,
-            [Values] bool withCancelationToken)
+            [Values] SynchronizationType synchronizationType)
         {
             float expected = 0.1f;
-            var cancelationSource = CancelationSource.New();
             var deferred = default(Promise.Deferred);
             var promise = default(Promise);
 
@@ -439,9 +269,7 @@ namespace ProtoPromiseTests.Concurrency
                 // Setup
                 () =>
                 {
-                    deferred = withCancelationToken
-                        ? Promise.NewDeferred(cancelationSource.Token)
-                        : Promise.NewDeferred();
+                    deferred = Promise.NewDeferred();
                     promise = deferred.Promise;
                     progressHelper = new ProgressHelper(progressType, synchronizationType);
                     progressHelper.MaybeEnterLock();
@@ -466,18 +294,14 @@ namespace ProtoPromiseTests.Concurrency
                 () => deferred.ReportProgress(expected),
                 () => promise.SubscribeProgress(progressHelper).Forget()
             );
-
-            cancelationSource.Dispose();
         }
 
         [Test]
-        public void DeferredMayReportProgressAndPromiseMaySubscribeProgressConcurrently_T0(
+        public void DeferredMayReportProgressAndPromiseMaySubscribeProgressConcurrently_T(
             [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType,
-            [Values] bool withCancelationToken)
+            [Values] SynchronizationType synchronizationType)
         {
             float expected = 0.1f;
-            var cancelationSource = CancelationSource.New();
             var deferred = default(Promise<int>.Deferred);
             var promise = default(Promise);
 
@@ -488,9 +312,7 @@ namespace ProtoPromiseTests.Concurrency
                 // Setup
                 () =>
                 {
-                    deferred = withCancelationToken
-                        ? Promise.NewDeferred<int>(cancelationSource.Token)
-                        : Promise.NewDeferred<int>();
+                    deferred = Promise.NewDeferred<int>();
                     promise = deferred.Promise;
                     progressHelper = new ProgressHelper(progressType, synchronizationType);
                     progressHelper.MaybeEnterLock();
@@ -515,13 +337,11 @@ namespace ProtoPromiseTests.Concurrency
                 () => deferred.ReportProgress(expected),
                 () => promise.SubscribeProgress(progressHelper).Forget()
             );
-
-            cancelationSource.Dispose();
         }
 #endif
 
         [Test]
-        public void DeferredMayBeResolvedAndPromiseAwaitedConcurrently_void0()
+        public void DeferredMayBeResolvedAndPromiseAwaitedConcurrently_void()
         {
             var deferred = default(Promise.Deferred);
             var promise = default(Promise);
@@ -549,38 +369,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredMayBeResolvedAndPromiseAwaitedConcurrently_void1()
-        {
-            var cancelationSource = default(CancelationSource);
-            var deferred = default(Promise.Deferred);
-            var promise = default(Promise);
-
-            int invokedCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
-                {
-                    invokedCount = 0;
-                    cancelationSource = CancelationSource.New();
-                    deferred = Promise.NewDeferred(cancelationSource.Token);
-                    promise = deferred.Promise;
-                },
-                // Teardown
-                () =>
-                {
-                    cancelationSource.Dispose();
-                    Assert.AreEqual(1, invokedCount);
-                },
-                // Parallel Actions
-                () => deferred.Resolve(),
-                () => promise.Then(() => { Interlocked.Increment(ref invokedCount); }).Forget()
-            );
-        }
-
-        [Test]
-        public void DeferredMayBeResolvedAndPromiseAwaitedConcurrently_T0()
+        public void DeferredMayBeResolvedAndPromiseAwaitedConcurrently_T()
         {
             var deferred = default(Promise<int>.Deferred);
             var promise = default(Promise<int>);
@@ -608,38 +397,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredMayBeResolvedAndPromiseAwaitedConcurrently_T1()
-        {
-            var cancelationSource = default(CancelationSource);
-            var deferred = default(Promise<int>.Deferred);
-            var promise = default(Promise<int>);
-
-            int invokedCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
-                {
-                    invokedCount = 0;
-                    cancelationSource = CancelationSource.New();
-                    deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-                    promise = deferred.Promise;
-                },
-                // Teardown
-                () =>
-                {
-                    cancelationSource.Dispose();
-                    Assert.AreEqual(1, invokedCount);
-                },
-                // Parallel Actions
-                () => deferred.Resolve(1),
-                () => promise.Then(v => { Interlocked.Increment(ref invokedCount); }).Forget()
-            );
-        }
-
-        [Test]
-        public void DeferredMayBeRejectedAndPromiseAwaitedConcurrently_void0()
+        public void DeferredMayBeRejectedAndPromiseAwaitedConcurrently_void()
         {
             var deferred = default(Promise.Deferred);
             var promise = default(Promise);
@@ -667,38 +425,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredMayBeRejectedAndPromiseAwaitedConcurrently_void1()
-        {
-            var cancelationSource = default(CancelationSource);
-            var deferred = default(Promise.Deferred);
-            var promise = default(Promise);
-
-            int invokedCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
-                {
-                    invokedCount = 0;
-                    cancelationSource = CancelationSource.New();
-                    deferred = Promise.NewDeferred(cancelationSource.Token);
-                    promise = deferred.Promise;
-                },
-                // Teardown
-                () =>
-                {
-                    cancelationSource.Dispose();
-                    Assert.AreEqual(1, invokedCount);
-                },
-                // Parallel Actions
-                () => deferred.Reject(1),
-                () => promise.Catch(() => { Interlocked.Increment(ref invokedCount); }).Forget()
-            );
-        }
-
-        [Test]
-        public void DeferredMayBeRejectedAndPromiseAwaitedConcurrently_T0()
+        public void DeferredMayBeRejectedAndPromiseAwaitedConcurrently_T()
         {
             var deferred = default(Promise<int>.Deferred);
             var promise = default(Promise<int>);
@@ -726,69 +453,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredMayBeRejectedAndPromiseAwaitedConcurrently_T1()
-        {
-            var cancelationSource = default(CancelationSource);
-            var deferred = default(Promise<int>.Deferred);
-            var promise = default(Promise<int>);
-
-            int invokedCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
-                {
-                    invokedCount = 0;
-                    cancelationSource = CancelationSource.New();
-                    deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-                    promise = deferred.Promise;
-                },
-                // Teardown
-                () =>
-                {
-                    cancelationSource.Dispose();
-                    Assert.AreEqual(1, invokedCount);
-                },
-                // Parallel Actions
-                () => deferred.Reject(1),
-                () => promise.Catch(() => { Interlocked.Increment(ref invokedCount); }).Forget()
-            );
-        }
-
-        [Test]
-        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_void0()
-        {
-            var cancelationSource = default(CancelationSource);
-            var deferred = default(Promise.Deferred);
-            var promise = default(Promise);
-
-            int invokedCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
-                {
-                    invokedCount = 0;
-                    cancelationSource = CancelationSource.New();
-                    deferred = Promise.NewDeferred(cancelationSource.Token);
-                    promise = deferred.Promise;
-                },
-                // Teardown
-                () =>
-                {
-                    cancelationSource.Dispose();
-                    Assert.AreEqual(1, invokedCount);
-                },
-                // Parallel Actions
-                () => cancelationSource.Cancel(),
-                () => promise.CatchCancelation(() => { Interlocked.Increment(ref invokedCount); }).Forget()
-            );
-        }
-
-        [Test]
-        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_void1()
+        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_void()
         {
             var deferred = default(Promise.Deferred);
             var promise = default(Promise);
@@ -816,38 +481,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_T0()
-        {
-            var cancelationSource = default(CancelationSource);
-            var deferred = default(Promise<int>.Deferred);
-            var promise = default(Promise<int>);
-
-            int invokedCount = 0;
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
-                {
-                    invokedCount = 0;
-                    cancelationSource = CancelationSource.New();
-                    deferred = Promise.NewDeferred<int>(cancelationSource.Token);
-                    promise = deferred.Promise;
-                },
-                // Teardown
-                () =>
-                {
-                    cancelationSource.Dispose();
-                    Assert.AreEqual(1, invokedCount);
-                },
-                // Parallel Actions
-                () => cancelationSource.Cancel(),
-                () => promise.CatchCancelation(() => { Interlocked.Increment(ref invokedCount); }).Forget()
-            );
-        }
-
-        [Test]
-        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_T2()
+        public void DeferredMayBeCanceledAndPromiseAwaitedConcurrently_T()
         {
             var deferred = default(Promise<int>.Deferred);
             var promise = default(Promise<int>);

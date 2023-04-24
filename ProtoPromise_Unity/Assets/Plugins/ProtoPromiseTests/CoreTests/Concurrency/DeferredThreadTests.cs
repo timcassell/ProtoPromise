@@ -29,13 +29,9 @@ namespace ProtoPromiseTests.Concurrency
         [Test]
         public void DeferredMayReportProgressOnSeparateThread_void(
             [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType,
-            [Values] bool withCancelationToken)
+            [Values] SynchronizationType synchronizationType)
         {
-            var cancelationSource = CancelationSource.New();
-            var deferred = withCancelationToken
-                ? Promise.NewDeferred(cancelationSource.Token)
-                : Promise.NewDeferred();
+            var deferred = Promise.NewDeferred();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
 
@@ -50,19 +46,14 @@ namespace ProtoPromiseTests.Concurrency
             progressHelper.AssertCurrentProgress(0.1f);
 
             deferred.Resolve();
-            cancelationSource.Dispose();
         }
 
         [Test]
         public void DeferredMayReportProgressOnSeparateThread_T(
             [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType,
-            [Values] bool withCancelationToken)
+            [Values] SynchronizationType synchronizationType)
         {
-            var cancelationSource = CancelationSource.New();
-            var deferred = withCancelationToken
-                ? Promise.NewDeferred<int>(cancelationSource.Token)
-                : Promise.NewDeferred<int>();
+            var deferred = Promise.NewDeferred<int>();
 
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
 
@@ -77,7 +68,6 @@ namespace ProtoPromiseTests.Concurrency
             progressHelper.AssertCurrentProgress(0.1f);
 
             deferred.Resolve(1);
-            cancelationSource.Dispose();
         }
 #endif
 
@@ -213,34 +203,30 @@ namespace ProtoPromiseTests.Concurrency
         public void DeferredMayBeCanceledOnSeparateThread_void()
         {
             bool invoked = false;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
             deferred.Promise
                 .CatchCancelation(() => { invoked = true; })
                 .Forget();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteSingleAction(() => cancelationSource.Cancel());
+            threadHelper.ExecuteSingleAction(() => deferred.Cancel());
 
             Assert.IsTrue(invoked);
-            cancelationSource.Dispose();
         }
 
         [Test]
         public void DeferredMayBeCanceledOnSeparateThread_T()
         {
             bool invoked = false;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
             deferred.Promise
                 .CatchCancelation(() => { invoked = true; })
                 .Forget();
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteSingleAction(() => cancelationSource.Cancel());
+            threadHelper.ExecuteSingleAction(() => deferred.Cancel());
 
             Assert.IsTrue(invoked);
-            cancelationSource.Dispose();
         }
     }
 }

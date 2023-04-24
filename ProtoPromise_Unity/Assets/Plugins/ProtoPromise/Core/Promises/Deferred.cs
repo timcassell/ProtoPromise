@@ -395,14 +395,23 @@ namespace Proto.Promises
 
             /// <summary>
             /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promises.Promise"/>.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            public static Deferred New()
+            {
+                var promise = Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>.GetOrCreate();
+                return new Deferred(promise, promise.Id, promise.DeferredId);
+            }
+
+            /// <summary>
+            /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promises.Promise"/>.
             /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promises.Promise"/> will be canceled.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
+            [Obsolete("You should instead register a callback on the CancelationToken to cancel the deferred directly.", false), EditorBrowsable(EditorBrowsableState.Never)]
+            public static Deferred New(CancelationToken cancelationToken)
             {
-                Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> promise = cancelationToken.CanBeCanceled
-                    ? Internal.PromiseRefBase.DeferredPromiseCancel<Internal.VoidResult>.GetOrCreate(cancelationToken)
-                    : Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>.GetOrCreate();
+                var promise = Internal.PromiseRefBase.DeferredPromiseCancel<Internal.VoidResult>.GetOrCreate(cancelationToken);
                 return new Deferred(promise, promise.Id, promise.DeferredId);
             }
 
@@ -706,13 +715,23 @@ namespace Proto.Promises
 
             /// <summary>
             /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promises.Promise"/>.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            public static Deferred New()
+            {
+                var promise = Internal.PromiseRefBase.DeferredPromise<T>.GetOrCreate();
+                return new Deferred(promise, promise.Id, promise.DeferredId);
+            }
+
+            /// <summary>
+            /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promises.Promise"/>.
             /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promises.Promise"/> will be canceled.
             /// </summary>
-            public static Deferred New(CancelationToken cancelationToken = default(CancelationToken))
+            [MethodImpl(Internal.InlineOption)]
+            [Obsolete("You should instead register a callback on the CancelationToken to cancel the deferred directly.", false), EditorBrowsable(EditorBrowsableState.Never)]
+            public static Deferred New(CancelationToken cancelationToken)
             {
-                Internal.PromiseRefBase.DeferredPromise<T> promise = cancelationToken.CanBeCanceled
-                    ? Internal.PromiseRefBase.DeferredPromiseCancel<T>.GetOrCreate(cancelationToken)
-                    : Internal.PromiseRefBase.DeferredPromise<T>.GetOrCreate();
+                var promise = Internal.PromiseRefBase.DeferredPromiseCancel<T>.GetOrCreate(cancelationToken);
                 return new Deferred(promise, promise.Id, promise.DeferredId);
             }
 

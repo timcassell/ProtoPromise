@@ -130,7 +130,8 @@ namespace ProtoPromiseTests.APIs
         public void OnFinallyIsInvokedWhenPromiseIsCanceled_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             bool invoked = false;
 
@@ -148,7 +149,8 @@ namespace ProtoPromiseTests.APIs
         public void OnFinallyIsInvokedWhenPromiseIsCanceled_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             bool invoked = false;
 
@@ -281,7 +283,8 @@ namespace ProtoPromiseTests.APIs
         {
             Exception expected = new Exception();
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             bool invoked = false;
 
@@ -305,7 +308,8 @@ namespace ProtoPromiseTests.APIs
         {
             Exception expected = new Exception();
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             bool invoked = false;
 

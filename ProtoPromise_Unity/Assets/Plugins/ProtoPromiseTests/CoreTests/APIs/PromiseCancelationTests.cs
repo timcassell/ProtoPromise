@@ -73,7 +73,8 @@ namespace ProtoPromiseTests.APIs
 
                 state = null;
                 CancelationSource cancelationSource = CancelationSource.New();
-                deferred = Promise.NewDeferred(cancelationSource.Token);
+                deferred = Promise.NewDeferred();
+                cancelationSource.Token.Register(deferred);
                 Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
@@ -90,7 +91,8 @@ namespace ProtoPromiseTests.APIs
 
                 state = null;
                 cancelationSource = CancelationSource.New();
-                deferred = Promise.NewDeferred(cancelationSource.Token);
+                deferred = Promise.NewDeferred();
+                cancelationSource.Token.Register(deferred);
                 Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
@@ -141,7 +143,8 @@ namespace ProtoPromiseTests.APIs
 
                 state = null;
                 CancelationSource cancelationSource = CancelationSource.New();
-                deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                deferred = Promise.NewDeferred<int>();
+                cancelationSource.Token.Register(deferred);
                 Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
@@ -158,7 +161,8 @@ namespace ProtoPromiseTests.APIs
 
                 state = null;
                 cancelationSource = CancelationSource.New();
-                deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                deferred = Promise.NewDeferred<int>();
+                cancelationSource.Token.Register(deferred);
                 Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
@@ -192,8 +196,7 @@ namespace ProtoPromiseTests.APIs
             [Test]
             public void MustNotTransitionToAnyOtherState_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var deferred = Promise.NewDeferred();
 
                 bool resolved = false;
 
@@ -209,19 +212,16 @@ namespace ProtoPromiseTests.APIs
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
                 Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-
-                cancelationSource.Cancel();
+                Assert.IsFalse(deferred.TryCancel());
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Cancel());
 
                 Assert.IsTrue(resolved);
-
-                cancelationSource.Dispose();
             }
 
             [Test]
             public void MustNotTransitionToAnyOtherState_T()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                var deferred = Promise.NewDeferred<int>();
 
                 bool resolved = false;
 
@@ -237,12 +237,10 @@ namespace ProtoPromiseTests.APIs
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(1));
                 Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-
-                cancelationSource.Cancel();
+                Assert.IsFalse(deferred.TryCancel());
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Cancel());
 
                 Assert.IsTrue(resolved);
-
-                cancelationSource.Dispose();
             }
         }
 
@@ -263,8 +261,7 @@ namespace ProtoPromiseTests.APIs
             [Test]
             public void MustNotTransitionToAnyOtherState_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var deferred = Promise.NewDeferred();
 
                 bool rejected = false;
 
@@ -280,19 +277,16 @@ namespace ProtoPromiseTests.APIs
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
                 Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-
-                cancelationSource.Cancel();
+                Assert.IsFalse(deferred.TryCancel());
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Cancel());
 
                 Assert.IsTrue(rejected);
-
-                cancelationSource.Dispose();
             }
 
             [Test]
             public void MustNotTransitionToAnyOtherState_T()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                var deferred = Promise.NewDeferred<int>();
 
                 bool rejected = false;
 
@@ -308,12 +302,10 @@ namespace ProtoPromiseTests.APIs
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(1));
                 Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-
-                cancelationSource.Cancel();
+                Assert.IsFalse(deferred.TryCancel());
+                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Cancel());
 
                 Assert.IsTrue(rejected);
-
-                cancelationSource.Dispose();
             }
         }
 
@@ -335,7 +327,8 @@ namespace ProtoPromiseTests.APIs
             public void MustNotTransitionToAnyOtherState_void()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var deferred = Promise.NewDeferred();
+                cancelationSource.Token.Register(deferred);
 
                 bool canceled = false;
 
@@ -362,7 +355,8 @@ namespace ProtoPromiseTests.APIs
             public void MustNotTransitionToAnyOtherState_T()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                var deferred = Promise.NewDeferred<int>();
+                cancelationSource.Token.Register(deferred);
 
                 bool canceled = false;
 
@@ -391,7 +385,8 @@ namespace ProtoPromiseTests.APIs
         public void IfOnCanceledIsNullThrow_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
@@ -407,7 +402,8 @@ namespace ProtoPromiseTests.APIs
         public void IfOnCanceledIsNullThrow_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
@@ -439,7 +435,8 @@ namespace ProtoPromiseTests.APIs
             {
                 var canceled = false;
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                var deferred = Promise.NewDeferred<int>();
+                cancelationSource.Token.Register(deferred);
                 var promise = deferred.Promise.Preserve();
 
                 TestHelper.AddCancelCallbacks<float>(promise,
@@ -467,7 +464,8 @@ namespace ProtoPromiseTests.APIs
             {
                 var canceled = false;
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var deferred = Promise.NewDeferred();
+                cancelationSource.Token.Register(deferred);
 
                 TestHelper.AddCancelCallbacks<float>(deferred.Promise,
                     onCancel: () => canceled = true
@@ -487,7 +485,8 @@ namespace ProtoPromiseTests.APIs
             {
                 var canceled = false;
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                var deferred = Promise.NewDeferred<int>();
+                cancelationSource.Token.Register(deferred);
 
                 TestHelper.AddCancelCallbacks<int, float>(deferred.Promise,
                     onCancel: () => canceled = true
@@ -506,7 +505,8 @@ namespace ProtoPromiseTests.APIs
             public void ItMustNotBeCalledMoreThanOnce_void()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var deferred = Promise.NewDeferred();
+                cancelationSource.Token.Register(deferred);
                 var cancelCount = 0;
 
                 TestHelper.AddCancelCallbacks<float>(deferred.Promise,
@@ -528,7 +528,8 @@ namespace ProtoPromiseTests.APIs
             public void ItMustNotBeCalledMoreThanOnce_T()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                var deferred = Promise.NewDeferred<int>();
+                cancelationSource.Token.Register(deferred);
                 var cancelCount = 0;
 
                 TestHelper.AddCancelCallbacks<int, float>(deferred.Promise,
@@ -551,7 +552,8 @@ namespace ProtoPromiseTests.APIs
         public void OnCanceledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             bool canceled = false;
             TestHelper.AddCancelCallbacks<float>(deferred.Promise,
@@ -572,7 +574,8 @@ namespace ProtoPromiseTests.APIs
         public void OnCanceledMustNotBeCalledUntilTheExecutionContextStackContainsOnlyPlatformCode_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             bool canceled = false;
             TestHelper.AddCancelCallbacks<int, float>(deferred.Promise,
@@ -607,7 +610,8 @@ namespace ProtoPromiseTests.APIs
             public void IfWhenPromiseCancelationIsCanceled_AllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation_void()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var deferred = Promise.NewDeferred();
+                cancelationSource.Token.Register(deferred);
                 var promise = deferred.Promise.Preserve();
 
                 int counter = 0;
@@ -632,7 +636,8 @@ namespace ProtoPromiseTests.APIs
             public void IfWhenPromiseCancelationIsCanceled_AllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation_T()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                var deferred = Promise.NewDeferred<int>();
+                cancelationSource.Token.Register(deferred);
                 var promise = deferred.Promise.Preserve();
 
                 int counter = 0;
@@ -1449,7 +1454,8 @@ namespace ProtoPromiseTests.APIs
         public void IfPromiseIsCanceled_OnResolveAndOnRejectedMustNotBeInvoked_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been canceled.");
 
@@ -1467,7 +1473,8 @@ namespace ProtoPromiseTests.APIs
         public void IfPromiseIsCanceled_OnResolveAndOnRejectedMustNotBeInvoked_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been canceled.");
 
@@ -1506,7 +1513,8 @@ namespace ProtoPromiseTests.APIs
         public void CancelationsPropagateToBranches()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             bool invoked = false;
 
@@ -1612,7 +1620,8 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
 
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var deferred = Promise.NewDeferred();
+                cancelationSource.Token.Register(deferred);
 
                 deferred.Promise
                     .CatchCancelation(() =>
@@ -1633,7 +1642,8 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
 
-                var deferred = Promise.NewDeferred(Proto.Promises.CancelationToken.Canceled());
+                var deferred = Promise.NewDeferred();
+                Proto.Promises.CancelationToken.Canceled().Register(deferred);
 
                 deferred.Promise
                     .CatchCancelation(() =>
@@ -1651,7 +1661,8 @@ namespace ProtoPromiseTests.APIs
             public void OnCanceledIsNotInvokedIfTokenIsCanceled_void0()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(cancelationSource.Token);
+                var deferred = Promise.NewDeferred();
+                cancelationSource.Token.Register(deferred);
 
                 deferred.Promise
                     .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
@@ -1667,7 +1678,8 @@ namespace ProtoPromiseTests.APIs
             public void OnCanceledIsNotInvokedIfTokenIsCanceled_T0()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+                var deferred = Promise.NewDeferred<int>();
+                cancelationSource.Token.Register(deferred);
 
                 deferred.Promise
                     .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
@@ -1684,7 +1696,8 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource deferredCancelationSource = CancelationSource.New();
                 CancelationSource catchCancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred(deferredCancelationSource.Token);
+                var deferred = Promise.NewDeferred();
+                deferredCancelationSource.Token.Register(deferred);
 
                 deferred.Promise
                     .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
@@ -1703,7 +1716,8 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource deferredCancelationSource = CancelationSource.New();
                 CancelationSource catchCancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>(deferredCancelationSource.Token);
+                var deferred = Promise.NewDeferred<int>();
+                deferredCancelationSource.Token.Register(deferred);
 
                 deferred.Promise
                     .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)

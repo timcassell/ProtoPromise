@@ -218,7 +218,8 @@ namespace ProtoPromiseTests.APIs
         public void CancelAwaitedPromiseThrowsOperationCanceled_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             bool continued = false;
 
@@ -247,7 +248,8 @@ namespace ProtoPromiseTests.APIs
         public void CancelAwaitedPromiseThrowsOperationCanceled_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             bool continued = false;
 
@@ -536,7 +538,8 @@ namespace ProtoPromiseTests.APIs
         public void CancelDoubleAwaitedPromiseThrowsOperationCanceled_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
             var promise = deferred.Promise.Preserve();
 
             int continuedCount = 0;
@@ -568,7 +571,8 @@ namespace ProtoPromiseTests.APIs
         public void CancelDoubleAwaitedPromiseThrowsOperationCanceled_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
             var promise = deferred.Promise.Preserve();
 
             int continuedCount = 0;
