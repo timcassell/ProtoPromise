@@ -181,14 +181,29 @@ namespace Proto.Promises
 
         /// <summary>
         /// Mark this as awaited and wait for the operation to complete with a specified timeout.
-        /// <para/>If the operation completed successfully before the timeout expired, this will return true and <paramref name="result"/> will be assigned from the result of the operation. Otherwise, this will return false.
+        /// <para/>If the operation completed successfully before the timeout expired, this will return <see langword="true"/> and <paramref name="result"/> will be assigned from the result of the operation. Otherwise, this will return <see langword="false"/>.
         /// If the operation was rejected or canceled, the appropriate exception will be thrown.
         /// </summary>
         /// <remarks>
         /// If a <see cref="TimeSpan"/> representing -1 millisecond is specified for the timeout parameter, this method blocks indefinitely until the operation is complete.
         /// <para/>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!
         /// </remarks>
+        [Obsolete("Use TryWaitForResult instead.", false), EditorBrowsable(EditorBrowsableState.Never)]
         public bool WaitForResult(TimeSpan timeout, out T result)
+        {
+            return TryWaitForResult(timeout, out result);
+        }
+
+        /// <summary>
+        /// Mark this as awaited and wait for the operation to complete with a specified timeout.
+        /// <para/>If the operation completed successfully before the timeout expired, this will return <see langword="true"/> and <paramref name="result"/> will be assigned from the result of the operation. Otherwise, this will return <see langword="false"/>.
+        /// If the operation was rejected or canceled, the appropriate exception will be thrown.
+        /// </summary>
+        /// <remarks>
+        /// If a <see cref="TimeSpan"/> representing -1 millisecond is specified for the timeout parameter, this method blocks indefinitely until the operation is complete.
+        /// <para/>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!
+        /// </remarks>
+        public bool TryWaitForResult(TimeSpan timeout, out T result)
         {
             ValidateOperation(1);
             var r = _ref;

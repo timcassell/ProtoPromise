@@ -1,4 +1,6 @@
-﻿using NUnit.Framework;
+﻿#if !UNITY_WEBGL
+
+using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
@@ -283,3 +285,5 @@ namespace ProtoPromiseTests.Concurrency.Threading
     }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 }
+
+#endif // !UNITY_WEBGL

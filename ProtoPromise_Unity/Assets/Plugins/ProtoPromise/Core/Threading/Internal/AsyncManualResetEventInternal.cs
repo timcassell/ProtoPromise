@@ -151,7 +151,7 @@ namespace Proto.Promises
                 return new Promise(promise, promise.Id, 0);
             }
 
-            internal Promise<bool> WaitAsync(CancelationToken cancelationToken)
+            internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 bool isSet = _isSet;
@@ -175,7 +175,7 @@ namespace Proto.Promises
                 return new Promise<bool>(promise, promise.Id, 0);
             }
 
-            internal void WaitSync()
+            internal void Wait()
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
@@ -209,7 +209,7 @@ namespace Proto.Promises
                 new Promise(promise, promise.Id, 0).Wait();
             }
 
-            internal bool WaitSync(CancelationToken cancelationToken)
+            internal bool TryWait(CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();

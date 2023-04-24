@@ -987,13 +987,13 @@ namespace ProtoPromiseTests.APIs
                 foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
                 {
                     ++expectedCount;
-                    Assert.IsFalse(promise.Wait(System.TimeSpan.FromMilliseconds(timeout)));
+                    Assert.IsFalse(promise.TryWait(System.TimeSpan.FromMilliseconds(timeout)));
                 }
 
                 // Run it again with a freshly preserved promise, because the initial promise will have had its rejection suppressed by the other promises.
                 var secondPreservedPromise = preservedPromise.Preserve();
                 preservedPromise.Forget();
-                Assert.IsFalse(secondPreservedPromise.Wait(System.TimeSpan.FromMilliseconds(timeout)));
+                Assert.IsFalse(secondPreservedPromise.TryWait(System.TimeSpan.FromMilliseconds(timeout)));
 
                 secondPreservedPromise.Forget();
                 deferred.Reject(expectedRejectionValue);
@@ -1033,13 +1033,13 @@ namespace ProtoPromiseTests.APIs
                 foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
                 {
                     ++expectedCount;
-                    Assert.IsFalse(promise.WaitForResult(System.TimeSpan.FromMilliseconds(timeout), out outResult));
+                    Assert.IsFalse(promise.TryWaitForResult(System.TimeSpan.FromMilliseconds(timeout), out outResult));
                 }
 
                 // Run it again with a freshly preserved promise, because the initial promise will have had its rejection suppressed by the other promises.
                 var secondPreservedPromise = preservedPromise.Preserve();
                 preservedPromise.Forget();
-                Assert.IsFalse(secondPreservedPromise.WaitForResult(System.TimeSpan.FromMilliseconds(timeout), out outResult));
+                Assert.IsFalse(secondPreservedPromise.TryWaitForResult(System.TimeSpan.FromMilliseconds(timeout), out outResult));
 
                 secondPreservedPromise.Forget();
                 deferred.Reject(expectedRejectionValue);

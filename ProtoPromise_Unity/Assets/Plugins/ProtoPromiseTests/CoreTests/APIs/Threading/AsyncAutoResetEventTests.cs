@@ -53,16 +53,16 @@ namespace ProtoPromiseTests.APIs.Threading
         {
             var e = new AsyncAutoResetEvent(true);
             e.Reset();
-            Assert.False(e.Wait(CancelationToken.Canceled()));
-            Assert.False(e.Wait(CancelationToken.Canceled()));
+            Assert.False(e.TryWait(CancelationToken.Canceled()));
+            Assert.False(e.TryWait(CancelationToken.Canceled()));
             e.Reset();
-            Assert.False(e.Wait(CancelationToken.Canceled()));
+            Assert.False(e.TryWait(CancelationToken.Canceled()));
             e.Set();
-            Assert.True(e.Wait(CancelationToken.Canceled()));
-            Assert.False(e.Wait(CancelationToken.Canceled()));
+            Assert.True(e.TryWait(CancelationToken.Canceled()));
+            Assert.False(e.TryWait(CancelationToken.Canceled()));
             e.Set();
             e.Set();
-            Assert.True(e.Wait(CancelationToken.Canceled()));
+            Assert.True(e.TryWait(CancelationToken.Canceled()));
         }
 
 #if !UNITY_WEBGL
@@ -108,7 +108,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 .Forget();
 
             isAboutToWait = true;
-            Assert.False(are.Wait(cs.Token));
+            Assert.False(are.TryWait(cs.Token));
 
             cs.Dispose();
         }
@@ -121,7 +121,7 @@ namespace ProtoPromiseTests.APIs.Threading
             CancelationSource cs = CancelationSource.New();
             cs.Cancel();
 
-            Assert.False(are.Wait(cs.Token));
+            Assert.False(are.TryWait(cs.Token));
 
             cs.Dispose();
         }
@@ -134,7 +134,7 @@ namespace ProtoPromiseTests.APIs.Threading
             CancelationSource cs = CancelationSource.New();
             cs.Cancel();
 
-            Assert.True(are.Wait(cs.Token));
+            Assert.True(are.TryWait(cs.Token));
 
             cs.Dispose();
         }
@@ -210,7 +210,7 @@ namespace ProtoPromiseTests.APIs.Threading
             AsyncAutoResetEvent are = new AsyncAutoResetEvent();
             CancelationSource cs = CancelationSource.New();
 
-            var promise = are.WaitAsync(cs.Token);
+            var promise = are.TryWaitAsync(cs.Token);
 
             cs.Cancel();
 
@@ -226,7 +226,7 @@ namespace ProtoPromiseTests.APIs.Threading
             CancelationSource cs = CancelationSource.New();
             cs.Cancel();
 
-            Assert.False(are.WaitAsync(cs.Token).WaitWithTimeout(TimeSpan.FromSeconds(1)));
+            Assert.False(are.TryWaitAsync(cs.Token).WaitWithTimeout(TimeSpan.FromSeconds(1)));
 
             cs.Dispose();
         }
@@ -239,7 +239,7 @@ namespace ProtoPromiseTests.APIs.Threading
             CancelationSource cs = CancelationSource.New();
             cs.Cancel();
 
-            Assert.True(are.WaitAsync(cs.Token).WaitWithTimeout(TimeSpan.FromSeconds(1)));
+            Assert.True(are.TryWaitAsync(cs.Token).WaitWithTimeout(TimeSpan.FromSeconds(1)));
 
             cs.Dispose();
         }

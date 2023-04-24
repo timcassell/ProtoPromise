@@ -2,6 +2,8 @@
 #define NET_LEGACY
 #endif
 
+using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -48,7 +50,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="asyncLock">The async lock instance that is being entered.</param>
         /// <param name="key">If successful, the key that will release the lock when it is disposed.</param>
-        /// <returns>True if the lock was acquired, false otherwise.</returns>
+        /// <returns><see langword="true"/> if the lock was acquired, <see langword="false"/> otherwise.</returns>
         [MethodImpl(Internal.InlineOption)]
         public static bool TryEnter(AsyncLock asyncLock, out AsyncLock.Key key)
         {
@@ -72,13 +74,45 @@ namespace Proto.Promises.Threading
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the wait.</param>
         /// <returns>
         /// A <see cref="Promise{T}"/> that will be resolved when the lock is re-acquired.
-        /// Its result will be true if the lock was re-acquired before the <paramref name="cancelationToken"/> was canceled,
-        /// false if the lock was re-acquired after the <paramref name="cancelationToken"/> was canceled
+        /// Its result will be <see langword="true"/> if the lock was re-acquired before the <paramref name="cancelationToken"/> was canceled,
+        /// <see langword="false"/> if the lock was re-acquired after the <paramref name="cancelationToken"/> was canceled
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
-        public static Promise<bool> WaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken = default)
+        [Obsolete("Use TryWaitAsync instead.", false), EditorBrowsable(EditorBrowsableState.Never)]
+        public static Promise<bool> WaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
         {
-            return asyncLockKey.WaitAsync(cancelationToken);
+            return TryWaitAsync(asyncLockKey, cancelationToken);
+        }
+
+        /// <summary>
+        /// Release the lock and asynchronously wait for a pulse signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
+        /// The lock will be re-acquired before the returned <see cref="Promise{T}"/> is resolved.
+        /// </summary>
+        /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
+        /// <returns>
+        /// A <see cref="Promise"/> that will be resolved when the lock is re-acquired.
+        /// </returns>
+        [MethodImpl(Internal.InlineOption)]
+        public static Promise WaitAsync(AsyncLock.Key asyncLockKey)
+        {
+            return asyncLockKey.WaitAsync();
+        }
+
+        /// <summary>
+        /// Release the lock and asynchronously wait for a pulse signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>, while observing a <see cref="CancelationToken"/>.
+        /// The lock will be re-acquired before the returned <see cref="Promise{T}"/> is resolved.
+        /// </summary>
+        /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the wait.</param>
+        /// <returns>
+        /// A <see cref="Promise{T}"/> that will be resolved when the lock is re-acquired.
+        /// Its result will be <see langword="true"/> if the lock was re-acquired before the <paramref name="cancelationToken"/> was canceled,
+        /// <see langword="false"/> if the lock was re-acquired after the <paramref name="cancelationToken"/> was canceled
+        /// </returns>
+        [MethodImpl(Internal.InlineOption)]
+        public static Promise<bool> TryWaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
+        {
+            return asyncLockKey.TryWaitAsync(cancelationToken);
         }
 
         /// <summary>
@@ -88,13 +122,41 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the wait.</param>
         /// <returns>
-        /// true if the lock was re-acquired before the <paramref name="cancelationToken"/> was canceled,
-        /// false if the lock was re-acquired after the <paramref name="cancelationToken"/> was canceled
+        /// <see langword="true"/> if the lock was re-acquired before the <paramref name="cancelationToken"/> was canceled,
+        /// <see langword="false"/> if the lock was re-acquired after the <paramref name="cancelationToken"/> was canceled
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
-        public static bool Wait(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken = default)
+        [Obsolete("Use TryWait instead.", false), EditorBrowsable(EditorBrowsableState.Never)]
+        public static bool Wait(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
         {
-            return asyncLockKey.Wait(cancelationToken);
+            return TryWait(asyncLockKey, cancelationToken);
+        }
+
+        /// <summary>
+        /// Release the lock and synchronously wait for a pulse signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
+        /// The lock will be re-acquired before this method returns.
+        /// </summary>
+        /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public static void Wait(AsyncLock.Key asyncLockKey)
+        {
+            asyncLockKey.Wait();
+        }
+
+        /// <summary>
+        /// Release the lock and synchronously wait for a pulse signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>, while observing a <see cref="CancelationToken"/>.
+        /// The lock will be re-acquired before this method returns.
+        /// </summary>
+        /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the wait.</param>
+        /// <returns>
+        /// <see langword="true"/> if the lock was re-acquired before the <paramref name="cancelationToken"/> was canceled,
+        /// <see langword="false"/> if the lock was re-acquired after the <paramref name="cancelationToken"/> was canceled
+        /// </returns>
+        [MethodImpl(Internal.InlineOption)]
+        public static bool TryWait(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
+        {
+            return asyncLockKey.TryWait(cancelationToken);
         }
 
         /// <summary>

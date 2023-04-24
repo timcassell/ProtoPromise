@@ -36,7 +36,7 @@ namespace ProtoPromiseTests.APIs.Threading
             var lockPromise = mutex.LockAsync();
 
             AsyncLock.Key key;
-            Assert.True(lockPromise.WaitForResult(TimeSpan.FromSeconds(1), out key));
+            Assert.True(lockPromise.TryWaitForResult(TimeSpan.FromSeconds(1), out key));
             key.Dispose();
         }
 

@@ -1,4 +1,6 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if !UNITY_WEBGL
+
+#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
@@ -96,7 +98,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             CancelationSource cancelationSource = default(CancelationSource);
             Action parallelAction = () =>
             {
-                mre.Wait(cancelationSource.Token);
+                mre.TryWait(cancelationSource.Token);
                 Interlocked.Increment(ref invokedCount);
             };
 
@@ -130,7 +132,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             CancelationSource cancelationSource = default(CancelationSource);
             Action parallelAction = () =>
             {
-                mre.Wait(cancelationSource.Token);
+                mre.TryWait(cancelationSource.Token);
                 Interlocked.Increment(ref invokedCount);
             };
 
@@ -231,7 +233,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             CancelationSource cancelationSource = default(CancelationSource);
             Action parallelAction = () =>
             {
-                mre.WaitAsync(cancelationSource.Token)
+                mre.TryWaitAsync(cancelationSource.Token)
                     .Then(() => Interlocked.Increment(ref invokedCount))
                     .Forget();
             };
@@ -266,7 +268,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             CancelationSource cancelationSource = default(CancelationSource);
             Action parallelAction = () =>
             {
-                mre.WaitAsync(cancelationSource.Token)
+                mre.TryWaitAsync(cancelationSource.Token)
                     .Then(() => Interlocked.Increment(ref invokedCount))
                     .Forget();
             };
@@ -297,3 +299,5 @@ namespace ProtoPromiseTests.Concurrency.Threading
         }
     }
 }
+
+#endif // !UNITY_WEBGL
