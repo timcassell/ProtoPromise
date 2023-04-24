@@ -605,7 +605,7 @@ namespace Proto.Promises
             return Internal.CreateCanceled();
         }
 
-        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
+        [Obsolete("Cancelation reasons are no longer supported. Use Canceled() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise Canceled<TCancel>(TCancel reason)
         {
             throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Canceled() instead.", Internal.GetFormattedStacktrace(1));
@@ -619,7 +619,7 @@ namespace Proto.Promises
             return Promise<T>.Canceled();
         }
 
-        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
+        [Obsolete("Cancelation reasons are no longer supported. Use Canceled() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<T> Canceled<T, TCancel>(TCancel reason)
         {
             return Promise<T>.Canceled(reason);
@@ -627,20 +627,42 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promise"/>.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        public static Deferred NewDeferred()
+        {
+            return Deferred.New();
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promise"/>.
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promise"/> will be canceled.
         /// </summary>
-        public static Deferred NewDeferred(CancelationToken cancelationToken = default(CancelationToken))
+        [MethodImpl(Internal.InlineOption)]
+        [Obsolete("You should instead register a callback on the CancelationToken to cancel the deferred directly.", false), EditorBrowsable(EditorBrowsableState.Never)]
+        public static Deferred NewDeferred(CancelationToken cancelationToken)
         {
             return Deferred.New(cancelationToken);
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        public static Promise<T>.Deferred NewDeferred<T>()
+        {
+            return Promise<T>.Deferred.New();
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Promise{T}.Deferred"/> is pending, it and the <see cref="Promise{T}"/> will be canceled.
         /// </summary>
-        public static Promise<T>.Deferred NewDeferred<T>(CancelationToken cancelationToken = default(CancelationToken))
+        [MethodImpl(Internal.InlineOption)]
+        [Obsolete("You should instead register a callback on the CancelationToken to cancel the deferred directly.", false), EditorBrowsable(EditorBrowsableState.Never)]
+        public static Promise<T>.Deferred NewDeferred<T>(CancelationToken cancelationToken)
         {
-            return Promise<T>.NewDeferred(cancelationToken);
+            return Promise<T>.Deferred.New(cancelationToken);
         }
 
         /// <summary>

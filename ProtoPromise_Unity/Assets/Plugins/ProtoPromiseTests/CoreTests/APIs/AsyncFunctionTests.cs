@@ -278,7 +278,8 @@ namespace ProtoPromiseTests.APIs
         public void AsyncPromiseIsCanceledFromPromise1()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             //System.Diagnostics.Debugger.Launch();
             bool canceled = false;
@@ -306,7 +307,8 @@ namespace ProtoPromiseTests.APIs
         public void AsyncPromiseIsCanceledFromPromise2()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             bool canceled = false;
 

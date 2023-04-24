@@ -283,7 +283,8 @@ namespace ProtoPromiseTests.APIs
         public void OnContinueIsInvokedWhenPromiseIsCanceled_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
             var promise = deferred.Promise.Preserve();
 
             int finallyCount = 0;
@@ -303,7 +304,8 @@ namespace ProtoPromiseTests.APIs
         public void OnContinueIsInvokedWhenPromiseIsCanceled_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
             var promise = deferred.Promise.Preserve();
 
             int finallyCount = 0;
@@ -323,7 +325,8 @@ namespace ProtoPromiseTests.APIs
         public void OnContinueCancelStateWhenPromiseIsCanceled_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
             var promise = deferred.Promise.Preserve();
 
             TestHelper.AddContinueCallbacks<int, string>(promise,
@@ -343,7 +346,8 @@ namespace ProtoPromiseTests.APIs
         public void OnContinueCancelStateWhenPromiseIsCanceled_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
             var promise = deferred.Promise.Preserve();
 
             TestHelper.AddContinueCallbacks<int, int, string>(promise,
@@ -363,7 +367,8 @@ namespace ProtoPromiseTests.APIs
         public void OnContinueRethrowCancelWhenPromiseIsCanceled_void()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
             var promise = deferred.Promise.Preserve();
 
             int cancelCount = 0;
@@ -388,7 +393,8 @@ namespace ProtoPromiseTests.APIs
         public void OnContinueRethrowCancelReasonWhenPromiseIsCanceled_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
             var promise = deferred.Promise.Preserve();
 
             int cancelCount = 0;

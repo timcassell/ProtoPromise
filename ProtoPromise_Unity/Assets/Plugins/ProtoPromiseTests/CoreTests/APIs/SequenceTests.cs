@@ -173,7 +173,8 @@ namespace ProtoPromiseTests.APIs
         public void SequencePromiseIsCanceledWhenFirstPromiseIsCanceled()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred1 = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred1);
             var deferred2 = Promise.NewDeferred();
 
             bool invoked = false;
@@ -201,7 +202,8 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred1 = Promise.NewDeferred();
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred2);
 
             bool invoked = false;
 
@@ -226,7 +228,8 @@ namespace ProtoPromiseTests.APIs
         public void SequenceDelegatesStopGettingInvokedWhenAPromiseIsCanceled()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred1 = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred1);
             var deferred2 = Promise.NewDeferred();
 
             int invokes = 0;
@@ -480,7 +483,8 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred1 = Promise.NewDeferred();
             var cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred(cancelationSource.Token);
+            var deferred2 = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred2);
             var deferred3 = Promise.NewDeferred();
             var deferred4 = Promise.NewDeferred();
 

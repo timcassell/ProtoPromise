@@ -646,7 +646,8 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
 
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             deferred.Promise
                 .CatchCancelation(expected, cv =>
@@ -670,7 +671,8 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
 
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             deferred.Promise
                 .CatchCancelation(expected, cv =>
@@ -780,7 +782,8 @@ namespace ProtoPromiseTests.APIs
         {
             string expected = "expected";
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             bool invoked = false;
 
@@ -803,7 +806,8 @@ namespace ProtoPromiseTests.APIs
         {
             string expected = "expected";
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             bool invoked = false;
 
@@ -940,7 +944,8 @@ namespace ProtoPromiseTests.APIs
         {
             Exception expected = new Exception();
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
 
             bool invoked = false;
 
@@ -964,7 +969,8 @@ namespace ProtoPromiseTests.APIs
         {
             Exception expected = new Exception();
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
 
             bool invoked = false;
 
@@ -1088,7 +1094,8 @@ namespace ProtoPromiseTests.APIs
         {
             string expected = "expected";
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
             var promise = deferred.Promise.Preserve();
 
             bool invoked = false;
@@ -1113,7 +1120,8 @@ namespace ProtoPromiseTests.APIs
         public void OnContinueWillBeInvokedWithCapturedValue_canceled_T()
         {
             CancelationSource cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
             var promise = deferred.Promise.Preserve();
 
             string expected = "expected";

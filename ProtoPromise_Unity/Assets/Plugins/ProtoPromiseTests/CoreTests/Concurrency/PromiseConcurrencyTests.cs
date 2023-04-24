@@ -850,18 +850,15 @@ namespace ProtoPromiseTests.Concurrency
         public void PromiseCatchCancelationnMayBeCalledConcurrently_PendingThenCanceled_void()
         {
             int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
-            cancelationSource.Cancel();
+            deferred.Cancel();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
@@ -881,18 +878,15 @@ namespace ProtoPromiseTests.Concurrency
         public void PromiseCatchCancelationnMayBeCalledConcurrently_PendingThenCanceled_T()
         {
             int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
-            cancelationSource.Cancel();
+            deferred.Cancel();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
@@ -1048,8 +1042,7 @@ namespace ProtoPromiseTests.Concurrency
         public void PreservedPromiseContinueWithMayBeCalledConcurrently_PendingThenCanceled_void()
         {
             int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
 
             var continueActions = TestHelper.ContinueWithActionsVoid(() => Interlocked.Increment(ref invokedCount));
@@ -1059,10 +1052,8 @@ namespace ProtoPromiseTests.Concurrency
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            cancelationSource.Cancel();
+            deferred.Cancel();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
@@ -1085,8 +1076,7 @@ namespace ProtoPromiseTests.Concurrency
         public void PreservedPromiseContinueWithMayBeCalledConcurrently_PendingThenCanceled_T()
         {
             int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise.Preserve();
 
             var continueActions = TestHelper.ContinueWithActions<int>(() => Interlocked.Increment(ref invokedCount));
@@ -1096,10 +1086,8 @@ namespace ProtoPromiseTests.Concurrency
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            cancelationSource.Cancel();
+            deferred.Cancel();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
@@ -1234,18 +1222,15 @@ namespace ProtoPromiseTests.Concurrency
         public void PromiseFinallyMayBeCalledConcurrently_PendingThenCanceled_void()
         {
             int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred(cancelationSource.Token);
+            var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
-            cancelationSource.Cancel();
+            deferred.Cancel();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
@@ -1265,18 +1250,15 @@ namespace ProtoPromiseTests.Concurrency
         public void PromiseFinallyMayBeCalledConcurrently_PendingThenCanceled_T()
         {
             int invokedCount = 0;
-            var cancelationSource = CancelationSource.New();
-            var deferred = Promise.NewDeferred<int>(cancelationSource.Token);
+            var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise.Preserve();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
-            cancelationSource.Cancel();
+            deferred.Cancel();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
