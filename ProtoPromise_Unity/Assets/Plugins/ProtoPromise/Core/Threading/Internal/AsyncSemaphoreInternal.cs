@@ -13,6 +13,7 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System.Diagnostics;
@@ -26,19 +27,19 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncManualResetEventPromise : AsyncEventPromise<AsyncManualResetEventInternal>
+        internal sealed class AsyncSemaphorePromise : AsyncEventPromise<AsyncSemaphoreInternal>
         {
             [MethodImpl(InlineOption)]
-            private static AsyncManualResetEventPromise GetOrCreate()
+            private static AsyncSemaphorePromise GetOrCreate()
             {
-                var obj = ObjectPool.TryTakeOrInvalid<AsyncManualResetEventPromise>();
+                var obj = ObjectPool.TryTakeOrInvalid<AsyncSemaphorePromise>();
                 return obj == InvalidAwaitSentinel.s_instance
-                    ? new AsyncManualResetEventPromise()
-                    : obj.UnsafeAs<AsyncManualResetEventPromise>();
+                    ? new AsyncSemaphorePromise()
+                    : obj.UnsafeAs<AsyncSemaphorePromise>();
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncManualResetEventPromise GetOrCreate(AsyncManualResetEventInternal owner, SynchronizationContext callerContext)
+            internal static AsyncSemaphorePromise GetOrCreate(AsyncSemaphoreInternal owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset();
@@ -76,22 +77,24 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncManualResetEventInternal : ITraceable
+        internal sealed class AsyncSemaphoreInternal : ITraceable
         {
             // This must not be readonly.
             private ValueLinkedQueue<AsyncEventPromiseBase> _waiters = new ValueLinkedQueue<AsyncEventPromiseBase>();
-            volatile internal bool _isSet;
+            volatile internal int _currentCount;
+            private readonly int _maxCount;
 
-            internal AsyncManualResetEventInternal(bool initialState)
+            internal AsyncSemaphoreInternal(int initialCount, int maxCount)
             {
-                _isSet = initialState;
+                _currentCount = initialCount;
+                _maxCount = maxCount;
                 SetCreatedStacktrace(this, 2);
             }
 
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
 
-            ~AsyncManualResetEventInternal()
+            ~AsyncSemaphoreInternal()
             {
                 ValueLinkedStack<AsyncEventPromiseBase> waiters;
                 lock (this)
@@ -103,7 +106,7 @@ namespace Proto.Promises
                     return;
                 }
 
-                var rejectContainer = CreateRejectContainer(new Threading.AbandonedResetEventException("An AsyncManualResetEvent was collected with waiters still pending."), int.MinValue, null, this);
+                var rejectContainer = CreateRejectContainer(new Threading.AbandonedSemaphoreException("An AsyncSemaphore was collected with waiters still pending."), int.MinValue, null, this);
                 do
                 {
                     waiters.Pop().Reject(rejectContainer);
@@ -115,20 +118,17 @@ namespace Proto.Promises
             internal Promise WaitAsync()
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                if (_isSet)
-                {
-                    return Promise.Resolved();
-                }
-
-                AsyncManualResetEventPromise promise;
+                AsyncSemaphorePromise promise;
                 lock (this)
                 {
-                    // Check the flag again inside the lock to resolve race condition with Set().
-                    if (_isSet)
+                    // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    int current = _currentCount;
+                    if (current != 0)
                     {
+                        _currentCount = current - 1;
                         return Promise.Resolved();
                     }
-                    promise = AsyncManualResetEventPromise.GetOrCreate(this, CaptureContext());
+                    promise = AsyncSemaphorePromise.GetOrCreate(this, CaptureContext());
                     _waiters.Enqueue(promise);
                 }
                 return new Promise(promise, promise.Id, 0);
@@ -137,52 +137,51 @@ namespace Proto.Promises
             internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                bool isSet = _isSet;
-                if (isSet | cancelationToken.IsCancelationRequested)
-                {
-                    return Promise.Resolved(isSet);
-                }
 
-                AsyncManualResetEventPromise promise;
+                // Immediately query the cancelation state before entering the lock.
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+
+                AsyncSemaphorePromise promise;
                 lock (this)
                 {
-                    // Check the flag again inside the lock to resolve race condition with Set().
-                    if (_isSet)
+                    // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    int current = _currentCount;
+                    if (current != 0)
                     {
+                        _currentCount = current - 1;
                         return Promise.Resolved(true);
                     }
-                    promise = AsyncManualResetEventPromise.GetOrCreate(this, CaptureContext());
+                    if (isCanceled)
+                    {
+                        return Promise.Resolved(false);
+                    }
+                    promise = AsyncSemaphorePromise.GetOrCreate(this, CaptureContext());
                     _waiters.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<bool>(promise, promise.Id, 0);
             }
 
-            internal void Wait()
+            internal void WaitSync()
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isSet = _isSet;
-                while (!isSet & !spinner.NextSpinWillYield)
+                while (_currentCount == 0 & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
-                    isSet = _isSet;
                 }
 
-                if (isSet)
-                {
-                    return;
-                }
-
-                AsyncManualResetEventPromise promise;
+                AsyncSemaphorePromise promise;
                 lock (this)
                 {
-                    // Check the flag again inside the lock to resolve race condition with Set().
-                    if (_isSet)
+                    // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    int current = _currentCount;
+                    if (current != 0)
                     {
+                        _currentCount = current - 1;
                         return;
                     }
-                    promise = AsyncManualResetEventPromise.GetOrCreate(this, null);
+                    promise = AsyncSemaphorePromise.GetOrCreate(this, null);
                     _waiters.Enqueue(promise);
                 }
                 new Promise(promise, promise.Id, 0).Wait();
@@ -192,44 +191,72 @@ namespace Proto.Promises
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isSet = _isSet;
                 bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (!isSet & !isCanceled & !spinner.NextSpinWillYield)
+                while (_currentCount == 0 & !isCanceled & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
-                    isSet = _isSet;
                     isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                if (isSet | isCanceled)
-                {
-                    return isSet;
-                }
-
-                AsyncManualResetEventPromise promise;
+                AsyncSemaphorePromise promise;
                 lock (this)
                 {
-                    // Check the flag again inside the lock to resolve race condition with Set().
-                    if (_isSet)
+                    // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    int current = _currentCount;
+                    if (current != 0)
                     {
+                        _currentCount = current - 1;
                         return true;
                     }
-                    promise = AsyncManualResetEventPromise.GetOrCreate(this, null);
+                    if (isCanceled)
+                    {
+                        return false;
+                    }
+                    promise = AsyncSemaphorePromise.GetOrCreate(this, null);
                     _waiters.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<bool>(promise, promise.Id, 0).WaitForResult();
             }
 
-            internal void Set()
+            internal void Release()
             {
-                // Set the field before lock.
-                _isSet = true;
+                // Special implementation for Release(1) to remove unnecessary branches.
+                AsyncEventPromiseBase waiter;
+                lock (this)
+                {
+                    // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    int current = _currentCount;
+                    if (_maxCount == current)
+                    {
+                        throw new Threading.SemaphoreFullException(GetFormattedStacktrace(2));
+                    }
 
+                    if (_waiters.IsEmpty)
+                    {
+                        _currentCount = current + 1;
+                        return;
+                    }
+                    waiter = _waiters.Dequeue();
+                }
+                waiter.Resolve();
+            }
+
+            internal void Release(int releaseCount)
+            {
                 ValueLinkedStack<AsyncEventPromiseBase> waiters;
                 lock (this)
                 {
-                    waiters = _waiters.MoveElementsToStack();
+                    // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    int current = _currentCount;
+                    if (releaseCount > _maxCount - current)
+                    {
+                        throw new Threading.SemaphoreFullException(GetFormattedStacktrace(2));
+                    }
+
+                    int waiterCount;
+                    waiters = _waiters.MoveElementsToStack(releaseCount, out waiterCount);
+                    _currentCount = current + releaseCount - waiterCount;
                 }
                 while (waiters.IsNotEmpty)
                 {
@@ -237,19 +264,13 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl(InlineOption)]
-            internal void Reset()
-            {
-                _isSet = false;
-            }
-
-            internal bool TryRemoveWaiter(AsyncManualResetEventPromise waiter)
+            internal bool TryRemoveWaiter(AsyncSemaphorePromise waiter)
             {
                 lock (this)
                 {
                     return _waiters.TryRemove(waiter);
                 }
             }
-        } // class AsyncManualResetEventInternal
+        } // class AsyncSemaphoreInternal
     } // class Internal
 } // namespace Proto.Promises

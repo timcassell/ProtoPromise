@@ -191,7 +191,7 @@ namespace ProtoPromiseTests.Concurrency
             }
             if (timedOut)
             {
-                throw new TimeoutException(numActions + " Action(s) timed out after " + timeout + ", there may be a deadlock.");
+                throw new TimeoutException(numActions + " Action(s) timed out after " + timeout + ", there may be a deadlock. Remaining Actions: " + merger._currentParticipants);
             }
         }
 

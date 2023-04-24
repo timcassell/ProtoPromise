@@ -25,4 +25,26 @@ namespace Proto.Promises.Threading
     {
         public AbandonedResetEventException(string message) : base(message) { }
     }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode]
+#endif
+    public class AbandonedSemaphoreException : System.Exception
+    {
+        public AbandonedSemaphoreException(string message) : base(message) { }
+    }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode]
+#endif
+    public class SemaphoreFullException : System.Threading.SemaphoreFullException
+    {
+        public SemaphoreFullException(string stackTrace)
+        {
+            _stackTrace = stackTrace;
+        }
+
+        private readonly string _stackTrace;
+        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+    }
 }
