@@ -46,8 +46,8 @@ jobs:
           global-json-file: global.json
           
       - name: Run Tests
-        timeout-minutes: 180
         run: dotnet test -c ${{ matrix.config }} -f net472 --logger "trx;logfilename=dotnet-test-results-net472-${{ matrix.config }}-${{ matrix.objectPooling.name }}.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} --results-directory "./TestResults"
+        timeout-minutes: 90
 
       - uses: dorny/test-reporter@v1
         if: always()
