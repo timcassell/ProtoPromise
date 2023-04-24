@@ -8,7 +8,7 @@ concurrency:
 
 jobs:
   unity-tests:
-    name: Test (${{ matrix.testMode.name }}, ${{ matrix.scriptingRuntime.name }}, ${{ matrix.mode.name }}, ${{ matrix.progress.name }}, ${{ matrix.objectPooling.name }}, ${{ matrix.unityVersion }}, ${{ matrix.devMode }})
+    name: Test (${{ matrix.testMode.name }}, ${{ matrix.scriptingRuntime.name }}, ${{ matrix.mode.name }}, ${{ matrix.progress.name }}, ${{ matrix.objectPooling.name }}, ${{ matrix.unityVersion }}, ${{ matrix.devMode.name }})
     runs-on: ubuntu-latest
     
     strategy:
@@ -183,12 +183,12 @@ jobs:
       - uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.progress.name }}-${{ matrix.objectPooling.name }}
+          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.mode.name }}-${{ matrix.progress.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
           path: "*_junit.xml"
           reporter: java-junit
 
       - uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.progress.name }}-${{ matrix.objectPooling.name }}
+          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.mode.name }}-${{ matrix.progress.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
           path: artifacts

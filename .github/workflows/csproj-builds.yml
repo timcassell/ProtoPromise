@@ -28,6 +28,6 @@ jobs:
           global-json-file: global.json
           
       - name: Build
-        timeout-minutes: 180
         run: |
           dotnet build -c ${{ matrix.config }} -p:DeveloperMode=${{ matrix.developerMode }}
+        timeout-minutes: 10
