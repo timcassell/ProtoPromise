@@ -136,14 +136,6 @@ jobs:
           ApiReplace="  apiCompatibilityLevel: ${{ matrix.scriptingRuntime.apiCompatibilityLevel }}"
           sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
-      - name: Cache Unity Library
-        uses: actions/cache@v3
-        with:
-          path: ProtoPromise_Unity/Library
-          key: Library-${{ matrix.unityVersion }}-${{ matrix.scriptingRuntime.name }}
-          restore-keys: |
-            Library-
-
       - name: Run tests
         id: tests
         # The commit that added standalone support (new version has not yet been released).
