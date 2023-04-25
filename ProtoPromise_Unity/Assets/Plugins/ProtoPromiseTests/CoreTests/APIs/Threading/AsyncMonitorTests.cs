@@ -42,7 +42,7 @@ namespace ProtoPromiseTests.APIs.Threading
             var mutex = new AsyncLock();
             using (var key = mutex.Lock())
             {
-                Assert.IsFalse(AsyncMonitor.Wait(key, CancelationToken.Canceled()));
+                Assert.IsFalse(AsyncMonitor.TryWait(key, CancelationToken.Canceled()));
             }
         }
 
@@ -53,7 +53,7 @@ namespace ProtoPromiseTests.APIs.Threading
             mutex.LockAsync()
                 .Then(key =>
                 {
-                    return AsyncMonitor.WaitAsync(key, CancelationToken.Canceled())
+                    return AsyncMonitor.TryWaitAsync(key, CancelationToken.Canceled())
                         .Then(wasPulsed =>
                         {
                             Assert.IsFalse(wasPulsed);
@@ -73,7 +73,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 .Then(key =>
                 {
                     readyDeferred.Resolve();
-                    return AsyncMonitor.WaitAsync(key, cts.Token)
+                    return AsyncMonitor.TryWaitAsync(key, cts.Token)
                         .Then(wasPulsed =>
                         {
                             Assert.IsFalse(wasPulsed);
@@ -104,7 +104,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 .Then(key =>
                 {
                     readyDeferred.Resolve();
-                    return AsyncMonitor.WaitAsync(key, cts.Token)
+                    return AsyncMonitor.TryWaitAsync(key, cts.Token)
                         .Then(wasPulsed =>
                         {
                             Assert.IsTrue(wasPulsed);
@@ -207,7 +207,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (var key = mutex.Lock())
                 {
                     readyDeferred.Resolve();
-                    Assert.IsFalse(AsyncMonitor.Wait(key, cts.Token));
+                    Assert.IsFalse(AsyncMonitor.TryWait(key, cts.Token));
                 }
             }, SynchronizationOption.Background, forceAsync: true);
 
@@ -235,7 +235,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (var key = mutex.Lock())
                 {
                     readyDeferred.Resolve();
-                    Assert.IsTrue(AsyncMonitor.Wait(key, cts.Token));
+                    Assert.IsTrue(AsyncMonitor.TryWait(key, cts.Token));
                     cts.Cancel();
                 }
             }, SynchronizationOption.Background, forceAsync: true);
@@ -263,7 +263,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (var key = mutex.Lock())
                 {
                     readyDeferred.Resolve();
-                    Assert.IsFalse(AsyncMonitor.Wait(key, cts.Token));
+                    Assert.IsFalse(AsyncMonitor.TryWait(key, cts.Token));
                 }
             }, SynchronizationOption.Background, forceAsync: true);
 
@@ -290,7 +290,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 .Then(key =>
                 {
                     readyDeferred.Resolve();
-                    return AsyncMonitor.WaitAsync(key, cts.Token)
+                    return AsyncMonitor.TryWaitAsync(key, cts.Token)
                         .Then(wasPulsed =>
                         {
                             Assert.IsFalse(wasPulsed);
@@ -321,7 +321,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (var key = mutex.Lock())
                 {
                     readyDeferred.Resolve();
-                    Assert.IsTrue(AsyncMonitor.Wait(key, cts.Token));
+                    Assert.IsTrue(AsyncMonitor.TryWait(key, cts.Token));
                 }
             }, SynchronizationOption.Background, forceAsync: true);
 
@@ -350,7 +350,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 .Then(key =>
                 {
                     readyDeferred.Resolve();
-                    return AsyncMonitor.WaitAsync(key, cts.Token)
+                    return AsyncMonitor.TryWaitAsync(key, cts.Token)
                         .Then(wasPulsed =>
                         {
                             Assert.IsTrue(wasPulsed);
@@ -383,7 +383,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (var key = AsyncMonitor.Enter(mutex))
                 {
                     deferredReady.Resolve();
-                    Assert.IsTrue(AsyncMonitor.Wait(key));
+                    AsyncMonitor.Wait(key);
                     Interlocked.Increment(ref completed);
                 }
             });
@@ -417,7 +417,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (var key = AsyncMonitor.Enter(mutex))
                 {
                     deferred1Ready.Resolve();
-                    Assert.IsTrue(AsyncMonitor.Wait(key));
+                    AsyncMonitor.Wait(key);
                     Interlocked.Increment(ref completed);
                 }
             });
@@ -426,7 +426,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (var key = AsyncMonitor.Enter(mutex))
                 {
                     deferred2Ready.Resolve();
-                    Assert.IsTrue(AsyncMonitor.Wait(key));
+                    AsyncMonitor.Wait(key);
                     Interlocked.Increment(ref completed);
                 }
             });
@@ -464,11 +464,8 @@ namespace ProtoPromiseTests.APIs.Threading
                     {
                         var waitPromise = AsyncMonitor.WaitAsync(key);
                         deferred1Ready.Resolve();
-                        return waitPromise.ContinueWith((Promise<bool>.ContinueFunc<AsyncLock.Key>) (r =>
-                        {
-                            Assert.IsTrue(r.Result);
-                            return key;
-                        }));
+                        return waitPromise
+                            .Then(() => key);
                     })
                     .Then(key =>
                     {
@@ -484,11 +481,8 @@ namespace ProtoPromiseTests.APIs.Threading
                     {
                         var waitPromise = AsyncMonitor.WaitAsync(key);
                         deferred2Ready.Resolve();
-                        return waitPromise.ContinueWith((Promise<bool>.ContinueFunc<AsyncLock.Key>) (r =>
-                        {
-                            Assert.IsTrue(r.Result);
-                            return key;
-                        }));
+                        return waitPromise
+                            .Then(() => key);
                     })
                     .Then(key =>
                     {
@@ -541,11 +535,8 @@ namespace ProtoPromiseTests.APIs.Threading
                     {
                         var waitPromise = AsyncMonitor.WaitAsync(key);
                         deferred1Ready.Resolve();
-                        return waitPromise.ContinueWith((Promise<bool>.ContinueFunc<AsyncLock.Key>) (r =>
-                        {
-                            Assert.IsTrue(r.Result);
-                            return key;
-                        }));
+                        return waitPromise
+                            .Then(() => key);
                     })
                     .Then(key =>
                     {
@@ -560,11 +551,8 @@ namespace ProtoPromiseTests.APIs.Threading
                     {
                         var waitPromise = AsyncMonitor.WaitAsync(key);
                         deferred2Ready.Resolve();
-                        return waitPromise.ContinueWith((Promise<bool>.ContinueFunc<AsyncLock.Key>) (r =>
-                        {
-                            Assert.IsTrue(r.Result);
-                            return key;
-                        }));
+                        return waitPromise
+                            .Then(() => key);
                     })
                     .Then(key =>
                     {
@@ -612,7 +600,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 {
                     var waitPromise = AsyncMonitor.WaitAsync(key);
                     deferred1Ready.Resolve();
-                    Assert.IsTrue(await waitPromise);
+                    await waitPromise;
                     Interlocked.Increment(ref completed);
                     deferred1Complete.Resolve();
                 }
@@ -624,7 +612,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 {
                     var waitPromise = AsyncMonitor.WaitAsync(key);
                     deferred2Ready.Resolve();
-                    Assert.IsTrue(await waitPromise);
+                    await waitPromise;
                     Interlocked.Increment(ref completed);
                     deferred2Complete.Resolve();
                 }
@@ -665,7 +653,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 {
                     var waitPromise = AsyncMonitor.WaitAsync(key);
                     deferred1Ready.Resolve();
-                    Assert.IsTrue(await waitPromise);
+                    await waitPromise;
                     Interlocked.Increment(ref completed);
                 }
             });
@@ -676,7 +664,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 {
                     var waitPromise = AsyncMonitor.WaitAsync(key);
                     deferred2Ready.Resolve();
-                    Assert.IsTrue(await waitPromise);
+                    await waitPromise;
                     Interlocked.Increment(ref completed);
                 }
             });

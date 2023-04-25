@@ -62,7 +62,7 @@ namespace Proto.Promises.Threading
         [MethodImpl(Internal.InlineOption)]
         public Promise<Key> LockAsync(CancelationToken cancelationToken = default)
         {
-            return _locker.LockAsync(false, cancelationToken);
+            return _impl.LockAsync(false, cancelationToken);
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace Proto.Promises.Threading
         [MethodImpl(Internal.InlineOption)]
         public Key Lock(CancelationToken cancelationToken = default)
         {
-            return _locker.LockAsync(true, cancelationToken).WaitForResult();
+            return _impl.LockAsync(true, cancelationToken).WaitForResult();
         }
 
         /// <summary>

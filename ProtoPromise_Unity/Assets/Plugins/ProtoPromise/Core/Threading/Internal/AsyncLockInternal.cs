@@ -17,7 +17,6 @@
 
 using Proto.Promises.Threading;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -280,7 +279,7 @@ namespace Proto.Promises
                 next.Resolve(ref _currentKey);
             }
 
-            internal Promise<bool> WaitAsync(long key, bool isSynchronous, CancelationToken cancelationToken)
+            internal Promise WaitAsync(long key, SynchronizationContext callerContext)
             {
                 PromiseRefBase.AsyncLockWaitPromise promise;
                 lock (this)
@@ -290,7 +289,23 @@ namespace Proto.Promises
                         ThrowInvalidKey(3);
                     }
 
-                    promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(this, key, isSynchronous ? null : CaptureContext());
+                    promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(this, key, callerContext);
+                    _waitPulseQueue.Enqueue(promise);
+                }
+                return new Promise(promise, promise.Id, 0);
+            }
+
+            internal Promise<bool> TryWaitAsync(long key, CancelationToken cancelationToken, SynchronizationContext callerContext)
+            {
+                PromiseRefBase.AsyncLockWaitPromise promise;
+                lock (this)
+                {
+                    if (key != _currentKey)
+                    {
+                        ThrowInvalidKey(3);
+                    }
+
+                    promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(this, key, callerContext);
                     _waitPulseQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
@@ -434,12 +449,12 @@ namespace Proto.Promises
         partial class AsyncLock
         {
             // We wrap the impl with another class so that we can lock on it safely.
-            private readonly Internal.AsyncLockInternal _locker = new Internal.AsyncLockInternal();
+            private readonly Internal.AsyncLockInternal _impl = new Internal.AsyncLockInternal();
 
             [MethodImpl(Internal.InlineOption)]
             internal bool TryEnter(out Key key)
             {
-                return _locker.TryEnter(out key);
+                return _impl.TryEnter(out key);
             }
 
             // We check to make sure every key is disposed exactly once in DEBUG mode.
@@ -476,11 +491,11 @@ namespace Proto.Promises
                         _owner.NotifyAbandoned("An AsyncLock.Key was never disposed.", this);
                     }
 
-                    internal Promise<bool> WaitAsync(long key, bool isSynchronous, CancelationToken cancelationToken)
+                    internal Promise<bool> TryWaitAsync(long key, CancelationToken cancelationToken, SynchronizationContext callerContext)
                     {
                         ValidateCall();
 
-                        var promise = _owner.WaitAsync(key, isSynchronous, cancelationToken);
+                        var promise = _owner.TryWaitAsync(key, cancelationToken, callerContext);
                         _waitPromise = promise._ref;
                         return promise
                             .Finally(this, _this => _this._waitPromise = null);
@@ -535,23 +550,43 @@ namespace Proto.Promises
                     }
                 }
 
-                internal Promise<bool> WaitAsync(CancelationToken cancelationToken)
+                internal Promise WaitAsync()
                 {
                     var copy = this;
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        return copy._disposedChecker.WaitAsync(copy._key, false, cancelationToken);
+                        return copy._disposedChecker.TryWaitAsync(copy._key, default, Internal.CaptureContext());
                     }
                 }
 
-                internal bool Wait(CancelationToken cancelationToken)
+                internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
                 {
                     var copy = this;
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        return copy._disposedChecker.WaitAsync(copy._key, true, cancelationToken).WaitForResult();
+                        return copy._disposedChecker.TryWaitAsync(copy._key, cancelationToken, Internal.CaptureContext());
+                    }
+                }
+
+                internal void Wait()
+                {
+                    var copy = this;
+                    copy.ValidateOwnerAndDisposedChecker();
+                    lock (copy._disposedChecker)
+                    {
+                        copy._disposedChecker.TryWaitAsync(copy._key, default, null).WaitForResult();
+                    }
+                }
+
+                internal bool TryWait(CancelationToken cancelationToken)
+                {
+                    var copy = this;
+                    copy.ValidateOwnerAndDisposedChecker();
+                    lock (copy._disposedChecker)
+                    {
+                        return copy._disposedChecker.TryWaitAsync(copy._key, cancelationToken, null).WaitForResult();
                     }
                 }
 
@@ -615,14 +650,24 @@ namespace Proto.Promises
                     ValidateAndGetOwner().ReleaseLock(_key);
                 }
 
-                internal Promise<bool> WaitAsync(CancelationToken cancelationToken)
+                internal Promise WaitAsync()
                 {
-                    return ValidateAndGetOwner().WaitAsync(_key, false, cancelationToken);
+                    return ValidateAndGetOwner().WaitAsync(_key, Internal.CaptureContext());
                 }
 
-                internal bool Wait(CancelationToken cancelationToken)
+                internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
                 {
-                    return ValidateAndGetOwner().WaitAsync(_key, true, cancelationToken).WaitForResult();
+                    return ValidateAndGetOwner().TryWaitAsync(_key, cancelationToken, Internal.CaptureContext());
+                }
+
+                internal void Wait()
+                {
+                    ValidateAndGetOwner().WaitAsync(_key, null).Wait();
+                }
+
+                internal bool TryWait(CancelationToken cancelationToken)
+                {
+                    return ValidateAndGetOwner().TryWaitAsync(_key, cancelationToken, null).WaitForResult();
                 }
 
                 internal void Pulse()

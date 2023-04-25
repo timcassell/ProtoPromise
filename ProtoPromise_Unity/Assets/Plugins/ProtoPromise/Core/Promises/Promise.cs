@@ -138,14 +138,29 @@ namespace Proto.Promises
 
         /// <summary>
         /// Mark this as awaited and wait for the operation to complete with a specified timeout.
-        /// <para/>This will return true if the operation completed successfully before the timeout expired, false otherwise.
+        /// <para/>This will return <see langword="true"/> if the operation completed successfully before the timeout expired, <see langword="false"/> otherwise.
         /// If the operation was rejected or canceled, the appropriate exception will be thrown.
         /// </summary>
         /// <remarks>
         /// If a <see cref="TimeSpan"/> representing -1 millisecond is specified for the timeout parameter, this method blocks indefinitely until the operation is complete.
         /// <para/>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!
         /// </remarks>
+        [Obsolete("Use TryWait instead.", false), EditorBrowsable(EditorBrowsableState.Never)]
         public bool Wait(TimeSpan timeout)
+        {
+            return TryWait(timeout);
+        }
+
+        /// <summary>
+        /// Mark this as awaited and wait for the operation to complete with a specified timeout.
+        /// <para/>This will return <see langword="true"/> if the operation completed successfully before the timeout expired, <see langword="false"/> otherwise.
+        /// If the operation was rejected or canceled, the appropriate exception will be thrown.
+        /// </summary>
+        /// <remarks>
+        /// If a <see cref="TimeSpan"/> representing -1 millisecond is specified for the timeout parameter, this method blocks indefinitely until the operation is complete.
+        /// <para/>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!
+        /// </remarks>
+        public bool TryWait(TimeSpan timeout)
         {
             ValidateOperation(1);
             var r = _ref;

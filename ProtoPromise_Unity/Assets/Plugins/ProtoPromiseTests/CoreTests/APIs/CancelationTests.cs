@@ -1529,7 +1529,7 @@ namespace ProtoPromiseTests.APIs
             public void CancelationRegistrationAwaitUsingUnregistersCallback()
             {
                 bool completedAsync = false;
-                RunAsync().Wait(TimeSpan.FromSeconds(1));
+                RunAsync().TryWait(TimeSpan.FromSeconds(1));
                 Assert.IsTrue(completedAsync);
 
                 async Promise RunAsync()
@@ -1562,7 +1562,7 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsFalse(completedAsync);
                 isCallbackComplete = true;
 
-                if (!promise.Wait(TimeSpan.FromSeconds(1)) | !cancelPromise.Wait(TimeSpan.FromSeconds(1)))
+                if (!promise.TryWait(TimeSpan.FromSeconds(1)) | !cancelPromise.TryWait(TimeSpan.FromSeconds(1)))
                 {
                     throw new TimeoutException();
                 }
@@ -1603,7 +1603,7 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsFalse(completedAsync);
                 isCallbackComplete = true;
 
-                if (!promise.Wait(TimeSpan.FromSeconds(1)) | !cancelPromise.Wait(TimeSpan.FromSeconds(1)))
+                if (!promise.TryWait(TimeSpan.FromSeconds(1)) | !cancelPromise.TryWait(TimeSpan.FromSeconds(1)))
                 {
                     throw new TimeoutException();
                 }
@@ -1697,7 +1697,7 @@ namespace ProtoPromiseTests.APIs
                     asyncComplete = true;
                 }
 
-                RunAsync().Wait(TimeSpan.FromSeconds(5));
+                RunAsync().TryWait(TimeSpan.FromSeconds(5));
                 Assert.IsTrue(asyncComplete);
                 cancelationSource.Dispose();
             }
@@ -1727,7 +1727,7 @@ namespace ProtoPromiseTests.APIs
                     asyncComplete = true;
                 }
 
-                RunAsync().Wait(TimeSpan.FromSeconds(5));
+                RunAsync().TryWait(TimeSpan.FromSeconds(5));
                 Assert.IsTrue(asyncComplete);
                 cancelationSource.Dispose();
             }

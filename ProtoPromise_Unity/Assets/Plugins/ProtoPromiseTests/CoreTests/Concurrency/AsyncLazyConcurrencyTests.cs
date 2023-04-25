@@ -1,4 +1,6 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿#if !UNITY_WEBGL
+
+#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
@@ -204,3 +206,5 @@ namespace ProtoPromiseTests.Concurrency
 #endif
     }
 }
+
+#endif // !UNITY_WEBGL

@@ -2,6 +2,7 @@
 #define NET_LEGACY
 #endif
 
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -61,9 +62,9 @@ namespace Proto.Promises.Threading
         /// If this is already set, the result will be <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<bool> WaitAsync(CancelationToken cancelationToken)
+        public Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
         {
-            return _impl.WaitAsync(cancelationToken);
+            return _impl.TryWaitAsync(cancelationToken);
         }
 
         /// <summary>
@@ -72,7 +73,7 @@ namespace Proto.Promises.Threading
         [MethodImpl(Internal.InlineOption)]
         public void Wait()
         {
-            _impl.WaitSync();
+            _impl.Wait();
         }
 
         /// <summary>
@@ -84,9 +85,9 @@ namespace Proto.Promises.Threading
         /// If this is already set, the result will be <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
-        public bool Wait(CancelationToken cancelationToken)
+        public bool TryWait(CancelationToken cancelationToken)
         {
-            return _impl.WaitSync(cancelationToken);
+            return _impl.TryWait(cancelationToken);
         }
 
         /// <summary>
@@ -116,7 +117,7 @@ namespace Proto.Promises.Threading
         /// <summary>
         /// Asynchronous infrastructure support. This method permits instances of <see cref="AsyncManualResetEvent"/> to be awaited.
         /// </summary>
-        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        [EditorBrowsable(EditorBrowsableState.Never)]
         public Async.CompilerServices.PromiseAwaiterVoid GetAwaiter()
         {
             return WaitAsync().GetAwaiter();

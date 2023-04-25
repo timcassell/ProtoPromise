@@ -955,7 +955,7 @@ namespace ProtoPromiseTests.APIs
         {
             if (withTimeout)
             {
-                return promise.Wait(System.TimeSpan.Zero);
+                return promise.TryWait(System.TimeSpan.Zero);
             }
             promise.Wait();
             return true;
@@ -965,7 +965,7 @@ namespace ProtoPromiseTests.APIs
         {
             if (withTimeout)
             {
-                return promise.WaitForResult(System.TimeSpan.Zero, out result);
+                return promise.TryWaitForResult(System.TimeSpan.Zero, out result);
             }
             result = promise.WaitForResult();
             return true;

@@ -146,7 +146,7 @@ namespace Proto.Promises
                 return new Promise(promise, promise.Id, 0);
             }
 
-            internal Promise<bool> WaitAsync(CancelationToken cancelationToken)
+            internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
             {
                 AsyncResetEventPromise promise;
                 lock (this)
@@ -165,7 +165,7 @@ namespace Proto.Promises
                 return new Promise<bool>(promise, promise.Id, 0);
             }
 
-            internal void WaitSync()
+            internal void Wait()
             {
                 AsyncResetEventPromise promise;
                 lock (this)
@@ -181,7 +181,7 @@ namespace Proto.Promises
                 new Promise(promise, promise.Id, 0).Wait();
             }
 
-            internal bool WaitSync(CancelationToken cancelationToken)
+            internal bool TryWait(CancelationToken cancelationToken)
             {
                 AsyncResetEventPromise promise;
                 lock (this)
