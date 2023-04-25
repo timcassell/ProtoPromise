@@ -214,27 +214,7 @@ namespace Proto.Promises
                 _currentKey = KeyGenerator<AsyncLockInternal>.Next();
             }
 
-            internal Promise<AsyncLock.Key> LockAsync()
-            {
-                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
-                PromiseRefBase.AsyncLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey == 0)
-                    {
-                        SetNextKey();
-                        return Promise.Resolved(new AsyncLock.Key(this, _currentKey, null));
-                    }
-
-                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, CaptureContext());
-                    _queue.Enqueue(promise);
-                }
-                return new Promise<AsyncLock.Key>(promise, promise.Id, 0);
-            }
-
-            internal Promise<AsyncLock.Key> LockAsync(CancelationToken cancelationToken)
+            internal Promise<AsyncLock.Key> LockAsync(bool isSynchronous, CancelationToken cancelationToken)
             {
                 if (cancelationToken.IsCancelationRequested)
                 {
@@ -253,54 +233,11 @@ namespace Proto.Promises
                         return Promise.Resolved(new AsyncLock.Key(this, _currentKey, null));
                     }
 
-                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, CaptureContext());
+                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, isSynchronous ? null : CaptureContext());
                     _queue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<AsyncLock.Key>(promise, promise.Id, 0);
-            }
-
-            internal AsyncLock.Key LockSync()
-            {
-                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
-                PromiseRefBase.AsyncLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey == 0)
-                    {
-                        SetNextKey();
-                        return new AsyncLock.Key(this, _currentKey, null);
-                    }
-
-                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, null);
-                    _queue.Enqueue(promise);
-                }
-                return new Promise<AsyncLock.Key>(promise, promise.Id, 0).WaitForResult();
-            }
-
-            internal AsyncLock.Key LockSync(CancelationToken cancelationToken)
-            {
-                cancelationToken.ThrowIfCancelationRequested();
-
-                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
-                PromiseRefBase.AsyncLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey == 0)
-                    {
-                        SetNextKey();
-                        return new AsyncLock.Key(this, _currentKey, null);
-                    }
-
-                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, null);
-                    _queue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
-                }
-                return new Promise<AsyncLock.Key>(promise, promise.Id, 0).WaitForResult();
             }
 
             internal bool TryEnter(out AsyncLock.Key key)

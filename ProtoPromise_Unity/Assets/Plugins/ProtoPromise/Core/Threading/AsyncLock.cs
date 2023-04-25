@@ -55,50 +55,24 @@ namespace Proto.Promises.Threading
         public AsyncLock() { }
 
         /// <summary>
-        /// Asynchronously acquire the lock.
-        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
-        /// The result of the promise is the key that will release the lock when it is disposed.
-        /// </summary>
-        [MethodImpl(Internal.InlineOption)]
-        public Promise<Key> LockAsync()
-        {
-            return _impl.LockAsync();
-        }
-
-        /// <summary>
-        /// Asynchronously acquire the lock, while observing a <see cref="CancelationToken"/>.
-        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired,
-        /// or canceled if the <paramref name="cancelationToken"/> is canceled before the lock is acquired..
+        /// Asynchronously acquire the lock. Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<Key> LockAsync(CancelationToken cancelationToken)
+        public Promise<Key> LockAsync(CancelationToken cancelationToken = default)
         {
-            return _impl.LockAsync(cancelationToken);
+            return _impl.LockAsync(false, cancelationToken);
         }
 
         /// <summary>
-        /// Synchronously acquire the lock.
-        /// Returns the key that will release the lock when it is disposed.
-        /// This method will not return until the lock has been acquired.
-        /// </summary>
-        [MethodImpl(Internal.InlineOption)]
-        public Key Lock()
-        {
-            return _impl.LockSync();
-        }
-
-        /// <summary>
-        /// Synchronously acquire the lock, while observing a <see cref="CancelationToken"/>.
-        /// Returns the key that will release the lock when it is disposed.
-        /// This method will not return until the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled.
+        /// Synchronously acquire the lock. Returns the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
         [MethodImpl(Internal.InlineOption)]
-        public Key Lock(CancelationToken cancelationToken)
+        public Key Lock(CancelationToken cancelationToken = default)
         {
-            return _impl.LockSync(cancelationToken);
+            return _impl.LockAsync(true, cancelationToken).WaitForResult();
         }
 
         /// <summary>
