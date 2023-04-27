@@ -13,10 +13,8 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable IDE0019 // Use pattern matching
 #pragma warning disable IDE0090 // Use 'new(...)'
 
-using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -28,14 +26,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncAutoResetEventPromise : AsyncResetEventPromise
+        internal sealed class AsyncAutoResetEventPromise : AsyncEventPromise<AsyncAutoResetEventInternal>
         {
-#if PROMISE_DEBUG
-            // We use a weak reference in DEBUG mode so the ARE's finalizer can still run if it's dropped.
-            private readonly WeakReference _ownerReference = new WeakReference(null, false);
-#else
-            private AsyncAutoResetEventInternal _owner;
-#endif
 
             [MethodImpl(InlineOption)]
             private static AsyncAutoResetEventPromise GetOrCreate()
@@ -52,22 +44,14 @@ namespace Proto.Promises
                 var promise = GetOrCreate();
                 promise.Reset();
                 promise._callerContext = callerContext;
-#if PROMISE_DEBUG
-                promise._ownerReference.Target = owner;
-#else
                 promise._owner = owner;
-#endif
                 return promise;
             }
 
             internal override void MaybeDispose()
             {
                 Dispose();
-#if PROMISE_DEBUG
-                _ownerReference.Target = null;
-#else
                 _owner = null;
-#endif
                 ObjectPool.MaybeRepool(this);
             }
 
@@ -75,7 +59,7 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
 #if PROMISE_DEBUG
-                var _owner = _ownerReference.Target as AsyncAutoResetEventInternal;
+                var _owner = base._owner;
                 if (_owner == null)
                 {
                     return;
@@ -96,7 +80,7 @@ namespace Proto.Promises
         internal sealed class AsyncAutoResetEventInternal : ITraceable
         {
             // This must not be readonly.
-            private ValueLinkedQueue<AsyncResetEventPromise> _waiterQueue = new ValueLinkedQueue<AsyncResetEventPromise>();
+            private ValueLinkedQueue<AsyncEventPromiseBase> _waiterQueue = new ValueLinkedQueue<AsyncEventPromiseBase>();
             volatile internal bool _isSet;
 
             internal AsyncAutoResetEventInternal(bool initialState)
@@ -110,7 +94,7 @@ namespace Proto.Promises
 
             ~AsyncAutoResetEventInternal()
             {
-                ValueLinkedStack<AsyncResetEventPromise> waiters;
+                ValueLinkedStack<AsyncEventPromiseBase> waiters;
                 lock (this)
                 {
                     waiters = _waiterQueue.MoveElementsToStack();
@@ -131,7 +115,7 @@ namespace Proto.Promises
 
             internal Promise WaitAsync()
             {
-                AsyncResetEventPromise promise;
+                AsyncEventPromiseBase promise;
                 lock (this)
                 {
                     if (_isSet)
@@ -148,11 +132,14 @@ namespace Proto.Promises
 
             internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
             {
-                AsyncResetEventPromise promise;
+                // Immediately query the cancelation state before entering the lock.
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+
+                AsyncEventPromiseBase promise;
                 lock (this)
                 {
                     bool isSet = _isSet;
-                    if (isSet | cancelationToken.IsCancelationRequested)
+                    if (isSet | isCanceled)
                     {
                         _isSet = false;
                         return Promise.Resolved(isSet);
@@ -167,7 +154,7 @@ namespace Proto.Promises
 
             internal void Wait()
             {
-                AsyncResetEventPromise promise;
+                AsyncEventPromiseBase promise;
                 lock (this)
                 {
                     if (_isSet)
@@ -183,11 +170,14 @@ namespace Proto.Promises
 
             internal bool TryWait(CancelationToken cancelationToken)
             {
-                AsyncResetEventPromise promise;
+                // Immediately query the cancelation state before entering the lock.
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+
+                AsyncEventPromiseBase promise;
                 lock (this)
                 {
                     bool isSet = _isSet;
-                    if (isSet | cancelationToken.IsCancelationRequested)
+                    if (isSet | isCanceled)
                     {
                         _isSet = false;
                         return isSet;
@@ -201,7 +191,7 @@ namespace Proto.Promises
 
             internal void Set()
             {
-                AsyncResetEventPromise waiter;
+                AsyncEventPromiseBase waiter;
                 lock (this)
                 {
                     if (_waiterQueue.IsEmpty)
@@ -220,7 +210,7 @@ namespace Proto.Promises
                 _isSet = false;
             }
 
-            internal bool TryRemoveWaiter(AsyncResetEventPromise waiter)
+            internal bool TryRemoveWaiter(AsyncEventPromiseBase waiter)
             {
                 lock (this)
                 {

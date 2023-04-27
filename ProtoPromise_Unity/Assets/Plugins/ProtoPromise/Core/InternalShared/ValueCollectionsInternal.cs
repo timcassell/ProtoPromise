@@ -493,6 +493,42 @@ namespace Proto.Promises
                 return newStack;
             }
 
+            internal ValueLinkedStack<T> MoveElementsToStack(int maxCount, out int actualCount)
+            {
+                var current = _head;
+                if (maxCount <= 0 | current == null)
+                {
+                    actualCount = 0;
+                    return new ValueLinkedStack<T>();
+                }
+
+                var newStack = new ValueLinkedStack<T>(current);
+                var next = current.Next;
+                int count = 1;
+                while (true)
+                {
+                    if (next == null)
+                    {
+                        _head = null;
+                        _tail = null;
+                        actualCount = count;
+                        return newStack;
+                    }
+                    if (count == maxCount)
+                    {
+                        break;
+                    }
+                    ++count;
+                    current = next;
+                    next = current.Next;
+                }
+
+                current.Next = null;
+                _head = next;
+                actualCount = count;
+                return newStack;
+            }
+
             internal void TakeAndEnqueueElements(ref ValueLinkedQueue<T> other)
             {
                 if (other.IsEmpty)

@@ -14,7 +14,9 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 
+using System;
 using System.Diagnostics;
 using System.Threading;
 
@@ -27,7 +29,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract class AsyncSynchronizationPromiseBase<TResult> : PromiseRefBase.PromiseSingleAwait<TResult>
+            internal abstract class AsyncSynchronizationPromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
                 // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
                 protected SynchronizationContext _callerContext;
@@ -79,16 +81,16 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class AsyncResetEventPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<bool>, ICancelable, ILinked<AsyncResetEventPromise>
+        internal abstract class AsyncEventPromiseBase : PromiseRefBase.AsyncSynchronizationPromiseBase<bool>, ICancelable, ILinked<AsyncEventPromiseBase>
         {
-            AsyncResetEventPromise ILinked<AsyncResetEventPromise>.Next { get; set; }
+            AsyncEventPromiseBase ILinked<AsyncEventPromiseBase>.Next { get; set; }
 
             internal void Resolve()
             {
                 ThrowIfInPool(this);
 
                 // We don't need to check if the unregister was successful or not.
-                // The fact that this was called means the cancelation was unable to unregister this from the lock.
+                // The fact that this was called means the cancelation was unable to unregister this from the owner.
                 // We just dispose to wait for the callback to complete before we continue.
                 _cancelationRegistration.Dispose();
 
@@ -103,6 +105,27 @@ namespace Proto.Promises
             }
 
             public abstract void Cancel();
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal abstract class AsyncEventPromise<TOwner> : AsyncEventPromiseBase
+            where TOwner : class
+        {
+#if PROMISE_DEBUG
+            // We use a weak reference in DEBUG mode so the owner's finalizer can still run if it's dropped.
+            private readonly WeakReference _ownerReference = new WeakReference(null, false);
+#pragma warning disable IDE1006 // Naming Styles
+            protected TOwner _owner
+#pragma warning restore IDE1006 // Naming Styles
+            {
+                get { return _ownerReference.Target as TOwner; }
+                set { _ownerReference.Target = value; }
+            }
+#else
+            protected TOwner _owner;
+#endif
         }
     }
 }
