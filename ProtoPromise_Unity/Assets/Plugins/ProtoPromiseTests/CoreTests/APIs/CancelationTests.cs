@@ -960,10 +960,8 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Dispose();
             }
 
-            // Nulled out fields aren't garbage collected in Debug mode until the end of the scope.
-            // Github's test runners also aren't collecting properly even in RELEASE mode, causing the tests to fail.
-            // So these GC tests will only run locally when the PROTO_PROMISE_TEST_CANCELLATION_TOKEN_SOURCE_GC symbol exists.
-#if !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE && !DEBUG && PROTO_PROMISE_TEST_CANCELLATION_TOKEN_SOURCE_GC
+            // Nulled out fields aren't garbage collected in Debug mode until the end of the scope, so we force noinlining.
+#if PROTO_PROMISE_TEST_GC_ENABLED
             [MethodImpl(MethodImplOptions.NoInlining)]
             void ConvertToken(CancellationTokenSource source)
             {
@@ -1048,7 +1046,7 @@ namespace ProtoPromiseTests.APIs
             }
 #endif // NET6_0_OR_GREATER
 
-#endif // !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE && !DEBUG && PROTO_PROMISE_TEST_CANCELLATION_TOKEN_SOURCE_GC
+#endif // PROTO_PROMISE_TEST_GC_ENABLED
 
 #endif // !NET_LEGACY || NET40
 

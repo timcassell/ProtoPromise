@@ -1858,7 +1858,7 @@ namespace ProtoPromiseTests.APIs.Threading
             }
         }
 
-#if PROMISE_DEBUG
+#if PROTO_PROMISE_TEST_GC_ENABLED
         [Test]
         public void AsyncReaderWriterLock_AbandonedLockIsReported()
         {
@@ -1971,7 +1971,7 @@ namespace ProtoPromiseTests.APIs.Threading
         {
             rwl.UpgradeToWriterLock(upgradeableReaderKey);
         }
-#endif // PROMISE_DEBUG
+#endif // PROTO_PROMISE_TEST_GC_ENABLED
     }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 }
