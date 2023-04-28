@@ -27,13 +27,91 @@ namespace ProtoPromiseTests.APIs.Threading
             TestHelper.Cleanup();
         }
 
+        public enum CancelationType
+        {
+            NoToken,
+            Default,
+            Canceled,
+            Pending
+        }
+
+        private static CancelationToken GetToken(CancelationSource cancelationSource, CancelationType cancelationType)
+        {
+            return cancelationType == CancelationType.Canceled ? CancelationToken.Canceled()
+                : cancelationType == CancelationType.Pending ? cancelationSource.Token
+                : CancelationToken.None;
+        }
+
         [Test]
-        public void AsyncMonitor_TryEnter_ReturnsTrueIfLockIsNotHeld()
+        public void AsyncMonitor_TryEnter_ReturnsTrueIfLockIsNotHeld([Values] CancelationType cancelationType)
         {
             var mutex = new AsyncLock();
+            var cancelationSource = CancelationSource.New();
             AsyncLock.Key key;
-            Assert.IsTrue(AsyncMonitor.TryEnter(mutex, out key));
+            if (cancelationType == CancelationType.NoToken)
+            {
+                Assert.IsTrue(AsyncMonitor.TryEnter(mutex, out key));
+            }
+            else
+            {
+                Assert.IsTrue(AsyncMonitor.TryEnter(mutex, out key, GetToken(cancelationSource, cancelationType)));
+            }
             key.Dispose();
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncMonitor_TryEnterAsync_TrueIfLockIsNotHeld(
+            [Values(CancelationType.Default, CancelationType.Canceled, CancelationType.Pending)] CancelationType cancelationType)
+        {
+            var mutex = new AsyncLock();
+            var cancelationSource = CancelationSource.New();
+            AsyncMonitor.TryEnterAsync(mutex, GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.True(tuple.didEnter);
+                    tuple.key.Dispose();
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncMonitor_TryEnterAsync_FalseIfLockIsHeld(
+            [Values(CancelationType.Canceled, CancelationType.Pending)] CancelationType cancelationType)
+        {
+            var mutex = new AsyncLock();
+            var key = mutex.Lock();
+
+            var cancelationSource = CancelationSource.New();
+            var promise = AsyncMonitor.TryEnterAsync(mutex, GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.False(tuple.didEnter);
+                });
+            cancelationSource.Cancel();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            key.Dispose();
+        }
+
+        [Test]
+        public void AsyncMonitor_TryEnterAsync_TrueIfLockIsReleased(
+            [Values(CancelationType.Default, CancelationType.Pending)] CancelationType cancelationType)
+        {
+            var mutex = new AsyncLock();
+            var key = mutex.Lock();
+
+            var cancelationSource = CancelationSource.New();
+            var promise = AsyncMonitor.TryEnterAsync(mutex, GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.True(tuple.didEnter);
+                    tuple.key.Dispose();
+                });
+            key.Dispose();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
         }
 
         [Test]
@@ -163,10 +241,69 @@ namespace ProtoPromiseTests.APIs.Threading
 
 #if !UNITY_WEBGL
         [Test]
-        public void AsyncMonitor_TryEnter_ReturnsFalseIfLockIsHeld()
+        public void AsyncMonitor_TryEnter_ReturnsFalseIfLockIsHeld(
+            [Values(CancelationType.NoToken, CancelationType.Canceled, CancelationType.Pending)] CancelationType cancelationType)
         {
             var mutex = new AsyncLock();
+            var cancelationSource = CancelationSource.New();
             var deferredReady = Promise.NewDeferred();
+            bool didWait = false;
+
+            var promise = Promise.Run(() =>
+            {
+                using (var key = AsyncMonitor.Enter(mutex))
+                {
+                    // Hold onto the lock until the other thread tries to enter.
+                    lock (mutex)
+                    {
+                        deferredReady.Resolve();
+                        Monitor.Wait(mutex);
+                    }
+                    // Sleep a bit to make sure the other thread is waiting on TryEnter.
+                    Thread.Sleep(100);
+                    cancelationSource.Cancel();
+                    // Make sure we don't exit the lock until the other thread returned from TryEnter.
+                    SpinWait.SpinUntil(() => didWait);
+                }
+            });
+
+            deferredReady.Promise
+                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .Then(() =>
+                {
+                    AsyncLock.Key key;
+                    if (cancelationType == CancelationType.NoToken)
+                    {
+                        Assert.False(AsyncMonitor.TryEnter(mutex, out key));
+                        // Allow the other thread to continue.
+                        lock (mutex)
+                        {
+                            Monitor.Pulse(mutex);
+                        }
+                    }
+                    else
+                    {
+                        // Allow the other thread to continue.
+                        lock (mutex)
+                        {
+                            Monitor.Pulse(mutex);
+                        }
+                        Assert.False(AsyncMonitor.TryEnter(mutex, out key, GetToken(cancelationSource, cancelationType)));
+                    }
+                    didWait = true;
+                    return promise;
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+        [Test]
+        public void AsyncMonitor_TryEnter_ReturnsTrueIfLockIsReleased(
+            [Values(CancelationType.Default, CancelationType.Pending)] CancelationType cancelationType)
+        {
+            var mutex = new AsyncLock();
+            var cancelationSource = CancelationSource.New();
+            var deferredReady = Promise.NewDeferred();
+
             var promise = Promise.Run(() =>
             {
                 using (var key = AsyncMonitor.Enter(mutex))
@@ -184,16 +321,60 @@ namespace ProtoPromiseTests.APIs.Threading
                 .WaitAsync(SynchronizationOption.Background, forceAsync: true)
                 .Then(() =>
                 {
-                    AsyncLock.Key key;
-                    Assert.IsFalse(AsyncMonitor.TryEnter(mutex, out key));
                     // Allow the other thread to continue.
                     lock (mutex)
                     {
                         Monitor.Pulse(mutex);
                     }
+                    Assert.True(AsyncMonitor.TryEnter(mutex, out var key, GetToken(cancelationSource, cancelationType)));
+                    key.Dispose();
                     return promise;
                 })
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncMonitor_TryEnter_ReturnsFalseIfTokenIsCanceledWhileLockIsHeld()
+        {
+            var mutex = new AsyncLock();
+            var cancelationSource = CancelationSource.New();
+            var deferredReady = Promise.NewDeferred();
+            bool didWait = false;
+
+            var promise = Promise.Run(() =>
+            {
+                using (var key = AsyncMonitor.Enter(mutex))
+                {
+                    // Hold onto the lock until the other thread tries to enter.
+                    lock (mutex)
+                    {
+                        deferredReady.Resolve();
+                        Monitor.Wait(mutex);
+                    }
+                    // Sleep a bit to make sure the other thread is waiting on TryEnter.
+                    Thread.Sleep(100);
+                    cancelationSource.Cancel();
+                    // Make sure we don't exit the lock until the other thread returned from TryEnter.
+                    SpinWait.SpinUntil(() => didWait);
+                }
+            });
+
+            deferredReady.Promise
+                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .Then(() =>
+                {
+                    // Allow the other thread to continue.
+                    lock (mutex)
+                    {
+                        Monitor.Pulse(mutex);
+                    }
+                    Assert.False(AsyncMonitor.TryEnter(mutex, out var key, cancelationSource.Token));
+                    didWait = true;
+                    return promise;
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
         }
 
         [Test]
@@ -582,101 +763,97 @@ namespace ProtoPromiseTests.APIs.Threading
         [Test]
         public void AsyncMonitor_Pulse_ReleasesOneAsyncWaiter_AsyncAwait()
         {
-            Pulse_ReleasesOneAsyncWaiter_AsyncAwait_Core()
+            Promise.Run(async () =>
+            {
+                var mutex = new AsyncLock();
+                int completed = 0;
+                var deferred1Ready = Promise.NewDeferred();
+                var deferred2Ready = Promise.NewDeferred();
+                var deferred1Complete = Promise.NewDeferred();
+                var deferred2Complete = Promise.NewDeferred();
+                var promise1 = Promise.Run(async () =>
+                {
+                    using (var key = await AsyncMonitor.EnterAsync(mutex))
+                    {
+                        var waitPromise = AsyncMonitor.WaitAsync(key);
+                        deferred1Ready.Resolve();
+                        await waitPromise;
+                        Interlocked.Increment(ref completed);
+                        deferred1Complete.Resolve();
+                    }
+                });
+                await deferred1Ready.Promise;
+                var promise2 = Promise.Run(async () =>
+                {
+                    using (var key = await AsyncMonitor.EnterAsync(mutex))
+                    {
+                        var waitPromise = AsyncMonitor.WaitAsync(key);
+                        deferred2Ready.Resolve();
+                        await waitPromise;
+                        Interlocked.Increment(ref completed);
+                        deferred2Complete.Resolve();
+                    }
+                });
+                await deferred2Ready.Promise;
+
+                using (var key = await AsyncMonitor.EnterAsync(mutex))
+                {
+                    AsyncMonitor.Pulse(key);
+                }
+                await Promise.Race(promise1, promise2);
+                Assert.AreEqual(1, completed);
+
+                using (var key = await AsyncMonitor.EnterAsync(mutex))
+                {
+                    AsyncMonitor.Pulse(key);
+                }
+                await Promise.All(deferred1Complete.Promise, deferred2Complete.Promise);
+                Assert.AreEqual(2, completed);
+            }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        private async Promise Pulse_ReleasesOneAsyncWaiter_AsyncAwait_Core()
-        {
-            var mutex = new AsyncLock();
-            int completed = 0;
-            var deferred1Ready = Promise.NewDeferred();
-            var deferred2Ready = Promise.NewDeferred();
-            var deferred1Complete = Promise.NewDeferred();
-            var deferred2Complete = Promise.NewDeferred();
-            var promise1 = Promise.Run(async () =>
-            {
-                using (var key = await AsyncMonitor.EnterAsync(mutex))
-                {
-                    var waitPromise = AsyncMonitor.WaitAsync(key);
-                    deferred1Ready.Resolve();
-                    await waitPromise;
-                    Interlocked.Increment(ref completed);
-                    deferred1Complete.Resolve();
-                }
-            });
-            await deferred1Ready.Promise;
-            var promise2 = Promise.Run(async () =>
-            {
-                using (var key = await AsyncMonitor.EnterAsync(mutex))
-                {
-                    var waitPromise = AsyncMonitor.WaitAsync(key);
-                    deferred2Ready.Resolve();
-                    await waitPromise;
-                    Interlocked.Increment(ref completed);
-                    deferred2Complete.Resolve();
-                }
-            });
-            await deferred2Ready.Promise;
-
-            using (var key = await AsyncMonitor.EnterAsync(mutex))
-            {
-                AsyncMonitor.Pulse(key);
-            }
-            await Promise.Race(promise1, promise2);
-            Assert.AreEqual(1, completed);
-
-            using (var key = await AsyncMonitor.EnterAsync(mutex))
-            {
-                AsyncMonitor.Pulse(key);
-            }
-            await Promise.All(deferred1Complete.Promise, deferred2Complete.Promise);
-            Assert.AreEqual(2, completed);
         }
 
         [Test]
         public void AsyncMonitor_PulseAll_ReleasesAllAsyncWaiters_AsyncAwait()
         {
-            PulseAll_ReleasesAllAsyncWaiters_AsyncAwait_Core()
+            Promise.Run(async () =>
+            {
+                var mutex = new AsyncLock();
+                int completed = 0;
+                var deferred1Ready = Promise.NewDeferred();
+                var deferred2Ready = Promise.NewDeferred();
+                var promise1 = Promise.Run(async () =>
+                {
+                    using (var key = await AsyncMonitor.EnterAsync(mutex))
+                    {
+                        var waitPromise = AsyncMonitor.WaitAsync(key);
+                        deferred1Ready.Resolve();
+                        await waitPromise;
+                        Interlocked.Increment(ref completed);
+                    }
+                });
+                await deferred1Ready.Promise;
+                var promise2 = Promise.Run(async () =>
+                {
+                    using (var key = await AsyncMonitor.EnterAsync(mutex))
+                    {
+                        var waitPromise = AsyncMonitor.WaitAsync(key);
+                        deferred2Ready.Resolve();
+                        await waitPromise;
+                        Interlocked.Increment(ref completed);
+                    }
+                });
+                await deferred2Ready.Promise;
+
+                using (var key = await AsyncMonitor.EnterAsync(mutex))
+                {
+                    AsyncMonitor.PulseAll(key);
+                }
+                await Promise.All(promise1, promise2);
+
+                Assert.AreEqual(2, completed);
+            }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        private async Promise PulseAll_ReleasesAllAsyncWaiters_AsyncAwait_Core()
-        {
-            var mutex = new AsyncLock();
-            int completed = 0;
-            var deferred1Ready = Promise.NewDeferred();
-            var deferred2Ready = Promise.NewDeferred();
-            var promise1 = Promise.Run(async () =>
-            {
-                using (var key = await AsyncMonitor.EnterAsync(mutex))
-                {
-                    var waitPromise = AsyncMonitor.WaitAsync(key);
-                    deferred1Ready.Resolve();
-                    await waitPromise;
-                    Interlocked.Increment(ref completed);
-                }
-            });
-            await deferred1Ready.Promise;
-            var promise2 = Promise.Run(async () =>
-            {
-                using (var key = await AsyncMonitor.EnterAsync(mutex))
-                {
-                    var waitPromise = AsyncMonitor.WaitAsync(key);
-                    deferred2Ready.Resolve();
-                    await waitPromise;
-                    Interlocked.Increment(ref completed);
-                }
-            });
-            await deferred2Ready.Promise;
-
-            using (var key = await AsyncMonitor.EnterAsync(mutex))
-            {
-                AsyncMonitor.PulseAll(key);
-            }
-            await Promise.All(promise1, promise2);
-
-            Assert.AreEqual(2, completed);
         }
 #endif // !UNITY_WEBGL
 

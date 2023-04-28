@@ -35,8 +35,7 @@ namespace ProtoPromiseTests.APIs.Threading
 
             var lockPromise = mutex.LockAsync();
 
-            AsyncLock.Key key;
-            Assert.True(lockPromise.TryWaitForResult(TimeSpan.FromSeconds(1), out key));
+            Assert.True(lockPromise.TryWaitForResult(TimeSpan.FromSeconds(1), out var key));
             key.Dispose();
         }
 
@@ -152,7 +151,7 @@ namespace ProtoPromiseTests.APIs.Threading
             var mutex = new AsyncLock();
             var cts = CancelationSource.New();
 
-            Promise<AsyncLock.Key> cancelableLockPromise = default(Promise<AsyncLock.Key>);
+            var cancelableLockPromise = default(Promise<AsyncLock.Key>);
             mutex.LockAsync()
                 .Then(key =>
                 {
@@ -318,59 +317,55 @@ namespace ProtoPromiseTests.APIs.Threading
         [Test]
         public void AsyncLock_CanceledLock_ThrowsException_AsyncAwait()
         {
-            AsyncLock_CanceledLock_ThrowsException_AsyncAwait_Core()
+            Promise.Run(async () =>
+            {
+                var mutex = new AsyncLock();
+                var cts = CancelationSource.New();
+
+                var key = await mutex.LockAsync();
+                var canceledLockPromise = mutex.LockAsync(cts.Token);
+                cts.Cancel();
+
+                // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
+                TestHelper.ExecuteForegroundCallbacks();
+                Assert.Catch<OperationCanceledException>(() => canceledLockPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)));
+                key.Dispose();
+                cts.Dispose();
+            }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        private async Promise AsyncLock_CanceledLock_ThrowsException_AsyncAwait_Core()
-        {
-            var mutex = new AsyncLock();
-            var cts = CancelationSource.New();
-
-            var key = await mutex.LockAsync();
-            var canceledLockPromise = mutex.LockAsync(cts.Token);
-            cts.Cancel();
-
-            // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
-            TestHelper.ExecuteForegroundCallbacks();
-            Assert.Catch<OperationCanceledException>(() => canceledLockPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)));
-            key.Dispose();
-            cts.Dispose();
         }
 
         [Test]
         public void AsyncLock_CanceledTooLate_StillTakesLock_AsyncAwait()
         {
-            AsyncLock_CanceledTooLate_StillTakesLock_AsyncAwait_Core()
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        private async Promise AsyncLock_CanceledTooLate_StillTakesLock_AsyncAwait_Core()
-        {
-            var mutex = new AsyncLock();
-            var cts = CancelationSource.New();
-
-            Promise<AsyncLock.Key> cancelableLockPromise;
-            using (await mutex.LockAsync())
+            Promise.Run(async () =>
             {
-                cancelableLockPromise = mutex.LockAsync(cts.Token);
-            }
+                var mutex = new AsyncLock();
+                var cts = CancelationSource.New();
 
-            cts.Cancel();
-
-            Promise.State state = Promise.State.Pending;
-            var nextLocker = mutex.LockAsync()
-                .ContinueWith(r =>
+                Promise<AsyncLock.Key> cancelableLockPromise;
+                using (await mutex.LockAsync())
                 {
-                    state = r.State;
-                    r.Result.Dispose();
-                });
-            Assert.AreEqual(Promise.State.Pending, state);
+                    cancelableLockPromise = mutex.LockAsync(cts.Token);
+                }
 
-            var key = await cancelableLockPromise;
-            key.Dispose();
-            await nextLocker;
-            cts.Dispose();
+                cts.Cancel();
+
+                Promise.State state = Promise.State.Pending;
+                var nextLocker = mutex.LockAsync()
+                    .ContinueWith(r =>
+                    {
+                        state = r.State;
+                        r.Result.Dispose();
+                    });
+                Assert.AreEqual(Promise.State.Pending, state);
+
+                var key = await cancelableLockPromise;
+                key.Dispose();
+                await nextLocker;
+                cts.Dispose();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
 #if !UNITY_WEBGL
@@ -415,123 +410,117 @@ namespace ProtoPromiseTests.APIs.Threading
         [Test]
         public void AsyncLock_Locked_PreventsLockUntilUnlocked_AsyncAwait()
         {
-            AsyncLock_Locked_PreventsLockUntilUnlocked_AsyncAwait_Core()
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        private async Promise AsyncLock_Locked_PreventsLockUntilUnlocked_AsyncAwait_Core()
-        {
-            var mutex = new AsyncLock();
-            var deferred1HasLock = Promise.NewDeferred();
-            var deferred1Continue = Promise.NewDeferred();
-
             Promise.Run(async () =>
             {
-                using (await mutex.LockAsync())
+                var mutex = new AsyncLock();
+                var deferred1HasLock = Promise.NewDeferred();
+                var deferred1Continue = Promise.NewDeferred();
+
+                Promise.Run(async () =>
                 {
-                    deferred1HasLock.Resolve();
-                    await deferred1Continue.Promise;
-                }
-            })
-                .Forget();
-            await deferred1HasLock.Promise;
+                    using (await mutex.LockAsync())
+                    {
+                        deferred1HasLock.Resolve();
+                        await deferred1Continue.Promise;
+                    }
+                })
+                    .Forget();
+                await deferred1HasLock.Promise;
 
-            bool promise2IsComplete = false;
-            var promise2 = Promise.Run(async () =>
-            {
-                using (await mutex.LockAsync()) { }
-            })
-                .Finally(() => promise2IsComplete = true);
+                bool promise2IsComplete = false;
+                var promise2 = Promise.Run(async () =>
+                {
+                    using (await mutex.LockAsync()) { }
+                })
+                    .Finally(() => promise2IsComplete = true);
 
-            Assert.IsFalse(promise2IsComplete);
-            deferred1Continue.Resolve();
-            await promise2;
+                Assert.IsFalse(promise2IsComplete);
+                deferred1Continue.Resolve();
+                await promise2;
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
         public void AsyncLock_Locked_OnlyPermitsOneLockerAtATime_AsyncAwait()
         {
-            AsyncLock_Locked_OnlyPermitsOneLockerAtATime_AsyncAwait_Core()
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        private async Promise AsyncLock_Locked_OnlyPermitsOneLockerAtATime_AsyncAwait_Core()
-        {
-            var mutex = new AsyncLock();
-            var deferred1HasLock = Promise.NewDeferred();
-            var deferred1Continue = Promise.NewDeferred();
-            var deferred2Ready = Promise.NewDeferred();
-            var deferred2HasLock = Promise.NewDeferred();
-            var deferred2Continue = Promise.NewDeferred();
-
             Promise.Run(async () =>
             {
-                using (await mutex.LockAsync())
+                var mutex = new AsyncLock();
+                var deferred1HasLock = Promise.NewDeferred();
+                var deferred1Continue = Promise.NewDeferred();
+                var deferred2Ready = Promise.NewDeferred();
+                var deferred2HasLock = Promise.NewDeferred();
+                var deferred2Continue = Promise.NewDeferred();
+
+                Promise.Run(async () =>
                 {
-                    deferred1HasLock.Resolve();
-                    await deferred1Continue.Promise;
-                }
-            })
-                .Forget();
-            await deferred1HasLock.Promise;
+                    using (await mutex.LockAsync())
+                    {
+                        deferred1HasLock.Resolve();
+                        await deferred1Continue.Promise;
+                    }
+                })
+                    .Forget();
+                await deferred1HasLock.Promise;
 
-            var promise2 = Promise.Run(async () =>
-            {
-                var key = mutex.LockAsync();
-                deferred2Ready.Resolve();
-                using (await key)
+                var promise2 = Promise.Run(async () =>
                 {
-                    deferred2HasLock.Resolve();
-                    await deferred2Continue.Promise;
-                }
-            });
-            await deferred2Ready.Promise;
+                    var key = mutex.LockAsync();
+                    deferred2Ready.Resolve();
+                    using (await key)
+                    {
+                        deferred2HasLock.Resolve();
+                        await deferred2Continue.Promise;
+                    }
+                });
+                await deferred2Ready.Promise;
 
-            bool promise3Complete = false;
-            var promise3 = Promise.Run(async () =>
-            {
-                using (await mutex.LockAsync()) { }
-            })
-                .Finally(() => promise3Complete = true);
+                bool promise3Complete = false;
+                var promise3 = Promise.Run(async () =>
+                {
+                    using (await mutex.LockAsync()) { }
+                })
+                    .Finally(() => promise3Complete = true);
 
-            deferred1Continue.Resolve();
-            await deferred2HasLock.Promise;
+                deferred1Continue.Resolve();
+                await deferred2HasLock.Promise;
 
-            Assert.IsFalse(promise3Complete);
-            deferred2Continue.Resolve();
-            await promise2;
-            await promise3;
+                Assert.IsFalse(promise3Complete);
+                deferred2Continue.Resolve();
+                await promise2;
+                await promise3;
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
         public void AsyncLock_CanceledLock_LeavesLockUnlocked_AsyncAwait()
         {
-            AsyncLock_CanceledLock_LeavesLockUnlocked_AsyncAwait_Core()
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        private async Promise AsyncLock_CanceledLock_LeavesLockUnlocked_AsyncAwait_Core()
-        {
-            var mutex = new AsyncLock();
-            var cts = CancelationSource.New();
-
-            var unlock = await mutex.LockAsync();
-            bool triedToEnterLock = false;
-            var promise = Promise.Run(async () =>
+            Promise.Run(async () =>
             {
-                var lockPromise = mutex.LockAsync(cts.Token);
-                triedToEnterLock = true;
-                await lockPromise;
-            });
+                var mutex = new AsyncLock();
+                var cts = CancelationSource.New();
 
-            SpinWait.SpinUntil(() => triedToEnterLock);
-            cts.Cancel();
+                var unlock = await mutex.LockAsync();
+                bool triedToEnterLock = false;
+                var promise = Promise.Run(async () =>
+                {
+                    var lockPromise = mutex.LockAsync(cts.Token);
+                    triedToEnterLock = true;
+                    await lockPromise;
+                });
 
-            Assert.Catch<OperationCanceledException>(() => promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)));
-            unlock.Dispose();
+                SpinWait.SpinUntil(() => triedToEnterLock);
+                cts.Cancel();
 
-            mutex.LockAsync().WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)).Dispose();
-            cts.Dispose();
+                Assert.Catch<OperationCanceledException>(() => promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)));
+                unlock.Dispose();
+
+                mutex.LockAsync().WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)).Dispose();
+                cts.Dispose();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
@@ -588,6 +577,8 @@ namespace ProtoPromiseTests.APIs.Threading
             Assert.Throws<AbandonedLockException>(() => AsyncMonitor.Enter(mutex));
             Assert.Throws<AbandonedLockException>(() => AsyncMonitor.EnterAsync(mutex));
             Assert.Throws<AbandonedLockException>(() => AsyncMonitor.TryEnter(mutex, out _));
+            Assert.Throws<AbandonedLockException>(() => AsyncMonitor.TryEnter(mutex, out _, CancelationToken.None));
+            Assert.Throws<AbandonedLockException>(() => AsyncMonitor.TryEnterAsync(mutex, CancelationToken.None));
 
             Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
         }

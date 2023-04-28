@@ -100,26 +100,5 @@ namespace Proto.Promises
                 ReportRejection(_value, traceable);
             }
         }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal sealed class ForcedRethrowException : RethrowException
-        {
-#if !PROMISE_DEBUG
-            private static readonly ForcedRethrowException s_instance = new ForcedRethrowException();
-#endif
-
-            private ForcedRethrowException() { }
-
-            new internal static ForcedRethrowException GetOrCreate()
-            {
-#if PROMISE_DEBUG
-                return new ForcedRethrowException(); // Don't re-use instance in DEBUG mode so that we can read its stacktrace on any thread.
-#else
-                return s_instance;
-#endif
-            }
-        }
     }
 }

@@ -32,7 +32,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             var cancelationSource = default(CancelationSource);
             int enteredCount = 0;
             int exitedCount = 0;
-            int expectedInvokes = ThreadHelper.GetExpandCount(4) * 4;
+            int expectedInvokes = 4;
             Action<bool> syncAction = observeCancelation =>
             {
                 bool didWait;

@@ -44,7 +44,8 @@
             Canceled
         }
 
-        // These are necesary to pass ResultContainer to ContinueWith callbacks (because it is a ref struct, it cannot be used as a generic argument in System.Action<> and System.Func<>).
+        // These were necessary to pass ResultContainer to ContinueWith callbacks (because it was a ref struct, it could not be used as a generic argument in System.Action<> and System.Func<>).
+        // This is no longer necessary since ResultContainer was relaxed to a normal struct, but changing the signature would be a breaking change.
 
         /// <summary>
         /// The delegate type used for <see cref="ContinueWith(ContinueAction, CancelationToken)"/>.

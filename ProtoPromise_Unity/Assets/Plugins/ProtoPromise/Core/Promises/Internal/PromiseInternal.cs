@@ -216,6 +216,15 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseRef<TResult> : PromiseRefBase
             {
+                // Could make this a public method on Promise<T>, but will leave internal for now.
+                internal Promise<TResult>.ResultContainer WaitForResultNoThrow()
+                {
+                    PromiseSynchronousWaiter.TryWaitForCompletion(this, Id, TimeSpan.FromMilliseconds(Timeout.Infinite));
+                    var result = new Promise<TResult>.ResultContainer(_result, _rejectContainerOrPreviousOrLink, State);
+                    MaybeDispose();
+                    return result;
+                }
+
                 internal void HandleSelf(PromiseRefBase handler, object rejectContainer, Promise.State state)
                 {
                     ThrowIfInPool(this);
@@ -628,8 +637,7 @@ namespace Proto.Promises
                     }
                     catch (RethrowException e)
                     {
-                        bool isAcceptableRethrow = invokingRejected || (e is ForcedRethrowException && state != Promise.State.Resolved);
-                        if (!isAcceptableRethrow)
+                        if (!invokingRejected)
                         {
                             rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
                             state = Promise.State.Rejected;

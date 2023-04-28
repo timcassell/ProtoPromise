@@ -34,7 +34,7 @@ namespace Proto.Promises
         internal sealed class AsyncReaderLockPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<AsyncReaderWriterLock.ReaderKey>, ICancelable, ILinked<AsyncReaderLockPromise>
         {
             AsyncReaderLockPromise ILinked<AsyncReaderLockPromise>.Next { get; set; }
-            private AsyncReaderWriterLockInternal Owner { get { return _result._impl._owner; } }
+            private AsyncReaderWriterLockInternal Owner => _result._impl._owner;
 
             [MethodImpl(InlineOption)]
             private static AsyncReaderLockPromise GetOrCreate()
@@ -96,7 +96,7 @@ namespace Proto.Promises
         internal sealed class AsyncWriterLockPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<AsyncReaderWriterLock.WriterKey>, ICancelable, ILinked<AsyncWriterLockPromise>
         {
             AsyncWriterLockPromise ILinked<AsyncWriterLockPromise>.Next { get; set; }
-            private AsyncReaderWriterLockInternal Owner { get { return _result._impl._owner; } }
+            private AsyncReaderWriterLockInternal Owner => _result._impl._owner;
 
             [MethodImpl(InlineOption)]
             private static AsyncWriterLockPromise GetOrCreate()
@@ -157,7 +157,7 @@ namespace Proto.Promises
         internal sealed class AsyncUpgradeableReaderLockPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<AsyncReaderWriterLock.UpgradeableReaderKey>, ICancelable, ILinked<AsyncUpgradeableReaderLockPromise>
         {
             AsyncUpgradeableReaderLockPromise ILinked<AsyncUpgradeableReaderLockPromise>.Next { get; set; }
-            private AsyncReaderWriterLockInternal Owner { get { return _result._impl._owner; } }
+            private AsyncReaderWriterLockInternal Owner => _result._impl._owner;
 
             [MethodImpl(InlineOption)]
             private static AsyncUpgradeableReaderLockPromise GetOrCreate()

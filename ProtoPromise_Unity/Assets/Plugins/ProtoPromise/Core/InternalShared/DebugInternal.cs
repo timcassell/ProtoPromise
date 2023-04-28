@@ -24,9 +24,6 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        // Just a random number that's not zero.
-        internal const short ValidIdFromApi = 31265;
-
         internal static string CausalityTraceMessage
         {
             get
@@ -81,24 +78,6 @@ namespace Proto.Promises
             traceable.Trace = new CausalityTrace(stackTrace, ts_currentTrace);
         }
 
-        static partial void IncrementInvokeId();
-#if !CSHARP_7_3_OR_NEWER
-        // This is only needed in older language versions that don't support ref structs.
-        [ThreadStatic]
-        private static long ts_invokeId;
-        internal static long InvokeId { get { return ts_invokeId; } }
-
-        static partial void IncrementInvokeId()
-        {
-            unchecked
-            {
-                ++ts_invokeId;
-            }
-        }
-#else
-        internal static long InvokeId { get { return ValidIdFromApi; } }
-#endif // !CSHARP_7_3_OR_NEWER
-
         [ThreadStatic]
         private static CausalityTrace ts_currentTrace;
         [ThreadStatic]
@@ -120,7 +99,6 @@ namespace Proto.Promises
         static partial void ClearCurrentInvoker()
         {
             ts_currentTrace = ts_traces.Pop();
-            IncrementInvokeId();
         }
 
         private static StackTrace GetStackTrace(int skipFrames)
@@ -350,12 +328,6 @@ namespace Proto.Promises
             }
         }
 #else // PROMISE_DEBUG
-        internal static long InvokeId
-        {
-            [MethodImpl(InlineOption)]
-            get { return ValidIdFromApi; }
-        }
-
         internal static string GetFormattedStacktrace(int skipFrames)
         {
             return null;
