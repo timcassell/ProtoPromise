@@ -75,8 +75,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Get the result. If the Promise resolved successfully, this will return without error.
-        /// If the Promise was rejected, this will throw an <see cref="UnhandledException"/>.
-        /// If the Promise was canceled, this will throw a <see cref="CanceledException"/>.
+        /// If the Promise was rejected or canceled, this will throw the appropriate exception.
         /// </summary>
         public void GetResult()
         {
@@ -99,7 +98,7 @@ namespace Proto.Promises
                 }
                 default:
                 {
-                    throw new InvalidOperationException("Promise is still pending. You must wait for the promse to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promise to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
                 }
             }
         }
@@ -109,11 +108,11 @@ namespace Proto.Promises
         /// Don't try to access it after disposing! Results are undefined.
         /// </summary>
         /// <remarks>Call <see cref="Dispose"/> when you are finished using the
-        /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/>. The <see cref="Dispose"/> method leaves the
-        /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> in an unusable state. After calling
+        /// <see cref="YieldInstruction"/>. The <see cref="Dispose"/> method leaves the
+        /// <see cref="YieldInstruction"/> in an unusable state. After calling
         /// <see cref="Dispose"/>, you must release all references to the
-        /// <see cref="T:ProtoPromise.Promise.YieldInstruction"/> so the garbage collector can reclaim the memory
-        /// that the <see cref="T:ProtoPromise.Promise.YieldInstruction"/> was occupying.</remarks>
+        /// <see cref="YieldInstruction"/> so the garbage collector can reclaim the memory
+        /// that the <see cref="YieldInstruction"/> was occupying.</remarks>
         public virtual void Dispose()
         {
             ValidateOperation();
@@ -143,8 +142,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Get the result. If the Promise resolved successfully, this will return the result of the operation.
-        /// If the Promise was rejected, this will throw an <see cref="UnhandledException"/>.
-        /// If the Promise was canceled, this will throw a <see cref="CanceledException"/>.
+        /// If the Promise was rejected or canceled, this will throw the appropriate exception.
         /// </summary>
         public new T GetResult()
         {

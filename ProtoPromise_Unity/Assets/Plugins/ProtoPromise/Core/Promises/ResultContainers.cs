@@ -29,19 +29,13 @@ namespace Proto.Promises
         partial struct ReasonContainer
     {
         private readonly Internal.IRejectContainer _rejectContainer;
-#if PROMISE_DEBUG
-        private readonly long _id;
-#endif
 
         /// <summary>
         /// FOR INTERNAL USE ONLY!
         /// </summary>
-        internal ReasonContainer(Internal.IRejectContainer valueContainer, long id)
+        internal ReasonContainer(Internal.IRejectContainer valueContainer)
         {
             _rejectContainer = valueContainer;
-#if PROMISE_DEBUG
-            _id = id;
-#endif
         }
 
         /// <summary>
@@ -51,7 +45,6 @@ namespace Proto.Promises
         {
             get
             {
-                Validate();
                 return _rejectContainer.Value.GetType();
             }
         }
@@ -63,7 +56,6 @@ namespace Proto.Promises
         {
             get
             {
-                Validate();
                 return _rejectContainer.Value;
             }
         }
@@ -74,23 +66,9 @@ namespace Proto.Promises
         /// </summary>
         public bool TryGetValueAs<T>(out T value)
         {
-            Validate();
             return _rejectContainer.TryGetValue(out value);
         }
-
-
-        partial void Validate();
-#if PROMISE_DEBUG
-        partial void Validate()
-        {
-            bool isValid = _rejectContainer != null && _id == Internal.InvokeId;
-            if (!isValid)
-            {
-                throw new InvalidOperationException("An instance of ReasonContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
-            }
-        }
-#endif
-        }
+    }
 
     partial struct Promise
     {
@@ -103,7 +81,7 @@ namespace Proto.Promises
 #endif
         public
 #if CSHARP_7_3_OR_NEWER
-            readonly ref
+            readonly
 #endif
             struct ResultContainer
         {
@@ -132,6 +110,15 @@ namespace Proto.Promises
                 Promise<Internal.VoidResult>.ResultContainer target)
             {
                 _target = target;
+            }
+
+            /// <summary>
+            /// If the <see cref="Promise"/> is rejected or canceled, rethrow the reason.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            public void RethrowIfRejectedOrCanceled()
+            {
+                _target.RethrowIfRejectedOrCanceled();
             }
 
             /// <summary>
@@ -195,7 +182,7 @@ namespace Proto.Promises
 #endif
         public
 #if CSHARP_7_3_OR_NEWER
-            readonly ref
+            readonly
 #endif
             partial struct ResultContainer
         {
@@ -205,20 +192,6 @@ namespace Proto.Promises
             internal readonly object _rejectContainer;
             private readonly Promise.State _state;
             private readonly T _result;
-#if PROMISE_DEBUG
-            private readonly long _id;
-            private long Id
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get { return _id; }
-            }
-#else
-            private long Id
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get { return Internal.ValidIdFromApi; }
-            }
-#endif
 
             /// <summary>
             /// FOR INTERNAL USE ONLY!
@@ -233,18 +206,27 @@ namespace Proto.Promises
                 _rejectContainer = rejectContainer;
                 _state = state;
                 _result = result;
-#if PROMISE_DEBUG
-                _id = Internal.InvokeId;
-#endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            private ResultContainer(object rejectContainer, Promise.State state, long id)
+            private ResultContainer(object rejectContainer, Promise.State state)
                 : this(default(T), rejectContainer, state)
             {
-#if PROMISE_DEBUG
-                _id = id;
-#endif
+            }
+
+            /// <summary>
+            /// If the <see cref="Promise{T}"/> is rejected or canceled, rethrow the reason.
+            /// </summary>
+            public void RethrowIfRejectedOrCanceled()
+            {
+                if (State != Promise.State.Resolved)
+                {
+                    if (_state == Promise.State.Canceled)
+                    {
+                        throw Promise.CancelException();
+                    }
+                    _rejectContainer.UnsafeAs<Internal.IRejectContainer>().GetExceptionDispatchInfo().Throw();
+                }
             }
 
             /// <summary>
@@ -254,7 +236,7 @@ namespace Proto.Promises
             {
                 if (State == Promise.State.Rejected)
                 {
-                    throw Internal.ForcedRethrowException.GetOrCreate();
+                    _rejectContainer.UnsafeAs<Internal.IRejectContainer>().GetExceptionDispatchInfo().Throw();
                 }
             }
 
@@ -265,7 +247,7 @@ namespace Proto.Promises
             {
                 if (State == Promise.State.Canceled)
                 {
-                    throw Internal.ForcedRethrowException.GetOrCreate();
+                    throw Promise.CancelException();
                 }
             }
 
@@ -274,11 +256,8 @@ namespace Proto.Promises
             /// </summary>
             public Promise.State State
             {
-                get
-                {
-                    ValidateCall();
-                    return _state;
-                }
+                [MethodImpl(Internal.InlineOption)]
+                get { return _state; }
             }
 
             /// <summary>
@@ -286,11 +265,8 @@ namespace Proto.Promises
             /// </summary>
             public T Result
             {
-                get
-                {
-                    ValidateCall();
-                    return _result;
-                }
+                [MethodImpl(Internal.InlineOption)]
+                get { return _result; }
             }
 
             /// <summary>
@@ -298,10 +274,8 @@ namespace Proto.Promises
             /// </summary>
             public object RejectReason
             {
-                [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    ValidateCall();
                     return _state == Promise.State.Rejected
                         ? _rejectContainer.UnsafeAs<Internal.IRejectContainer>().Value
                         : null;
@@ -313,9 +287,8 @@ namespace Proto.Promises
             {
                 get
                 {
-                    ValidateCall();
                     ValidateRejected();
-                    return new ReasonContainer(_rejectContainer.UnsafeAs<Internal.IRejectContainer>(), Id);
+                    return new ReasonContainer(_rejectContainer.UnsafeAs<Internal.IRejectContainer>());
                 }
             }
 
@@ -325,21 +298,12 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public static implicit operator Promise.ResultContainer(ResultContainer rhs)
             {
-                var newContainer = new Promise<Internal.VoidResult>.ResultContainer(rhs._rejectContainer, rhs._state, rhs.Id);
+                var newContainer = new Promise<Internal.VoidResult>.ResultContainer(rhs._rejectContainer, rhs._state);
                 return new Promise.ResultContainer(newContainer);
             }
 
-            partial void ValidateCall();
             partial void ValidateRejected();
 #if PROMISE_DEBUG
-            partial void ValidateCall()
-            {
-                if (Id != Internal.InvokeId)
-                {
-                    throw new InvalidOperationException("An instance of ResultContainer is only valid during the invocation of the delegate it is passed into.", Internal.GetFormattedStacktrace(2));
-                }
-            }
-
             partial void ValidateRejected()
             {
                 if (State != Promise.State.Rejected)

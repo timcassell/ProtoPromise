@@ -24,7 +24,7 @@ namespace Proto.Promises
 #endif
     public static partial class Extensions
     {
-#if CSHARP_7_3_OR_NEWER
+#if CSHARP_7_3_OR_NEWER || NET45
         /// <summary>
         /// Convert the <paramref name="promise"/> to a <see cref="Task"/>.
         /// </summary>

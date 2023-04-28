@@ -56,7 +56,7 @@ namespace Proto.Promises
 #endif
             internal sealed class AsyncLockPromise : AsyncLockPromiseBase<AsyncLock.Key>, ICancelable
             {
-                internal AsyncLockInternal Owner { get { return _result._owner; } }
+                internal AsyncLockInternal Owner => _result._owner;
 
                 [MethodImpl(InlineOption)]
                 private static AsyncLockPromise GetOrCreate()
@@ -257,6 +257,66 @@ namespace Proto.Promises
                 return false;
             }
 
+            internal Promise<(bool didEnter, AsyncLock.Key key)> TryEnterAsync(CancelationToken cancelationToken)
+            {
+                PromiseRefBase.AsyncLockPromise promise;
+                lock (this)
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey == 0)
+                    {
+                        SetNextKey();
+                        return Promise.Resolved((true, new AsyncLock.Key(this, _currentKey, null)));
+                    }
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return Promise.Resolved((false, default(AsyncLock.Key)));
+                    }
+
+                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, CaptureContext());
+                    _queue.Enqueue(promise);
+                    promise.MaybeHookupCancelation(cancelationToken);
+                }
+                return new Promise<AsyncLock.Key>(promise, promise.Id, 0)
+                    .ContinueWith(resultContainer =>
+                    {
+                        resultContainer.RethrowIfRejected();
+                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Result);
+                    });
+            }
+
+            internal bool TryEnter(out AsyncLock.Key key, CancelationToken cancelationToken)
+            {
+                PromiseRefBase.AsyncLockPromise promise;
+                lock (this)
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey == 0)
+                    {
+                        SetNextKey();
+                        key = new AsyncLock.Key(this, _currentKey, null);
+                        return true;
+                    }
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        key = default;
+                        return false;
+                    }
+
+                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, null);
+                    _queue.Enqueue(promise);
+                    promise.MaybeHookupCancelation(cancelationToken);
+                }
+                var resultContainer = promise.WaitForResultNoThrow();
+                resultContainer.RethrowIfRejected();
+                key = resultContainer.Result;
+                return resultContainer.State == Promise.State.Resolved;
+            }
+
             internal void ReleaseLock(long key)
             {
                 IAsyncLockPromise next;
@@ -455,6 +515,18 @@ namespace Proto.Promises
             internal bool TryEnter(out Key key)
             {
                 return _impl.TryEnter(out key);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal Promise<(bool didEnter, AsyncLock.Key key)> TryEnterAsync(CancelationToken cancelationToken)
+            {
+                return _impl.TryEnterAsync(cancelationToken);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal bool TryEnter(out Key key, CancelationToken cancelationToken)
+            {
+                return _impl.TryEnter(out key, cancelationToken);
             }
 
             // We check to make sure every key is disposed exactly once in DEBUG mode.

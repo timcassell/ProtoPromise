@@ -24,7 +24,10 @@ namespace ProtoPromiseTests.Concurrency.Threading
         }
 
         [Test]
-        public void AsyncLock_EnteredConcurrenctly_OnlyAllowsSingleLocker([Values] bool delayCancel)
+        public void AsyncLock_EnteredConcurrenctly_OnlyAllowsSingleLocker(
+            [Values] bool delayCancel,
+            [Values] bool tryFirst,
+            [Values] bool trySecond)
         {
             var mutex = new AsyncLock();
             var cancelationSource = default(CancelationSource);
@@ -64,6 +67,40 @@ namespace ProtoPromiseTests.Concurrency.Threading
                     })
                     .Forget();
             };
+            Action<bool> syncTryLockAction = observeCancelation =>
+            {
+                bool lockTaken = observeCancelation
+                    ? AsyncMonitor.TryEnter(mutex, out var key)
+                    : AsyncMonitor.TryEnter(mutex, out key, cancelationSource.Token);
+                if (lockTaken)
+                {
+                    using (key)
+                    {
+                        Assert.AreEqual(1, Interlocked.Increment(ref enteredCount));
+                        Thread.Sleep(10);
+                        Assert.AreEqual(0, Interlocked.Decrement(ref enteredCount));
+                    }
+                }
+                Interlocked.Increment(ref exitedCount);
+            };
+            Action<bool> asyncTryLockAction = observeCancelation =>
+            {
+                (AsyncMonitor.TryEnterAsync(mutex, observeCancelation ? cancelationSource.Token : CancelationToken.None))
+                    .Then(tuple =>
+                    {
+                        if (tuple.didEnter)
+                        {
+                            using (tuple.key)
+                            {
+                                Assert.AreEqual(1, Interlocked.Increment(ref enteredCount));
+                                Thread.Sleep(10);
+                                Assert.AreEqual(0, Interlocked.Decrement(ref enteredCount));
+                            }
+                        }
+                        Interlocked.Increment(ref exitedCount);
+                    })
+                    .Forget();
+            };
 
             new ThreadHelper().ExecuteParallelActionsWithOffsets(false,
                 // setup
@@ -82,10 +119,10 @@ namespace ProtoPromiseTests.Concurrency.Threading
                     cancelationSource.Dispose();
                 },
                 // parallel actions
-                () => syncLockAction(false),
-                () => syncLockAction(true),
-                () => asyncLockAction(false),
-                () => asyncLockAction(true),
+                tryFirst ? () => syncTryLockAction(false) : () => syncLockAction(false),
+                trySecond ? () => syncTryLockAction(true) : () => syncLockAction(true),
+                tryFirst ? () => asyncTryLockAction(false) : () => asyncLockAction(false),
+                trySecond ? () => asyncTryLockAction(true) : () => asyncLockAction(true),
                 () =>
                 {
                     if (delayCancel)

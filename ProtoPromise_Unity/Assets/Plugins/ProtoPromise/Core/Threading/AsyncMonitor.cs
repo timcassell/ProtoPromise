@@ -38,7 +38,7 @@ namespace Proto.Promises.Threading
         /// Synchronously acquire the lock on the specified <see cref="AsyncLock"/>. Returns the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="asyncLock">The async lock instance that is being entered.</param>
-        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, <see cref="CanceledException"/> will be thrown.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
         [MethodImpl(Internal.InlineOption)]
         public static AsyncLock.Key Enter(AsyncLock asyncLock, CancelationToken cancelationToken = default)
         {
@@ -47,6 +47,7 @@ namespace Proto.Promises.Threading
 
         /// <summary>
         /// Synchronously try to acquire the lock on the specified <see cref="AsyncLock"/>. If successful, <paramref name="key"/> is the key that will release the lock when it is disposed.
+        /// This function does not wait, and returns immediately.
         /// </summary>
         /// <param name="asyncLock">The async lock instance that is being entered.</param>
         /// <param name="key">If successful, the key that will release the lock when it is disposed.</param>
@@ -55,6 +56,42 @@ namespace Proto.Promises.Threading
         public static bool TryEnter(AsyncLock asyncLock, out AsyncLock.Key key)
         {
             return asyncLock.TryEnter(out key);
+        }
+
+        /// <summary>
+        /// Asynchronously try to acquire the lock on the specified <see cref="AsyncLock"/>, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled, with the success state and key.
+        /// If successful, the key will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="asyncLock">The async lock instance that is being entered.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, this will return <see langword="false"/>.</param>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the lock was available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        [MethodImpl(Internal.InlineOption)]
+        public static Promise<(bool didEnter, AsyncLock.Key key)> TryEnterAsync(AsyncLock asyncLock, CancelationToken cancelationToken)
+        {
+            return asyncLock.TryEnterAsync(cancelationToken);
+        }
+
+        /// <summary>
+        /// Synchronously try to acquire the lock on the specified <see cref="AsyncLock"/>, while observing a <see cref="CancelationToken"/>.
+        /// If successful, <paramref name="key"/> is the key that will release the lock when it is disposed.
+        /// This function does not return until the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled.
+        /// </summary>
+        /// <param name="asyncLock">The async lock instance that is being entered.</param>
+        /// <param name="key">If successful, the key that will release the lock when it is disposed.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, this will return <see langword="false"/>.</param>
+        /// <returns><see langword="true"/> if the lock was acquired before the <paramref name="cancelationToken"/> was canceled, <see langword="false"/> otherwise.</returns>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the lock was available, this will return <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        [MethodImpl(Internal.InlineOption)]
+        public static bool TryEnter(AsyncLock asyncLock, out AsyncLock.Key key, CancelationToken cancelationToken)
+        {
+            return asyncLock.TryEnter(out key, cancelationToken);
         }
 
         /// <summary>
