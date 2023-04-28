@@ -17,7 +17,7 @@ namespace Proto.Promises
     {
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2)
         {
@@ -42,7 +42,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3)
         {
@@ -70,7 +70,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
@@ -101,7 +101,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race(params Promise[] promises)
         {
@@ -110,7 +110,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race(IEnumerable<Promise> promises)
         {
@@ -119,7 +119,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
@@ -167,7 +167,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2)
         {
@@ -193,7 +193,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2, Promise promise3)
         {
@@ -224,7 +224,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
@@ -259,7 +259,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<int> RaceWithIndex(params Promise[] promises)
         {
@@ -268,7 +268,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<int> RaceWithIndex(IEnumerable<Promise> promises)
         {
@@ -277,7 +277,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<int> RaceWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
@@ -355,7 +355,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2)
         {
@@ -380,7 +380,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3)
         {
@@ -408,7 +408,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
@@ -439,7 +439,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise First(params Promise[] promises)
         {
@@ -448,7 +448,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise First(IEnumerable<Promise> promises)
         {
@@ -457,7 +457,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise First<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
@@ -505,7 +505,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2)
         {
@@ -531,7 +531,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2, Promise promise3)
         {
@@ -562,7 +562,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
@@ -597,7 +597,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise<int> FirstWithIndex(params Promise[] promises)
         {
@@ -606,7 +606,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise<int> FirstWithIndex(IEnumerable<Promise> promises)
         {
@@ -615,7 +615,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise<int> FirstWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
@@ -693,7 +693,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
 #if CSHARP_7_3_OR_NEWER
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2)
@@ -728,7 +728,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
 #if CSHARP_7_3_OR_NEWER
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
@@ -774,7 +774,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
 #if CSHARP_7_3_OR_NEWER
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
@@ -833,7 +833,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
 #if CSHARP_7_3_OR_NEWER
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(params Promise<T>[] promises)
@@ -846,7 +846,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
 #if CSHARP_7_3_OR_NEWER
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(IEnumerable<Promise<T>> promises)
@@ -859,7 +859,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be rejected or canceled with the same reason.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<ValueTuple<int, T>> RaceWithIndex<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
@@ -908,7 +908,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
 #if CSHARP_7_3_OR_NEWER
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2)
@@ -943,7 +943,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
 #if CSHARP_7_3_OR_NEWER
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
@@ -989,7 +989,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
 #if CSHARP_7_3_OR_NEWER
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
@@ -1048,7 +1048,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
 #if CSHARP_7_3_OR_NEWER
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(params Promise<T>[] promises)
@@ -1061,7 +1061,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
 #if CSHARP_7_3_OR_NEWER
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(IEnumerable<Promise<T>> promises)
@@ -1074,7 +1074,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
-        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be rejected or canceled with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<ValueTuple<int, T>> FirstWithIndex<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
