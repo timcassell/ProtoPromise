@@ -870,7 +870,8 @@ namespace ProtoPromiseTests.APIs
 #if !UNITY_WEBGL
                 , SynchronizationType.Background
 #endif
-                )] SynchronizationType invokeContext)
+                )] SynchronizationType invokeContext,
+            [Values] bool forceAsync)
         {
             Thread foregroundThread = Thread.CurrentThread;
             bool invoked = false;
@@ -878,10 +879,10 @@ namespace ProtoPromiseTests.APIs
             new ThreadHelper().ExecuteSynchronousOrOnThread(() =>
             {
                 Promise promise = synchronizationType == SynchronizationType.Foreground
-                    ? Promise.SwitchToForeground()
+                    ? Promise.SwitchToForeground(forceAsync)
                     : synchronizationType == TestHelper.backgroundType
-                    ? Promise.SwitchToBackground()
-                    : Promise.SwitchToContext(TestHelper._foregroundContext);
+                    ? Promise.SwitchToBackground(forceAsync)
+                    : Promise.SwitchToContext(TestHelper._foregroundContext, forceAsync);
 
                 promise
                     .Then(() =>
@@ -908,7 +909,8 @@ namespace ProtoPromiseTests.APIs
 #if !UNITY_WEBGL
                 , SynchronizationType.Background
 #endif
-                )] SynchronizationType invokeContext)
+                )] SynchronizationType invokeContext,
+            [Values] bool forceAsync)
         {
             Thread foregroundThread = Thread.CurrentThread;
             bool invoked = false;
@@ -919,13 +921,13 @@ namespace ProtoPromiseTests.APIs
 
                 async Promise Await()
                 {
-                    Promise promise = synchronizationType == SynchronizationType.Foreground
-                        ? Promise.SwitchToForeground()
+                    var contextSwitcher = synchronizationType == SynchronizationType.Foreground
+                        ? Promise.SwitchToForegroundAwait(forceAsync)
                         : synchronizationType == TestHelper.backgroundType
-                        ? Promise.SwitchToBackground()
-                        : Promise.SwitchToContext(TestHelper._foregroundContext);
+                        ? Promise.SwitchToBackgroundAwait(forceAsync)
+                        : Promise.SwitchToContextAwait(TestHelper._foregroundContext, forceAsync);
                     
-                    await promise;
+                    await contextSwitcher;
 
                     TestHelper.AssertCallbackContext(synchronizationType, invokeContext, foregroundThread);
                     invoked = true;
