@@ -5,8 +5,10 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0270 // Use coalesce expression
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
+using Proto.Promises.Async.CompilerServices;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -129,6 +131,50 @@ namespace Proto.Promises
         {
             return Internal.CreateResolved(0)
                 .WaitAsync(synchronizationContext, forceAsync);
+        }
+
+        /// <summary>
+        /// Switch to the foreground context in an async method.
+        /// </summary>
+        /// <param name="forceAsync">If true, forces the context switch to happen asynchronously.</param>
+        /// <remarks>
+        /// This method is equivalent to <see cref="SwitchToForeground(bool)"/>, but is more efficient when used directly with the <see langword="await"/> keyword.
+        /// </remarks>
+        public static PromiseSwitchToContextAwaiter SwitchToForegroundAwait(bool forceAsync = false)
+        {
+            var context = Config.ForegroundContext;
+            if (context == null)
+            {
+                throw new InvalidOperationException("Promise.Config.ForegroundContext is null. You should set Promise.Config.ForegroundContext at the start of your application" +
+                    " (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;'). Alternatively, you may pass the context directly via SwitchToContextAwait(context).",
+                    Internal.GetFormattedStacktrace(1));
+            }
+            return new PromiseSwitchToContextAwaiter(context, forceAsync);
+        }
+
+        /// <summary>
+        /// Switch to the background context in an async method.
+        /// </summary>
+        /// <param name="forceAsync">If true, forces the context switch to happen asynchronously.</param>
+        /// <remarks>
+        /// This method is equivalent to <see cref="SwitchToBackground(bool)"/>, butbut is more efficient when used directly with the <see langword="await"/> keyword.
+        /// </remarks>
+        public static PromiseSwitchToContextAwaiter SwitchToBackgroundAwait(bool forceAsync = false)
+        {
+            return new PromiseSwitchToContextAwaiter(Config.BackgroundContext, forceAsync);
+        }
+
+        /// <summary>
+        /// Switch to the provided context in an async method.
+        /// </summary>
+        /// <param name="synchronizationContext">The context to switch to. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
+        /// <param name="forceAsync">If true, forces the context switch to happen asynchronously.</param>
+        /// <remarks>
+        /// This method is equivalent to <see cref="SwitchToContext(SynchronizationContext, bool)"/>, but is more efficient when used directly with the <see langword="await"/> keyword.
+        /// </remarks>
+        public static PromiseSwitchToContextAwaiter SwitchToContextAwait(SynchronizationContext synchronizationContext, bool forceAsync = false)
+        {
+            return new PromiseSwitchToContextAwaiter(synchronizationContext, forceAsync);
         }
 
         /// <summary>
