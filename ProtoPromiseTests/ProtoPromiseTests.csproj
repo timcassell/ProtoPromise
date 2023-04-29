@@ -9,7 +9,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Set from command line -->
     <DeveloperMode>false</DeveloperMode>
-    <TestCancellationTokenSourceGC>false</TestCancellationTokenSourceGC>
+    <!-- GC and finalizers are non-deterministic, even if we call GC.WaitForPendingFinalizers(),
+    so we cannot rely on them for unit testing in CI. This will only be enabled for local testing. -->
+    <TestGC>false</TestGC>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoProgress|AnyCPU'">
@@ -30,8 +32,8 @@
     <Optimize>false</Optimize>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TestCancellationTokenSourceGC)'=='true'">
-    <DefineConstants>$(DefineConstants);PROTO_PROMISE_TEST_CANCELLATION_TOKEN_SOURCE_GC</DefineConstants>
+  <PropertyGroup Condition="'$(TestGC)'=='true'">
+    <DefineConstants>$(DefineConstants);PROTO_PROMISE_TEST_GC_ENABLED</DefineConstants>
   </PropertyGroup>
 
   <!-- For command-line testing -->

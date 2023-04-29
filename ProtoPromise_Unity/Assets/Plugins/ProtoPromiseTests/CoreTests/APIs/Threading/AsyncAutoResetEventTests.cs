@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace ProtoPromiseTests.APIs.Threading
@@ -394,5 +395,33 @@ namespace ProtoPromiseTests.APIs.Threading
             TestHelper.ExecuteForegroundCallbacks();
             Assert.True(isComplete);
         }
+
+#if PROTO_PROMISE_TEST_GC_ENABLED
+        [Test]
+        public void AsyncAutoResetEvent_AbandonedResetEventReported()
+        {
+            var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            AbandonedResetEventException abandonedResetEventException = null;
+            Promise.Config.UncaughtRejectionHandler = ex =>
+            {
+                abandonedResetEventException = ex.Value as AbandonedResetEventException;
+            };
+
+            WaitAndAbandonAutoResetEvent();
+            TestHelper.GcCollectAndWaitForFinalizers();
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.IsNotNull(abandonedResetEventException);
+
+            Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void WaitAndAbandonAutoResetEvent()
+        {
+            var are = new AsyncAutoResetEvent(false);
+            are.WaitAsync()
+                .Forget();
+        }
+#endif // PROTO_PROMISE_TEST_GC_ENABLED
     }
 }

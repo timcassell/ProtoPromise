@@ -607,5 +607,33 @@ namespace ProtoPromiseTests.APIs.Threading
             Assert.Catch<System.ArgumentOutOfRangeException>(() => semaphore.Release(0));
             Assert.Catch<System.ArgumentOutOfRangeException>(() => semaphore.Release(-1));
         }
+
+#if PROTO_PROMISE_TEST_GC_ENABLED
+        [Test]
+        public void AsyncSemaphore_AbandonedSemaphoreReported()
+        {
+            var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            AbandonedSemaphoreException abandonedSemaphoreException = null;
+            Promise.Config.UncaughtRejectionHandler = ex =>
+            {
+                abandonedSemaphoreException = ex.Value as AbandonedSemaphoreException;
+            };
+
+            EnterAndAbandonSemaphore();
+            TestHelper.GcCollectAndWaitForFinalizers();
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.IsNotNull(abandonedSemaphoreException);
+
+            Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void EnterAndAbandonSemaphore()
+        {
+            var semaphore = new AsyncSemaphore(0);
+            semaphore.WaitAsync()
+                .Forget();
+        }
+#endif // PROTO_PROMISE_TEST_GC_ENABLED
     }
 }
