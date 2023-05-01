@@ -134,12 +134,12 @@ namespace ProtoPromiseTests.APIs.Threading
         [Test]
         public void AsyncManualResetEvent_CancelAfterSetAndBeforeWait()
         {
-            AsyncManualResetEvent are = new AsyncManualResetEvent();
-            are.Set();
+            AsyncManualResetEvent mre = new AsyncManualResetEvent();
+            mre.Set();
             CancelationSource cs = CancelationSource.New();
             cs.Cancel();
 
-            Assert.True(are.TryWait(cs.Token));
+            Assert.True(mre.TryWait(cs.Token));
 
             cs.Dispose();
         }
@@ -239,12 +239,12 @@ namespace ProtoPromiseTests.APIs.Threading
         [Test]
         public void AsyncManualResetEvent_CancelAfterSetAndBeforeWaitAsync()
         {
-            AsyncManualResetEvent are = new AsyncManualResetEvent();
-            are.Set();
+            AsyncManualResetEvent mre = new AsyncManualResetEvent();
+            mre.Set();
             CancelationSource cs = CancelationSource.New();
             cs.Cancel();
 
-            Assert.True(are.TryWaitAsync(cs.Token).WaitWithTimeout(TimeSpan.FromSeconds(1)));
+            Assert.True(mre.TryWaitAsync(cs.Token).WaitWithTimeout(TimeSpan.FromSeconds(1)));
 
             cs.Dispose();
         }
