@@ -171,6 +171,7 @@ namespace ProtoPromiseTests
             Internal.AssertAllObjectsReleased();
 #endif
 
+            s_expectedUncaughtRejectValue = null;
             TestContext.Progress.WriteLine("Success time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
         }
 

@@ -135,7 +135,33 @@ namespace Proto.Promises
                     : obj.UnsafeAs<PromiseSynchronousWaiter>();
             }
 
-            internal static bool TryWaitForCompletion(PromiseRefBase promise, short promiseId, TimeSpan timeout)
+            [MethodImpl(InlineOption)]
+            internal static bool TryWaitForResult(PromiseRefBase promise, short promiseId, TimeSpan timeout, out Promise.ResultContainer resultContainer)
+            {
+                if (!TryWaitForCompletion(promise, promiseId, timeout))
+                {
+                    resultContainer = default(Promise.ResultContainer);
+                    return false;
+                }
+                resultContainer = new Promise.ResultContainer(promise._rejectContainerOrPreviousOrLink, promise.State);
+                promise.MaybeDispose();
+                return true;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal static bool TryWaitForResult<TResult>(PromiseRefBase.PromiseRef<TResult> promise, short promiseId, TimeSpan timeout, out Promise<TResult>.ResultContainer resultContainer)
+            {
+                if (!TryWaitForCompletion(promise, promiseId, timeout))
+                {
+                    resultContainer = default(Promise<TResult>.ResultContainer);
+                    return false;
+                }
+                resultContainer = new Promise<TResult>.ResultContainer(promise._result, promise._rejectContainerOrPreviousOrLink, promise.State);
+                promise.MaybeDispose();
+                return true;
+            }
+
+            private static bool TryWaitForCompletion(PromiseRefBase promise, short promiseId, TimeSpan timeout)
             {
                 var waiter = GetOrCreate();
                 waiter._next = null;
@@ -216,15 +242,6 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseRef<TResult> : PromiseRefBase
             {
-                // Could make this a public method on Promise<T>, but will leave internal for now.
-                internal Promise<TResult>.ResultContainer WaitForResultNoThrow()
-                {
-                    PromiseSynchronousWaiter.TryWaitForCompletion(this, Id, TimeSpan.FromMilliseconds(Timeout.Infinite));
-                    var result = new Promise<TResult>.ResultContainer(_result, _rejectContainerOrPreviousOrLink, State);
-                    MaybeDispose();
-                    return result;
-                }
-
                 internal void HandleSelf(PromiseRefBase handler, object rejectContainer, Promise.State state)
                 {
                     ThrowIfInPool(this);

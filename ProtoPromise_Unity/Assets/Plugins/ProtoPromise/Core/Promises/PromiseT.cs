@@ -13,6 +13,7 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
@@ -163,20 +164,26 @@ namespace Proto.Promises
         /// <remarks>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!</remarks>
         public T WaitForResult()
         {
+            var resultContainer = WaitForResultNoThrow();
+            resultContainer.RethrowIfRejectedOrCanceled();
+            return resultContainer.Result;
+        }
+
+        /// <summary>
+        /// Mark this as awaited and wait for the operation to complete, without throwing. Returns a <see cref="ResultContainer"/> that wraps the completion state and result or reason of the operation.
+        /// </summary>
+        /// <remarks>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!</remarks>
+        public ResultContainer WaitForResultNoThrow()
+        {
             ValidateOperation(1);
             var r = _ref;
             if (r == null)
             {
-                return _result;
+                return new ResultContainer(_result, null, Promise.State.Resolved);
             }
-            Internal.PromiseSynchronousWaiter.TryWaitForCompletion(r, _id, TimeSpan.FromMilliseconds(Timeout.Infinite));
-            var state = r.State;
-            if (state == Promise.State.Resolved)
-            {
-                return r.GetResultAndMaybeDispose();
-            }
-            r.GetExceptionDispatchInfo(state, _id).Throw();
-            throw null; // This will never be reached, but the compiler needs help understanding that.
+            ResultContainer resultContainer;
+            Internal.PromiseSynchronousWaiter.TryWaitForResult(r, _id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+            return resultContainer;
         }
 
         /// <summary>
@@ -205,26 +212,36 @@ namespace Proto.Promises
         /// </remarks>
         public bool TryWaitForResult(TimeSpan timeout, out T result)
         {
-            ValidateOperation(1);
-            var r = _ref;
-            if (r == null)
-            {
-                result = _result;
-                return true;
-            }
-            if (!Internal.PromiseSynchronousWaiter.TryWaitForCompletion(r, _id, timeout))
+            ResultContainer resultContainer;
+            if (!TryWaitForResultNoThrow(timeout, out resultContainer))
             {
                 result = default(T);
                 return false;
             }
-            var state = r.State;
-            if (state == Promise.State.Resolved)
+            resultContainer.RethrowIfRejectedOrCanceled();
+            result = resultContainer.Result;
+            return true;
+        }
+
+        /// <summary>
+        /// Mark this as awaited and wait for the operation to complete with a specified timeout, without throwing.
+        /// <para/>If the operation completed successfully before the timeout expired, this will return <see langword="true"/> and <paramref name="resultContainer"/> will be assigned from the result of the operation. Otherwise, this will return <see langword="false"/>.
+        /// If the operation was rejected or canceled, the appropriate exception will be thrown.
+        /// </summary>
+        /// <remarks>
+        /// If a <see cref="TimeSpan"/> representing -1 millisecond is specified for the timeout parameter, this method blocks indefinitely until the operation is complete.
+        /// <para/>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!
+        /// </remarks>
+        public bool TryWaitForResultNoThrow(TimeSpan timeout, out ResultContainer resultContainer)
+        {
+            ValidateOperation(1);
+            var r = _ref;
+            if (r == null)
             {
-                result = r.GetResultAndMaybeDispose();
+                resultContainer = new ResultContainer(_result, null, Promise.State.Resolved);
                 return true;
             }
-            r.GetExceptionDispatchInfo(state, _id).Throw();
-            throw null; // This will never be reached, but the compiler needs help understanding that.
+            return Internal.PromiseSynchronousWaiter.TryWaitForResult(r, _id, timeout, out resultContainer);
         }
 
 

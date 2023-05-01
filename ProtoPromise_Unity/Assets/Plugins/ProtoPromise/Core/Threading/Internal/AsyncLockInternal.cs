@@ -311,7 +311,7 @@ namespace Proto.Promises
                     _queue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                var resultContainer = promise.WaitForResultNoThrow();
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejected();
                 key = resultContainer.Result;
                 return resultContainer.State == Promise.State.Resolved;
