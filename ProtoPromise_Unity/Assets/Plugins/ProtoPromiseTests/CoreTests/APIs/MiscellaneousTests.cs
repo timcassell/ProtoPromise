@@ -963,6 +963,16 @@ namespace ProtoPromiseTests.APIs
             return true;
         }
 
+        private static bool WaitNoThrow(Promise promise, out Promise.ResultContainer resultContainer, bool withTimeout)
+        {
+            if (withTimeout)
+            {
+                return promise.TryWaitNoThrow(System.TimeSpan.Zero, out resultContainer);
+            }
+            resultContainer = promise.WaitNoThrow();
+            return true;
+        }
+
         private static bool Wait<T>(Promise<T> promise, out T result, bool withTimeout)
         {
             if (withTimeout)
@@ -970,6 +980,16 @@ namespace ProtoPromiseTests.APIs
                 return promise.TryWaitForResult(System.TimeSpan.Zero, out result);
             }
             result = promise.WaitForResult();
+            return true;
+        }
+
+        private static bool WaitNoThrow<T>(Promise<T> promise, out Promise<T>.ResultContainer resultContainer, bool withTimeout)
+        {
+            if (withTimeout)
+            {
+                return promise.TryWaitForResultNoThrow(System.TimeSpan.Zero, out resultContainer);
+            }
+            resultContainer = promise.WaitForResultNoThrow();
             return true;
         }
 
@@ -1009,6 +1029,25 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void PromiseWaitNoThrow_AlreadyCompleted_ReturnsSuccessfullyWithProperResult(
+            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] bool withTimeout)
+        {
+            string expectedRejection = "Rejected";
+            var promise = completeType == CompleteType.Resolve ? Promise.Resolved()
+                : completeType == CompleteType.Reject ? Promise.Rejected(expectedRejection)
+                : Promise.Canceled();
+            Promise.ResultContainer resultContainer;
+            bool didNotTimeout = WaitNoThrow(promise, out resultContainer, withTimeout);
+            Assert.True(didNotTimeout);
+            Assert.AreEqual(completeType, (CompleteType) resultContainer.State);
+            if (completeType == CompleteType.Reject)
+            {
+                Assert.AreEqual(expectedRejection, resultContainer.RejectReason);
+            }
+        }
+
+        [Test]
         public void PromiseWait_DoesNotReturnUntilOperationIsComplete(
             [Values] bool alreadyComplete,
             [Values] bool withTimeout)
@@ -1032,8 +1071,41 @@ namespace ProtoPromiseTests.APIs
             }
             bool didNotTimeout = Wait(promise, withTimeout);
             bool expectedTimeout = withTimeout && !alreadyComplete;
-            Assert.AreNotEqual(expectedTimeout, didNotTimeout);
             Assert.AreNotEqual(expectedTimeout, isComplete);
+            Assert.AreNotEqual(expectedTimeout, didNotTimeout);
+        }
+
+        [Test]
+        public void PromiseWaitNoThrow_DoesNotReturnUntilOperationIsComplete(
+            [Values] bool alreadyComplete,
+            [Values] bool withTimeout)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            Promise.ResultContainer resultContainer;
+            bool didNotTimeout = WaitNoThrow(promise, out resultContainer, withTimeout);
+            bool expectedTimeout = withTimeout && !alreadyComplete;
+            Assert.AreNotEqual(expectedTimeout, isComplete);
+            Assert.AreNotEqual(expectedTimeout, didNotTimeout);
+            if (!expectedTimeout)
+            {
+                Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
+            }
         }
 
         [Test]
@@ -1089,6 +1161,50 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void PromiseWaitNoThrow_DoesNotReturnUntilOperationIsComplete_WithCorrectReason(
+            [Values(CompleteType.Reject, CompleteType.Cancel)] CompleteType throwType,
+            [Values] bool alreadyComplete,
+            [Values] bool withTimeout)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+            var expectedException = throwType == CompleteType.Reject
+                ? new InvalidOperationException("Test")
+                : (System.Exception) Promise.CancelException();
+
+            TestHelper.s_expectedUncaughtRejectValue = expectedException;
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+                throw expectedException;
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            Promise.ResultContainer resultContainer;
+            bool didNotTimeout = WaitNoThrow(promise, out resultContainer, withTimeout);
+            bool expectedTimeout = withTimeout && !alreadyComplete;
+            Assert.AreNotEqual(expectedTimeout, isComplete);
+            Assert.AreNotEqual(expectedTimeout, didNotTimeout);
+            if (!expectedTimeout)
+            {
+                Assert.AreEqual(throwType, (CompleteType) resultContainer.State);
+                if (throwType == CompleteType.Reject)
+                {
+                    Assert.AreEqual(expectedException, resultContainer.RejectReason);
+                }
+            }
+        }
+
+        [Test]
         public void PromiseWaitForResult_AlreadyCompleted_ReturnsSuccessfullyOrThrowsCorrectException(
             [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
             [Values] bool withTimeout)
@@ -1130,6 +1246,32 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void PromiseWaitForResultNoThrow_AlreadyCompleted_ReturnsSuccessfullyWithProperResult(
+            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] bool withTimeout)
+        {
+            var expectedException = completeType == CompleteType.Reject
+                ? new InvalidOperationException("Test")
+                : (System.Exception) Promise.CancelException();
+            int expectedResult = 42;
+            var promise = completeType == CompleteType.Resolve ? Promise<int>.Resolved(expectedResult)
+                : completeType == CompleteType.Reject ? Promise<int>.Rejected(expectedException)
+                : Promise<int>.Canceled();
+            Promise<int>.ResultContainer resultContainer;
+            bool didNotTimeout = WaitNoThrow(promise, out resultContainer, withTimeout);
+            Assert.IsTrue(didNotTimeout);
+            Assert.AreEqual(completeType, (CompleteType) resultContainer.State);
+            if (completeType == CompleteType.Resolve)
+            {
+                Assert.AreEqual(expectedResult, resultContainer.Result);
+            }
+            else if (completeType == CompleteType.Reject)
+            {
+                Assert.AreEqual(expectedException, resultContainer.RejectReason);
+            }
+        }
+
+        [Test]
         public void PromiseWaitForResult_DoesNotReturnUntilOperationIsComplete_AndReturnsWithCorrectResult(
             [Values] bool alreadyComplete,
             [Values] bool withTimeout)
@@ -1156,11 +1298,47 @@ namespace ProtoPromiseTests.APIs
             int result = -1;
             bool didNotTimeout = Wait(promise, out result, withTimeout);
             bool expectedTimeout = withTimeout && !alreadyComplete;
-            Assert.AreNotEqual(expectedTimeout, didNotTimeout);
             Assert.AreNotEqual(expectedTimeout, isComplete);
+            Assert.AreNotEqual(expectedTimeout, didNotTimeout);
             if (!expectedTimeout)
             {
                 Assert.AreEqual(expected, result);
+            }
+        }
+
+        [Test]
+        public void PromiseWaitForResultNoThrow_DoesNotReturnUntilOperationIsComplete_AndReturnsWithCorrectResult(
+            [Values] bool alreadyComplete,
+            [Values] bool withTimeout)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+            int expected = 42;
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+                return expected;
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            Promise<int>.ResultContainer resultContainer;
+            bool didNotTimeout = WaitNoThrow(promise, out resultContainer, withTimeout);
+            bool expectedTimeout = withTimeout && !alreadyComplete;
+            Assert.AreNotEqual(expectedTimeout, isComplete);
+            Assert.AreNotEqual(expectedTimeout, didNotTimeout);
+            if (!expectedTimeout)
+            {
+                Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
+                Assert.AreEqual(expected, resultContainer.Result);
             }
         }
 
@@ -1218,6 +1396,53 @@ namespace ProtoPromiseTests.APIs
             Assert.IsFalse(didNotTimeout);
             Assert.AreNotEqual(expectedTimeout, isComplete);
             Assert.AreNotEqual(expectedTimeout, didCatch);
+        }
+
+        [Test]
+        public void PromiseWaitForResultNoThrow_DoesNotReturnUntilOperationIsComplete_WithCorrectReason(
+            [Values(CompleteType.Reject, CompleteType.Cancel)] CompleteType throwType,
+            [Values] bool alreadyComplete,
+            [Values] bool withTimeout)
+        {
+            bool isExecuting = false;
+            bool isComplete = false;
+            var expectedException = throwType == CompleteType.Reject
+                ? new InvalidOperationException("Test")
+                : (System.Exception) Promise.CancelException();
+
+            TestHelper.s_expectedUncaughtRejectValue = expectedException;
+
+            var promise = Promise.Run(() =>
+            {
+                isExecuting = true;
+
+                Thread.Sleep(sleepTime);
+
+                isComplete = true;
+                throw expectedException;
+#pragma warning disable CS0162 // Unreachable code detected
+                return 42;
+#pragma warning restore CS0162 // Unreachable code detected
+            });
+
+            SpinWait.SpinUntil(() => isExecuting);
+            if (alreadyComplete)
+            {
+                Thread.Sleep(sleepTime.Add(sleepTime));
+            }
+            Promise<int>.ResultContainer resultContainer;
+            bool didNotTimeout = WaitNoThrow(promise, out resultContainer, withTimeout);
+            bool expectedTimeout = withTimeout && !alreadyComplete;
+            Assert.AreNotEqual(expectedTimeout, isComplete);
+            Assert.AreNotEqual(expectedTimeout, didNotTimeout);
+            if (!expectedTimeout)
+            {
+                Assert.AreEqual(throwType, (CompleteType) resultContainer.State);
+                if (throwType == CompleteType.Reject)
+                {
+                    Assert.AreEqual(expectedException, resultContainer.RejectReason);
+                }
+            }
         }
 #endif // !UNITY_WEBGL
     }

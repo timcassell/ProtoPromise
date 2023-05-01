@@ -15,6 +15,7 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
@@ -120,20 +121,24 @@ namespace Proto.Promises
         /// <remarks>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!</remarks>
         public void Wait()
         {
+            WaitNoThrow().RethrowIfRejectedOrCanceled();
+        }
+
+        /// <summary>
+        /// Mark this as awaited and wait for the operation to complete, without throwing. Returns a <see cref="ResultContainer"/> that wraps the completion state and reason.
+        /// </summary>
+        /// <remarks>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!</remarks>
+        public ResultContainer WaitNoThrow()
+        {
             ValidateOperation(1);
             var r = _ref;
             if (r == null)
             {
-                return;
+                return new ResultContainer(null, State.Resolved);
             }
-            Internal.PromiseSynchronousWaiter.TryWaitForCompletion(r, _id, TimeSpan.FromMilliseconds(Timeout.Infinite));
-            var state = r.State;
-            if (state == State.Resolved)
-            {
-                r.MaybeDispose();
-                return;
-            }
-            r.GetExceptionDispatchInfo(state, _id).Throw();
+            ResultContainer resultContainer;
+            Internal.PromiseSynchronousWaiter.TryWaitForResult(r, _id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+            return resultContainer;
         }
 
         /// <summary>
@@ -162,24 +167,33 @@ namespace Proto.Promises
         /// </remarks>
         public bool TryWait(TimeSpan timeout)
         {
+            ResultContainer resultContainer;
+            if (!TryWaitNoThrow(timeout, out resultContainer))
+            {
+                return false;
+            }
+            resultContainer.RethrowIfRejectedOrCanceled();
+            return true;
+        }
+
+        /// <summary>
+        /// Mark this as awaited and wait for the operation to complete with a specified timeout, without throwing. <paramref name="resultContainer"/> wraps the completion state and reason.
+        /// <para/>This will return <see langword="true"/> if the operation completed successfully before the timeout expired, <see langword="false"/> otherwise.
+        /// </summary>
+        /// <remarks>
+        /// If a <see cref="TimeSpan"/> representing -1 millisecond is specified for the timeout parameter, this method blocks indefinitely until the operation is complete.
+        /// <para/>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!
+        /// </remarks>
+        public bool TryWaitNoThrow(TimeSpan timeout, out ResultContainer resultContainer)
+        {
             ValidateOperation(1);
             var r = _ref;
             if (r == null)
             {
+                resultContainer = new ResultContainer(null, State.Resolved);
                 return true;
             }
-            if (!Internal.PromiseSynchronousWaiter.TryWaitForCompletion(r, _id, timeout))
-            {
-                return false;
-            }
-            var state = r.State;
-            if (state == State.Resolved)
-            {
-                r.MaybeDispose();
-                return true;
-            }
-            r.GetExceptionDispatchInfo(state, _id).Throw();
-            throw null; // This will never be reached, but the compiler needs help understanding that.
+            return Internal.PromiseSynchronousWaiter.TryWaitForResult(r, _id, timeout, out resultContainer);
         }
 
 

@@ -73,8 +73,7 @@ namespace Proto.Promises
     partial struct Promise
     {
         /// <summary>
-        /// Used to get the value of a settled <see cref="Promise"/>.
-        /// An instance of <see cref="ResultContainer"/> is only valid during the invocation of the onContinue delegate it is passed into.
+        /// Used to get the state and/or reason of a settled <see cref="Promise"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -174,8 +173,7 @@ namespace Proto.Promises
     partial struct Promise<T>
     {
         /// <summary>
-        /// Used to get the value of a settled <see cref="Promise{T}"/>.
-        /// An instance of <see cref="ResultContainer"/> is only valid during the invocation of the onContinue delegate it is passed into.
+        /// Used to get the state and result or reason of a settled <see cref="Promise{T}"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -219,7 +217,7 @@ namespace Proto.Promises
             /// </summary>
             public void RethrowIfRejectedOrCanceled()
             {
-                if (State != Promise.State.Resolved)
+                if (State >= Promise.State.Rejected)
                 {
                     if (_state == Promise.State.Canceled)
                     {
