@@ -33,12 +33,22 @@ namespace Proto.Promises
             return new PromiseAwaiterVoid(this);
         }
 
+        /// <summary>Gets an awaiter for this <see cref="Promise"/> that suppresses throws and returns a <see cref="ResultContainer"/> instead.</summary>
+        /// <returns>The awaiter.</returns>
+        /// <remarks> Use as `var resultContainer = await promise.AwaitNoThrow();`</remarks>
+        [MethodImpl(Internal.InlineOption), EditorBrowsable(EditorBrowsableState.Never)]
+        public PromiseNoThrowAwaiterVoid AwaitNoThrow()
+        {
+            ValidateOperation(1);
+            return new PromiseNoThrowAwaiterVoid(this);
+        }
+
         /// <summary>
         /// Gets an awaiter for this <see cref="Promise"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function.
         /// The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
         /// </summary>
-        /// <remarks> Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`</remarks>
         /// <returns>The awaiter.</returns>
+        /// <remarks>Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`</remarks>
         public PromiseProgressAwaiterVoid AwaitWithProgress(float minProgress, float maxProgress)
         {
             ValidateOperation(1);
@@ -51,13 +61,48 @@ namespace Proto.Promises
         /// Gets an awaiter for this <see cref="Promise"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function.
         /// The progress reported will be lerped from its current progress to <paramref name="maxProgress"/>. <paramref name="maxProgress"/> must be between 0 and 1 inclusive.
         /// </summary>
-        /// <remarks> Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`</remarks>
         /// <returns>The awaiter.</returns>
+        /// <remarks>
+        /// If the previously awaited promise did not complete successfully, minProgress will be set to the previous <paramref name="maxProgress"/> instead of current.
+        /// <para/>Use as `await promise.AwaitWithProgress(maxProgress);`
+        /// </remarks>
         public PromiseProgressAwaiterVoid AwaitWithProgress(float maxProgress)
         {
             ValidateOperation(1);
             Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
             return new PromiseProgressAwaiterVoid(this, float.NaN, maxProgress);
+        }
+
+        /// <summary>
+        /// Gets an awaiter for this <see cref="Promise"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function,
+        /// and suppresses throws and returns a <see cref="ResultContainer"/> instead.
+        /// The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
+        /// </summary>
+        /// <returns>The awaiter.</returns>
+        /// <remarks>Use as `var resultContainer = await promise.AwaitWithProgressNoThrow(minProgress, maxProgress);`</remarks>
+        public PromiseProgressNoThrowAwaiterVoid AwaitWithProgressNoThrow(float minProgress, float maxProgress)
+        {
+            ValidateOperation(1);
+            Internal.ValidateProgressValue(minProgress, "minProgress", 1);
+            Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
+            return new PromiseProgressNoThrowAwaiterVoid(this, minProgress, maxProgress);
+        }
+
+        /// <summary>
+        /// Gets an awaiter for this <see cref="Promise"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function,
+        /// and suppresses throws and returns a <see cref="ResultContainer"/> instead.
+        /// The progress reported will be lerped from its current progress to <paramref name="maxProgress"/>. <paramref name="maxProgress"/> must be between 0 and 1 inclusive.
+        /// </summary>
+        /// <returns>The awaiter.</returns>
+        /// <remarks>
+        /// If the previously awaited promise did not complete successfully, minProgress will be set to the previous <paramref name="maxProgress"/> instead of current.
+        /// <para/>Use as `var resultContainer = await promise.AwaitWithProgressNoThrow(maxProgress);`
+        /// </remarks>
+        public PromiseProgressNoThrowAwaiterVoid AwaitWithProgressNoThrow(float maxProgress)
+        {
+            ValidateOperation(1);
+            Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
+            return new PromiseProgressNoThrowAwaiterVoid(this, float.NaN, maxProgress);
         }
     }
 
@@ -73,15 +118,22 @@ namespace Proto.Promises
             return new PromiseAwaiter<T>(this);
         }
 
+        /// <summary>Gets an awaiter for this <see cref="Promise{T}"/> that suppresses throws and returns a <see cref="ResultContainer"/> instead.</summary>
+        /// <returns>The awaiter.</returns>
+        /// <remarks>Use as `var resultContainer = await promise.AwaitNoThrow();`</remarks>
+        [MethodImpl(Internal.InlineOption), EditorBrowsable(EditorBrowsableState.Never)]
+        public PromiseNoThrowAwaiter<T> AwaitNoThrow()
+        {
+            ValidateOperation(1);
+            return new PromiseNoThrowAwaiter<T>(this);
+        }
+
         /// <summary>
         /// Gets an awaiter for this <see cref="Promise{T}"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function.
         /// The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
         /// </summary>
-        /// <remarks>
-        /// If the previously awaited promise did not complete successfully, minProgress will be set to the previous <paramref name="maxProgress"/> instead of current.
-        /// <para/>Use as `await promise.AwaitWithProgress(maxProgress);`
-        /// </remarks>
         /// <returns>The awaiter.</returns>
+        /// <remarks>Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`</remarks>
         public PromiseProgressAwaiter<T> AwaitWithProgress(float minProgress, float maxProgress)
         {
             ValidateOperation(1);
@@ -94,16 +146,48 @@ namespace Proto.Promises
         /// Gets an awaiter for this <see cref="Promise{T}"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function.
         /// The progress reported will be lerped from its current progress to <paramref name="maxProgress"/>. <paramref name="maxProgress"/> must be between 0 and 1 inclusive.
         /// </summary>
+        /// <returns>The awaiter.</returns>
         /// <remarks>
         /// If the previously awaited promise did not complete successfully, minProgress will be set to the previous <paramref name="maxProgress"/> instead of current.
         /// <para/>Use as `await promise.AwaitWithProgress(maxProgress);`
         /// </remarks>
-        /// <returns>The awaiter.</returns>
         public PromiseProgressAwaiter<T> AwaitWithProgress(float maxProgress)
         {
             ValidateOperation(1);
             Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
             return new PromiseProgressAwaiter<T>(this, float.NaN, maxProgress);
+        }
+
+        /// <summary>
+        /// Gets an awaiter for this <see cref="Promise{T}"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function,
+        /// and suppresses throws and returns a <see cref="ResultContainer"/> instead.
+        /// The progress reported will be lerped from <paramref name="minProgress"/> to <paramref name="maxProgress"/>. Both values must be between 0 and 1 inclusive.
+        /// </summary>
+        /// <returns>The awaiter.</returns>
+        /// <remarks>Use as `var resultContainer = await promise.AwaitWithProgressNoThrow(minProgress, maxProgress);`</remarks>
+        public PromiseProgressNoThrowAwaiter<T> AwaitWithProgressNoThrow(float minProgress, float maxProgress)
+        {
+            ValidateOperation(1);
+            Internal.ValidateProgressValue(minProgress, "minProgress", 1);
+            Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
+            return new PromiseProgressNoThrowAwaiter<T>(this, minProgress, maxProgress);
+        }
+
+        /// <summary>
+        /// Gets an awaiter for this <see cref="Promise{T}"/> that supports reporting progress to the async <see cref="Promise"/> or <see cref="Promise{T}"/> function,
+        /// and suppresses throws and returns a <see cref="ResultContainer"/> instead.
+        /// The progress reported will be lerped from its current progress to <paramref name="maxProgress"/>. <paramref name="maxProgress"/> must be between 0 and 1 inclusive.
+        /// </summary>
+        /// <returns>The awaiter.</returns>
+        /// <remarks>
+        /// If the previously awaited promise did not complete successfully, minProgress will be set to the previous <paramref name="maxProgress"/> instead of current.
+        /// <para/>Use as `var resultContainer = await promise.AwaitWithProgressNoThrow(maxProgress);`
+        /// </remarks>
+        public PromiseProgressNoThrowAwaiter<T> AwaitWithProgressNoThrow(float maxProgress)
+        {
+            ValidateOperation(1);
+            Internal.ValidateProgressValue(maxProgress, "maxProgress", 1);
+            return new PromiseProgressNoThrowAwaiter<T>(this, float.NaN, maxProgress);
         }
     }
 
@@ -144,6 +228,40 @@ namespace Proto.Promises
 #endif
         }
 
+        partial struct PromiseNoThrowAwaiterVoid
+        {
+            // Fix for IL2CPP not invoking the static constructor.
+#if ENABLE_IL2CPP
+            [MethodImpl(Internal.InlineOption)]
+            static partial void CreateOverride()
+            {
+                Internal.AwaitOverrider<PromiseNoThrowAwaiterVoid>.Create<PromiseNoThrowAwaiterVoid>();
+            }
+#else
+            static PromiseNoThrowAwaiterVoid()
+            {
+                Internal.AwaitOverrider<PromiseNoThrowAwaiterVoid>.Create<PromiseNoThrowAwaiterVoid>();
+            }
+#endif
+        }
+
+        partial struct PromiseNoThrowAwaiter<T>
+        {
+            // Fix for IL2CPP not invoking the static constructor.
+#if ENABLE_IL2CPP
+            [MethodImpl(Internal.InlineOption)]
+            static partial void CreateOverride()
+            {
+                Internal.AwaitOverrider<PromiseNoThrowAwaiter<T>>.Create<PromiseNoThrowAwaiter<T>>();
+            }
+#else
+            static PromiseNoThrowAwaiter()
+            {
+                Internal.AwaitOverrider<PromiseNoThrowAwaiter<T>>.Create<PromiseNoThrowAwaiter<T>>();
+            }
+#endif
+        }
+
         partial struct PromiseProgressAwaiterVoid
         {
             // Fix for IL2CPP not invoking the static constructor.
@@ -174,6 +292,40 @@ namespace Proto.Promises
             static PromiseProgressAwaiter()
             {
                 Internal.AwaitOverrider<PromiseProgressAwaiter<T>>.Create<PromiseProgressAwaiter<T>>();
+            }
+#endif
+        }
+
+        partial struct PromiseProgressNoThrowAwaiterVoid
+        {
+            // Fix for IL2CPP not invoking the static constructor.
+#if ENABLE_IL2CPP
+            [MethodImpl(Internal.InlineOption)]
+            static partial void CreateOverride()
+            {
+                Internal.AwaitOverrider<PromiseProgressNoThrowAwaiterVoid>.Create<PromiseProgressNoThrowAwaiterVoid>();
+            }
+#else
+            static PromiseProgressNoThrowAwaiterVoid()
+            {
+                Internal.AwaitOverrider<PromiseProgressNoThrowAwaiterVoid>.Create<PromiseProgressNoThrowAwaiterVoid>();
+            }
+#endif
+        }
+
+        partial struct PromiseProgressNoThrowAwaiter<T>
+        {
+            // Fix for IL2CPP not invoking the static constructor.
+#if ENABLE_IL2CPP
+            [MethodImpl(Internal.InlineOption)]
+            static partial void CreateOverride()
+            {
+                Internal.AwaitOverrider<PromiseProgressNoThrowAwaiter<T>>.Create<PromiseProgressNoThrowAwaiter<T>>();
+            }
+#else
+            static PromiseProgressNoThrowAwaiter()
+            {
+                Internal.AwaitOverrider<PromiseProgressNoThrowAwaiter<T>>.Create<PromiseProgressNoThrowAwaiter<T>>();
             }
 #endif
         }
@@ -393,6 +545,222 @@ namespace Proto.Promises
         } // struct PromiseAwaiter<T>
 
         /// <summary>
+        /// Provides an awaiter for awaiting a <see cref="Promise"/>, without throwing.
+        /// </summary>
+        /// <remarks>This type is intended for compiler use rather than use directly in code.</remarks>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        public
+#if CSHARP_7_3_OR_NEWER
+            readonly
+#endif
+            partial struct PromiseNoThrowAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        {
+            private readonly Promise _promise;
+
+            /// <summary>
+            /// Internal use.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            internal PromiseNoThrowAwaiterVoid(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                Promise promise)
+            {
+                _promise = promise;
+                CreateOverride();
+            }
+
+            static partial void CreateOverride();
+
+            /// <summary>Gets the awaiter for this.</summary>
+            /// <remarks>This method is intended for compiler use rather than use directly in code.</remarks>
+            /// <returns>this</returns>
+            [MethodImpl(Internal.InlineOption)]
+            public PromiseNoThrowAwaiterVoid GetAwaiter()
+            {
+                return this;
+            }
+
+            /// <summary>Gets whether the <see cref="Promise"/> being awaited is completed.</summary>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
+            public bool IsCompleted
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get
+                {
+                    var _ref = _promise._ref;
+                    return _ref == null || _ref.GetIsCompleted(_promise._id);
+                }
+            }
+
+            /// <summary>Ends the await on the completed <see cref="Promise"/>.</summary>
+            /// <returns>A <see cref="Promise.ResultContainer"/> that wraps the completion state and reason of the <see cref="Promise"/>.</returns>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten, or it has not yet completed.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public Promise.ResultContainer GetResult()
+            {
+                var _ref = _promise._ref;
+                return _ref == null
+                    ? new Promise.ResultContainer(null, Promise.State.Resolved)
+                    : _ref.GetResultContainerAndMaybeDispose(_promise._id);
+            }
+
+            /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public void OnCompleted(Action continuation)
+            {
+                ValidateArgument(continuation, "continuation", 1);
+                var _ref = _promise._ref;
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _ref.OnCompleted(continuation, _promise._id);
+            }
+
+            /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public void UnsafeOnCompleted(Action continuation)
+            {
+                OnCompleted(continuation);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref Internal.PromiseRefBase.AsyncPromiseFields asyncFields)
+            {
+                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
+            }
+
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+#if PROMISE_DEBUG
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+            {
+                Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            }
+#endif
+        } // struct PromiseNoThrowAwaiterVoid
+
+        /// <summary>
+        /// Provides an awaiter for awaiting a <see cref="Promise{T}"/>, without throwing.
+        /// </summary>
+        /// <remarks>This type is intended for compiler use rather than use directly in code.</remarks>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        public
+#if CSHARP_7_3_OR_NEWER
+            readonly
+#endif
+            partial struct PromiseNoThrowAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        {
+            private readonly Promise<T> _promise;
+
+            /// <summary>
+            /// Internal use.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            internal PromiseNoThrowAwaiter(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                Promise<T> promise)
+            {
+                _promise = promise;
+                CreateOverride();
+            }
+
+            static partial void CreateOverride();
+
+            /// <summary>Gets the awaiter for this.</summary>
+            /// <remarks>This method is intended for compiler use rather than use directly in code.</remarks>
+            /// <returns>this</returns>
+            [MethodImpl(Internal.InlineOption)]
+            public PromiseNoThrowAwaiter<T> GetAwaiter()
+            {
+                return this;
+            }
+
+            /// <summary>Gets whether the <see cref="Promise{T}"/> being awaited is completed.</summary>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
+            public bool IsCompleted
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get
+                {
+                    var _ref = _promise._ref;
+                    return _ref == null || _ref.GetIsCompleted(_promise._id);
+                }
+            }
+
+            /// <summary>Ends the await on the completed <see cref="Promise{T}"/>.</summary>
+            /// <returns>A <see cref="Promise{T}.ResultContainer"/> that wraps the completion state and result or reason of the <see cref="Promise{T}"/>.</returns>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten, or it has not yet completed.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public Promise<T>.ResultContainer GetResult()
+            {
+                var _ref = _promise._ref;
+                return _ref == null
+                    ? new Promise<T>.ResultContainer(_promise._result, null, Promise.State.Resolved)
+                    : _ref.GetResultContainerAndMaybeDispose(_promise._id);
+            }
+
+            /// <summary>Schedules the continuation onto the <see cref="Promise{T}"/> associated with this <see cref="PromiseAwaiter{T}"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public void OnCompleted(Action continuation)
+            {
+                ValidateArgument(continuation, "continuation", 1);
+                var _ref = _promise._ref;
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _ref.OnCompleted(continuation, _promise._id);
+            }
+
+            /// <summary>Schedules the continuation onto the <see cref="Promise{T}"/> associated with this <see cref="PromiseAwaiter{T}"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public void UnsafeOnCompleted(Action continuation)
+            {
+                OnCompleted(continuation);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref Internal.PromiseRefBase.AsyncPromiseFields asyncFields)
+            {
+                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
+            }
+
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+#if PROMISE_DEBUG
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+            {
+                Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            }
+#endif
+        } // struct PromiseNoThrowAwaiter<T>
+
+        /// <summary>
         /// Provides an awaiter for awaiting a <see cref="Promise"/> and reporting its progress to the associated async <see cref="Promise"/> or <see cref="Promise{T}"/>.
         /// </summary>
         /// <remarks>This type is intended for compiler use rather than use directly in code.</remarks>
@@ -509,7 +877,7 @@ namespace Proto.Promises
                 Internal.ValidateArgument(arg, argName, skipFrames + 1);
             }
 #endif
-        } // struct PromiseAwaiterVoid
+        } // struct PromiseProgressAwaiterVoid
 
         /// <summary>
         /// Provides an awaiter for awaiting a <see cref="Promise{T}"/> and reporting its progress to the associated async <see cref="Promise"/> or <see cref="Promise{T}"/>.
@@ -629,6 +997,230 @@ namespace Proto.Promises
                 Internal.ValidateArgument(arg, argName, skipFrames + 1);
             }
 #endif
-        } // struct PromiseAwaiter<T>
+        } // struct PromiseProgressAwaiter<T>
+
+        /// <summary>
+        /// Provides an awaiter for awaiting a <see cref="Promise"/> and reporting its progress to the associated async <see cref="Promise"/> or <see cref="Promise{T}"/>, without throwing.
+        /// </summary>
+        /// <remarks>This type is intended for compiler use rather than use directly in code.</remarks>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        public
+#if CSHARP_7_3_OR_NEWER
+            readonly
+#endif
+            partial struct PromiseProgressNoThrowAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        {
+            private readonly Promise _promise;
+            private readonly float _minProgress;
+            private readonly float _maxProgress;
+
+            /// <summary>
+            /// Internal use.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            internal PromiseProgressNoThrowAwaiterVoid(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                Promise promise, float minProgress, float maxProgress)
+            {
+                _promise = promise;
+                _minProgress = minProgress;
+                _maxProgress = maxProgress;
+                CreateOverride();
+            }
+
+            static partial void CreateOverride();
+
+            /// <summary>Gets the awaiter for this.</summary>
+            /// <remarks>This method is intended for compiler use rather than use directly in code.</remarks>
+            /// <returns>this</returns>
+            [MethodImpl(Internal.InlineOption)]
+            public PromiseProgressNoThrowAwaiterVoid GetAwaiter()
+            {
+                return this;
+            }
+
+            /// <summary>Gets whether the <see cref="Promise"/> being awaited is completed.</summary>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
+            public bool IsCompleted
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get
+                {
+                    var _ref = _promise._ref;
+                    return _ref == null || _ref.GetIsCompleted(_promise._id);
+                }
+            }
+
+            /// <summary>Ends the await on the completed <see cref="Promise"/>.</summary>
+            /// <returns>A <see cref="Promise.ResultContainer"/> that wraps the completion state and reason of the <see cref="Promise"/>.</returns>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten, or it has not yet completed.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public Promise.ResultContainer GetResult()
+            {
+                var _ref = _promise._ref;
+                return _ref == null
+                    ? new Promise.ResultContainer(null, Promise.State.Resolved)
+                    : _ref.GetResultContainerAndMaybeDispose(_promise._id);
+            }
+
+            /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public void OnCompleted(Action continuation)
+            {
+                ValidateArgument(continuation, "continuation", 1);
+                var _ref = _promise._ref;
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _ref.OnCompleted(continuation, _promise._id);
+            }
+
+            /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public void UnsafeOnCompleted(Action continuation)
+            {
+                OnCompleted(continuation);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref Internal.PromiseRefBase.AsyncPromiseFields asyncFields)
+            {
+                asyncPromiseRef.HookupAwaiterWithProgress(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress, ref asyncFields);
+            }
+
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+#if PROMISE_DEBUG
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+            {
+                Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            }
+#endif
+        } // struct PromiseProgressNoThrowAwaiterVoid
+
+        /// <summary>
+        /// Provides an awaiter for awaiting a <see cref="Promise{T}"/> and reporting its progress to the associated async <see cref="Promise"/> or <see cref="Promise{T}"/>, without throwing.
+        /// </summary>
+        /// <remarks>This type is intended for compiler use rather than use directly in code.</remarks>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        public
+#if CSHARP_7_3_OR_NEWER
+            readonly
+#endif
+            partial struct PromiseProgressNoThrowAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        {
+            private readonly Promise<T> _promise;
+            private readonly float _minProgress;
+            private readonly float _maxProgress;
+
+            /// <summary>
+            /// Internal use.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            internal PromiseProgressNoThrowAwaiter(
+#if CSHARP_7_3_OR_NEWER
+                in
+#endif
+                Promise<T> promise, float minProgress, float maxProgress)
+            {
+                _promise = promise;
+                _minProgress = minProgress;
+                _maxProgress = maxProgress;
+                CreateOverride();
+            }
+
+            static partial void CreateOverride();
+
+            /// <summary>Gets the awaiter for this.</summary>
+            /// <remarks>This method is intended for compiler use rather than use directly in code.</remarks>
+            /// <returns>this</returns>
+            [MethodImpl(Internal.InlineOption)]
+            public PromiseProgressNoThrowAwaiter<T> GetAwaiter()
+            {
+                return this;
+            }
+
+            /// <summary>Gets whether the <see cref="Promise{T}"/> being awaited is completed.</summary>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
+            public bool IsCompleted
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get
+                {
+                    var _ref = _promise._ref;
+                    return _ref == null || _ref.GetIsCompleted(_promise._id);
+                }
+            }
+
+            /// <summary>Ends the await on the completed <see cref="Promise{T}"/>.</summary>
+            /// <returns>A <see cref="Promise{T}.ResultContainer"/> that wraps the completion state and result or reason of the <see cref="Promise{T}"/>.</returns>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten, or it has not yet completed.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public Promise<T>.ResultContainer GetResult()
+            {
+                var _ref = _promise._ref;
+                return _ref == null
+                    ? new Promise<T>.ResultContainer(_promise._result, null, Promise.State.Resolved)
+                    : _ref.GetResultContainerAndMaybeDispose(_promise._id);
+            }
+
+            /// <summary>Schedules the continuation onto the <see cref="Promise{T}"/> associated with this <see cref="PromiseAwaiter{T}"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public void OnCompleted(Action continuation)
+            {
+                ValidateArgument(continuation, "continuation", 1);
+                var _ref = _promise._ref;
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _ref.OnCompleted(continuation, _promise._id);
+            }
+
+            /// <summary>Schedules the continuation onto the <see cref="Promise{T}"/> associated with this <see cref="PromiseAwaiter{T}"/>.</summary>
+            /// <param name="continuation">The action to invoke when the await operation completes.</param>
+            /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+            /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
+            [MethodImpl(Internal.InlineOption)]
+            public void UnsafeOnCompleted(Action continuation)
+            {
+                OnCompleted(continuation);
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref Internal.PromiseRefBase.AsyncPromiseFields asyncFields)
+            {
+                asyncPromiseRef.HookupAwaiterWithProgress(_promise._ref, _promise._id, _promise.Depth, _minProgress, _maxProgress, ref asyncFields);
+            }
+
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+#if PROMISE_DEBUG
+            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+            {
+                Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            }
+#endif
+        } // struct PromiseProgressNoThrowAwaiter<T>
     } // namespace Async.CompilerServices
 }

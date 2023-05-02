@@ -14,6 +14,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0044 // Add readonly modifier
 
 using System;
 using System.Diagnostics;
@@ -58,6 +59,26 @@ namespace Proto.Promises
                 HookupNewWaiter(promiseId, AwaiterRef<DelegateVoidVoid>.GetOrCreate(new DelegateVoidVoid(continuation)));
             }
 
+            [MethodImpl(InlineOption)]
+            internal Promise.ResultContainer GetResultContainerAndMaybeDispose(short promiseId)
+            {
+                if (promiseId != Id | State == Promise.State.Pending)
+                {
+                    ValidateId(promiseId, this, 2);
+                    throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                }
+                return GetResultContainerAndMaybeDispose();
+            }
+
+            [MethodImpl(InlineOption)]
+            internal Promise.ResultContainer GetResultContainerAndMaybeDispose()
+            {
+                var resultContainer = new Promise.ResultContainer(_rejectContainerOrPreviousOrLink, State);
+                SuppressRejection = true;
+                MaybeDispose();
+                return resultContainer;
+            }
+
             partial class PromiseRef<TResult>
             {
                 [MethodImpl(InlineOption)]
@@ -73,6 +94,26 @@ namespace Proto.Promises
                     TResult result = _result;
                     MaybeDispose();
                     return result;
+                }
+
+                [MethodImpl(InlineOption)]
+                new internal Promise<TResult>.ResultContainer GetResultContainerAndMaybeDispose(short promiseId)
+                {
+                    if (promiseId != Id | State == Promise.State.Pending)
+                    {
+                        ValidateId(promiseId, this, 2);
+                        throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                    }
+                    return GetResultContainerAndMaybeDispose();
+                }
+
+                [MethodImpl(InlineOption)]
+                new internal Promise<TResult>.ResultContainer GetResultContainerAndMaybeDispose()
+                {
+                    var resultContainer = new Promise<TResult>.ResultContainer(_result, _rejectContainerOrPreviousOrLink, State);
+                    SuppressRejection = true;
+                    MaybeDispose();
+                    return resultContainer;
                 }
             }
 
@@ -243,6 +284,7 @@ namespace Proto.Promises
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER
 #endif // !NETCOREAPP
 
+        [MethodImpl(InlineOption)]
         internal static void ValidateId(short promiseId, PromiseRefBase _ref, int skipFrames)
         {
             if (promiseId != _ref.Id)

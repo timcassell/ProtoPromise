@@ -593,7 +593,7 @@ namespace ProtoPromiseTests.APIs
             async Promise Func()
             {
                 await deferred1.Promise.AwaitWithProgress(0f, 0.3f);
-                await deferred2.Promise.AwaitWithProgress(0.5f, 1f);
+                (await deferred2.Promise.AwaitWithProgressNoThrow(0.5f, 1f)).RethrowIfRejectedOrCanceled();
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -622,7 +622,7 @@ namespace ProtoPromiseTests.APIs
             async Promise Func()
             {
                 await deferred1.Promise.AwaitWithProgress(0.3f);
-                await deferred2.Promise.AwaitWithProgress(1f);
+                (await deferred2.Promise.AwaitWithProgressNoThrow(1f)).RethrowIfRejectedOrCanceled();
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -651,7 +651,9 @@ namespace ProtoPromiseTests.APIs
             async Promise<int> Func()
             {
                 await deferred1.Promise.AwaitWithProgress(0f, 0.3f);
-                return await deferred2.Promise.AwaitWithProgress(0.5f, 1f);
+                var resultContainer = await deferred2.Promise.AwaitWithProgressNoThrow(0.5f, 1f);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -680,7 +682,9 @@ namespace ProtoPromiseTests.APIs
             async Promise<int> Func()
             {
                 await deferred1.Promise.AwaitWithProgress(0.3f);
-                return await deferred2.Promise.AwaitWithProgress(1f);
+                var resultContainer = await deferred2.Promise.AwaitWithProgressNoThrow(1f);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -709,7 +713,7 @@ namespace ProtoPromiseTests.APIs
             async Promise Func()
             {
                 await Func1().AwaitWithProgress(0f, 0.3f);
-                await Func2().AwaitWithProgress(0.5f, 1f);
+                (await Func2().AwaitWithProgressNoThrow(0.5f, 1f)).RethrowIfRejectedOrCanceled();
             }
 
             async Promise Func1()
@@ -719,7 +723,7 @@ namespace ProtoPromiseTests.APIs
 
             async Promise Func2()
             {
-                await deferred2.Promise.AwaitWithProgress(0f, 1f);
+                (await deferred2.Promise.AwaitWithProgressNoThrow(0f, 1f)).RethrowIfRejectedOrCanceled();
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -748,7 +752,7 @@ namespace ProtoPromiseTests.APIs
             async Promise Func()
             {
                 await Func1().AwaitWithProgress(0.3f);
-                await Func2().AwaitWithProgress(1f);
+                (await Func2().AwaitWithProgressNoThrow(1f)).RethrowIfRejectedOrCanceled();
             }
 
             async Promise Func1()
@@ -758,7 +762,7 @@ namespace ProtoPromiseTests.APIs
 
             async Promise Func2()
             {
-                await deferred2.Promise.AwaitWithProgress(0f, 1f);
+                (await deferred2.Promise.AwaitWithProgressNoThrow(0f, 1f)).RethrowIfRejectedOrCanceled();
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -787,7 +791,9 @@ namespace ProtoPromiseTests.APIs
             async Promise<int> Func()
             {
                 await Func1().AwaitWithProgress(0f, 0.3f);
-                return await Func2().AwaitWithProgress(0.5f, 1f);
+                var resultContainer = await Func2().AwaitWithProgressNoThrow(0.5f, 1f);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             async Promise<int> Func1()
@@ -797,7 +803,9 @@ namespace ProtoPromiseTests.APIs
 
             async Promise<int> Func2()
             {
-                return await deferred2.Promise.AwaitWithProgress(0f, 1f);
+                var resultContainer = await deferred2.Promise.AwaitWithProgressNoThrow(0f, 1f);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -826,7 +834,9 @@ namespace ProtoPromiseTests.APIs
             async Promise<int> Func()
             {
                 await Func1().AwaitWithProgress(0.3f);
-                return await Func2().AwaitWithProgress(1f);
+                var resultContainer = await Func2().AwaitWithProgressNoThrow(1f);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             async Promise<int> Func1()
@@ -836,7 +846,9 @@ namespace ProtoPromiseTests.APIs
 
             async Promise<int> Func2()
             {
-                return await deferred2.Promise.AwaitWithProgress(0f, 1f);
+                var resultContainer = await deferred2.Promise.AwaitWithProgressNoThrow(0f, 1f);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -870,10 +882,10 @@ namespace ProtoPromiseTests.APIs
                     .ThenDuplicate(cancelationSource1.Token)
                     .CatchCancelation(() => { })
                     .AwaitWithProgress(0f, 0.3f);
-                await deferred2.Promise
+                (await deferred2.Promise
                     .ThenDuplicate(cancelationSource2.Token)
                     .CatchCancelation(() => { })
-                    .AwaitWithProgress(0.5f, 1f);
+                    .AwaitWithProgressNoThrow(0.5f, 1f)).RethrowIfRejectedOrCanceled();
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -916,10 +928,10 @@ namespace ProtoPromiseTests.APIs
                     .ThenDuplicate(cancelationSource1.Token)
                     .CatchCancelation(() => { })
                     .AwaitWithProgress(0.3f);
-                await deferred2.Promise
+                (await deferred2.Promise
                     .ThenDuplicate(cancelationSource2.Token)
                     .CatchCancelation(() => { })
-                    .AwaitWithProgress(1f);
+                    .AwaitWithProgressNoThrow(1f)).RethrowIfRejectedOrCanceled();
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -964,10 +976,10 @@ namespace ProtoPromiseTests.APIs
                     .ThenDuplicate(cancelationSource1.Token)
                     .CatchCancelation(() => deferred3.Promise)
                     .AwaitWithProgress(0f, 0.3f);
-                await deferred2.Promise
+                (await deferred2.Promise
                     .ThenDuplicate(cancelationSource2.Token)
                     .CatchCancelation(() => deferred4.Promise)
-                    .AwaitWithProgress(0.5f, 1f);
+                    .AwaitWithProgressNoThrow(0.5f, 1f)).RethrowIfRejectedOrCanceled();
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: TestHelper.progressEpsilon * 2); // Increase delta to accommodate for internal scaling operations with loss of precision.
@@ -1026,10 +1038,10 @@ namespace ProtoPromiseTests.APIs
                     .ThenDuplicate(cancelationSource1.Token)
                     .CatchCancelation(() => deferred3.Promise)
                     .AwaitWithProgress(0.3f);
-                await deferred2.Promise
+                (await deferred2.Promise
                     .ThenDuplicate(cancelationSource2.Token)
                     .CatchCancelation(() => deferred4.Promise)
-                    .AwaitWithProgress(1f);
+                    .AwaitWithProgressNoThrow(1f)).RethrowIfRejectedOrCanceled();
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: TestHelper.progressEpsilon * 2); // Increase delta to accommodate for internal scaling operations with loss of precision.
@@ -1086,10 +1098,12 @@ namespace ProtoPromiseTests.APIs
                     .ThenDuplicate(cancelationSource1.Token)
                     .CatchCancelation(() => 2)
                     .AwaitWithProgress(0f, 0.3f);
-                return await deferred2.Promise
+                var resultContainer = await deferred2.Promise
                     .ThenDuplicate(cancelationSource2.Token)
                     .CatchCancelation(() => 2)
-                    .AwaitWithProgress(0.5f, 1f);
+                    .AwaitWithProgressNoThrow(0.5f, 1f);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -1132,10 +1146,12 @@ namespace ProtoPromiseTests.APIs
                     .ThenDuplicate(cancelationSource1.Token)
                     .CatchCancelation(() => 2)
                     .AwaitWithProgress(0.3f);
-                return await deferred2.Promise
+                var resultContainer = await deferred2.Promise
                     .ThenDuplicate(cancelationSource2.Token)
                     .CatchCancelation(() => 2)
-                    .AwaitWithProgress(1f);
+                    .AwaitWithProgressNoThrow(1f);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -1180,10 +1196,12 @@ namespace ProtoPromiseTests.APIs
                     .ThenDuplicate(cancelationSource1.Token)
                     .CatchCancelation(() => deferred3.Promise)
                     .AwaitWithProgress(0f, 0.3f);
-                return await deferred2.Promise
+                var resultContainer = await deferred2.Promise
                     .ThenDuplicate(cancelationSource2.Token)
                     .CatchCancelation(() => deferred4.Promise)
-                    .AwaitWithProgress(0.5f, 1f);
+                    .AwaitWithProgressNoThrow(0.5f, 1f);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: TestHelper.progressEpsilon * 2); // Increase delta to accommodate for internal scaling operations with loss of precision.
@@ -1242,10 +1260,12 @@ namespace ProtoPromiseTests.APIs
                     .ThenDuplicate(cancelationSource1.Token)
                     .CatchCancelation(() => deferred3.Promise)
                     .AwaitWithProgress(0.3f);
-                return await deferred2.Promise
+                var resultContainer = await deferred2.Promise
                     .ThenDuplicate(cancelationSource2.Token)
                     .CatchCancelation(() => deferred4.Promise)
-                    .AwaitWithProgress(1f);
+                    .AwaitWithProgressNoThrow(1f);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: TestHelper.progressEpsilon * 2); // Increase delta to accommodate for internal scaling operations with loss of precision.
@@ -1317,6 +1337,34 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void AsyncPromiseWillReportProgress_WhenAnotherAwaitableIsAwaitedWithoutProgress_MinMax_NoThrow_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            async Promise Func()
+            {
+                (await deferred1.Promise.AwaitWithProgressNoThrow(0f, 0.5f)).RethrowIfRejectedOrCanceled();
+                await deferred2.Promise;
+            }
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            bool complete = false;
+
+            Func()
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Then(() => complete = true)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f));
+            // Implementation detail - progress is not reported after awaited promise is resolved, until another promise is awaited with progress.
+            progressHelper.ResolveAndAssertResult(deferred1, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ResolveAndAssertResult(deferred2, 1f, true);
+            Assert.IsTrue(complete);
+        }
+
+        [Test]
         public void AsyncPromiseWillReportProgress_WhenAnotherAwaitableIsAwaitedWithoutProgress_Max_void()
         {
             var deferred1 = Promise.NewDeferred();
@@ -1325,6 +1373,34 @@ namespace ProtoPromiseTests.APIs
             async Promise Func()
             {
                 await deferred1.Promise.AwaitWithProgress(0.5f);
+                await deferred2.Promise;
+            }
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            bool complete = false;
+
+            Func()
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Then(() => complete = true)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f));
+            // Implementation detail - progress is not reported after awaited promise is resolved, until another promise is awaited with progress.
+            progressHelper.ResolveAndAssertResult(deferred1, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ResolveAndAssertResult(deferred2, 1f, true);
+            Assert.IsTrue(complete);
+        }
+
+        [Test]
+        public void AsyncPromiseWillReportProgress_WhenAnotherAwaitableIsAwaitedWithoutProgress_Max_NoThrow_void()
+        {
+            var deferred1 = Promise.NewDeferred();
+            var deferred2 = Promise.NewDeferred();
+
+            async Promise Func()
+            {
+                (await deferred1.Promise.AwaitWithProgressNoThrow(0.5f)).RethrowIfRejectedOrCanceled();
                 await deferred2.Promise;
             }
 
@@ -1373,6 +1449,34 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void AsyncPromiseWillReportProgress_WhenAnotherAwaitableIsAwaitedWithoutProgress_MinMax_NoThrow_T()
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+
+            async Promise<int> Func()
+            {
+                (await deferred1.Promise.AwaitWithProgressNoThrow(0f, 0.5f)).RethrowIfRejectedOrCanceled();
+                return await deferred2.Promise;
+            }
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            bool complete = false;
+
+            Func()
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Then(() => complete = true)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f));
+            // Implementation detail - progress is not reported after awaited promise is resolved, until another promise is awaited with progress.
+            progressHelper.ResolveAndAssertResult(deferred1, 1, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ResolveAndAssertResult(deferred2, 2, 1f, true);
+            Assert.IsTrue(complete);
+        }
+
+        [Test]
         public void AsyncPromiseWillReportProgress_WhenAnotherAwaitableIsAwaitedWithoutProgress_Max_T()
         {
             var deferred1 = Promise.NewDeferred<int>();
@@ -1381,6 +1485,34 @@ namespace ProtoPromiseTests.APIs
             async Promise<int> Func()
             {
                 await deferred1.Promise.AwaitWithProgress(0.5f);
+                return await deferred2.Promise;
+            }
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            bool complete = false;
+
+            Func()
+                .SubscribeProgressAndAssert(progressHelper, 0f)
+                .Then(() => complete = true)
+                .Forget();
+
+            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f));
+            // Implementation detail - progress is not reported after awaited promise is resolved, until another promise is awaited with progress.
+            progressHelper.ResolveAndAssertResult(deferred1, 1, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, TestHelper.Lerp(0f, 0.5f, 0.5f), false);
+            progressHelper.ResolveAndAssertResult(deferred2, 2, 1f, true);
+            Assert.IsTrue(complete);
+        }
+
+        [Test]
+        public void AsyncPromiseWillReportProgress_WhenAnotherAwaitableIsAwaitedWithoutProgress_Max_NoThrow_T()
+        {
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+
+            async Promise<int> Func()
+            {
+                (await deferred1.Promise.AwaitWithProgressNoThrow(0.5f)).RethrowIfRejectedOrCanceled();
                 return await deferred2.Promise;
             }
 

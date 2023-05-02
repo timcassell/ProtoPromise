@@ -47,6 +47,26 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void ResolveAwaitedPromiseContinuesExecution_NoThrow()
+        {
+            var deferred = Promise.NewDeferred();
+
+            bool continued = false;
+
+            async void Func()
+            {
+                (await deferred.Promise.AwaitNoThrow()).RethrowIfRejectedOrCanceled();
+                continued = true;
+            }
+
+            Func();
+            Assert.IsFalse(continued);
+
+            deferred.Resolve();
+            Assert.IsTrue(continued);
+        }
+
+        [Test]
         public void ResolveAwaitedPromiseReturnsValueAndContinuesExecution()
         {
             var deferred = Promise.NewDeferred<int>();
@@ -69,6 +89,29 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void ResolveAwaitedPromiseReturnsValueAndContinuesExecution_NoThrow()
+        {
+            var deferred = Promise.NewDeferred<int>();
+
+            int expected = 50;
+            bool continued = false;
+
+            async void Func()
+            {
+                var resultContainer = await deferred.Promise.AwaitNoThrow();
+                resultContainer.RethrowIfRejectedOrCanceled();
+                Assert.AreEqual(expected, resultContainer.Result);
+                continued = true;
+            }
+
+            Func();
+            Assert.IsFalse(continued);
+
+            deferred.Resolve(expected);
+            Assert.IsTrue(continued);
+        }
+
+        [Test]
         public void AwaitAlreadyResolvedPromiseContinuesExecution()
         {
             bool continued = false;
@@ -76,6 +119,24 @@ namespace ProtoPromiseTests.APIs
             async void Func()
             {
                 await Promise.Resolved();
+                continued = true;
+            }
+
+            Assert.IsFalse(continued);
+            Func();
+            Assert.IsTrue(continued);
+
+            Assert.IsTrue(continued);
+        }
+
+        [Test]
+        public void AwaitAlreadyResolvedPromiseContinuesExecution_NoThrow()
+        {
+            bool continued = false;
+
+            async void Func()
+            {
+                (await Promise.Resolved().AwaitNoThrow()).RethrowIfRejectedOrCanceled();
                 continued = true;
             }
 
@@ -107,7 +168,28 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void RejectAwaitedPromiseThrows1()
+        public void AwaitAlreadyResolvedPromiseReturnsValueAndContinuesExecution_NoThrow()
+        {
+            int expected = 50;
+            bool continued = false;
+
+            async void Func()
+            {
+                var resultContainer = await Promise.Resolved(expected).AwaitNoThrow();
+                resultContainer.RethrowIfRejectedOrCanceled();
+                Assert.AreEqual(expected, resultContainer.Result);
+                continued = true;
+            }
+
+            Assert.IsFalse(continued);
+            Func();
+            Assert.IsTrue(continued);
+
+            Assert.IsTrue(continued);
+        }
+
+        [Test]
+        public void RejectAwaitedPromiseThrows_void()
         {
             var deferred = Promise.NewDeferred();
 
@@ -135,7 +217,30 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void RejectAwaitedPromiseThrows2()
+        public void RejectAwaitedPromiseNoThrow_IsRejectedWithReason_void()
+        {
+            var deferred = Promise.NewDeferred();
+
+            bool continued = false;
+            string rejectValue = "Reject";
+
+            async void Func()
+            {
+                var resultContainer = await deferred.Promise.AwaitNoThrow();
+                Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
+                Assert.AreEqual(rejectValue, resultContainer.RejectReason);
+                continued = true;
+            }
+
+            Func();
+            Assert.IsFalse(continued);
+
+            deferred.Reject(rejectValue);
+            Assert.IsTrue(continued);
+        }
+
+        [Test]
+        public void RejectAwaitedPromiseThrows_T()
         {
             var deferred = Promise.NewDeferred<int>();
 
@@ -163,7 +268,30 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void AwaitAlreadyRejectedPromiseThrows1()
+        public void RejectAwaitedPromiseNoThrow_IsRejectedWithReason_T()
+        {
+            var deferred = Promise.NewDeferred<int>();
+
+            bool continued = false;
+            string rejectValue = "Reject";
+
+            async void Func()
+            {
+                var resultContainer = await deferred.Promise.AwaitNoThrow();
+                Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
+                Assert.AreEqual(rejectValue, resultContainer.RejectReason);
+                continued = true;
+            }
+
+            Func();
+            Assert.IsFalse(continued);
+
+            deferred.Reject(rejectValue);
+            Assert.IsTrue(continued);
+        }
+
+        [Test]
+        public void AwaitAlreadyRejectedPromiseThrows_void()
         {
             bool continued = false;
             string rejectValue = "Reject";
@@ -184,12 +312,29 @@ namespace ProtoPromiseTests.APIs
             Assert.IsFalse(continued);
             Func();
             Assert.IsTrue(continued);
+        }
 
+        [Test]
+        public void AwaitNoThrowAlreadyRejectedPromise_IsRejectedWithReason_void()
+        {
+            bool continued = false;
+            string rejectValue = "Reject";
+
+            async void Func()
+            {
+                var resultContainer = await Promise.Rejected(rejectValue).AwaitNoThrow();
+                Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
+                Assert.AreEqual(rejectValue, resultContainer.RejectReason);
+                continued = true;
+            }
+
+            Assert.IsFalse(continued);
+            Func();
             Assert.IsTrue(continued);
         }
 
         [Test]
-        public void AwaitAlreadyRejectedPromiseThrows2()
+        public void AwaitAlreadyRejectedPromiseThrows_T()
         {
             bool continued = false;
             string rejectValue = "Reject";
@@ -210,7 +355,24 @@ namespace ProtoPromiseTests.APIs
             Assert.IsFalse(continued);
             Func();
             Assert.IsTrue(continued);
+        }
 
+        [Test]
+        public void AwaitNoThrowAlreadyRejectedPromise_IsRejectedWithReason_T()
+        {
+            bool continued = false;
+            string rejectValue = "Reject";
+
+            async void Func()
+            {
+                var resultContainer = await Promise<int>.Rejected(rejectValue).AwaitNoThrow();
+                Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
+                Assert.AreEqual(rejectValue, resultContainer.RejectReason);
+                continued = true;
+            }
+
+            Assert.IsFalse(continued);
+            Func();
             Assert.IsTrue(continued);
         }
 
@@ -233,6 +395,31 @@ namespace ProtoPromiseTests.APIs
                 {
                     continued = true;
                 }
+            }
+
+            Func();
+            Assert.IsFalse(continued);
+
+            cancelationSource.Cancel();
+            Assert.IsTrue(continued);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void CancelAwaitedPromiseNoThrow_IsCanceled_void()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred();
+            cancelationSource.Token.Register(deferred);
+
+            bool continued = false;
+
+            async void Func()
+            {
+                var resultContainer = await deferred.Promise.AwaitNoThrow();
+                Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
+                continued = true;
             }
 
             Func();
@@ -275,6 +462,31 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void CancelAwaitedPromiseNoThrow_IsCanceled_T()
+        {
+            CancelationSource cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred<int>();
+            cancelationSource.Token.Register(deferred);
+
+            bool continued = false;
+
+            async void Func()
+            {
+                var resultContainer = await deferred.Promise.AwaitNoThrow();
+                Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
+                continued = true;
+            }
+
+            Func();
+            Assert.IsFalse(continued);
+
+            cancelationSource.Cancel();
+            Assert.IsTrue(continued);
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
         public void AwaitAlreadyCanceledPromiseThrowsOperationCanceled_void()
         {
             bool continued = false;
@@ -299,6 +511,23 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void AwaitNoThrowAlreadyCanceledPromise_IsCanceled_void()
+        {
+            bool continued = false;
+
+            async void Func()
+            {
+                var resultContainer = await Promise.Canceled().AwaitNoThrow();
+                Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
+                continued = true;
+            }
+
+            Assert.IsFalse(continued);
+            Func();
+            Assert.IsTrue(continued);
+        }
+
+        [Test]
         public void AwaitAlreadyCanceledPromiseThrowsOperationCanceled_T()
         {
             bool continued = false;
@@ -318,7 +547,22 @@ namespace ProtoPromiseTests.APIs
             Assert.IsFalse(continued);
             Func();
             Assert.IsTrue(continued);
+        }
 
+        [Test]
+        public void AwaitNoThrowAlreadyCanceledPromise_IsCanceled_T()
+        {
+            bool continued = false;
+
+            async void Func()
+            {
+                var resultContainer = await Promise<int>.Canceled().AwaitNoThrow();
+                Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
+                continued = true;
+            }
+
+            Assert.IsFalse(continued);
+            Func();
             Assert.IsTrue(continued);
         }
 
