@@ -143,8 +143,7 @@ namespace Proto.Promises
                     resultContainer = default(Promise.ResultContainer);
                     return false;
                 }
-                resultContainer = new Promise.ResultContainer(promise._rejectContainerOrPreviousOrLink, promise.State);
-                promise.MaybeDispose();
+                resultContainer = promise.GetResultContainerAndMaybeDispose();
                 return true;
             }
 
@@ -156,8 +155,7 @@ namespace Proto.Promises
                     resultContainer = default(Promise<TResult>.ResultContainer);
                     return false;
                 }
-                resultContainer = new Promise<TResult>.ResultContainer(promise._result, promise._rejectContainerOrPreviousOrLink, promise.State);
-                promise.MaybeDispose();
+                resultContainer = promise.GetResultContainerAndMaybeDispose();
                 return true;
             }
 
