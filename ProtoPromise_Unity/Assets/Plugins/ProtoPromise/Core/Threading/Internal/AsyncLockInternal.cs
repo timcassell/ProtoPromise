@@ -54,10 +54,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class AsyncLockPromise : AsyncLockPromiseBase<AsyncLock.Key>, ICancelable
+            internal sealed class AsyncLockPromise : AsyncLockPromiseBase<AsyncLock.Key>
             {
-                internal AsyncLockInternal Owner => _result._owner;
-
                 [MethodImpl(InlineOption)]
                 private static AsyncLockPromise GetOrCreate()
                 {
@@ -83,12 +81,6 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                internal void MaybeHookupCancelation(CancelationToken cancelationToken)
-                {
-                    ThrowIfInPool(this);
-                    cancelationToken.TryRegister(this, out _cancelationRegistration);
-                }
-
                 public override void Resolve(ref long currentKey)
                 {
                     ThrowIfInPool(this);
@@ -98,14 +90,14 @@ namespace Proto.Promises
                     // We just dispose to wait for the callback to complete before we continue.
                     _cancelationRegistration.Dispose();
 
-                    _result = new AsyncLock.Key(Owner, currentKey, this);
+                    _result = new AsyncLock.Key(_result._owner, currentKey, this);
                     Continue(Promise.State.Resolved);
                 }
 
-                void ICancelable.Cancel()
+                public override void Cancel()
                 {
                     ThrowIfInPool(this);
-                    if (!Owner.TryUnregister(this))
+                    if (!_result._owner.TryUnregister(this))
                     {
                         return;
                     }
@@ -116,9 +108,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class AsyncLockWaitPromise : AsyncLockPromiseBase<bool>, ICancelable
+            internal sealed class AsyncLockWaitPromise : AsyncLockPromiseBase<bool>
             {
-                private AsyncLockInternal _owner;
+#if PROMISE_DEBUG
+                // We use a weak reference in DEBUG mode so the owner's finalizer can still run if it's dropped.
+                private readonly WeakReference _ownerReference = new WeakReference(null, false);
+#pragma warning disable IDE1006 // Naming Styles
+                private AsyncConditionVariable _owner
+#pragma warning restore IDE1006 // Naming Styles
+                {
+                    get { return _ownerReference.Target as AsyncConditionVariable; }
+                    set { _ownerReference.Target = value; }
+                }
+#else
+                private AsyncConditionVariable _owner;
+#endif
+                private AsyncLockInternal _lock;
                 private long _key;
 
                 [MethodImpl(InlineOption)]
@@ -131,11 +136,12 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static AsyncLockWaitPromise GetOrCreate(AsyncLockInternal owner, long key, SynchronizationContext callerContext)
+                internal static AsyncLockWaitPromise GetOrCreate(AsyncConditionVariable owner, long key, SynchronizationContext callerContext)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._owner = owner;
+                    promise._lock = owner._lock;
                     promise._key = key;
                     promise._callerContext = callerContext;
                     promise._result = true;
@@ -146,14 +152,8 @@ namespace Proto.Promises
                 {
                     Dispose();
                     _owner = null;
+                    _lock = null;
                     ObjectPool.MaybeRepool(this);
-                }
-
-                internal void MaybeHookupCancelation(CancelationToken cancelationToken)
-                {
-                    ThrowIfInPool(this);
-                    // Just hook up the listener, don't check for already canceled since we have to make sure the lock is re-acquired before this is resolved.
-                    cancelationToken.TryRegister(this, out _cancelationRegistration);
                 }
 
                 public override void Resolve(ref long currentKey)
@@ -167,12 +167,19 @@ namespace Proto.Promises
                     Continue(Promise.State.Resolved);
                 }
 
-                void ICancelable.Cancel()
+                public override void Cancel()
                 {
                     ThrowIfInPool(this);
                     // We just move this to the ready queue, we don't post the continuation yet because we have to make sure the lock is re-acquired before this is resolved.
                     _result = false;
-                    _owner.MaybeMakeReady(this);
+#if PROMISE_DEBUG
+                    var _owner = this._owner;
+                    if (_owner == null)
+                    {
+                        return;
+                    }
+#endif
+                    _lock.MaybeMakeReady(_owner, this);
                 }
 
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
@@ -191,7 +198,7 @@ namespace Proto.Promises
                         previousWaiter = InvalidAwaitSentinel.s_instance;
                         return InvalidAwaitSentinel.s_instance;
                     }
-                    _owner.ReleaseLockFromWaitPromise(_key);
+                    _lock.ReleaseLockFromWaitPromise(_key);
                     previousWaiter = PendingAwaitSentinel.s_instance;
                     return null; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
                 }
@@ -204,7 +211,6 @@ namespace Proto.Promises
         internal sealed partial class AsyncLockInternal
         {
             // These must not be readonly.
-            private ValueLinkedQueue<IAsyncLockPromise> _waitPulseQueue = new ValueLinkedQueue<IAsyncLockPromise>();
             private ValueLinkedQueue<IAsyncLockPromise> _queue = new ValueLinkedQueue<IAsyncLockPromise>();
             private long _currentKey; // 0 if there is no lock held, otherwise the key of the lock holder.
 
@@ -339,7 +345,7 @@ namespace Proto.Promises
                 next.Resolve(ref _currentKey);
             }
 
-            internal Promise WaitAsync(long key, SynchronizationContext callerContext)
+            internal Promise WaitAsync(AsyncConditionVariable condVar, long key, SynchronizationContext callerContext)
             {
                 PromiseRefBase.AsyncLockWaitPromise promise;
                 lock (this)
@@ -348,14 +354,21 @@ namespace Proto.Promises
                     {
                         ThrowInvalidKey(3);
                     }
+                    // We set this as the current lock using the condition variable, and validate that it's not currently being used by another lock.
+                    // This allows a condition variable to be used by multiple locks, as long as only 1 is using it at a time.
+                    var previousCondVarOwner = Interlocked.CompareExchange(ref condVar._lock, this, null);
+                    if (previousCondVarOwner != null & previousCondVarOwner != this)
+                    {
+                        ThrowConditionVariableAlreadyInUse(3);
+                    }
 
-                    promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(this, key, callerContext);
-                    _waitPulseQueue.Enqueue(promise);
+                    promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(condVar, key, callerContext);
+                    condVar._queue.Enqueue(promise);
                 }
                 return new Promise(promise, promise.Id, 0);
             }
 
-            internal Promise<bool> TryWaitAsync(long key, CancelationToken cancelationToken, SynchronizationContext callerContext)
+            internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, long key, CancelationToken cancelationToken, SynchronizationContext callerContext)
             {
                 PromiseRefBase.AsyncLockWaitPromise promise;
                 lock (this)
@@ -364,9 +377,16 @@ namespace Proto.Promises
                     {
                         ThrowInvalidKey(3);
                     }
+                    // We set this as the current lock using the condition variable, and validate that it's not currently being used by another lock.
+                    // This allows a condition variable to be used by multiple locks, as long as only 1 is using it at a time.
+                    var previousCondVarOwner = Interlocked.CompareExchange(ref condVar._lock, this, null);
+                    if (previousCondVarOwner != null & previousCondVarOwner != this)
+                    {
+                        ThrowConditionVariableAlreadyInUse(3);
+                    }
 
-                    promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(this, key, callerContext);
-                    _waitPulseQueue.Enqueue(promise);
+                    promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(condVar, key, callerContext);
+                    condVar._queue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<bool>(promise, promise.Id, 0);
@@ -380,7 +400,7 @@ namespace Proto.Promises
                 {
                     if (key != _currentKey)
                     {
-                        throw new InvalidOperationException("AsyncMonitor.WaitAsync promise must be awaited while the lock is held.", GetFormattedStacktrace(5));
+                        throw new InvalidOperationException("WaitAsync promise must be awaited while the lock is held.", GetFormattedStacktrace(5));
                     }
 
                     // We keep the lock until there are no more waiters.
@@ -395,7 +415,7 @@ namespace Proto.Promises
                 next.Resolve(ref _currentKey);
             }
 
-            internal void Pulse(long key)
+            internal void Pulse(AsyncConditionVariable condVar, long key)
             {
                 lock (this)
                 {
@@ -403,14 +423,31 @@ namespace Proto.Promises
                     {
                         ThrowInvalidKey(3);
                     }
-                    if (!_waitPulseQueue.IsEmpty)
+                    // We set this as the current lock using the condition variable, and validate that it's not currently being used by another lock.
+                    // This allows a condition variable to be used by multiple locks, as long as only 1 is using it at a time.
+                    var previousCondVarOwner = Interlocked.CompareExchange(ref condVar._lock, this, null);
+                    if (previousCondVarOwner != null & previousCondVarOwner != this)
                     {
-                        _queue.Enqueue(_waitPulseQueue.Dequeue());
+                        ThrowConditionVariableAlreadyInUse(3);
+                    }
+
+                    if (condVar._queue.IsEmpty)
+                    {
+                        // Remove this association from the condition variable so that another AsyncLock can use it.
+                        condVar._lock = null;
+                        return;
+                    }
+
+                    _queue.Enqueue(condVar._queue.Dequeue());
+                    if (condVar._queue.IsEmpty)
+                    {
+                        // Remove this association from the condition variable so that another AsyncLock can use it.
+                        condVar._lock = null;
                     }
                 }
             }
 
-            internal void PulseAll(long key)
+            internal void PulseAll(AsyncConditionVariable condVar, long key)
             {
                 lock (this)
                 {
@@ -418,7 +455,16 @@ namespace Proto.Promises
                     {
                         ThrowInvalidKey(3);
                     }
-                    _queue.TakeAndEnqueueElements(ref _waitPulseQueue);
+                    // We set this as the current lock using the condition variable, and validate that it's not currently being used by another lock.
+                    // This allows a condition variable to be used by multiple locks, as long as only 1 is using it at a time.
+                    var previousCondVarOwner = Interlocked.CompareExchange(ref condVar._lock, this, null);
+                    if (previousCondVarOwner != null & previousCondVarOwner != this)
+                    {
+                        ThrowConditionVariableAlreadyInUse(3);
+                    }
+                    _queue.TakeAndEnqueueElements(ref condVar._queue);
+                    // Remove this association from the condition variable so that another AsyncLock can use it.
+                    condVar._lock = null;
                 }
             }
 
@@ -430,16 +476,25 @@ namespace Proto.Promises
                 }
             }
 
-            internal void MaybeMakeReady(PromiseRefBase.AsyncLockWaitPromise promise)
+            internal void MaybeMakeReady(AsyncConditionVariable condVar, PromiseRefBase.AsyncLockWaitPromise promise)
             {
+                // This is called when a WaitAsync promise is canceled.
+                // We have to remove it from the condition variable queue and add it to the lock queue,
+                // so that the lock will be re-acquired before it continues.
                 IAsyncLockPromise next;
                 lock (this)
                 {
-                    if (_waitPulseQueue.TryRemove(promise))
+                    if (!condVar._queue.TryRemove(promise))
                     {
-                        _queue.Enqueue(promise);
+                        return;
                     }
-                    if (_currentKey != 0 | _queue.IsEmpty)
+                    _queue.Enqueue(promise);
+                    if (condVar._queue.IsEmpty)
+                    {
+                        // Remove this association from the condition variable so that another AsyncLock can use it.
+                        condVar._lock = null;
+                    }
+                    if (_currentKey != 0)
                     {
                         return;
                     }
@@ -456,9 +511,16 @@ namespace Proto.Promises
                 throw new InvalidOperationException("The AsyncLock.Key is invalid for this operation.", GetFormattedStacktrace(skipFrames + 1));
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            internal static void ThrowConditionVariableAlreadyInUse(int skipFrames)
+            {
+                throw new InvalidOperationException("The AsyncConditionVariable is currently being used by another AsyncLock.", GetFormattedStacktrace(skipFrames + 1));
+            }
+
             partial void ValidateNotAbandoned();
 #if PROMISE_DEBUG
             volatile private string _abandonedMessage;
+            volatile internal IRejectContainer _abandonedRejection;
 
             partial void ValidateNotAbandoned()
             {
@@ -470,7 +532,6 @@ namespace Proto.Promises
 
             internal void NotifyAbandoned(string abandonedMessage, ITraceable traceable)
             {
-                ValueLinkedStack<IAsyncLockPromise> waitPulses;
                 ValueLinkedStack<IAsyncLockPromise> queue;
                 lock (this)
                 {
@@ -480,23 +541,14 @@ namespace Proto.Promises
                         return;
                     }
                     _abandonedMessage = abandonedMessage;
-
-                    waitPulses = _waitPulseQueue.MoveElementsToStack();
+                    _abandonedRejection = CreateRejectContainer(new AbandonedLockException(abandonedMessage), int.MinValue, null, traceable);
                     queue = _queue.MoveElementsToStack();
-                }
-
-                var rejectContainer = CreateRejectContainer(new AbandonedLockException(abandonedMessage), int.MinValue, null, traceable);
-
-                while (waitPulses.IsNotEmpty)
-                {
-                    waitPulses.Pop().Reject(rejectContainer);
                 }
                 while (queue.IsNotEmpty)
                 {
-                    queue.Pop().Reject(rejectContainer);
+                    queue.Pop().Reject(_abandonedRejection);
                 }
-
-                rejectContainer.ReportUnhandled();
+                _abandonedRejection.ReportUnhandled();
             }
 #endif // PROMISE_DEBUG
         } // class AsyncLockInternal
@@ -518,7 +570,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal Promise<(bool didEnter, AsyncLock.Key key)> TryEnterAsync(CancelationToken cancelationToken)
+            internal Promise<(bool didEnter, Key key)> TryEnterAsync(CancelationToken cancelationToken)
             {
                 return _impl.TryEnterAsync(cancelationToken);
             }
@@ -563,11 +615,11 @@ namespace Proto.Promises
                         _owner.NotifyAbandoned("An AsyncLock.Key was never disposed.", this);
                     }
 
-                    internal Promise<bool> TryWaitAsync(long key, CancelationToken cancelationToken, SynchronizationContext callerContext)
+                    internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, long key, CancelationToken cancelationToken, SynchronizationContext callerContext)
                     {
                         ValidateCall();
 
-                        var promise = _owner.TryWaitAsync(key, cancelationToken, callerContext);
+                        var promise = _owner.TryWaitAsync(condVar, key, cancelationToken, callerContext);
                         _waitPromise = promise._ref;
                         return promise
                             .Finally(this, _this => _this._waitPromise = null);
@@ -622,65 +674,65 @@ namespace Proto.Promises
                     }
                 }
 
-                internal Promise WaitAsync()
+                internal Promise WaitAsync(AsyncConditionVariable condVar)
                 {
                     var copy = this;
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        return copy._disposedChecker.TryWaitAsync(copy._key, default, Internal.CaptureContext());
+                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, default, Internal.CaptureContext());
                     }
                 }
 
-                internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
+                internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, CancelationToken cancelationToken)
                 {
                     var copy = this;
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        return copy._disposedChecker.TryWaitAsync(copy._key, cancelationToken, Internal.CaptureContext());
+                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, cancelationToken, Internal.CaptureContext());
                     }
                 }
 
-                internal void Wait()
+                internal void Wait(AsyncConditionVariable condVar)
                 {
                     var copy = this;
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        copy._disposedChecker.TryWaitAsync(copy._key, default, null).WaitForResult();
+                        copy._disposedChecker.TryWaitAsync(condVar, copy._key, default, null).WaitForResult();
                     }
                 }
 
-                internal bool TryWait(CancelationToken cancelationToken)
+                internal bool TryWait(AsyncConditionVariable condVar, CancelationToken cancelationToken)
                 {
                     var copy = this;
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        return copy._disposedChecker.TryWaitAsync(copy._key, cancelationToken, null).WaitForResult();
+                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, cancelationToken, null).WaitForResult();
                     }
                 }
 
-                internal void Pulse()
+                internal void Pulse(AsyncConditionVariable condVar)
                 {
                     var copy = this;
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
                         copy._disposedChecker.ValidateCall();
-                        copy._owner.Pulse(copy._key);
+                        copy._owner.Pulse(condVar, copy._key);
                     }
                 }
 
-                internal void PulseAll()
+                internal void PulseAll(AsyncConditionVariable condVar)
                 {
                     var copy = this;
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
                         copy._disposedChecker.ValidateCall();
-                        copy._owner.PulseAll(copy._key);
+                        copy._owner.PulseAll(condVar, copy._key);
                     }
                 }
 
@@ -722,34 +774,34 @@ namespace Proto.Promises
                     ValidateAndGetOwner().ReleaseLock(_key);
                 }
 
-                internal Promise WaitAsync()
+                internal Promise WaitAsync(AsyncConditionVariable condVar)
                 {
-                    return ValidateAndGetOwner().WaitAsync(_key, Internal.CaptureContext());
+                    return ValidateAndGetOwner().WaitAsync(condVar, _key, Internal.CaptureContext());
                 }
 
-                internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
+                internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, CancelationToken cancelationToken)
                 {
-                    return ValidateAndGetOwner().TryWaitAsync(_key, cancelationToken, Internal.CaptureContext());
+                    return ValidateAndGetOwner().TryWaitAsync(condVar, _key, cancelationToken, Internal.CaptureContext());
                 }
 
-                internal void Wait()
+                internal void Wait(AsyncConditionVariable condVar)
                 {
-                    ValidateAndGetOwner().WaitAsync(_key, null).Wait();
+                    ValidateAndGetOwner().WaitAsync(condVar, _key, null).Wait();
                 }
 
-                internal bool TryWait(CancelationToken cancelationToken)
+                internal bool TryWait(AsyncConditionVariable condVar, CancelationToken cancelationToken)
                 {
-                    return ValidateAndGetOwner().TryWaitAsync(_key, cancelationToken, null).WaitForResult();
+                    return ValidateAndGetOwner().TryWaitAsync(condVar, _key, cancelationToken, null).WaitForResult();
                 }
 
-                internal void Pulse()
+                internal void Pulse(AsyncConditionVariable condVar)
                 {
-                    ValidateAndGetOwner().Pulse(_key);
+                    ValidateAndGetOwner().Pulse(condVar, _key);
                 }
 
-                internal void PulseAll()
+                internal void PulseAll(AsyncConditionVariable condVar)
                 {
-                    ValidateAndGetOwner().PulseAll(_key);
+                    ValidateAndGetOwner().PulseAll(condVar, _key);
                 }
 
                 private Internal.AsyncLockInternal ValidateAndGetOwner()

@@ -134,7 +134,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
         }
 
         [Test]
-        public void AsyncLock_OnlyAllowsSingleLocker_WithWait([Values] bool delayCancel)
+        public void AsyncLock_OnlyAllowsSingleLocker_WithMonitorWait([Values] bool delayCancel)
         {
             var mutex = new AsyncLock();
             var cancelationSource = default(CancelationSource);
@@ -221,6 +221,104 @@ namespace ProtoPromiseTests.Concurrency.Threading
                         using (var key = mutex.Lock())
                         {
                             AsyncMonitor.Pulse(key);
+                        }
+                        if (delayCancel && exitedCount != 0)
+                        {
+                            cancelationSource.TryCancel();
+                        }
+                    }
+                });
+        }
+
+        [Test]
+        public void AsyncLock_OnlyAllowsSingleLocker_WithConditionVariableWait([Values] bool delayCancel)
+        {
+            var mutex = new AsyncLock();
+            var condVar = new AsyncConditionVariable();
+            var cancelationSource = default(CancelationSource);
+            int enteredCount = 0;
+            int exitedCount = 0;
+            int expectedInvokes = ThreadHelper.GetExpandCount(4) * 4;
+            Action<bool> syncLockAction = observeCancelation =>
+            {
+                using (var key = mutex.Lock())
+                {
+                    Assert.AreEqual(1, Interlocked.Increment(ref enteredCount));
+                    Thread.Sleep(10);
+                    Assert.AreEqual(0, Interlocked.Decrement(ref enteredCount));
+
+                    if (observeCancelation)
+                    {
+                        condVar.TryWait(key, cancelationSource.Token);
+                    }
+                    else
+                    {
+                        condVar.Wait(key);
+                    }
+
+                    Assert.AreEqual(1, Interlocked.Increment(ref enteredCount));
+                    Thread.Sleep(10);
+                    Assert.AreEqual(0, Interlocked.Decrement(ref enteredCount));
+                }
+                Interlocked.Increment(ref exitedCount);
+            };
+            Action<bool> asyncLockAction = observeCancelation =>
+            {
+                Promise.Run(async () =>
+                {
+                    using (var key = await mutex.LockAsync())
+                    {
+                        Assert.AreEqual(1, Interlocked.Increment(ref enteredCount));
+                        Thread.Sleep(10);
+                        Assert.AreEqual(0, Interlocked.Decrement(ref enteredCount));
+
+                        if (observeCancelation)
+                        {
+                            await condVar.TryWaitAsync(key, cancelationSource.Token);
+                        }
+                        else
+                        {
+                            await condVar.WaitAsync(key);
+                        }
+
+                        Assert.AreEqual(1, Interlocked.Increment(ref enteredCount));
+                        Thread.Sleep(10);
+                        Assert.AreEqual(0, Interlocked.Decrement(ref enteredCount));
+                    }
+                    Interlocked.Increment(ref exitedCount);
+                }, SynchronizationOption.Synchronous)
+                    .Forget();
+            };
+
+            new ThreadHelper().ExecuteParallelActionsWithOffsets(false,
+                // setup
+                () =>
+                {
+                    exitedCount = 0;
+                    cancelationSource = CancelationSource.New();
+                },
+                // teardown
+                () =>
+                {
+                    cancelationSource.Dispose();
+                },
+                // parallel actions
+                () => syncLockAction(false),
+                () => syncLockAction(true),
+                () => asyncLockAction(false),
+                () => asyncLockAction(true),
+                () =>
+                {
+                    if (!delayCancel)
+                    {
+                        cancelationSource.Cancel();
+                    }
+                    // We pulse until all actions are complete.
+                    while (exitedCount < expectedInvokes)
+                    {
+                        using (var key = mutex.Lock())
+                        {
+                            condVar.NotifyAll(key);
                         }
                         if (delayCancel && exitedCount != 0)
                         {

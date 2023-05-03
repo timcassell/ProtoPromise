@@ -21,6 +21,14 @@ namespace Proto.Promises.Threading
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
 #endif
+    public class AbandonedConditionVariableException : System.Exception
+    {
+        public AbandonedConditionVariableException(string message) : base(message) { }
+    }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode]
+#endif
     public class AbandonedResetEventException : System.Exception
     {
         public AbandonedResetEventException(string message) : base(message) { }

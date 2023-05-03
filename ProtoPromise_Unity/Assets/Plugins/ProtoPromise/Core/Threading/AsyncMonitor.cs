@@ -22,6 +22,8 @@ namespace Proto.Promises.Threading
 #endif
     public static class AsyncMonitor
     {
+        private static ConditionalWeakTable<Internal.AsyncLockInternal, AsyncConditionVariable> s_condVarTable = new ConditionalWeakTable<Internal.AsyncLockInternal, AsyncConditionVariable>();
+
         /// <summary>
         /// Asynchronously acquire the lock on the specified <see cref="AsyncLock"/>. Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
         /// The result of the promise is the key that will release the lock when it is disposed.
@@ -129,10 +131,9 @@ namespace Proto.Promises.Threading
         /// <returns>
         /// A <see cref="Promise"/> that will be resolved when the lock is re-acquired.
         /// </returns>
-        [MethodImpl(Internal.InlineOption)]
         public static Promise WaitAsync(AsyncLock.Key asyncLockKey)
         {
-            return asyncLockKey.WaitAsync();
+            return s_condVarTable.GetOrCreateValue(asyncLockKey._owner).WaitAsync(asyncLockKey);
         }
 
         /// <summary>
@@ -146,10 +147,9 @@ namespace Proto.Promises.Threading
         /// Its result will be <see langword="true"/> if the lock was re-acquired before the <paramref name="cancelationToken"/> was canceled,
         /// <see langword="false"/> if the lock was re-acquired after the <paramref name="cancelationToken"/> was canceled
         /// </returns>
-        [MethodImpl(Internal.InlineOption)]
         public static Promise<bool> TryWaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
         {
-            return asyncLockKey.TryWaitAsync(cancelationToken);
+            return s_condVarTable.GetOrCreateValue(asyncLockKey._owner).TryWaitAsync(asyncLockKey, cancelationToken);
         }
 
         /// <summary>
@@ -174,10 +174,9 @@ namespace Proto.Promises.Threading
         /// The lock will be re-acquired before this method returns.
         /// </summary>
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
-        [MethodImpl(Internal.InlineOption)]
         public static void Wait(AsyncLock.Key asyncLockKey)
         {
-            asyncLockKey.Wait();
+            s_condVarTable.GetOrCreateValue(asyncLockKey._owner).Wait(asyncLockKey);
         }
 
         /// <summary>
@@ -190,30 +189,27 @@ namespace Proto.Promises.Threading
         /// <see langword="true"/> if the lock was re-acquired before the <paramref name="cancelationToken"/> was canceled,
         /// <see langword="false"/> if the lock was re-acquired after the <paramref name="cancelationToken"/> was canceled
         /// </returns>
-        [MethodImpl(Internal.InlineOption)]
         public static bool TryWait(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
         {
-            return asyncLockKey.TryWait(cancelationToken);
+            return s_condVarTable.GetOrCreateValue(asyncLockKey._owner).TryWait(asyncLockKey, cancelationToken);
         }
 
         /// <summary>
         /// Send a signal to a single waiter on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
         /// </summary>
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
-        [MethodImpl(Internal.InlineOption)]
         public static void Pulse(AsyncLock.Key asyncLockKey)
         {
-            asyncLockKey.Pulse();
+            s_condVarTable.GetOrCreateValue(asyncLockKey._owner).Notify(asyncLockKey);
         }
 
         /// <summary>
         /// Send a signal to all waiters on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
         /// </summary>
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
-        [MethodImpl(Internal.InlineOption)]
         public static void PulseAll(AsyncLock.Key asyncLockKey)
         {
-            asyncLockKey.PulseAll();
+            s_condVarTable.GetOrCreateValue(asyncLockKey._owner).NotifyAll(asyncLockKey);
         }
     } // class AsyncMonitor
 
