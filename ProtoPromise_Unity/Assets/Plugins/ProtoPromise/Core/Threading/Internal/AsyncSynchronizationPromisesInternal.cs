@@ -29,7 +29,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract class AsyncSynchronizationPromiseBase<TResult> : PromiseSingleAwait<TResult>
+            internal abstract class AsyncSynchronizationPromiseBase<TResult> : PromiseSingleAwait<TResult>, ICancelable
             {
                 // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
                 protected SynchronizationContext _callerContext;
@@ -62,6 +62,14 @@ namespace Proto.Promises
                     HandleNextInternal(null, _tempState);
                 }
 
+                internal void MaybeHookupCancelation(CancelationToken cancelationToken)
+                {
+                    ThrowIfInPool(this);
+                    cancelationToken.TryRegister(this, out _cancelationRegistration);
+                }
+
+                public abstract void Cancel();
+
                 internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
 
 #if PROMISE_DEBUG
@@ -81,9 +89,14 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class AsyncEventPromiseBase : PromiseRefBase.AsyncSynchronizationPromiseBase<bool>, ICancelable, ILinked<AsyncEventPromiseBase>
+        internal abstract class AsyncEventPromiseBase : PromiseRefBase.AsyncSynchronizationPromiseBase<bool>, ILinked<AsyncEventPromiseBase>
         {
-            AsyncEventPromiseBase ILinked<AsyncEventPromiseBase>.Next { get; set; }
+            protected AsyncEventPromiseBase _nextEventPromise;
+            AsyncEventPromiseBase ILinked<AsyncEventPromiseBase>.Next
+            {
+                get { return _nextEventPromise; }
+                set { _nextEventPromise = value; }
+            }
 
             internal void Resolve()
             {
@@ -97,14 +110,6 @@ namespace Proto.Promises
                 _result = true;
                 Continue(Promise.State.Resolved);
             }
-
-            internal void MaybeHookupCancelation(CancelationToken cancelationToken)
-            {
-                ThrowIfInPool(this);
-                cancelationToken.TryRegister(this, out _cancelationRegistration);
-            }
-
-            public abstract void Cancel();
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

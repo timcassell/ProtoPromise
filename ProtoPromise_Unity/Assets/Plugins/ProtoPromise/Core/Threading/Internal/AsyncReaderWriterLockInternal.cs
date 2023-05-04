@@ -60,12 +60,6 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            internal void MaybeHookupCancelation(CancelationToken cancelationToken)
-            {
-                ThrowIfInPool(this);
-                cancelationToken.TryRegister(this, out _cancelationRegistration);
-            }
-
             internal void Resolve(long currentKey)
             {
                 ThrowIfInPool(this);
@@ -79,7 +73,7 @@ namespace Proto.Promises
                 Continue(Promise.State.Resolved);
             }
 
-            void ICancelable.Cancel()
+            public override void Cancel()
             {
                 ThrowIfInPool(this);
                 if (!Owner.TryUnregister(this))
@@ -122,12 +116,6 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            internal void MaybeHookupCancelation(CancelationToken cancelationToken)
-            {
-                ThrowIfInPool(this);
-                cancelationToken.TryRegister(this, out _cancelationRegistration);
-            }
-
             internal void Resolve(long writerKey)
             {
                 ThrowIfInPool(this);
@@ -141,7 +129,7 @@ namespace Proto.Promises
                 Continue(Promise.State.Resolved);
             }
 
-            void ICancelable.Cancel()
+            public override void Cancel()
             {
                 ThrowIfInPool(this);
                 if (Owner.TryUnregister(this))
@@ -183,12 +171,6 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            internal void MaybeHookupCancelation(CancelationToken cancelationToken)
-            {
-                ThrowIfInPool(this);
-                cancelationToken.TryRegister(this, out _cancelationRegistration);
-            }
-
             internal void Resolve(long currentKey)
             {
                 ThrowIfInPool(this);
@@ -202,7 +184,7 @@ namespace Proto.Promises
                 Continue(Promise.State.Resolved);
             }
 
-            void ICancelable.Cancel()
+            public override void Cancel()
             {
                 ThrowIfInPool(this);
                 if (!Owner.TryUnregister(this))
