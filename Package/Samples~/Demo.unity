@@ -409,12 +409,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 268706083}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8f97a7a62f1542a40925a61392368a78, type: 3}
+  m_Script: {fileID: 11500000, guid: 1f854cfb048b32d409de4eb3ea332bb3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   image: {fileID: 1792142286}
   imageUrl: https://promisesaplus.com/assets/logo-small.png
-  progressBar: {fileID: 403431108}
+  progressBar: {fileID: 47662955}
   progressText: {fileID: 1793758158}
   cancelButton: {fileID: 326082090}
 --- !u!114 &268706085

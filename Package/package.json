@@ -3,11 +3,21 @@
     "version": "2.4.1",
     "displayName": "ProtoPromise",
     "description": "Robust and efficient library for management of asynchronous operations.",
-    "changelogUrl": "https://github.com/timcassell/ProtoPromise/blob/master/ReleaseNotes.md",
+    "changelogUrl": "https://github.com/timcassell/ProtoPromise/blob/master/Package/CHANGELOG.md",
+    "documentationUrl": "https://github.com/timcassell/ProtoPromise",
     "author": {
         "name": "Tim Cassell",
         "url": "https://www.linkedin.com/in/timothy-cassell/"
     },
+    "license": "MIT",
+    "licensesUrl": "https://github.com/timcassell/ProtoPromise/blob/master/LICENSE",
+    "samples": [
+        {
+            "displayName": "Download Texture",
+            "description": "Contains example for downloading and displaying a texture using promises.",
+            "path": "Samples~"
+        }
+    ],
     "keywords": [
         "promise",
         "promises",

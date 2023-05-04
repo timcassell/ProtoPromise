@@ -42,7 +42,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\UnityHelpers\**/*.cs" />
+    <Compile Include="..\Package\UnityHelpers\**/*.cs" />
     <Compile Remove="nuget\**" />
     <EmbeddedResource Remove="nuget\**" />
     <None Remove="nuget\**" />

@@ -11,10 +11,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProtoPromiseUnityHelpers", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9790CDFB-EFE9-4657-9F36-577112C30BE5}"
 	ProjectSection(SolutionItems) = preProject
+		Package\CHANGELOG.md = Package\CHANGELOG.md
 		DeveloperNotes.txt = DeveloperNotes.txt
-		ProtoPromise_Unity\Assets\Plugins\ProtoPromise\package.json = ProtoPromise_Unity\Assets\Plugins\ProtoPromise\package.json
-		README.md = README.md
-		ReleaseNotes.md = ReleaseNotes.md
+		Package\package.json = Package\package.json
+		Package\README.md = Package\README.md
 	EndProjectSection
 EndProject
 Global
