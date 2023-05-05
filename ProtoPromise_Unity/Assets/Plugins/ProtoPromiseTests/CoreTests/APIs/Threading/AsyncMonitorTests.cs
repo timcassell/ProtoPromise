@@ -239,6 +239,64 @@ namespace ProtoPromiseTests.APIs.Threading
             }
         }
 
+        [Test]
+        public void AsyncMonitor_TryWaitAsync_AlreadyCanceled_AnotherLockWaiting_ReturnsFalse_SingleWaiter()
+        {
+            var mutex = new AsyncLock();
+            Promise.Run(async () =>
+            {
+                Promise notifyPromise;
+                using (var key = await mutex.LockAsync())
+                {
+                    notifyPromise = Promise.Run(async () =>
+                    {
+                        using (var key2 = await mutex.LockAsync())
+                        {
+                            AsyncMonitor.Pulse(key2);
+                        }
+                    }, SynchronizationOption.Synchronous);
+
+                    var success = await AsyncMonitor.TryWaitAsync(key, CancelationToken.Canceled());
+                    Assert.False(success);
+                }
+                await notifyPromise;
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncMonitor_TryWaitAsync_AlreadyCanceled_AnotherLockWaiting_ReturnsFalse_MultipleWaiters()
+        {
+            var mutex = new AsyncLock();
+            Promise.Run(async () =>
+            {
+                Promise firstLockPromise;
+                Promise secondLockPromise;
+                using (var key = await mutex.LockAsync())
+                {
+                    firstLockPromise = Promise.Run(async () =>
+                    {
+                        using (await mutex.LockAsync())
+                        {
+                        }
+                    }, SynchronizationOption.Synchronous);
+
+                    secondLockPromise = Promise.Run(async () =>
+                    {
+                        using (var key2 = await mutex.LockAsync())
+                        {
+                            AsyncMonitor.PulseAll(key2);
+                        }
+                    }, SynchronizationOption.Synchronous);
+
+                    var success = await AsyncMonitor.TryWaitAsync(key, CancelationToken.Canceled());
+                    Assert.False(success);
+                }
+                await Promise.All(firstLockPromise, secondLockPromise);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
 #if !UNITY_WEBGL
         [Test]
         public void AsyncMonitor_TryEnter_ReturnsFalseIfLockIsHeld(

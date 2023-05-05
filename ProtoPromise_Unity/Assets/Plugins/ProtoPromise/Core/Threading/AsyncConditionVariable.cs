@@ -78,7 +78,7 @@ namespace Proto.Promises.Threading
                 rejectContainer.ReportUnhandled();
             }
         }
-#else
+#else // PROMISE_DEBUG
         public AsyncConditionVariable() { }
 #endif
 

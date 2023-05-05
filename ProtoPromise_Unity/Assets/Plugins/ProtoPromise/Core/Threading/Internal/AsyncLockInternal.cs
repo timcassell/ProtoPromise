@@ -69,8 +69,7 @@ namespace Proto.Promises
                 internal static AsyncLockPromise GetOrCreate(AsyncLockInternal owner, SynchronizationContext callerContext)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._callerContext = callerContext;
+                    promise.Reset(callerContext);
                     promise._result = new AsyncLock.Key(owner); // This will be overwritten when this is resolved, we just store the owner here for cancelation.
                     return promise;
                 }
@@ -91,7 +90,7 @@ namespace Proto.Promises
                     _cancelationRegistration.Dispose();
 
                     _result = new AsyncLock.Key(_result._owner, currentKey, this);
-                    Continue(Promise.State.Resolved);
+                    Continue();
                 }
 
                 public override void Cancel()
@@ -101,14 +100,15 @@ namespace Proto.Promises
                     {
                         return;
                     }
-                    Continue(Promise.State.Canceled);
+                    _tempState = Promise.State.Canceled;
+                    Continue();
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class AsyncLockWaitPromise : AsyncLockPromiseBase<bool>
+            internal sealed class AsyncLockWaitPromise : AsyncLockPromiseBase<bool>, IAsyncLockPromise
             {
 #if PROMISE_DEBUG
                 // We use a weak reference in DEBUG mode so the owner's finalizer can still run if it's dropped.
@@ -139,11 +139,10 @@ namespace Proto.Promises
                 internal static AsyncLockWaitPromise GetOrCreate(AsyncConditionVariable owner, long key, SynchronizationContext callerContext)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.Reset(callerContext);
                     promise._owner = owner;
                     promise._lock = owner._lock;
                     promise._key = key;
-                    promise._callerContext = callerContext;
                     promise._result = true;
                     return promise;
                 }
@@ -164,7 +163,7 @@ namespace Proto.Promises
                     _cancelationRegistration.Dispose();
 
                     currentKey = _key;
-                    Continue(Promise.State.Resolved);
+                    Continue();
                 }
 
                 public override void Cancel()
@@ -202,6 +201,17 @@ namespace Proto.Promises
                     previousWaiter = PendingAwaitSentinel.s_instance;
                     return null; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
                 }
+
+#if PROMISE_DEBUG
+                void IAsyncLockPromise.Reject(IRejectContainer rejectContainer)
+                {
+                    _cancelationRegistration.Dispose();
+                    _tempRejectContainer = rejectContainer;
+                    _tempState = Promise.State.Rejected;
+                    // Notify the lock so this will be placed on the ready queue to re-acquire the lock before continuing.
+                    _lock.NotifyAbandonedConditionVariable(this);
+                }
+#endif
             }
         }
 
@@ -220,8 +230,29 @@ namespace Proto.Promises
                 _currentKey = KeyGenerator<AsyncLockInternal>.Next();
             }
 
-            internal Promise<AsyncLock.Key> LockAsync(bool isSynchronous, CancelationToken cancelationToken)
+            internal Promise<AsyncLock.Key> LockAsync()
             {
+                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
+                PromiseRefBase.AsyncLockPromise promise;
+                lock (this)
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey == 0)
+                    {
+                        SetNextKey();
+                        return Promise.Resolved(new AsyncLock.Key(this, _currentKey, null));
+                    }
+
+                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, CaptureContext());
+                    _queue.Enqueue(promise);
+                }
+                return new Promise<AsyncLock.Key>(promise, promise.Id, 0);
+            }
+
+            internal Promise<AsyncLock.Key> LockAsync(CancelationToken cancelationToken)
+            {
+                // Quick check to see if the token is already canceled before entering.
                 if (cancelationToken.IsCancelationRequested)
                 {
                     return Promise<AsyncLock.Key>.Canceled();
@@ -239,11 +270,74 @@ namespace Proto.Promises
                         return Promise.Resolved(new AsyncLock.Key(this, _currentKey, null));
                     }
 
-                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, isSynchronous ? null : CaptureContext());
+                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, CaptureContext());
                     _queue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<AsyncLock.Key>(promise, promise.Id, 0);
+            }
+
+            internal AsyncLock.Key Lock()
+            {
+                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
+
+                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                var spinner = new SpinWait();
+                while (_currentKey != 0 & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                }
+
+                PromiseRefBase.AsyncLockPromise promise;
+                lock (this)
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey == 0)
+                    {
+                        SetNextKey();
+                        return new AsyncLock.Key(this, _currentKey, null);
+                    }
+
+                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, null);
+                    _queue.Enqueue(promise);
+                }
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
+            }
+
+            internal AsyncLock.Key Lock(CancelationToken cancelationToken)
+            {
+                // Quick check to see if the token is already canceled before entering.
+                cancelationToken.ThrowIfCancelationRequested();
+
+                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                var spinner = new SpinWait();
+                while (_currentKey != 0 & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                }
+
+                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
+                PromiseRefBase.AsyncLockPromise promise;
+                lock (this)
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey == 0)
+                    {
+                        SetNextKey();
+                        return new AsyncLock.Key(this, _currentKey, null);
+                    }
+
+                    promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, null);
+                    _queue.Enqueue(promise);
+                    promise.MaybeHookupCancelation(cancelationToken);
+                }
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             internal bool TryEnter(out AsyncLock.Key key)
@@ -383,6 +477,17 @@ namespace Proto.Promises
                     if (previousCondVarOwner != null & previousCondVarOwner != this)
                     {
                         ThrowConditionVariableAlreadyInUse(3);
+                    }
+
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        if (condVar._queue.IsEmpty)
+                        {
+                            // Remove this association from the condition variable so that another AsyncLock can use it.
+                            condVar._lock = null;
+                        }
+                        return Promise.Resolved(false);
                     }
 
                     promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(condVar, key, callerContext);
@@ -549,6 +654,25 @@ namespace Proto.Promises
                     queue.Pop().Reject(_abandonedRejection);
                 }
                 _abandonedRejection.ReportUnhandled();
+            }
+
+            internal void NotifyAbandonedConditionVariable(PromiseRefBase.AsyncLockWaitPromise promise)
+            {
+                // This is called when a WaitAsync promise is rejected due to the AsyncConditionVariable being collected without being notified.
+                // We have to add it to the lock queue, so that the lock will be re-acquired before it continues.
+                IAsyncLockPromise next;
+                lock (this)
+                {
+                    _queue.Enqueue(promise);
+                    if (_currentKey != 0)
+                    {
+                        return;
+                    }
+                    // The lock is not currently held, and there is at least 1 waiter attempting to take the lock, we need to resolve the next.
+                    SetNextKey();
+                    next = _queue.Dequeue();
+                }
+                next.Resolve(ref _currentKey);
             }
 #endif // PROMISE_DEBUG
         } // class AsyncLockInternal
