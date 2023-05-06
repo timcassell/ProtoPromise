@@ -255,6 +255,8 @@ namespace Proto.Promises
                 // Quick check to see if the token is already canceled before entering.
                 if (cancelationToken.IsCancelationRequested)
                 {
+                    ValidateNotAbandoned();
+
                     return Promise<AsyncLock.Key>.Canceled();
                 }
 
@@ -411,7 +413,7 @@ namespace Proto.Promises
                     _queue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejected();
                 key = resultContainer.Result;
                 return resultContainer.State == Promise.State.Resolved;
