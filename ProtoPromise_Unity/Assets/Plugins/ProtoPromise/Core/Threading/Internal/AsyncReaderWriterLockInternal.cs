@@ -48,9 +48,8 @@ namespace Proto.Promises
             internal static AsyncReaderLockPromise GetOrCreate(AsyncReaderWriterLockInternal owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset();
+                promise.Reset(callerContext);
                 promise._result = new AsyncReaderWriterLock.ReaderKey(owner); ; // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
-                promise._callerContext = callerContext;
                 return promise;
             }
 
@@ -70,7 +69,7 @@ namespace Proto.Promises
                 _cancelationRegistration.Dispose();
 
                 _result = new AsyncReaderWriterLock.ReaderKey(Owner, currentKey, this);
-                Continue(Promise.State.Resolved);
+                Continue();
             }
 
             public override void Cancel()
@@ -80,7 +79,8 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                Continue(Promise.State.Canceled);
+                _tempState = Promise.State.Canceled;
+                Continue();
             }
         }
 
@@ -104,8 +104,7 @@ namespace Proto.Promises
             internal static AsyncWriterLockPromise GetOrCreate(AsyncReaderWriterLockInternal owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset();
-                promise._callerContext = callerContext;
+                promise.Reset(callerContext);
                 promise._result = new AsyncReaderWriterLock.WriterKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
             }
@@ -126,16 +125,18 @@ namespace Proto.Promises
                 _cancelationRegistration.Dispose();
 
                 _result = new AsyncReaderWriterLock.WriterKey(Owner, writerKey, this);
-                Continue(Promise.State.Resolved);
+                Continue();
             }
 
             public override void Cancel()
             {
                 ThrowIfInPool(this);
-                if (Owner.TryUnregister(this))
+                if (!Owner.TryUnregister(this))
                 {
-                    Continue(Promise.State.Canceled);
+                    return;
                 }
+                _tempState = Promise.State.Canceled;
+                Continue();
             }
         }
 
@@ -159,9 +160,8 @@ namespace Proto.Promises
             internal static AsyncUpgradeableReaderLockPromise GetOrCreate(AsyncReaderWriterLockInternal owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset();
+                promise.Reset(callerContext);
                 promise._result = new AsyncReaderWriterLock.UpgradeableReaderKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
-                promise._callerContext = callerContext;
                 return promise;
             }
 
@@ -181,7 +181,7 @@ namespace Proto.Promises
                 _cancelationRegistration.Dispose();
 
                 _result = new AsyncReaderWriterLock.UpgradeableReaderKey(Owner, currentKey, this);
-                Continue(Promise.State.Resolved);
+                Continue();
             }
 
             public override void Cancel()
@@ -191,7 +191,8 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                Continue(Promise.State.Canceled);
+                _tempState = Promise.State.Canceled;
+                Continue();
             }
         }
 

@@ -18,6 +18,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -32,10 +33,25 @@ namespace Proto.Promises
             internal abstract class AsyncSynchronizationPromiseBase<TResult> : PromiseSingleAwait<TResult>, ICancelable
             {
                 // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
-                protected SynchronizationContext _callerContext;
+                private SynchronizationContext _callerContext;
                 protected CancelationRegistration _cancelationRegistration;
                 // We have to store the state in a separate field until the next awaiter is ready to be invoked on the proper context.
-                private Promise.State _tempState;
+                protected Promise.State _tempState;
+                // This will only ever be rejected in DEBUG mode.
+#if PROMISE_DEBUG
+                protected object _tempRejectContainer;
+#else
+                private const object _tempRejectContainer = null;
+#endif
+
+                [MethodImpl(InlineOption)]
+                protected void Reset(SynchronizationContext callerContext)
+                {
+                    Reset();
+                    _callerContext = callerContext;
+                    // Assume the resolved state will occur. If this is actually canceled or rejected, the state will be set at that time.
+                    _tempState = Promise.State.Resolved;
+                }
 
                 new protected void Dispose()
                 {
@@ -44,22 +60,21 @@ namespace Proto.Promises
                     _cancelationRegistration = default(CancelationRegistration);
                 }
 
-                protected void Continue(Promise.State state)
+                protected void Continue()
                 {
                     if (_callerContext == null)
                     {
                         // It was a synchronous lock or wait, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
-                        HandleNextInternal(null, state);
+                        HandleNextInternal(_tempRejectContainer, _tempState);
                         return;
                     }
                     // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
-                    _tempState = state;
                     ScheduleForHandle(this, _callerContext);
                 }
 
                 internal override sealed void HandleFromContext()
                 {
-                    HandleNextInternal(null, _tempState);
+                    HandleNextInternal(_tempRejectContainer, _tempState);
                 }
 
                 internal void MaybeHookupCancelation(CancelationToken cancelationToken)
@@ -75,12 +90,10 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
                 internal void Reject(IRejectContainer rejectContainer)
                 {
-                    Promise.Run(() =>
-                    {
-                        _cancelationRegistration.Dispose();
-                        HandleNextInternal(rejectContainer, Promise.State.Rejected);
-                    }, _callerContext, forceAsync: true)
-                        .Forget();
+                    _cancelationRegistration.Dispose();
+                    _tempRejectContainer = rejectContainer;
+                    _tempState = Promise.State.Rejected;
+                    Continue();
                 }
 #endif
             }
@@ -108,7 +121,7 @@ namespace Proto.Promises
                 _cancelationRegistration.Dispose();
 
                 _result = true;
-                Continue(Promise.State.Resolved);
+                Continue();
             }
         }
 

@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace ProtoPromiseTests.APIs.Threading
@@ -204,6 +205,66 @@ namespace ProtoPromiseTests.APIs.Threading
                 {
                     condVar.Notify(key);
                 }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncConditionVariable_TryWaitAsync_AlreadyCanceled_AnotherLockWaiting_ReturnsFalse_SingleWaiter()
+        {
+            var mutex = new AsyncLock();
+            var condVar = new AsyncConditionVariable();
+            Promise.Run(async () =>
+            {
+                Promise notifyPromise;
+                using (var key = await mutex.LockAsync())
+                {
+                    notifyPromise = Promise.Run(async () =>
+                    {
+                        using (var key2 = await mutex.LockAsync())
+                        {
+                            condVar.Notify(key2);
+                        }
+                    }, SynchronizationOption.Synchronous);
+
+                    var success = await condVar.TryWaitAsync(key, CancelationToken.Canceled());
+                    Assert.False(success);
+                }
+                await notifyPromise;
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncConditionVariable_TryWaitAsync_AlreadyCanceled_AnotherLockWaiting_ReturnsFalse_MultipleWaiters()
+        {
+            var mutex = new AsyncLock();
+            var condVar = new AsyncConditionVariable();
+            Promise.Run(async () =>
+            {
+                Promise firstLockPromise;
+                Promise secondLockPromise;
+                using (var key = await mutex.LockAsync())
+                {
+                    firstLockPromise = Promise.Run(async () =>
+                    {
+                        using (await mutex.LockAsync())
+                        {
+                        }
+                    }, SynchronizationOption.Synchronous);
+
+                    secondLockPromise = Promise.Run(async () =>
+                    {
+                        using (var key2 = await mutex.LockAsync())
+                        {
+                            condVar.NotifyAll(key2);
+                        }
+                    }, SynchronizationOption.Synchronous);
+
+                    var success = await condVar.TryWaitAsync(key, CancelationToken.Canceled());
+                    Assert.False(success);
+                }
+                await Promise.All(firstLockPromise, secondLockPromise);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -729,6 +790,37 @@ namespace ProtoPromiseTests.APIs.Threading
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 #endif
+
+#if PROTO_PROMISE_TEST_GC_ENABLED
+        [Test]
+        public void AsyncConditionVariable_AbandonedConditionVariableIsReported()
+        {
+            var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            AbandonedConditionVariableException abandonedConditionVariableException = null;
+            Promise.Config.UncaughtRejectionHandler = ex =>
+            {
+                abandonedConditionVariableException = ex.Value as AbandonedConditionVariableException;
+            };
+
+            var mutex = new AsyncLock();
+            var key = mutex.Lock();
+            WaitAndAbandonConditionVariable(key);
+
+            TestHelper.GcCollectAndWaitForFinalizers();
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+            Assert.IsNotNull(abandonedConditionVariableException);
+            key.Dispose();
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+
+            Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void WaitAndAbandonConditionVariable(AsyncLock.Key key)
+        {
+            new AsyncConditionVariable().WaitAsync(key).Forget();
+        }
+#endif // PROTO_PROMISE_TEST_GC_ENABLED
     }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 }

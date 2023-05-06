@@ -25,24 +25,49 @@ namespace Proto.Promises.Threading
         private static ConditionalWeakTable<Internal.AsyncLockInternal, AsyncConditionVariable> s_condVarTable = new ConditionalWeakTable<Internal.AsyncLockInternal, AsyncConditionVariable>();
 
         /// <summary>
-        /// Asynchronously acquire the lock on the specified <see cref="AsyncLock"/>. Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// Asynchronously acquire the lock on the specified <see cref="AsyncLock"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="asyncLock">The async lock instance that is being entered.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public static Promise<AsyncLock.Key> EnterAsync(AsyncLock asyncLock)
+        {
+            return asyncLock.LockAsync();
+        }
+
+        /// <summary>
+        /// Asynchronously acquire the lock on the specified <see cref="AsyncLock"/>, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="asyncLock">The async lock instance that is being entered.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
         [MethodImpl(Internal.InlineOption)]
-        public static Promise<AsyncLock.Key> EnterAsync(AsyncLock asyncLock, CancelationToken cancelationToken = default)
+        public static Promise<AsyncLock.Key> EnterAsync(AsyncLock asyncLock, CancelationToken cancelationToken)
         {
             return asyncLock.LockAsync(cancelationToken);
         }
 
         /// <summary>
-        /// Synchronously acquire the lock on the specified <see cref="AsyncLock"/>. Returns the key that will release the lock when it is disposed.
+        /// Synchronously acquire the lock on the specified <see cref="AsyncLock"/>.
+        /// Returns the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="asyncLock">The async lock instance that is being entered.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public static AsyncLock.Key Enter(AsyncLock asyncLock)
+        {
+            return asyncLock.Lock();
+        }
+
+        /// <summary>
+        /// Synchronously acquire the lock on the specified <see cref="AsyncLock"/>, while observing a <see cref="CancelationToken"/>.
+        /// Returns the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="asyncLock">The async lock instance that is being entered.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
         [MethodImpl(Internal.InlineOption)]
-        public static AsyncLock.Key Enter(AsyncLock asyncLock, CancelationToken cancelationToken = default)
+        public static AsyncLock.Key Enter(AsyncLock asyncLock, CancelationToken cancelationToken)
         {
             return asyncLock.Lock(cancelationToken);
         }

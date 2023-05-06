@@ -28,7 +28,6 @@ namespace Proto.Promises
 #endif
         internal sealed class AsyncAutoResetEventPromise : AsyncEventPromise<AsyncAutoResetEventInternal>
         {
-
             [MethodImpl(InlineOption)]
             private static AsyncAutoResetEventPromise GetOrCreate()
             {
@@ -42,8 +41,7 @@ namespace Proto.Promises
             internal static AsyncAutoResetEventPromise GetOrCreate(AsyncAutoResetEventInternal owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset();
-                promise._callerContext = callerContext;
+                promise.Reset(callerContext);
                 promise._owner = owner;
                 return promise;
             }
@@ -70,7 +68,7 @@ namespace Proto.Promises
                     return;
                 }
                 _result = false;
-                Continue(Promise.State.Resolved);
+                Continue();
             }
         }
 
