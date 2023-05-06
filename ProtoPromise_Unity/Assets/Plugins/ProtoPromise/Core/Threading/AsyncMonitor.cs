@@ -91,10 +91,12 @@ namespace Proto.Promises.Threading
         /// If successful, the key will release the lock when it is disposed.
         /// </summary>
         /// <param name="asyncLock">The async lock instance that is being entered.</param>
-        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, this will return <see langword="false"/>.</param>
+        /// <param name="cancelationToken">
+        /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
+        /// </param>
         /// <remarks>
         /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
-        /// If the lock was available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
+        /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
         public static Promise<(bool didEnter, AsyncLock.Key key)> TryEnterAsync(AsyncLock asyncLock, CancelationToken cancelationToken)
@@ -113,7 +115,7 @@ namespace Proto.Promises.Threading
         /// <returns><see langword="true"/> if the lock was acquired before the <paramref name="cancelationToken"/> was canceled, <see langword="false"/> otherwise.</returns>
         /// <remarks>
         /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
-        /// If the lock was available, this will return <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
+        /// If the lock is available, this will return <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
         public static bool TryEnter(AsyncLock asyncLock, out AsyncLock.Key key, CancelationToken cancelationToken)
@@ -158,7 +160,7 @@ namespace Proto.Promises.Threading
         /// </returns>
         public static Promise WaitAsync(AsyncLock.Key asyncLockKey)
         {
-            return s_condVarTable.GetOrCreateValue(asyncLockKey._owner).WaitAsync(asyncLockKey);
+            return GetConditionVariable(asyncLockKey).WaitAsync(asyncLockKey);
         }
 
         /// <summary>
@@ -174,7 +176,7 @@ namespace Proto.Promises.Threading
         /// </returns>
         public static Promise<bool> TryWaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
         {
-            return s_condVarTable.GetOrCreateValue(asyncLockKey._owner).TryWaitAsync(asyncLockKey, cancelationToken);
+            return GetConditionVariable(asyncLockKey).TryWaitAsync(asyncLockKey, cancelationToken);
         }
 
         /// <summary>
@@ -201,7 +203,7 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
         public static void Wait(AsyncLock.Key asyncLockKey)
         {
-            s_condVarTable.GetOrCreateValue(asyncLockKey._owner).Wait(asyncLockKey);
+            GetConditionVariable(asyncLockKey).Wait(asyncLockKey);
         }
 
         /// <summary>
@@ -216,7 +218,7 @@ namespace Proto.Promises.Threading
         /// </returns>
         public static bool TryWait(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
         {
-            return s_condVarTable.GetOrCreateValue(asyncLockKey._owner).TryWait(asyncLockKey, cancelationToken);
+            return GetConditionVariable(asyncLockKey).TryWait(asyncLockKey, cancelationToken);
         }
 
         /// <summary>
@@ -225,7 +227,7 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
         public static void Pulse(AsyncLock.Key asyncLockKey)
         {
-            s_condVarTable.GetOrCreateValue(asyncLockKey._owner).Notify(asyncLockKey);
+            GetConditionVariable(asyncLockKey).Notify(asyncLockKey);
         }
 
         /// <summary>
@@ -234,7 +236,17 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
         public static void PulseAll(AsyncLock.Key asyncLockKey)
         {
-            s_condVarTable.GetOrCreateValue(asyncLockKey._owner).NotifyAll(asyncLockKey);
+            GetConditionVariable(asyncLockKey).NotifyAll(asyncLockKey);
+        }
+
+        private static AsyncConditionVariable GetConditionVariable(AsyncLock.Key asyncLockKey)
+        {
+            var impl = asyncLockKey._owner;
+            if (impl == null)
+            {
+                Internal.AsyncLockInternal.ThrowInvalidKey(2);
+            }
+            return s_condVarTable.GetOrCreateValue(impl);
         }
     } // class AsyncMonitor
 

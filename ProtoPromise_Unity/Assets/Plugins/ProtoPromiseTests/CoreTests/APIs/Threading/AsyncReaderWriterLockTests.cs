@@ -29,6 +29,736 @@ namespace ProtoPromiseTests.APIs.Threading
             TestHelper.Cleanup();
         }
 
+        [Flags]
+        public enum LockType
+        {
+            None = 0,
+            Reader = 1 << 0,
+            Writer = 1 << 1,
+            Upgradeable = 1 << 2
+        }
+
+        public enum CancelationType
+        {
+            NoToken,
+            Default,
+            Canceled,
+            Pending
+        }
+
+        private static CancelationToken GetToken(CancelationSource cancelationSource, CancelationType cancelationType)
+        {
+            return cancelationType == CancelationType.Canceled ? CancelationToken.Canceled()
+                : cancelationType == CancelationType.Pending ? cancelationSource.Token
+                : CancelationToken.None;
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterReaderLock_ReturnsFalseIfLockIsHeldByWriter(
+            [Values(LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            AsyncReaderWriterLock.WriterKey writerkey = default;
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey = rwl.UpgradeableReaderLock();
+                writerkey = rwl.UpgradeToWriterLock(upgraderkey);
+            }
+            else
+            {
+                writerkey = rwl.WriterLock();
+            }
+            Assert.False(rwl.TryEnterReaderLock(out _));
+            Assert.False(rwl.TryEnterReaderLock(out _, CancelationToken.Canceled()));
+            writerkey.Dispose();
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey.Dispose();
+            }
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterReaderLock_ReturnsTrueIfLockIsNotHeldOrReaderLocked(
+            [Values] CancelationType cancelationType,
+            [Values] bool isReaderLocked)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+            AsyncReaderWriterLock.ReaderKey key1 = default;
+            if (isReaderLocked)
+            {
+                key1 = rwl.ReaderLock();
+            }
+            AsyncReaderWriterLock.ReaderKey key2;
+            if (cancelationType == CancelationType.NoToken)
+            {
+                Assert.IsTrue(rwl.TryEnterReaderLock(out key2));
+            }
+            else
+            {
+                Assert.IsTrue(rwl.TryEnterReaderLock(out key2, GetToken(cancelationSource, cancelationType)));
+            }
+            key2.Dispose();
+            cancelationSource.Dispose();
+            if (isReaderLocked)
+            {
+                key1.Dispose();
+            }
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterReaderLockAsync_TrueIfLockIsNotHeldOrReaderLocked(
+            [Values(CancelationType.Default, CancelationType.Canceled, CancelationType.Pending)] CancelationType cancelationType,
+            [Values] bool isReaderLocked)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+            AsyncReaderWriterLock.ReaderKey key1 = default;
+            if (isReaderLocked)
+            {
+                key1 = rwl.ReaderLock();
+            }
+            rwl.TryEnterReaderLockAsync(GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.True(tuple.didEnter);
+                    tuple.readerKey.Dispose();
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            if (isReaderLocked)
+            {
+                key1.Dispose();
+            }
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterReaderLockAsync_FalseIfLockIsHeldByWriter(
+            [Values(CancelationType.Canceled, CancelationType.Pending)] CancelationType cancelationType,
+            [Values(LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            AsyncReaderWriterLock.WriterKey writerkey = default;
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey = rwl.UpgradeableReaderLock();
+                writerkey = rwl.UpgradeToWriterLock(upgraderkey);
+            }
+            else
+            {
+                writerkey = rwl.WriterLock();
+            }
+
+            var cancelationSource = CancelationSource.New();
+            var promise = rwl.TryEnterReaderLockAsync(GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.False(tuple.didEnter);
+                });
+            cancelationSource.Cancel();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            writerkey.Dispose();
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey.Dispose();
+            }
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterReaderLockAsync_TrueIfWriterLockIsReleased(
+            [Values(CancelationType.Default, CancelationType.Pending)] CancelationType cancelationType,
+            [Values(LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            AsyncReaderWriterLock.WriterKey writerkey = default;
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey = rwl.UpgradeableReaderLock();
+                writerkey = rwl.UpgradeToWriterLock(upgraderkey);
+            }
+            else
+            {
+                writerkey = rwl.WriterLock();
+            }
+
+            var cancelationSource = CancelationSource.New();
+            var promise = rwl.TryEnterReaderLockAsync(GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.True(tuple.didEnter);
+                    tuple.readerKey.Dispose();
+                });
+            writerkey.Dispose();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey.Dispose();
+            }
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterWriterLock_ReturnsFalseIfLockIsHeld(
+            [Values(LockType.Reader, LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            AsyncReaderWriterLock.ReaderKey readerKey = default;
+            AsyncReaderWriterLock.WriterKey writerkey = default;
+            AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            if (lockedType == LockType.Reader)
+            {
+                readerKey = rwl.ReaderLock();
+            }
+            else if (lockedType == LockType.Writer)
+            {
+                writerkey = rwl.WriterLock();
+            }
+            else
+            {
+                upgraderkey = rwl.UpgradeableReaderLock();
+            }
+            Assert.False(rwl.TryEnterWriterLock(out _));
+            Assert.False(rwl.TryEnterWriterLock(out _, CancelationToken.Canceled()));
+            if (lockedType == LockType.Reader)
+            {
+                readerKey.Dispose();
+            }
+            else if (lockedType == LockType.Writer)
+            {
+                writerkey.Dispose();
+            }
+            else
+            {
+                upgraderkey.Dispose();
+            }
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterWriterLock_ReturnsTrueIfLockIsNotHeld(
+            [Values] CancelationType cancelationType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+            AsyncReaderWriterLock.WriterKey key;
+            if (cancelationType == CancelationType.NoToken)
+            {
+                Assert.IsTrue(rwl.TryEnterWriterLock(out key));
+            }
+            else
+            {
+                Assert.IsTrue(rwl.TryEnterWriterLock(out key, GetToken(cancelationSource, cancelationType)));
+            }
+            key.Dispose();
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterWriterLockAsync_TrueIfLockIsNotHeld(
+            [Values(CancelationType.Default, CancelationType.Canceled, CancelationType.Pending)] CancelationType cancelationType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+            rwl.TryEnterWriterLockAsync(GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.True(tuple.didEnter);
+                    tuple.writerKey.Dispose();
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterWriterLockAsync_FalseIfLockIsHeld(
+            [Values(CancelationType.Canceled, CancelationType.Pending)] CancelationType cancelationType,
+            [Values(LockType.Reader, LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            AsyncReaderWriterLock.ReaderKey readerKey = default;
+            AsyncReaderWriterLock.WriterKey writerkey = default;
+            AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            if (lockedType == LockType.Reader)
+            {
+                readerKey = rwl.ReaderLock();
+            }
+            else if (lockedType == LockType.Writer)
+            {
+                writerkey = rwl.WriterLock();
+            }
+            else
+            {
+                upgraderkey = rwl.UpgradeableReaderLock();
+            }
+
+            var cancelationSource = CancelationSource.New();
+            var promise = rwl.TryEnterWriterLockAsync(GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.False(tuple.didEnter);
+                });
+            cancelationSource.Cancel();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            if (lockedType == LockType.Reader)
+            {
+                readerKey.Dispose();
+            }
+            else if (lockedType == LockType.Writer)
+            {
+                writerkey.Dispose();
+            }
+            else
+            {
+                upgraderkey.Dispose();
+            }
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterWriterLockAsync_TrueIfLockIsReleased(
+            [Values(CancelationType.Default, CancelationType.Pending)] CancelationType cancelationType,
+            [Values(LockType.Reader, LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            AsyncReaderWriterLock.ReaderKey readerKey = default;
+            AsyncReaderWriterLock.WriterKey writerkey = default;
+            AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            if (lockedType == LockType.Reader)
+            {
+                readerKey = rwl.ReaderLock();
+            }
+            else if (lockedType == LockType.Writer)
+            {
+                writerkey = rwl.WriterLock();
+            }
+            else
+            {
+                upgraderkey = rwl.UpgradeableReaderLock();
+            }
+
+            var cancelationSource = CancelationSource.New();
+            var promise = rwl.TryEnterWriterLockAsync(GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.True(tuple.didEnter);
+                    tuple.writerKey.Dispose();
+                });
+            if (lockedType == LockType.Reader)
+            {
+                readerKey.Dispose();
+            }
+            else if (lockedType == LockType.Writer)
+            {
+                writerkey.Dispose();
+            }
+            else
+            {
+                upgraderkey.Dispose();
+            }
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterUpgradeableReaderLock_ReturnsFalseIfLockIsHeldByWriterOrUpgradeableReader(
+            [Values(LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            AsyncReaderWriterLock.WriterKey writerkey = default;
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey = rwl.UpgradeableReaderLock();
+            }
+            else
+            {
+                writerkey = rwl.WriterLock();
+            }
+            Assert.False(rwl.TryEnterUpgradeableReaderLock(out _));
+            Assert.False(rwl.TryEnterUpgradeableReaderLock(out _, CancelationToken.Canceled()));
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey.Dispose();
+            }
+            else
+            {
+                writerkey.Dispose();
+            }
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterUpgradeableReaderLock_ReturnsTrueIfLockIsNotHeldOrReaderLocked(
+            [Values] CancelationType cancelationType,
+            [Values] bool isReaderLocked)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+            AsyncReaderWriterLock.ReaderKey key1 = default;
+            if (isReaderLocked)
+            {
+                key1 = rwl.ReaderLock();
+            }
+            AsyncReaderWriterLock.UpgradeableReaderKey key2;
+            if (cancelationType == CancelationType.NoToken)
+            {
+                Assert.IsTrue(rwl.TryEnterUpgradeableReaderLock(out key2));
+            }
+            else
+            {
+                Assert.IsTrue(rwl.TryEnterUpgradeableReaderLock(out key2, GetToken(cancelationSource, cancelationType)));
+            }
+            key2.Dispose();
+            cancelationSource.Dispose();
+            if (isReaderLocked)
+            {
+                key1.Dispose();
+            }
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterUpgradeableReaderLockAsync_TrueIfLockIsNotHeldOrReaderLocked(
+            [Values(CancelationType.Default, CancelationType.Canceled, CancelationType.Pending)] CancelationType cancelationType,
+            [Values] bool isReaderLocked)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+            AsyncReaderWriterLock.ReaderKey key1 = default;
+            if (isReaderLocked)
+            {
+                key1 = rwl.ReaderLock();
+            }
+            rwl.TryEnterUpgradeableReaderLockAsync(GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.True(tuple.didEnter);
+                    tuple.readerKey.Dispose();
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            if (isReaderLocked)
+            {
+                key1.Dispose();
+            }
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterUpgradeableReaderLockAsync_FalseIfLockIsHeldByWriterOrUpgradeableReader(
+            [Values(CancelationType.Canceled, CancelationType.Pending)] CancelationType cancelationType,
+            [Values(LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            AsyncReaderWriterLock.WriterKey writerkey = default;
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey = rwl.UpgradeableReaderLock();
+                writerkey = rwl.UpgradeToWriterLock(upgraderkey);
+            }
+            else
+            {
+                writerkey = rwl.WriterLock();
+            }
+
+            var cancelationSource = CancelationSource.New();
+            var promise = rwl.TryEnterUpgradeableReaderLockAsync(GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.False(tuple.didEnter);
+                });
+            cancelationSource.Cancel();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            writerkey.Dispose();
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey.Dispose();
+            }
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterUpgradeableReaderLockAsync_TrueIfWriterOrUpgradeableReaderLockIsReleased(
+            [Values(CancelationType.Default, CancelationType.Pending)] CancelationType cancelationType,
+            [Values(LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            AsyncReaderWriterLock.WriterKey writerkey = default;
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey = rwl.UpgradeableReaderLock();
+                writerkey = rwl.UpgradeToWriterLock(upgraderkey);
+            }
+            else
+            {
+                writerkey = rwl.WriterLock();
+            }
+
+            var cancelationSource = CancelationSource.New();
+            var promise = rwl.TryEnterUpgradeableReaderLockAsync(GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.True(tuple.didEnter);
+                    tuple.readerKey.Dispose();
+                });
+            writerkey.Dispose();
+            if (lockedType == LockType.Upgradeable)
+            {
+                upgraderkey.Dispose();
+            }
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryUpgradeToWriterLock_ReturnsFalseIfReaderLockIsHeld()
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var upgraderkey = rwl.UpgradeableReaderLock();
+            var readerKey = rwl.ReaderLock();
+            Assert.False(rwl.TryUpgradeToWriterLock(upgraderkey, out _));
+            Assert.False(rwl.TryUpgradeToWriterLock(upgraderkey, out _, CancelationToken.Canceled()));
+            upgraderkey.Dispose();
+            readerKey.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryUpgradeToWriterLock_ReturnsTrueIfLockIsNotHeld(
+            [Values] CancelationType cancelationType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+            var upgraderkey = rwl.UpgradeableReaderLock();
+            AsyncReaderWriterLock.WriterKey key;
+            if (cancelationType == CancelationType.NoToken)
+            {
+                Assert.IsTrue(rwl.TryUpgradeToWriterLock(upgraderkey, out key));
+            }
+            else
+            {
+                Assert.IsTrue(rwl.TryUpgradeToWriterLock(upgraderkey, out key, GetToken(cancelationSource, cancelationType)));
+            }
+            key.Dispose();
+            upgraderkey.Dispose();
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryUpgradeToWriterLockAsync_TrueIfLockIsNotHeld(
+            [Values(CancelationType.Default, CancelationType.Canceled, CancelationType.Pending)] CancelationType cancelationType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+            var upgraderkey = rwl.UpgradeableReaderLock();
+            rwl.TryUpgradeToWriterLockAsync(upgraderkey, GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.True(tuple.didEnter);
+                    tuple.writerKey.Dispose();
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            upgraderkey.Dispose();
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryUpgradeToWriterLockAsync_FalseIfReaderLockIsHeld(
+            [Values(CancelationType.Canceled, CancelationType.Pending)] CancelationType cancelationType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var upgraderkey = rwl.UpgradeableReaderLock();
+            var readerKey = rwl.ReaderLock();
+
+            var cancelationSource = CancelationSource.New();
+            var promise = rwl.TryUpgradeToWriterLockAsync(upgraderkey, GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.False(tuple.didEnter);
+                });
+            cancelationSource.Cancel();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            upgraderkey.Dispose();
+            readerKey.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryUpgradeToWriterLockAsync_TrueIfReaderLockIsReleased(
+            [Values(CancelationType.Default, CancelationType.Pending)] CancelationType cancelationType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var upgraderkey = rwl.UpgradeableReaderLock();
+            var readerKey = rwl.ReaderLock();
+
+            var cancelationSource = CancelationSource.New();
+            var promise = rwl.TryUpgradeToWriterLockAsync(upgraderkey, GetToken(cancelationSource, cancelationType))
+                .Then(tuple =>
+                {
+                    Assert.True(tuple.didEnter);
+                    tuple.writerKey.Dispose();
+                });
+            readerKey.Dispose();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            upgraderkey.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_ReaderLockIsEnteredWhenWriterLockIsCanceled(
+            [Values(LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+
+            var readerkey = rwl.ReaderLock();
+
+            if (lockedType == LockType.Writer)
+            {
+                rwl.WriterLockAsync(cancelationSource.Token)
+                    .Forget();
+            }
+            else
+            {
+                var upgraderKey = rwl.UpgradeableReaderLock();
+                rwl.UpgradeToWriterLockAsync(upgraderKey, cancelationSource.Token)
+                    .Finally(upgraderKey.Dispose)
+                    .Forget();
+            }
+
+            var promise = rwl.ReaderLockAsync()
+                .Then(key => key.Dispose());
+
+            cancelationSource.Cancel();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            readerkey.Dispose();
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_UpgradeableReaderLockIsEnteredWhenWriterLockIsCanceled()
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+
+            var readerkey = rwl.ReaderLock();
+
+            rwl.WriterLockAsync(cancelationSource.Token)
+                    .Forget();
+
+            var promise = rwl.UpgradeableReaderLockAsync()
+                .Then(key => key.Dispose());
+
+            cancelationSource.Cancel();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            readerkey.Dispose();
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_WriterLockIsEnteredAfterLockIsCanceled_AndPreviousWriterLockIsExited(
+            [Values(LockType.Reader, LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+
+            var writerKey = rwl.WriterLock();
+
+            if (lockedType == LockType.Reader)
+            {
+                rwl.ReaderLockAsync(cancelationSource.Token)
+                    .Forget();
+            }
+            else if (lockedType == LockType.Writer)
+            {
+                rwl.WriterLockAsync(cancelationSource.Token)
+                    .Forget();
+            }
+            else
+            {
+                rwl.UpgradeableReaderLockAsync(cancelationSource.Token)
+                    .Forget();
+            }
+            cancelationSource.Cancel();
+            writerKey.Dispose();
+
+            rwl.WriterLockAsync()
+                .Then(key => key.Dispose())
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_ReaderLockIsEnteredAfterWriterLockIsCanceled(
+            [Values(LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+
+            var readerKey = rwl.ReaderLock();
+
+            if (lockedType == LockType.Writer)
+            {
+                rwl.WriterLockAsync(cancelationSource.Token)
+                    .Forget();
+            }
+            else
+            {
+                var upgraderKey = rwl.UpgradeableReaderLock();
+                rwl.UpgradeToWriterLockAsync(upgraderKey, cancelationSource.Token)
+                    .Finally(upgraderKey.Dispose)
+                    .Forget();
+            }
+            cancelationSource.Cancel();
+
+            rwl.ReaderLockAsync()
+                .Then(key => key.Dispose())
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            readerKey.Dispose();
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_UpgradeableReaderLockIsEnteredAFterLockIsCanceled_AndPreviousUpgradeableReaderLockIsExited(
+            [Values(LockType.Reader, LockType.Writer, LockType.Upgradeable)] LockType lockedType)
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cancelationSource = CancelationSource.New();
+
+            var readerKey = rwl.UpgradeableReaderLock();
+            var writerKey = rwl.UpgradeToWriterLock(readerKey);
+
+            if (lockedType == LockType.Reader)
+            {
+                rwl.ReaderLockAsync(cancelationSource.Token)
+                    .Forget();
+            }
+            else if (lockedType == LockType.Writer)
+            {
+                rwl.WriterLockAsync(cancelationSource.Token)
+                    .Forget();
+            }
+            else
+            {
+                rwl.UpgradeableReaderLockAsync(cancelationSource.Token)
+                    .Forget();
+            }
+            cancelationSource.Cancel();
+            writerKey.Dispose();
+            readerKey.Dispose();
+
+            rwl.UpgradeableReaderLockAsync()
+                .Then(key => key.Dispose())
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
+
         [Test]
         public void AsyncReaderWriterLock_Unlocked_PermitsWriterLock_Async()
         {
@@ -1145,6 +1875,32 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 
         [Test]
+        public void AsyncReaderWriterLock_CanceledReaderLock_AllowsWriterLock()
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cts = CancelationSource.New();
+            bool canceled = false;
+
+            rwl.WriterLockAsync()
+                .Then(key =>
+                {
+                    var canceledLockPromise = rwl.ReaderLockAsync(cts.Token);
+                    cts.Cancel();
+
+                    key.Dispose();
+                    return canceledLockPromise
+                        .CatchCancelation(() => canceled = true);
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cts.Dispose();
+            Assert.True(canceled);
+
+            Assert.True(rwl.TryEnterWriterLock(out var writerKey));
+            writerKey.Dispose();
+        }
+
+        [Test]
         public void AsyncReaderWriterLock_CanceledUpgradeableReaderLock_CancelsPromise()
         {
             var rwl = new AsyncReaderWriterLock();
@@ -1924,12 +2680,18 @@ namespace ProtoPromiseTests.APIs.Threading
             Assert.Throws<AbandonedLockException>(() => rwl.ReaderLock());
             Assert.Throws<AbandonedLockException>(() => rwl.ReaderLockAsync());
             Assert.Throws<AbandonedLockException>(() => rwl.TryEnterReaderLock(out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterReaderLock(out _, CancelationToken.Canceled()));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterReaderLockAsync(CancelationToken.Canceled()));
             Assert.Throws<AbandonedLockException>(() => rwl.WriterLock());
             Assert.Throws<AbandonedLockException>(() => rwl.WriterLockAsync());
             Assert.Throws<AbandonedLockException>(() => rwl.TryEnterWriterLock(out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterWriterLock(out _, CancelationToken.Canceled()));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterWriterLockAsync(CancelationToken.Canceled()));
             Assert.Throws<AbandonedLockException>(() => rwl.UpgradeableReaderLock());
             Assert.Throws<AbandonedLockException>(() => rwl.UpgradeableReaderLockAsync());
             Assert.Throws<AbandonedLockException>(() => rwl.TryEnterUpgradeableReaderLock(out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterUpgradeableReaderLock(out _, CancelationToken.Canceled()));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterUpgradeableReaderLockAsync(CancelationToken.Canceled()));
         }
 
         private void AssertThrowsAbandoned(AsyncReaderWriterLock rwl, AsyncReaderWriterLock.UpgradeableReaderKey upgradeableReaderKey)
@@ -1937,15 +2699,23 @@ namespace ProtoPromiseTests.APIs.Threading
             Assert.Throws<AbandonedLockException>(() => rwl.ReaderLock());
             Assert.Throws<AbandonedLockException>(() => rwl.ReaderLockAsync());
             Assert.Throws<AbandonedLockException>(() => rwl.TryEnterReaderLock(out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterReaderLock(out _, CancelationToken.Canceled()));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterReaderLockAsync(CancelationToken.Canceled()));
             Assert.Throws<AbandonedLockException>(() => rwl.WriterLock());
             Assert.Throws<AbandonedLockException>(() => rwl.WriterLockAsync());
             Assert.Throws<AbandonedLockException>(() => rwl.TryEnterWriterLock(out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterWriterLock(out _, CancelationToken.Canceled()));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterWriterLockAsync(CancelationToken.Canceled()));
             Assert.Throws<AbandonedLockException>(() => rwl.UpgradeableReaderLock());
             Assert.Throws<AbandonedLockException>(() => rwl.UpgradeableReaderLockAsync());
             Assert.Throws<AbandonedLockException>(() => rwl.TryEnterUpgradeableReaderLock(out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterUpgradeableReaderLock(out _, CancelationToken.Canceled()));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryEnterUpgradeableReaderLockAsync(CancelationToken.Canceled()));
             Assert.Throws<AbandonedLockException>(() => rwl.UpgradeToWriterLock(upgradeableReaderKey));
             Assert.Throws<AbandonedLockException>(() => rwl.UpgradeToWriterLockAsync(upgradeableReaderKey));
             Assert.Throws<AbandonedLockException>(() => rwl.TryUpgradeToWriterLock(upgradeableReaderKey, out _));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryUpgradeToWriterLock(upgradeableReaderKey, out _, CancelationToken.Canceled()));
+            Assert.Throws<AbandonedLockException>(() => rwl.TryUpgradeToWriterLockAsync(upgradeableReaderKey, CancelationToken.Canceled()));
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

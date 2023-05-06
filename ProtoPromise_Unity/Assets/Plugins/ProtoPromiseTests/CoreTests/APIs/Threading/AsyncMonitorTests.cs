@@ -43,6 +43,16 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 
         [Test]
+        public void AsyncMonitor_TryEnter_ReturnsFalseIfLockIsHeld()
+        {
+            var mutex = new AsyncLock();
+            var key = mutex.Lock();
+            Assert.False(AsyncMonitor.TryEnter(mutex, out _));
+            Assert.False(AsyncMonitor.TryEnter(mutex, out _, CancelationToken.Canceled()));
+            key.Dispose();
+        }
+
+        [Test]
         public void AsyncMonitor_TryEnter_ReturnsTrueIfLockIsNotHeld([Values] CancelationType cancelationType)
         {
             var mutex = new AsyncLock();

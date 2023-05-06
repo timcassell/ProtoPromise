@@ -29,26 +29,49 @@ namespace Proto.Promises.Threading
         public AsyncReaderWriterLock() { }
 
         /// <summary>
-        /// Asynchronously acquire the lock as a reader. Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// Asynchronously acquire the lock as a reader.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        public Promise<ReaderKey> ReaderLockAsync()
+        {
+            return _impl.ReaderLockAsync();
+        }
+
+        /// <summary>
+        /// Asynchronously acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        public Promise<ReaderKey> ReaderLockAsync(CancelationToken cancelationToken = default)
+        public Promise<ReaderKey> ReaderLockAsync(CancelationToken cancelationToken)
         {
-            return _impl.ReaderLock(false, cancelationToken);
+            return _impl.ReaderLockAsync(cancelationToken);
         }
 
         /// <summary>
-        /// Synchronously acquire the lock as a reader. Returns the key that will release the lock when it is disposed.
+        /// Synchronously acquire the lock as a reader.
+        /// Returns the key that will release the lock when it is disposed.
+        /// </summary>
+        public ReaderKey ReaderLock()
+        {
+            return _impl.ReaderLock();
+        }
+
+        /// <summary>
+        /// Synchronously acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
+        /// Returns the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
-        public ReaderKey ReaderLock(CancelationToken cancelationToken = default)
+        public ReaderKey ReaderLock(CancelationToken cancelationToken)
         {
-            return _impl.ReaderLock(true, cancelationToken).WaitForResult();
+            return _impl.ReaderLock(cancelationToken);
         }
 
         /// <summary>
-        /// Synchronously try to acquire the lock as a reader. If successful, <paramref name="readerKey"/> is the key that will release the lock when it is disposed.
+        /// Synchronously try to acquire the lock as a reader.
+        /// If successful, <paramref name="readerKey"/> is the key that will release the lock when it is disposed.
+        /// This method does not wait, and returns immediately.
         /// </summary>
         /// <param name="readerKey">If successful, the key that will release the lock when it is disposed.</param>
         public bool TryEnterReaderLock(out ReaderKey readerKey)
@@ -57,26 +80,82 @@ namespace Proto.Promises.Threading
         }
 
         /// <summary>
-        /// Asynchronously acquire the lock as a writer. Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// Asynchronously try to acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled, with the success state and key.
+        /// If successful, the key will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="cancelationToken">
+        /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
+        /// </param>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public Promise<(bool didEnter, ReaderKey readerKey)> TryEnterReaderLockAsync(CancelationToken cancelationToken)
+        {
+            return _impl.TryEnterReaderLockAsync(cancelationToken);
+        }
+
+        /// <summary>
+        /// Synchronously try to acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
+        /// If successful, <paramref name="readerKey"/> is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="readerKey">If successful, the key that will release the lock when it is disposed.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, this will return <see langword="false"/>.</param>
+        /// <returns><see langword="true"/> if the reader lock was acquired before the <paramref name="cancelationToken"/> was canceled, <see langword="false"/> otherwise.</returns>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the reader lock is available, this will return <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public bool TryEnterReaderLock(out ReaderKey readerKey, CancelationToken cancelationToken)
+        {
+            return _impl.TryEnterReaderLock(out readerKey, cancelationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously acquire the lock as a writer.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        public Promise<WriterKey> WriterLockAsync()
+        {
+            return _impl.WriterLockAsync();
+        }
+
+        /// <summary>
+        /// Asynchronously acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        public Promise<WriterKey> WriterLockAsync(CancelationToken cancelationToken = default)
+        public Promise<WriterKey> WriterLockAsync(CancelationToken cancelationToken)
         {
-            return _impl.WriterLock(false, cancelationToken);
+            return _impl.WriterLockAsync(cancelationToken);
         }
 
         /// <summary>
-        /// Synchronously acquire the lock as a writer. Returns the key that will release the lock when it is disposed.
+        /// Synchronously acquire the lock as a writer.
+        /// Returns the key that will release the lock when it is disposed.
+        /// </summary>
+        public WriterKey WriterLock()
+        {
+            return _impl.WriterLock();
+        }
+
+        /// <summary>
+        /// Synchronously acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
+        /// Returns the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
-        public WriterKey WriterLock(CancelationToken cancelationToken = default)
+        public WriterKey WriterLock(CancelationToken cancelationToken)
         {
-            return _impl.WriterLock(true, cancelationToken).WaitForResult();
+            return _impl.WriterLock(cancelationToken);
         }
 
         /// <summary>
-        /// Synchronously try to acquire the lock as a writer. If successful, <paramref name="writerKey"/> is the key that will release the lock when it is disposed.
+        /// Synchronously try to acquire the lock as a writer.
+        /// If successful, <paramref name="writerKey"/> is the key that will release the lock when it is disposed.
+        /// This method does not wait, and returns immediately.
         /// </summary>
         /// <param name="writerKey">If successful, the key that will release the lock when it is disposed.</param>
         public bool TryEnterWriterLock(out WriterKey writerKey)
@@ -85,7 +164,55 @@ namespace Proto.Promises.Threading
         }
 
         /// <summary>
-        /// Asynchronously acquire the lock as an upgradeable reader. Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// Asynchronously try to acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled, with the success state and key.
+        /// If successful, the key will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="cancelationToken">
+        /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
+        /// </param>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public Promise<(bool didEnter, WriterKey writerKey)> TryEnterWriterLockAsync(CancelationToken cancelationToken)
+        {
+            return _impl.TryEnterWriterLockAsync(cancelationToken);
+        }
+
+        /// <summary>
+        /// Synchronously try to acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
+        /// If successful, <paramref name="writerKey"/> is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="writerKey">If successful, the key that will release the lock when it is disposed.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, this will return <see langword="false"/>.</param>
+        /// <returns><see langword="true"/> if the reader lock was acquired before the <paramref name="cancelationToken"/> was canceled, <see langword="false"/> otherwise.</returns>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the reader lock is available, this will return <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public bool TryEnterWriterLock(out WriterKey writerKey, CancelationToken cancelationToken)
+        {
+            return _impl.TryEnterWriterLock(out writerKey, cancelationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously acquire the lock as an upgradeable reader.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <remarks>
+        /// Upgradeable reader locks may be entered concurrently with normal reader locks, but they are mutually exclusive with respect to other upgradeable reader locks and writer locks.
+        /// Only 1 upgradeable reader lock may be entered at a time.
+        /// </remarks>
+        public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync()
+        {
+            return _impl.UpgradeableReaderLockAsync();
+        }
+
+        /// <summary>
+        /// Asynchronously acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
@@ -93,26 +220,42 @@ namespace Proto.Promises.Threading
         /// Upgradeable reader locks may be entered concurrently with normal reader locks, but they are mutually exclusive with respect to other upgradeable reader locks and writer locks.
         /// Only 1 upgradeable reader lock may be entered at a time.
         /// </remarks>
-        public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken = default)
+        public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken)
         {
-            return _impl.UpgradeableReaderLock(false, cancelationToken);
+            return _impl.UpgradeableReaderLockAsync(cancelationToken);
         }
 
         /// <summary>
-        /// Synchronously acquire the lock as an upgradeable reader. Returns the key that will release the lock when it is disposed.
+        /// Synchronously acquire the lock as an upgradeable reader.
+        /// Returns the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <remarks>
+        /// Upgradeable reader locks may be entered concurrently with normal reader locks, but they are mutually exclusive with respect to other upgradeable reader locks and writer locks.
+        /// Only 1 upgradeable reader lock may be entered at a time.
+        /// </remarks>
+        public UpgradeableReaderKey UpgradeableReaderLock()
+        {
+            return _impl.UpgradeableReaderLock();
+        }
+
+        /// <summary>
+        /// Synchronously acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
+        /// Returns the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
         /// <remarks>
         /// Upgradeable reader locks may be entered concurrently with normal reader locks, but they are mutually exclusive with respect to other upgradeable reader locks and writer locks.
         /// Only 1 upgradeable reader lock may be entered at a time.
         /// </remarks>
-        public UpgradeableReaderKey UpgradeableReaderLock(CancelationToken cancelationToken = default)
+        public UpgradeableReaderKey UpgradeableReaderLock(CancelationToken cancelationToken)
         {
-            return _impl.UpgradeableReaderLock(true, cancelationToken).WaitForResult();
+            return _impl.UpgradeableReaderLock(cancelationToken);
         }
 
         /// <summary>
-        /// Synchronously try to acquire the lock as an upgradeable reader. If successful, <paramref name="readerKey"/> is the key that will release the lock when it is disposed.
+        /// Synchronously try to acquire the lock as an upgradeable reader.
+        /// If successful, <paramref name="readerKey"/> is the key that will release the lock when it is disposed.
+        /// This method does not wait, and returns immediately.
         /// </summary>
         /// <param name="readerKey">If successful, the key that will release the lock when it is disposed.</param>
         /// <remarks>
@@ -125,34 +268,127 @@ namespace Proto.Promises.Threading
         }
 
         /// <summary>
-        /// Asynchronously upgrade the lock from an upgradeable reader lock to a writer lock. Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been upgraded.
+        /// Asynchronously try to acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled, with the success state and key.
+        /// If successful, the key will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="cancelationToken">
+        /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
+        /// </param>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public Promise<(bool didEnter, UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsync(CancelationToken cancelationToken)
+        {
+            return _impl.TryEnterUpgradeableReaderLockAsync(cancelationToken);
+        }
+
+        /// <summary>
+        /// Synchronously try to acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
+        /// If successful, <paramref name="readerKey"/> is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="readerKey">If successful, the key that will release the lock when it is disposed.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, this will return <see langword="false"/>.</param>
+        /// <returns><see langword="true"/> if the reader lock was acquired before the <paramref name="cancelationToken"/> was canceled, <see langword="false"/> otherwise.</returns>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the reader lock is available, this will return <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public bool TryEnterUpgradeableReaderLock(out UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
+        {
+            return _impl.TryEnterUpgradeableReaderLock(out readerKey, cancelationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously upgrade the lock from an upgradeable reader lock to a writer lock.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been upgraded.
+        /// The result of the promise is the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
+        /// </summary>
+        /// <param name="readerKey">The key required to upgrade the lock.</param>
+        public Promise<WriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey)
+        {
+            return _impl.UpgradeToWriterLockAsync(readerKey);
+        }
+
+        /// <summary>
+        /// Asynchronously upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been upgraded.
         /// The result of the promise is the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the upgrade. If the token is canceled before the lock has been upgraded, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        public Promise<WriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken = default)
+        public Promise<WriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
         {
-            return _impl.UpgradeToWriterLock(readerKey, false, cancelationToken);
+            return _impl.UpgradeToWriterLockAsync(readerKey, cancelationToken);
         }
 
         /// <summary>
-        /// Synchronously upgrade the lock from an upgradeable reader lock to a writer lock. Returns the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
+        /// Synchronously upgrade the lock from an upgradeable reader lock to a writer lock.
+        /// Returns the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
+        /// </summary>
+        /// <param name="readerKey">The key required to upgrade the lock.</param>
+        public WriterKey UpgradeToWriterLock(UpgradeableReaderKey readerKey)
+        {
+            return _impl.UpgradeToWriterLock(readerKey);
+        }
+
+        /// <summary>
+        /// Synchronously upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
+        /// Returns the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the upgrade. If the token is canceled before the lock has been upgraded, a <see cref="CanceledException"/> will be thrown.</param>
-        public WriterKey UpgradeToWriterLock(UpgradeableReaderKey readerKey, CancelationToken cancelationToken = default)
+        public WriterKey UpgradeToWriterLock(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
         {
-            return _impl.UpgradeToWriterLock(readerKey, true, cancelationToken).WaitForResult();
+            return _impl.UpgradeToWriterLock(readerKey, cancelationToken);
         }
 
         /// <summary>
-        /// Synchronously try to upgrade the lock from an upgradeable reader lock to a writer lock. If successful, <paramref name="writerKey"/> is the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
+        /// Synchronously try to upgrade the lock from an upgradeable reader lock to a writer lock.
+        /// If successful, <paramref name="writerKey"/> is the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
+        /// This method does not wait, and returns immediately.
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         /// <param name="writerKey">If successful, the key that will downgrade the lock to an upgradeable reader lock when it is disposed.</param>
         public bool TryUpgradeToWriterLock(UpgradeableReaderKey readerKey, out WriterKey writerKey)
         {
             return _impl.TryUpgradeToWriterLock(readerKey, out writerKey);
+        }
+
+        /// <summary>
+        /// Asynchronously try to upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled, with the success state and key.
+        /// If successful, the key will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="readerKey">The key required to upgrade the lock.</param>
+        /// <param name="cancelationToken">
+        /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
+        /// </param>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public Promise<(bool didEnter, WriterKey writerKey)> TryUpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
+        {
+            return _impl.TryUpgradeToWriterLockAsync(readerKey, cancelationToken);
+        }
+
+        /// <summary>
+        /// Synchronously try to upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
+        /// If successful, <paramref name="writerKey"/> is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="readerKey">The key required to upgrade the lock.</param>
+        /// <param name="writerKey">If successful, the key that will release the lock when it is disposed.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, this will return <see langword="false"/>.</param>
+        /// <returns><see langword="true"/> if the reader lock was acquired before the <paramref name="cancelationToken"/> was canceled, <see langword="false"/> otherwise.</returns>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the reader lock is available, this will return <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public bool TryUpgradeToWriterLock(UpgradeableReaderKey readerKey, out WriterKey writerKey, CancelationToken cancelationToken)
+        {
+            return _impl.TryUpgradeToWriterLock(readerKey, out writerKey, cancelationToken);
         }
 
         /// <summary>
