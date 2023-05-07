@@ -220,7 +220,8 @@ namespace Proto.Promises
             private AsyncWriterLockPromise _upgradeWaiter;
             private long _currentKey;
             // This either stores the next key normally, or the previous key if the lock is upgraded.
-            // This is done to avoid a branch instruction when an upgraded writer lock is released.
+            // This is done to avoid a branch instruction when an upgraded writer lock is released,
+            // and so we don't have to store the previous key in the WriterKey struct.
             private long _nextKey = KeyGenerator<AsyncReaderWriterLockInternal>.Next();
             private uint _readerLockCount;
             private uint _readerWaitCount;
@@ -282,41 +283,46 @@ namespace Proto.Promises
 
             internal Promise<AsyncReaderWriterLock.ReaderKey> ReaderLockAsync()
             {
-                // Unchecked context since we're manually checking overflow.
-                unchecked
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
+                AsyncReaderLockPromise promise;
+                lock (this)
                 {
-                    AsyncReaderLockPromise promise;
-                    lock (this)
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _lockType;
+
+                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
+                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
+                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
                     {
-                        ValidateNotAbandoned();
-                        ValidateReaderCounts();
-
-                        // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                        var lockType = _lockType;
-
-                        // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                        // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                        if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
                         {
-                            IncrementReaderLockCount();
-                            if (lockType == AsyncReaderWriterLockType.None)
-                            {
-                                SetNextKey();
-                            }
-                            _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                            return Promise.Resolved(new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null));
+                            SetNextKey();
                         }
-
-                        ++_readerWaitCount;
-                        promise = AsyncReaderLockPromise.GetOrCreate(this, CaptureContext());
-                        _readerQueue.Enqueue(promise);
+                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        return Promise.Resolved(new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null));
                     }
-                    return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id, 0);
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = AsyncReaderLockPromise.GetOrCreate(this, CaptureContext());
+                    _readerQueue.Enqueue(promise);
                 }
+                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id, 0);
             }
 
             internal Promise<AsyncReaderWriterLock.ReaderKey> ReaderLockAsync(CancelationToken cancelationToken)
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
+                // Quick check to see if the token is already canceled before entering.
                 if (cancelationToken.IsCancelationRequested)
                 {
                     ValidateNotAbandoned();
@@ -324,85 +330,87 @@ namespace Proto.Promises
                     return Promise<AsyncReaderWriterLock.ReaderKey>.Canceled();
                 }
 
-                // Unchecked context since we're manually checking overflow.
-                unchecked
+                AsyncReaderLockPromise promise;
+                lock (this)
                 {
-                    AsyncReaderLockPromise promise;
-                    lock (this)
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _lockType;
+
+                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
+                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
+                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
                     {
-                        ValidateNotAbandoned();
-                        ValidateReaderCounts();
-
-                        // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                        var lockType = _lockType;
-
-                        // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                        // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                        if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
                         {
-                            IncrementReaderLockCount();
-                            if (lockType == AsyncReaderWriterLockType.None)
-                            {
-                                SetNextKey();
-                            }
-                            _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                            return Promise.Resolved(new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null));
+                            SetNextKey();
                         }
-
-                        ++_readerWaitCount;
-                        promise = AsyncReaderLockPromise.GetOrCreate(this, CaptureContext());
-                        _readerQueue.Enqueue(promise);
-                        promise.MaybeHookupCancelation(cancelationToken);
+                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        return Promise.Resolved(new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null));
                     }
-                    return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id, 0);
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = AsyncReaderLockPromise.GetOrCreate(this, CaptureContext());
+                    _readerQueue.Enqueue(promise);
+                    promise.MaybeHookupCancelation(cancelationToken);
                 }
+                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id, 0);
             }
 
             internal AsyncReaderWriterLock.ReaderKey ReaderLock()
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 while ((_lockType & AsyncReaderWriterLockType.Writer) != 0 & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
                 }
 
-                // Unchecked context since we're manually checking overflow.
-                unchecked
+                AsyncReaderLockPromise promise;
+                lock (this)
                 {
-                    AsyncReaderLockPromise promise;
-                    lock (this)
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _lockType;
+
+                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
+                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
+                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
                     {
-                        ValidateNotAbandoned();
-                        ValidateReaderCounts();
-
-                        // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                        var lockType = _lockType;
-
-                        // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                        // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                        if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
                         {
-                            IncrementReaderLockCount();
-                            if (lockType == AsyncReaderWriterLockType.None)
-                            {
-                                SetNextKey();
-                            }
-                            _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                            return new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null);
+                            SetNextKey();
                         }
-
-                        ++_readerWaitCount;
-                        promise = AsyncReaderLockPromise.GetOrCreate(this, null);
-                        _readerQueue.Enqueue(promise);
+                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        return new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null);
                     }
-                    return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id, 0).WaitForResult();
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = AsyncReaderLockPromise.GetOrCreate(this, null);
+                    _readerQueue.Enqueue(promise);
                 }
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                return resultContainer.Result;
             }
 
             internal AsyncReaderWriterLock.ReaderKey ReaderLock(CancelationToken cancelationToken)
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while ((_lockType & AsyncReaderWriterLockType.Writer) != 0 & !isCanceled & !spinner.NextSpinWillYield)
@@ -411,6 +419,7 @@ namespace Proto.Promises
                     isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
+                // Quick check to see if the token is already canceled before entering.
                 if (isCanceled)
                 {
                     ValidateNotAbandoned();
@@ -418,42 +427,45 @@ namespace Proto.Promises
                     throw Promise.CancelException();
                 }
 
-                // Unchecked context since we're manually checking overflow.
-                unchecked
+                AsyncReaderLockPromise promise;
+                lock (this)
                 {
-                    AsyncReaderLockPromise promise;
-                    lock (this)
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _lockType;
+
+                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
+                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
+                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
                     {
-                        ValidateNotAbandoned();
-                        ValidateReaderCounts();
-
-                        // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                        var lockType = _lockType;
-
-                        // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                        // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                        if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
                         {
-                            IncrementReaderLockCount();
-                            if (lockType == AsyncReaderWriterLockType.None)
-                            {
-                                SetNextKey();
-                            }
-                            _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                            return new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null);
+                            SetNextKey();
                         }
-
-                        ++_readerWaitCount;
-                        promise = AsyncReaderLockPromise.GetOrCreate(this, null);
-                        _readerQueue.Enqueue(promise);
-                        promise.MaybeHookupCancelation(cancelationToken);
+                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        return new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null);
                     }
-                    return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id, 0).WaitForResult();
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = AsyncReaderLockPromise.GetOrCreate(this, null);
+                    _readerQueue.Enqueue(promise);
+                    promise.MaybeHookupCancelation(cancelationToken);
                 }
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             internal bool TryEnterReaderLock(out AsyncReaderWriterLock.ReaderKey readerKey)
             {
+                // We don't spinwait here because we want to return immediately without waiting.
                 lock (this)
                 {
                     ValidateNotAbandoned();
@@ -482,53 +494,55 @@ namespace Proto.Promises
 
             internal Promise<(bool didEnter, AsyncReaderWriterLock.ReaderKey readerKey)> TryEnterReaderLockAsync(CancelationToken cancelationToken)
             {
-                // Unchecked context since we're manually checking overflow.
-                unchecked
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
+                AsyncReaderLockPromise promise;
+                lock (this)
                 {
-                    AsyncReaderLockPromise promise;
-                    lock (this)
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _lockType;
+
+                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
+                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
+                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
                     {
-                        ValidateNotAbandoned();
-                        ValidateReaderCounts();
-
-                        // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                        var lockType = _lockType;
-
-                        // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                        // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                        if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
                         {
-                            IncrementReaderLockCount();
-                            if (lockType == AsyncReaderWriterLockType.None)
-                            {
-                                SetNextKey();
-                            }
-                            _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                            return Promise.Resolved((true, new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null)));
+                            SetNextKey();
                         }
-                        // Quick check to see if the token is already canceled before waiting.
-                        if (cancelationToken.IsCancelationRequested)
-                        {
-                            return Promise.Resolved((false, default(AsyncReaderWriterLock.ReaderKey)));
-                        }
-
-                        ++_readerWaitCount;
-                        promise = AsyncReaderLockPromise.GetOrCreate(this, null);
-                        _readerQueue.Enqueue(promise);
-                        promise.MaybeHookupCancelation(cancelationToken);
+                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        return Promise.Resolved((true, new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null)));
                     }
-                    return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id, 0)
-                        .ContinueWith(resultContainer =>
-                        {
-                            resultContainer.RethrowIfRejected();
-                            return (resultContainer.State == Promise.State.Resolved, resultContainer.Result);
-                        });
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return Promise.Resolved((false, default(AsyncReaderWriterLock.ReaderKey)));
+                    }
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = AsyncReaderLockPromise.GetOrCreate(this, null);
+                    _readerQueue.Enqueue(promise);
+                    promise.MaybeHookupCancelation(cancelationToken);
                 }
+                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id, 0)
+                    .ContinueWith(resultContainer =>
+                    {
+                        resultContainer.RethrowIfRejected();
+                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Result);
+                    });
             }
 
             internal bool TryEnterReaderLock(out AsyncReaderWriterLock.ReaderKey readerKey, CancelationToken cancelationToken)
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while ((_lockType & AsyncReaderWriterLockType.Writer) != 0 & !isCanceled & !spinner.NextSpinWillYield)
@@ -537,52 +551,53 @@ namespace Proto.Promises
                     isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                // Unchecked context since we're manually checking overflow.
-                unchecked
+                AsyncReaderLockPromise promise;
+                lock (this)
                 {
-                    AsyncReaderLockPromise promise;
-                    lock (this)
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _lockType;
+
+                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
+                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
+                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
                     {
-                        ValidateNotAbandoned();
-                        ValidateReaderCounts();
-
-                        // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                        var lockType = _lockType;
-
-                        // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                        // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                        if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
                         {
-                            IncrementReaderLockCount();
-                            if (lockType == AsyncReaderWriterLockType.None)
-                            {
-                                SetNextKey();
-                            }
-                            _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                            readerKey = new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null);
-                            return true;
+                            SetNextKey();
                         }
-                        // Quick check to see if the token is already canceled before waiting.
-                        if (isCanceled)
-                        {
-                            readerKey = default;
-                            return false;
-                        }
-
-                        ++_readerWaitCount;
-                        promise = AsyncReaderLockPromise.GetOrCreate(this, null);
-                        _readerQueue.Enqueue(promise);
-                        promise.MaybeHookupCancelation(cancelationToken);
+                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        readerKey = new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null);
+                        return true;
                     }
-                    PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                    resultContainer.RethrowIfRejected();
-                    readerKey = resultContainer.Result;
-                    return resultContainer.State == Promise.State.Resolved;
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (isCanceled)
+                    {
+                        readerKey = default;
+                        return false;
+                    }
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = AsyncReaderLockPromise.GetOrCreate(this, null);
+                    _readerQueue.Enqueue(promise);
+                    promise.MaybeHookupCancelation(cancelationToken);
                 }
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                readerKey = resultContainer.Result;
+                return resultContainer.State == Promise.State.Resolved;
             }
 
             internal Promise<AsyncReaderWriterLock.WriterKey> WriterLockAsync()
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 AsyncWriterLockPromise promise;
                 lock (this)
                 {
@@ -606,6 +621,9 @@ namespace Proto.Promises
 
             internal Promise<AsyncReaderWriterLock.WriterKey> WriterLockAsync(CancelationToken cancelationToken)
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+                
+                // Quick check to see if the token is already canceled before entering.
                 if (cancelationToken.IsCancelationRequested)
                 {
                     ValidateNotAbandoned();
@@ -637,7 +655,7 @@ namespace Proto.Promises
 
             internal AsyncReaderWriterLock.WriterKey WriterLock()
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 while (_lockType != AsyncReaderWriterLockType.None & !spinner.NextSpinWillYield)
                 {
@@ -662,12 +680,14 @@ namespace Proto.Promises
                     promise = AsyncWriterLockPromise.GetOrCreate(this, null);
                     _writerQueue.Enqueue(promise);
                 }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id, 0).WaitForResult();
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                return resultContainer.Result;
             }
 
             internal AsyncReaderWriterLock.WriterKey WriterLock(CancelationToken cancelationToken)
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (_lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
@@ -676,6 +696,7 @@ namespace Proto.Promises
                     isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
+                // Quick check to see if the token is already canceled before entering.
                 if (isCanceled)
                 {
                     ValidateNotAbandoned();
@@ -702,11 +723,14 @@ namespace Proto.Promises
                     _writerQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id, 0).WaitForResult();
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             internal bool TryEnterWriterLock(out AsyncReaderWriterLock.WriterKey writerKey)
             {
+                // We don't spinwait here because we want to return immediately without waiting.
                 lock (this)
                 {
                     ValidateNotAbandoned();
@@ -728,6 +752,7 @@ namespace Proto.Promises
 
             internal Promise<(bool didEnter, AsyncReaderWriterLock.WriterKey writerKey)> TryEnterWriterLockAsync(CancelationToken cancelationToken)
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 AsyncWriterLockPromise promise;
                 lock (this)
                 {
@@ -763,7 +788,7 @@ namespace Proto.Promises
 
             internal bool TryEnterWriterLock(out AsyncReaderWriterLock.WriterKey writerKey, CancelationToken cancelationToken)
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (_lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
@@ -807,6 +832,7 @@ namespace Proto.Promises
 
             internal Promise<AsyncReaderWriterLock.UpgradeableReaderKey> UpgradeableReaderLockAsync()
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 AsyncUpgradeableReaderLockPromise promise;
                 lock (this)
                 {
@@ -837,6 +863,9 @@ namespace Proto.Promises
 
             internal Promise<AsyncReaderWriterLock.UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken)
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+                
+                // Quick check to see if the token is already canceled before entering.
                 if (cancelationToken.IsCancelationRequested)
                 {
                     ValidateNotAbandoned();
@@ -875,7 +904,7 @@ namespace Proto.Promises
 
             internal AsyncReaderWriterLock.UpgradeableReaderKey UpgradeableReaderLock()
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 while (_lockType != AsyncReaderWriterLockType.None & !spinner.NextSpinWillYield)
                 {
@@ -907,12 +936,14 @@ namespace Proto.Promises
                     promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, null);
                     _upgradeQueue.Enqueue(promise);
                 }
-                return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id, 0).WaitForResult();
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                return resultContainer.Result;
             }
 
             internal AsyncReaderWriterLock.UpgradeableReaderKey UpgradeableReaderLock(CancelationToken cancelationToken)
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (_lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
@@ -921,6 +952,7 @@ namespace Proto.Promises
                     isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
+                // Quick check to see if the token is already canceled before entering.
                 if (isCanceled)
                 {
                     ValidateNotAbandoned();
@@ -954,11 +986,14 @@ namespace Proto.Promises
                     _upgradeQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id, 0).WaitForResult();
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             internal bool TryEnterUpgradeableReaderLock(out AsyncReaderWriterLock.UpgradeableReaderKey readerKey)
             {
+                // We don't spinwait here because we want to return immediately without waiting.
                 lock (this)
                 {
                     ValidateNotAbandoned();
@@ -987,6 +1022,7 @@ namespace Proto.Promises
 
             internal Promise<(bool didEnter, AsyncReaderWriterLock.UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsync(CancelationToken cancelationToken)
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 AsyncUpgradeableReaderLockPromise promise;
                 lock (this)
                 {
@@ -1028,7 +1064,7 @@ namespace Proto.Promises
 
             internal bool TryEnterUpgradeableReaderLock(out AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (_lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
@@ -1078,6 +1114,7 @@ namespace Proto.Promises
 
             internal Promise<AsyncReaderWriterLock.WriterKey> UpgradeToWriterLockAsync(AsyncReaderWriterLock.UpgradeableReaderKey readerKey)
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 AsyncWriterLockPromise promise;
                 lock (this)
                 {
@@ -1106,6 +1143,9 @@ namespace Proto.Promises
 
             internal Promise<AsyncReaderWriterLock.WriterKey> UpgradeToWriterLockAsync(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+                
+                // Quick check to see if the token is already canceled before entering.
                 if (cancelationToken.IsCancelationRequested)
                 {
                     ValidateNotAbandoned();
@@ -1142,7 +1182,7 @@ namespace Proto.Promises
 
             internal AsyncReaderWriterLock.WriterKey UpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey)
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 while (_readerLockCount != 1 & !spinner.NextSpinWillYield)
                 {
@@ -1172,12 +1212,14 @@ namespace Proto.Promises
                     promise = AsyncWriterLockPromise.GetOrCreate(this, null);
                     _upgradeWaiter = promise;
                 }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id, 0).WaitForResult();
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                return resultContainer.Result;
             }
 
             internal AsyncReaderWriterLock.WriterKey UpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (_readerLockCount != 1 & !isCanceled & !spinner.NextSpinWillYield)
@@ -1186,6 +1228,7 @@ namespace Proto.Promises
                     isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
+                // Quick check to see if the token is already canceled before entering.
                 if (isCanceled)
                 {
                     ValidateNotAbandoned();
@@ -1217,11 +1260,14 @@ namespace Proto.Promises
                     _upgradeWaiter = promise;
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id, 0).WaitForResult();
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Result;
             }
 
             internal bool TryUpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, out AsyncReaderWriterLock.WriterKey writerKey)
             {
+                // We don't spinwait here because we want to return immediately without waiting.
                 lock (this)
                 {
                     ValidateNotAbandoned();
@@ -1248,6 +1294,7 @@ namespace Proto.Promises
 
             internal Promise<(bool didEnter, AsyncReaderWriterLock.WriterKey writerKey)> TryUpgradeToWriterLockAsync(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 AsyncWriterLockPromise promise;
                 lock (this)
                 {
@@ -1289,7 +1336,7 @@ namespace Proto.Promises
 
             internal bool TryUpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, out AsyncReaderWriterLock.WriterKey writerKey, CancelationToken cancelationToken)
             {
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (_readerLockCount != 1 & !isCanceled & !spinner.NextSpinWillYield)
