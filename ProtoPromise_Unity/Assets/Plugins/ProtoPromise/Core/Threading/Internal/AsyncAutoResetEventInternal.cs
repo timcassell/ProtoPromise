@@ -13,8 +13,10 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0090 // Use 'new(...)'
 
+using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -113,6 +115,7 @@ namespace Proto.Promises
 
             internal Promise WaitAsync()
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 AsyncEventPromiseBase promise;
                 lock (this)
                 {
@@ -130,6 +133,8 @@ namespace Proto.Promises
 
             internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
                 // Immediately query the cancelation state before entering the lock.
                 bool isCanceled = cancelationToken.IsCancelationRequested;
 
@@ -152,6 +157,13 @@ namespace Proto.Promises
 
             internal void Wait()
             {
+                // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                while (!_isSet & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                }
+
                 AsyncEventPromiseBase promise;
                 lock (this)
                 {
@@ -163,13 +175,21 @@ namespace Proto.Promises
                     promise = AsyncAutoResetEventPromise.GetOrCreate(this, null);
                     _waiterQueue.Enqueue(promise);
                 }
-                new Promise(promise, promise.Id, 0).Wait();
+                Promise.ResultContainer resultContainer;
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                resultContainer.RethrowIfRejected();
             }
 
             internal bool TryWait(CancelationToken cancelationToken)
             {
-                // Immediately query the cancelation state before entering the lock.
+                // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
+                while (!_isSet & !isCanceled & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                    isCanceled = cancelationToken.IsCancelationRequested;
+                }
 
                 AsyncEventPromiseBase promise;
                 lock (this)
@@ -184,7 +204,10 @@ namespace Proto.Promises
                     _waiterQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<bool>(promise, promise.Id, 0).WaitForResult();
+                Promise<bool>.ResultContainer resultContainer;
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                resultContainer.RethrowIfRejected();
+                return resultContainer.Result;
             }
 
             internal void Set()

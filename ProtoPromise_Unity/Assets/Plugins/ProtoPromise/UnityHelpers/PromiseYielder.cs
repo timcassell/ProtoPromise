@@ -251,7 +251,7 @@ namespace Proto.Promises
         public struct WaitRealTimeInstruction : IAwaitWithProgressInstruction
         {
             private readonly TimeSpan _target;
-            private InternalHelper.ValueStopwatch _stopwatch;
+            private Internal.ValueStopwatch _stopwatch;
 
             /// <summary>
             /// Gets a new <see cref="WaitRealTimeInstruction"/>.
@@ -259,7 +259,7 @@ namespace Proto.Promises
             public WaitRealTimeInstruction(TimeSpan time)
             {
                 _target = time;
-                _stopwatch = InternalHelper.ValueStopwatch.StartNew();
+                _stopwatch = Internal.ValueStopwatch.StartNew();
             }
 
             [MethodImpl(Internal.InlineOption)]

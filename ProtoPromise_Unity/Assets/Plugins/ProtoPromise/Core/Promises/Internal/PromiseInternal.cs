@@ -18,6 +18,7 @@
 #pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0083 // Use pattern matching
+#pragma warning disable CA1507 // Use nameof to express symbol names
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
@@ -161,26 +162,82 @@ namespace Proto.Promises
 
             private static bool TryWaitForCompletion(PromiseRefBase promise, short promiseId, TimeSpan timeout)
             {
+                var stopwatch = ValueStopwatch.StartNew();
+                if (timeout < TimeSpan.Zero & timeout.Milliseconds != Timeout.Infinite)
+                {
+                    throw new ArgumentOutOfRangeException("timeout", "timeout must be greater than or equal to 0, or Timeout.InfiniteTimespan (-1 ms).", GetFormattedStacktrace(3));
+                }
+
                 var waiter = GetOrCreate();
                 waiter._next = null;
-                lock (waiter)
+                waiter._waitState = InitialState;
+                promise.HookupExistingWaiter(promiseId, waiter);
+                return waiter.TryWaitForCompletion(promise, timeout, stopwatch);
+            }
+
+            private bool TryWaitForCompletion(PromiseRefBase promise, TimeSpan timeout, ValueStopwatch stopwatch)
+            {
+                // We do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                if (timeout.Milliseconds == Timeout.Infinite)
                 {
-                    waiter._didWaitSuccessfully = false;
-                    waiter._didWait = false;
-                    waiter._isHookingUp = true;
-                    promise.HookupExistingWaiter(promiseId, waiter);
-                    // Check the flag in case Handle is invoked synchronously.
-                    if (waiter._isHookingUp)
+                    while (promise.State == Promise.State.Pending & !spinner.NextSpinWillYield)
                     {
-                        waiter._isHookingUp = false;
-                        // If timeout is 0, Monitor.Wait returns true when it should return false in IL2CPP. So we have to explicitly check for that value.
-                        waiter._didWaitSuccessfully = timeout != TimeSpan.Zero && Monitor.Wait(waiter, timeout);
-                        Thread.MemoryBarrier(); // Make sure _didWait is written last.
-                        waiter._didWait = true;
-                        return waiter._didWaitSuccessfully;
+                        spinner.SpinOnce();
                     }
                 }
-                ObjectPool.MaybeRepool(waiter);
+                else
+                {
+                    while (promise.State == Promise.State.Pending & stopwatch.GetElapsedTime() >= timeout & !spinner.NextSpinWillYield)
+                    {
+                        spinner.SpinOnce();
+                    }
+                }
+
+                if (promise.State != Promise.State.Pending)
+                {
+                    if (InterlockedExchange(ref _waitState, WaitedSuccessState) == CompletedState)
+                    {
+                        // Handle was already called (possibly synchronously) and returned without repooling, so we repool here.
+                        ObjectPool.MaybeRepool(this);
+                    }
+                    return true;
+                }
+
+                lock (this)
+                {
+                    // Check the completion state and set to waiting before monitor wait.
+                    if (InterlockedExchange(ref _waitState, WaitingState) == CompletedState)
+                    {
+                        // Handle was called and returned without pulsing or repooling, so we repool here.
+                        // Exit the lock before repool.
+                        goto Repool;
+                    }
+
+                    if (timeout.Milliseconds == Timeout.Infinite)
+                    {
+                        Monitor.Wait(this);
+                    }
+                    else
+                    {
+                        // Since we did a spinwait, subtract the time it took to spin,
+                        // and make sure there is still positive time remaining for the monitor wait.
+                        timeout -= stopwatch.GetElapsedTime();
+                        if (timeout > TimeSpan.Zero)
+                        {
+                            Monitor.Wait(this, timeout);
+                        }
+                    }
+                }
+
+                // We determine the success state from the promise state, rather than whether the Monitor.Wait timed out or not.
+                bool success = promise.State != Promise.State.Pending;
+                // Set the wait state for Handle cleanup (just a volatile write, no Interlocked).
+                _waitState = success ? WaitedSuccessState : WaitedFailedState;
+                return success;
+
+            Repool:
+                ObjectPool.MaybeRepool(this);
                 return true;
             }
 
@@ -189,34 +246,31 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
                 handler.SetCompletionState(rejectContainer, state);
 
+                int waitState = InterlockedExchange(ref _waitState, CompletedState);
+                if (waitState == InitialState)
+                {
+                    return;
+                }
+
                 lock (this)
                 {
-                    if (_isHookingUp)
-                    {
-                        _isHookingUp = false;
-                        return;
-                    }
-
                     // Wake the other thread.
                     Monitor.Pulse(this);
                 }
 
                 // Wait until we're sure the other thread has continued.
                 var spinner = new SpinWait();
-                while (!_didWait)
+                while (waitState <= CompletedState)
                 {
                     spinner.SpinOnce();
+                    waitState = _waitState;
                 }
 
                 // If the timeout expired before completion, we dispose the handler here. Otherwise, the original caller will dispose it.
-                if (!_didWaitSuccessfully)
+                if (waitState == WaitedFailedState)
                 {
-                    handler.MaybeDispose();
-                    if (state == Promise.State.Rejected && !(handler is PromiseRefBase.IPromiseMultiAwait))
-                    {
-                        // Report the rejection here since the original caller was unable to observe it.
-                        rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
-                    }
+                    // Maybe report the rejection here since the original caller was unable to observe it.
+                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                 }
                 ObjectPool.MaybeRepool(this);
             }
@@ -297,7 +351,7 @@ namespace Proto.Promises
                 get { return _depth; }
             }
 
-            private bool SuppressRejection
+            internal bool SuppressRejection
             {
                 [MethodImpl(InlineOption)]
                 get { return _suppressRejection; }
@@ -677,13 +731,10 @@ namespace Proto.Promises
                 }
             }
 
-            // Just so we can check the type.
-            internal interface IPromiseMultiAwait { }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>, IPromiseMultiAwait
+            internal sealed partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
             {
                 private PromiseMultiAwait() { }
 

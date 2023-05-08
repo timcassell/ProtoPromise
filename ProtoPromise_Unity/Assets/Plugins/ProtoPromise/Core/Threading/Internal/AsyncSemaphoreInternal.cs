@@ -16,6 +16,7 @@
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0090 // Use 'new(...)'
 
+using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -183,7 +184,9 @@ namespace Proto.Promises
                     promise = AsyncSemaphorePromise.GetOrCreate(this, null);
                     _waiters.Enqueue(promise);
                 }
-                new Promise(promise, promise.Id, 0).Wait();
+                Promise.ResultContainer resultContainer;
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                resultContainer.RethrowIfRejected();
             }
 
             internal bool TryWait(CancelationToken cancelationToken)
@@ -215,7 +218,10 @@ namespace Proto.Promises
                     _waiters.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<bool>(promise, promise.Id, 0).WaitForResult();
+                Promise<bool>.ResultContainer resultContainer;
+                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                resultContainer.RethrowIfRejected();
+                return resultContainer.Result;
             }
 
             internal void Release()

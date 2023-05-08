@@ -232,6 +232,8 @@ namespace Proto.Promises
 
             internal Promise<AsyncLock.Key> LockAsync()
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
                 // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
                 PromiseRefBase.AsyncLockPromise promise;
                 lock (this)
@@ -252,6 +254,8 @@ namespace Proto.Promises
 
             internal Promise<AsyncLock.Key> LockAsync(CancelationToken cancelationToken)
             {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
                 // Quick check to see if the token is already canceled before entering.
                 if (cancelationToken.IsCancelationRequested)
                 {
@@ -281,15 +285,14 @@ namespace Proto.Promises
 
             internal AsyncLock.Key Lock()
             {
-                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
-
                 // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
                 var spinner = new SpinWait();
-                while (_currentKey != 0 & !spinner.NextSpinWillYield)
+                while (Volatile.Read(ref _currentKey) != 0 & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
                 }
 
+                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
                 PromiseRefBase.AsyncLockPromise promise;
                 lock (this)
                 {
@@ -311,14 +314,21 @@ namespace Proto.Promises
 
             internal AsyncLock.Key Lock(CancelationToken cancelationToken)
             {
-                // Quick check to see if the token is already canceled before entering.
-                cancelationToken.ThrowIfCancelationRequested();
-
-                // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
+                // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                while (_currentKey != 0 & !spinner.NextSpinWillYield)
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+                while (Volatile.Read(ref _currentKey) != 0 & !isCanceled & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
+                    isCanceled = cancelationToken.IsCancelationRequested;
+                }
+
+                // Quick check to see if the token is already canceled before entering.
+                if (isCanceled)
+                {
+                    ValidateNotAbandoned();
+
+                    throw Promise.CancelException();
                 }
 
                 // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
@@ -391,6 +401,16 @@ namespace Proto.Promises
 
             internal bool TryEnter(out AsyncLock.Key key, CancelationToken cancelationToken)
             {
+                // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+                while (Volatile.Read(ref _currentKey) != 0 & !isCanceled & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                    isCanceled = cancelationToken.IsCancelationRequested;
+                }
+
+                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
                 PromiseRefBase.AsyncLockPromise promise;
                 lock (this)
                 {
@@ -403,7 +423,7 @@ namespace Proto.Promises
                         return true;
                     }
                     // Quick check to see if the token is already canceled before waiting.
-                    if (cancelationToken.IsCancelationRequested)
+                    if (isCanceled)
                     {
                         key = default;
                         return false;
