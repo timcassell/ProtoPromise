@@ -12,48 +12,50 @@ namespace Proto.Promises.Examples
 {
     public static class DownloadHelper
     {
-#if UNITY_2017_2_OR_NEWER
-        private static IEnumerator WaitForWebRequestWithProgress(Promise.DeferredBase deferred, UnityWebRequestAsyncOperation asyncOp, CancelationToken cancelationToken)
+#if CSHARP_7_3_OR_NEWER
+
+        public static async Promise<Texture2D> DownloadTexture(string url, CancelationToken cancelationToken = default(CancelationToken))
         {
-            using (cancelationToken.GetRetainer()) // Retain the token for the duration of the coroutine.
+            using (var webRequest = UnityWebRequestTexture.GetTexture(url))
             {
-                while (!cancelationToken.IsCancelationRequested && !asyncOp.isDone)
+                await PromiseYielder.WaitForAsyncOperation(webRequest.SendWebRequest()).AwaitWithProgress(0f, 1f, cancelationToken);
+
+#if UNITY_2020_2_OR_NEWER
+                if (webRequest.result == UnityWebRequest.Result.ConnectionError || webRequest.result == UnityWebRequest.Result.DataProcessingError || webRequest.result == UnityWebRequest.Result.ProtocolError)
+#else
+                if (webRequest.isHttpError || webRequest.isNetworkError)
+#endif
                 {
-                    deferred.ReportProgress(asyncOp.progress);
-                    yield return null;
+                    throw Promise.RejectException(webRequest.error);
                 }
+                return ((DownloadHandlerTexture) webRequest.downloadHandler).texture;
             }
         }
 
+#elif UNITY_2017_2_OR_NEWER
+
         public static Promise<Texture2D> DownloadTexture(string url, CancelationToken cancelationToken = default(CancelationToken))
         {
-            var deferred = Promise.NewDeferred<Texture2D>(cancelationToken);
             var www = UnityWebRequestTexture.GetTexture(url);
-            PromiseYielder.WaitFor(WaitForWebRequestWithProgress(deferred, www.SendWebRequest(), cancelationToken))
-                .Then(ValueTuple.Create(www, deferred), tuple => // Capture www and deferred to prevent lambda closure allocation.
+            return PromiseYielder.WaitForAsyncOperation(www.SendWebRequest())
+                .ToPromise(cancelationToken)
+                .Then(www, webRequest => // Capture www to prevent lambda closure allocation.
                 {
-                    var webRequest = tuple.Item1;
-                    var def = tuple.Item2;
 #if UNITY_2020_2_OR_NEWER
                     if (webRequest.result == UnityWebRequest.Result.ConnectionError || webRequest.result == UnityWebRequest.Result.DataProcessingError || webRequest.result == UnityWebRequest.Result.ProtocolError)
 #else
                     if (webRequest.isHttpError || webRequest.isNetworkError)
 #endif
                     {
-                        string error = webRequest.error;
-                        def.Reject(error);
+                        throw Promise.RejectException(webRequest.error);
                     }
-                    else
-                    {
-                        Texture2D result = ((DownloadHandlerTexture) webRequest.downloadHandler).texture;
-                        def.Resolve(result);
-                    }
-                }, cancelationToken) // CancelationToken will prevent the .Then callback from being invoked if it is canceled before the webrequest completes.
-                .Finally(www.Dispose)
-                .Forget();
-            return deferred.Promise;
+                    return ((DownloadHandlerTexture) webRequest.downloadHandler).texture;
+                })
+                .Finally(www.Dispose);
         }
-#else
+
+#else // 2017.1 or older
+
         private static IEnumerator WaitForWebRequestWithProgress(Promise.DeferredBase deferred, WWW asyncOp, CancelationToken cancelationToken)
         {
             using (cancelationToken.GetRetainer()) // Retain the token for the duration of the coroutine.
@@ -70,6 +72,7 @@ namespace Proto.Promises.Examples
         {
             var deferred = Promise.NewDeferred<Texture2D>(cancelationToken);
             var www = new WWW(url);
+            // Start the Coroutine and convert it to a Promise with PromiseYielder.
             PromiseYielder.WaitFor(WaitForWebRequestWithProgress(deferred, www, cancelationToken))
                 .Then(ValueTuple.Create(www, deferred), tuple => // Capture www and deferred to prevent lambda closure allocation.
                 {
@@ -77,19 +80,18 @@ namespace Proto.Promises.Examples
                     var def = tuple.Item2;
                     if (!string.IsNullOrEmpty(webRequest.error))
                     {
-                        string error = webRequest.error;
-                        def.Reject(error);
+                        def.Reject(webRequest.error);
                     }
                     else
                     {
-                        Texture2D result = webRequest.texture;
-                        def.Resolve(result);
+                        def.Resolve(webRequest.texture);
                     }
                 }, cancelationToken) // CancelationToken will prevent the .Then callback from being invoked if it is canceled before the webrequest completes.
                 .Finally(www.Dispose)
                 .Forget();
             return deferred.Promise;
         }
+
 #endif
     }
 }
