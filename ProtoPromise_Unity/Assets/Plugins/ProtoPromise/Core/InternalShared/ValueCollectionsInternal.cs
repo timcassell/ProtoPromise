@@ -360,13 +360,6 @@ namespace Proto.Promises
                 get { return _head != null; }
             }
 
-            [MethodImpl(InlineOption)]
-            internal ValueLinkedQueue(T head, T tail)
-            {
-                _head = head;
-                _tail = tail;
-            }
-
             internal void Enqueue(T item)
             {
                 AssertNotInCollection(item);
@@ -394,18 +387,6 @@ namespace Proto.Promises
                 {
                     _head = head.Next;
                 }
-
-                MarkRemovedFromCollection(head);
-                return head;
-            }
-
-            /// <summary>
-            /// Should only be used when it is known that the queue contains 2 or more items. 
-            /// </summary>
-            internal T DequeueUnsafe()
-            {
-                T head = _head;
-                _head = head.Next;
 
                 MarkRemovedFromCollection(head);
                 return head;
@@ -445,44 +426,6 @@ namespace Proto.Promises
                     next = node.Next;
                 }
                 return false;
-            }
-
-            internal int RemoveAndGetIndexOf(T item)
-            {
-                if (IsEmpty)
-                {
-                    return -1;
-                }
-                if (item == _head)
-                {
-                    _head = _head.Next;
-                    if (item == _tail)
-                    {
-                        _tail = null;
-                    }
-                    MarkRemovedFromCollection(item);
-                    return 0;
-                }
-                int index = 1;
-                T node = _head;
-                T next = node.Next;
-                while (next != null)
-                {
-                    if (next == item)
-                    {
-                        node.Next = next.Next;
-                        if (item == _tail)
-                        {
-                            _tail = node;
-                        }
-                        MarkRemovedFromCollection(item);
-                        return index;
-                    }
-                    node = next;
-                    next = node.Next;
-                    ++index;
-                }
-                return -1;
             }
 
             internal ValueLinkedStack<T> MoveElementsToStack()
@@ -529,6 +472,7 @@ namespace Proto.Promises
                 return newStack;
             }
 
+#if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
             internal void TakeAndEnqueueElements(ref ValueLinkedQueue<T> other)
             {
                 if (other.IsEmpty)
@@ -547,6 +491,7 @@ namespace Proto.Promises
                 other._head = null;
                 other._tail = null;
             }
+#endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 
             [MethodImpl(InlineOption)]
             public Enumerator<T> GetEnumerator()
@@ -709,12 +654,6 @@ namespace Proto.Promises
             internal static ValueLinkedStackZeroGC<T> Create()
             {
                 return new ValueLinkedStackZeroGC<T>(new ValueLinkedStack<Node>());
-            }
-
-            internal bool IsEmpty
-            {
-                [MethodImpl(InlineOption)]
-                get { return _stack.IsEmpty; }
             }
 
             internal bool IsNotEmpty

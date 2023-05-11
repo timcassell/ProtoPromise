@@ -8,6 +8,8 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0029 // Use coalesce expression
+#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0090 // Use 'new(...)'
 

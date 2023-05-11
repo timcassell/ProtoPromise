@@ -1,4 +1,5 @@
 ﻿#pragma warning disable IDE0031 // Use null propagation
+#pragma warning disable IDE1005 // Delegate invocation can be simplified.
 #pragma warning disable CA1041 // Provide ObsoleteAttribute message
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 

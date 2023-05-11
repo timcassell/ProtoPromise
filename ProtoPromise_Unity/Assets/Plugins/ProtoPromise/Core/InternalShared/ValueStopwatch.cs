@@ -21,11 +21,13 @@ namespace Proto.Promises
     internal static partial class Internal
     {
         // Idea from https://www.meziantou.net/how-to-measure-elapsed-time-without-allocating-a-stopwatch.htm
+#pragma warning disable IDE0250 // Make struct 'readonly'
         internal struct ValueStopwatch
+#pragma warning restore IDE0250 // Make struct 'readonly'
         {
             private static readonly double s_timestampToTicks = TimeSpan.TicksPerSecond / (double) Stopwatch.Frequency;
 
-            private long _startTimestamp;
+            private readonly long _startTimestamp;
 
             private ValueStopwatch(long startTimestamp)
             {

@@ -2,6 +2,7 @@
 #define NET_LEGACY
 #endif
 
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 

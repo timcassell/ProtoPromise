@@ -5,8 +5,10 @@
 #endif
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
+#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0054 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE1005 // Delegate invocation can be simplified.
 #pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
 
 using System;

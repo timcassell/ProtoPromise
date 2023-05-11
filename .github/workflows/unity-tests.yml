@@ -69,7 +69,7 @@ jobs:
               name: Pool_Disabled,
               symbol: PROTO_PROMISE_POOL_DISABLE
             }
-        # Editor uses 2018.4 to test Net3.5 and Net4.x.
+        # Editor uses 2018.4 to test Net3.5 and 2021.3 to test Net4.x.
         # Standalone uses 2019.4 and 2021.3 to test IL2CPP with netstandard 2.0 and netstandard2.1.
         unityVersion: [2018.4.36f1, 2019.4.40f1, 2021.3.15f1]
         devMode:
@@ -88,14 +88,26 @@ jobs:
               mode: { name: Debug },
               objectPooling: { name: Pool_Enabled }
             }
-          # Editor tests only run in 2018.4 to test Net3.5 and Net4.x.
+          # Editor tests only run in 2018.4 to test Net3.5 and 2021.3 to test Net4.x.
           - {
               testMode: { name: Editor },
+              scriptingRuntime: { name: Net3.5 },
               unityVersion: 2019.4.40f1
             }
           - {
               testMode: { name: Editor },
+              scriptingRuntime: { name: Net3.5 },
               unityVersion: 2021.3.15f1
+            }
+          - {
+              testMode: { name: Editor },
+              scriptingRuntime: { name: Net4.x },
+              unityVersion: 2018.4.36f1
+            }
+          - {
+              testMode: { name: Editor },
+              scriptingRuntime: { name: Net4.x },
+              unityVersion: 2019.4.40f1
             }
           # Standalone with IL2CPP can only be built with 2019.4+ (unity-builder docker images constraint), which doesn't support Net3.5.
           - {
@@ -135,6 +147,14 @@ jobs:
           ApiOriginal="  apiCompatibilityLevel: 2"
           ApiReplace="  apiCompatibilityLevel: ${{ matrix.scriptingRuntime.apiCompatibilityLevel }}"
           sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
+
+        # Overwrite the manifest to include Code Coverage, only available in 2019.3 or newer.
+        # For some reason, compilation fails in CI when this is done in 2019.4, so only do it in 2021.3.
+      - name: Rewrite manifest.json and ProjectVersion.txt
+        if: ${{ matrix.unityVersion == '2021.3.15f1' }}
+        run: |
+          cat ProtoPromise_Unity/manifest-2021.json > ProtoPromise_Unity/Packages/manifest.json
+          cat ProtoPromise_Unity/packages-lock-2021.json > ProtoPromise_Unity/Packages/packages-lock.json
 
       - name: Run tests
         id: tests

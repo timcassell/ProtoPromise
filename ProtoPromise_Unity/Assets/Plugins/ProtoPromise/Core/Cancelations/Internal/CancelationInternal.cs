@@ -13,6 +13,7 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0250 // Make struct 'readonly'
+#pragma warning disable IDE0270 // Use coalesce expression
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
@@ -1065,7 +1066,18 @@ namespace Proto.Promises
             } // class CancelationConverter
 
             private CancellationTokenSource _bclSource;
+
+            partial void SetCancellationTokenRegistration(CancellationTokenRegistration registration);
+#if NET6_0_OR_GREATER
+            // This is only necessary in .Net 6 or later, since `CancellationTokenSource.TryReset()` was added.
             private CancellationTokenRegistration _bclRegistration;
+
+            [MethodImpl(InlineOption)]
+            partial void SetCancellationTokenRegistration(CancellationTokenRegistration registration)
+            {
+                _bclRegistration = registration;
+            }
+#endif
 
             internal static CancelationRef GetOrCreateForBclTokenConvert(CancellationTokenSource source)
             {
@@ -1084,7 +1096,8 @@ namespace Proto.Promises
             private void HookupBclCancelation(System.Threading.CancellationToken token)
             {
                 // We don't need the synchronous invoke check when this is created.
-                _bclRegistration = token.Register(state => state.UnsafeAs<CancelationRef>().Cancel(), this, false);
+                var registration = token.Register(state => state.UnsafeAs<CancelationRef>().Cancel(), this, false);
+                SetCancellationTokenRegistration(registration);
             }
 
             internal static CancellationToken GetCancellationToken(CancelationRef _this, int tokenId)
