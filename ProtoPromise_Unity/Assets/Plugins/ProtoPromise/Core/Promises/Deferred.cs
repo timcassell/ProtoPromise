@@ -11,6 +11,7 @@
 
 #pragma warning disable IDE0019 // Use pattern matching
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0270 // Use coalesce expression
 #pragma warning disable 0618 // Type or member is obsolete
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 

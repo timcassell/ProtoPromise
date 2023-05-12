@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0250 // Make struct 'readonly'
 
 using System;
 using System.Diagnostics;

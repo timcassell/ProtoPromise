@@ -2,6 +2,8 @@
 #define NET_LEGACY
 #endif
 
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -22,7 +24,7 @@ namespace Proto.Promises.Threading
 #endif
     public static class AsyncMonitor
     {
-        private static ConditionalWeakTable<Internal.AsyncLockInternal, AsyncConditionVariable> s_condVarTable = new ConditionalWeakTable<Internal.AsyncLockInternal, AsyncConditionVariable>();
+        private static readonly ConditionalWeakTable<Internal.AsyncLockInternal, AsyncConditionVariable> s_condVarTable = new ConditionalWeakTable<Internal.AsyncLockInternal, AsyncConditionVariable>();
 
         /// <summary>
         /// Asynchronously acquire the lock on the specified <see cref="AsyncLock"/>.

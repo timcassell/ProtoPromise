@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0250 // Make struct 'readonly'
 
 using Proto.Promises.Async.CompilerServices;
 using System;
@@ -336,7 +337,7 @@ namespace Proto.Promises
             public struct WaitRealTimeInstruction : IAwaitWithProgressInstruction
             {
                 private readonly TimeSpan _target;
-                private Internal.ValueStopwatch _stopwatch;
+                private readonly Internal.ValueStopwatch _stopwatch;
 
                 /// <summary>
                 /// Gets a new <see cref="WaitRealTimeInstruction"/>.
