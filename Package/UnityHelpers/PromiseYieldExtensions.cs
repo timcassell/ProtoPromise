@@ -186,7 +186,7 @@ namespace Proto.Promises
                 {
                     s_exception = null;
 #if NET_LEGACY
-
+                    throw Promise.RejectException(e); // Wrap the exception and throw to preserve the stacktrace.
 #elif UNITY_2021_2_OR_NEWER
                     ExceptionDispatchInfo.Throw(e);
 #else
@@ -556,7 +556,7 @@ namespace Proto.Promises
                 {
                     s_exception = null;
 #if NET_LEGACY
-
+                    throw Promise.RejectException(e); // Wrap the exception and throw to preserve the stacktrace.
 #elif UNITY_2021_2_OR_NEWER
                     ExceptionDispatchInfo.Throw(e);
 #else

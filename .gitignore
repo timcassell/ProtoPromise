@@ -130,6 +130,7 @@ _pkginfo.txt
 ClientBin/
 ~$*
 *~
+!Samples~
 *.dbmdl
 *.dbproj.schemaview
 *.pfx

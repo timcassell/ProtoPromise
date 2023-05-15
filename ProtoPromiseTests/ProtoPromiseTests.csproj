@@ -57,9 +57,9 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromiseTests\**/*.cs" />
-    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromiseTests\Helpers\ForOldRuntime\**/*" />
-    <Compile Remove="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromiseTests\UnityTests\**/*" />
+    <Compile Include="..\Package\Tests\**/*.cs" />
+    <Compile Remove="..\Package\Tests\Helpers\ForOldRuntime\**/*" />
+    <Compile Remove="..\Package\Tests\UnityTests\**/*" />
   </ItemGroup>
 
 </Project>

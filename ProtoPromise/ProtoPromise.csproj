@@ -81,7 +81,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\ProtoPromise_Unity\Assets\Plugins\ProtoPromise\Core\**/*.cs" />
+    <Compile Include="..\Package\Core\**/*.cs" />
     <Compile Remove="nuget\**" />
     <Content Remove="nuget\**" />
     <EmbeddedResource Remove="nuget\**" />
