@@ -23,7 +23,7 @@ This library was built to work in all C#/.Net ecosystems, including Unity, Mono,
 
 ProtoPromise conforms to the [Promises/A+ Spec](https://promisesaplus.com/) as far as is possible with C# (using static typing instead of dynamic), and further extends it to support Cancelations and Progress.
 
-This library took inspiration from [ES6 Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) (javascript), [RSG Promises](https://github.com/Real-Serious-Games/C-Sharp-Promise) (C#), [uPromise](https://assetstore.unity.com/packages/tools/upromise-15604) (C#/Unity), [TPL](https://docs.microsoft.com/en-us/dotnet/standard/parallel-programming/task-parallel-library-tpl), and [UniTask](https://github.com/Cysharp/UniTask) (C#/Unity).
+This library was inspired by [ES6 Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise), [RSG Promises](https://github.com/Real-Serious-Games/C-Sharp-Promise), [uPromise](https://assetstore.unity.com/packages/tools/upromise-15604), [TPL](https://docs.microsoft.com/en-us/dotnet/standard/parallel-programming/task-parallel-library-tpl), [UniTask](https://github.com/Cysharp/UniTask), [AsyncEx](https://github.com/StephenCleary/AsyncEx), and [UnityAsync](https://github.com/muckSponge/UnityAsync).
 
 Compare performance to other async libraries:
 
@@ -45,12 +45,16 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-## v 2.4.1 - February 5, 2023
+## v 2.5.0 - May 15, 2023
 
-- Fixed `CancelationToken.IsCancelationRequested` when it was created from a `System.Threading.CancellationToken`.
-- Small performance improvement in `CancelationToken.(Try)Register`.
+- Added `AsyncLazy` type.
+- Added more async synchronization primitives in the `Proto.Promises.Threading` namespace.
+- Added APIs to wait for promise result without throwing.
+- Added `SwitchToForegroundAwait`, `SwitchToBackgroundAwait`, and `SwitchToContextAwait` for more efficient context switch in `async` functions.
+- Added common Unity awaits in `PromiseYielder`.
+- Create custom `await` instructions in Unity by implementing `IAwaitInstruction` or `IAwaitWithProgressInstruction`.
 
-See [Release Notes](ReleaseNotes.md) for the full changelog.
+See [ChangeLog](../Package/CHANGELOG.md) for the full changelog.
 
 ## Contents
 
@@ -76,15 +80,17 @@ See [Release Notes](ReleaseNotes.md) for the full changelog.
     - [Race Parallel](#race-parallel)
     - [First Parallel](#first-parallel)
     - [Sequence](#sequence)
-- [Configuration](#configuration)
-    - [Compiler Options](#compiler-options)
+- [Task Interoperability](#task-interoperability)
+- [Unity Coroutines Interoperability](#unity-coroutines-interoperability)
+- [Unity Optimized Await Instructions](#unity-optimized-await-instructions)
 - [Additional Information](#additional-information)
     - [Understanding Then](#understanding-then)
     - [Finally](#finally)
     - [ContinueWith](#continuewith)
-- [Task Interoperability](#task-interoperability)
-- [Unity Yield Instructions and Coroutines Interoperability](#unity-yield-instructions-and-coroutines-interoperability)
+- [Helper Types](#helper-types)
 - [Advanced](#advanced)
+    - [Configuration](#configuration)
+        - [Compiler Options](#compiler-options)
     - [Cancelations](#cancelations)
         - [Cancelation Source](#cancelation-source)
         - [Cancelation Token](#cancelation-token)
@@ -95,26 +101,52 @@ See [Release Notes](ReleaseNotes.md) for the full changelog.
     - [Error Retries and Async Recursion](#error-retries-and-async-recursion)
     - [Multiple-Consumer](#multiple-consumer)
     - [Capture Values](#capture-values)
+    - [Suppress Throws](#suppress-throws)
     - [Switching Execution Context](#switching-execution-context)
     - [AsyncLocal Support](#asynclocal-support)
     - [Parallel Iterations](#parallel-iterations)
-    - [Async Lock](#async-lock)
+    - [Async Synchronization Primitives](#async-synchronization-primitives)
 
 ## Package Installation
 
 ### Unity
 
-- Install via Unity's Asset Store
+#### Unity Package Manager
+
+##### OpenUPM registry (recommended)
+
+1. Open `Edit > Project Settings > Package Manager`
+2. Add a new Scoped Registry:
+```
+Name: OpenUPM
+URL:  https://package.openupm.com/
+Scope(s): com.timcassell
+```
+3. Click `Save`
+4. Open `Window > Package Manager`
+5. Click `+`
+6. Click `Add package by name`
+7. Paste `com.timcassell.protopromise`
+8. Click `Add`
+
+##### Git Url
+
+1. Open `Window > Package Manager`
+2. Click `+`
+3. Click `Add package from git URL`
+4. Paste `https://github.com/TimCassell/ProtoPromise.git?path=Package`
+5. Click `Add`
+
+Or add `"com.timcassell.protopromise": "https://github.com/TimCassell/ProtoPromise.git?path=Package"` to `Packages/manifest.json`.
+
+You may append `#vX.X.X` to use a specific version, for example `#v2.5.0`.
+Note: The path changed in v2.5.0. For v2.0.0 - v2.4.0, see the [ChangeLog](../Package/CHANGELOG.md) for the old path.
+
+#### Unity Asset Store
 
 Add to your assets from the Asset Store at https://assetstore.unity.com/packages/tools/integration/protopromise-181997.
 
-- Install via package manager
-
-In the Package Manager, open the dropdown and click on `Add Package from git url` and enter `https://github.com/TimCassell/ProtoPromise.git?path=ProtoPromise_Unity/Assets/Plugins/ProtoPromise`.
-Or add `"com.timcassell.protopromise": "https://github.com/TimCassell/ProtoPromise.git?path=ProtoPromise_Unity/Assets/Plugins/ProtoPromise"` to `Packages/manifest.json`.
-You may append `#vX.X.X` to use a specific version, for example `#v2.0.0`.
-
-- Download unitypackage from GitHub
+#### Download unitypackage from GitHub
 
 Go to the latest [release](https://github.com/timcassell/ProtoPromise/releases) and download the unitypackage. Import the unitypackage into your Unity project.
 
@@ -606,29 +638,67 @@ var sequencePromise = Promise.Sequence(
 );
 ```
 
-## Configuration
+## Task Interoperability
 
-You can change whether or not objects will be pooled via `Promise.Config.ObjectPoolingEnabled`. Enabling pooling reduces GC pressure, and it is enabled by default.
+Promises can easily interoperate with Tasks simply by calling the `Promise.ToTask()` or `Task.ToPromise()` extension methods.
 
-If you are in DEBUG mode, you can configure when additional stacktraces will be generated via `Promise.Config.DebugCausalityTracer`.
+Promises can also be converted to ValueTasks by calling `Promise.AsValueTask()` method, or by implicitly casting `ValueTask valueTask = promise`. ValueTasks can be converted to Promises by calling the `ValueTask.ToPromise()` extension method.
 
-`Promise.Config.UncaughtRejectionHandler` allows you to route unhandled rejections through a delegate instead of being thrown.
+`Proto.Promises.CancelationToken` can be converted to and from `System.Threading.CancellationToken` by calling `token.ToCancellationToken()` method or `token.ToCancelationToken()` extension method.
 
-`Promise.Config.ForegroundContext` is the context to which foreground operations are posted, typically used to marshal work to the UI thread. This is automatically set in Unity, but in other UI frameworks it should be set at application startup (usually `Promise.Config.ForegroundContext = SynchronizationContext.Current` is enough). Note: if your application uses multiple `SynchronizationContext`s, you should instead pass the context directly to the `WaitAsync` and other APIs instead of using `SynchronizationOption.Foreground`. See [Switching Execution Context](#switching-execution-context).
+## Unity Coroutines Interoperability
 
-`Promise.Config.BackgroundContext` can be set to override how background operations are executed. If this is null, `ThreadPool.QueueUserWorkItem(callback, state)` is used.
+If you are using Coroutines, you can easily convert a promise to a yield instruction via `promise.ToYieldInstruction()` which you can yield return to wait until the promise has settled. You can also convert any yield instruction (including Coroutines themselves) to a promise via `PromiseYielder.WaitFor(yieldInstruction)`. This will wait until the yieldInstruction has completed before resolving the promise.
 
-`Promise.Config.AsyncFlowExecutionContextEnabled` can be set to true to enable [AsyncLocal support](#asynclocal-support).
+```cs
+public async Promise<Texture2D> DownloadTexture(string url)
+{
+    using (var www = UnityWebRequestTexture.GetTexture(url))
+    {
+        await PromiseYielder.WaitFor(www.SendWebRequest());
+        if (www.isHttpError || www.isNetworkError)
+        {
+            throw Promise.RejectException(www.error);
+        }
+        return ((DownloadHandlerTexture) www.downloadHandler).texture;
+    }
+}
+```
 
-### Compiler Options
+```cs
+IEnumerator GetAndAssignTexture(Image image, string url)
+{
+    using (var textureYieldInstruction = DownloadTexture(url).ToYieldInstruction())
+    {
+        yield return textureYieldInstruction;
+        Texture2D texture = textureYieldInstruction.GetResult();
+        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+        image.sprite = sprite;
+    }
+}
+```
 
-If you're compiling from source (not from dll), you can configure some compilation options.
+## Unity Optimized Await Instructions
 
-Progress can be disabled if you don't intend to use it and want to save a little memory/cpu cycles.
-You can disable progress by adding `PROTO_PROMISE_PROGRESS_DISABLE` to your compiler symbols.
+In addition to interoping with Coroutines, `PromiseYielder` also has common Unity awaits, optimized for async/await, with zero allocations.
 
-By default, debug options are tied to the `DEBUG` compiler symbol, which is defined by default in the Unity Editor and not defined in release builds. You can override that by defining `PROTO_PROMISE_DEBUG_ENABLE` to force debugging on in release builds, or `PROTO_PROMISE_DEBUG_DISABLE` to force debugging off in debug builds (or in the Unity Editor). If both symbols are defined, `ENABLE` takes precedence.
+```cs
+await PromiseYielder.WaitOneFrame();
+await PromiseYielder.WaitForTime(TimeSpan.FromSeconds(1));
+await PromiseYielder.WaitForRealTime(TimeSpan.FromSeconds(1));
+await PromiseYielder.WaitForAsyncOperation(asyncOp);
+await PromiseYielder.WaitForEndOfFrame();
+await PromiseYielder.WaitForFixedUpdate();
+await PromiseYielder.WaitUntil(() => cond);
+await PromiseYielder.WaitWhile(() => cond);
+```
 
+You can also implement your own custom await instructions by implementing `IAwaitInstruction` or `IAwaitWithProgressInstruction`. You can even implement them using a struct to eliminate allocations!
+`IsCompleted` will be called once per frame until it returns `true`. The async function will not continue until such time.
+
+You may optionally append `.WithCancelation(cancelationToken)` to attach a cancelation token to the yield instruction.
+If the yield instruction implements `IAwaitWithProgressInstruction`, you can report the progress to the `async Promise` function by appending `.AwaitWithProgress(minProgress, maxProgress, cancelationToken)`.
+These can all be converted to `Promise` via the `ToPromise()` extension method.
 
 ## Additional Information
 
@@ -672,47 +742,48 @@ You may realize that `Catch(onRejected)` also works just like `onRejected` in `T
 
 `ContinueWith` adds an `onContinue` delegate that will be invoked when the promise is resolved, rejected, or canceled. A `Promise.ResultContainer` or `Promise<T>.ResultContainer` will be passed into the delegate that can be used to check the promise's state and result or reject reason. The promise returned from `ContinueWith` will be resolved/rejected/canceled with the same rules as `Then` in [Understanding Then](#understanding-then). `Promise.Rethrow` is an invalid operation during an `onContinue` invocation, instead you can use `resultContainer.RethrowIfRejected()` and `resultContainer.RethrowIfCanceled()`
 
-## Task Interoperability
+## Helper Types
 
-Promises can easily interoperate with Tasks simply by calling the `Promise.ToTask()` or `Task.ToPromise()` extension methods.
+### AsyncLazy
 
-Promises can also be converted to ValueTasks by calling `Promise.AsValueTask()` method, or by implicitly casting `ValueTask valueTask = promise`. ValueTasks can be converted to Promises by calling the `ValueTask.ToPromise()` extension method.
-
-`Proto.Promises.CancelationToken` can be converted to and from `System.Threading.CancellationToken` by calling `token.ToCancellationToken()` method or `token.ToCancelationToken()` extension method.
-
-## Unity Yield Instructions and Coroutines Interoperability
-
-If you are using coroutines, you can easily convert a promise to a yield instruction via `promise.ToYieldInstruction()` which you can yield return to wait until the promise has settled. You can also convert any yield instruction (including coroutines themselves) to a promise via `PromiseYielder.WaitFor(yieldInstruction)`. This will wait until the yieldInstruction has completed before resolving the promise.
+`AsyncLazy<T>` behaves very similar to its `System.Lazy<T>` synchronous counterpart, but it supports async value retrieval.
 
 ```cs
-public async Promise<Texture2D> DownloadTexture(string url)
-{
-    using (var www = UnityWebRequestTexture.GetTexture(url))
-    {
-        await PromiseYielder.WaitFor(www.SendWebRequest());
-        if (www.isHttpError || www.isNetworkError)
-        {
-            throw Promise.RejectException(www.error);
-        }
-        return ((DownloadHandlerTexture) www.downloadHandler).texture;
-    }
-}
-```
+AsyncLazy<int> lazy;
 
-```cs
-IEnumerator GetAndAssignTexture(Image image, string url)
+lazy = new AsyncLazy<int>(async () =>
 {
-    using (var textureYieldInstruction = DownloadTexture(url).ToYieldInstruction())
-    {
-        yield return textureYieldInstruction;
-        Texture2D texture = textureYieldInstruction.GetResult();
-        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
-        image.sprite = sprite;
-    }
-}
+    await FuncAsync();
+    return 42;
+});
+
+int value = await lazy;
 ```
 
 ## Advanced
+
+## Configuration
+
+You can change whether or not objects will be pooled via `Promise.Config.ObjectPoolingEnabled`. Enabling pooling reduces GC pressure, and it is enabled by default.
+
+If you are in DEBUG mode, you can configure when additional stacktraces will be generated via `Promise.Config.DebugCausalityTracer`.
+
+`Promise.Config.UncaughtRejectionHandler` allows you to route unhandled rejections through a delegate instead of being thrown.
+
+`Promise.Config.ForegroundContext` is the context to which foreground operations are posted, typically used to marshal work to the UI thread. This is automatically set in Unity, but in other UI frameworks it should be set at application startup (usually `Promise.Config.ForegroundContext = SynchronizationContext.Current` is enough). Note: if your application uses multiple `SynchronizationContext`s, you should instead pass the context directly to the `WaitAsync` and other APIs instead of using `SynchronizationOption.Foreground`. See [Switching Execution Context](#switching-execution-context).
+
+`Promise.Config.BackgroundContext` can be set to override how background operations are executed. If this is null, `ThreadPool.QueueUserWorkItem(callback, state)` is used.
+
+`Promise.Config.AsyncFlowExecutionContextEnabled` can be set to true to enable [AsyncLocal support](#asynclocal-support).
+
+### Compiler Options
+
+If you're compiling from source (not from dll), you can configure some compilation options.
+
+Progress can be disabled if you don't intend to use it and want to save a little memory/cpu cycles.
+You can disable progress by adding `PROTO_PROMISE_PROGRESS_DISABLE` to your compiler symbols.
+
+By default, debug options are tied to the `DEBUG` compiler symbol, which is defined by default in the Unity Editor and not defined in release builds. You can override that by defining `PROTO_PROMISE_DEBUG_ENABLE` to force debugging on in release builds, or `PROTO_PROMISE_DEBUG_DISABLE` to force debugging off in debug builds (or in the Unity Editor). If both symbols are defined, `ENABLE` takes precedence.
 
 ### Cancelations
 
@@ -783,7 +854,7 @@ You may also `Dispose` the registration to unregister the callback, or wait for 
 
 Promise implementations usually do not allow cancelations, but it has proven to be invaluable to asynchronous libraries, and ProtoPromise is no exception.
 
-Promises can be canceled 2 ways: passing a `CancelationToken` into `Promise.{Then, Catch, ContinueWith}` or `Promise.NewDeferred`, or by throwing a [Cancelation Exception](#special-exceptions). When a promise is canceled, all promises that have been chained from it will be canceled, until a `CatchCancelation`.
+Promises can be canceled 3 ways: passing a `CancelationToken` into `Promise.{Then, Catch, ContinueWith}`, calling `Promise.Deferred.Cancel()`, or by throwing a [Cancelation Exception](#special-exceptions). When a promise is canceled, all promises that have been chained from it will be canceled, until a `CatchCancelation`.
 
 ```cs
 CancelationSource cancelationSource = CancelationSource.New();
@@ -975,6 +1046,17 @@ Note: Visual Studio will tell you what variables are captured/closed if you hove
 
 See [Understanding Then](#understanding-then) for information on all the different ways you can capture values with the `Then` overloads.
 
+### Suppress Throws
+
+Normally when you await a promise in an `async Promise` function, it will throw if it was canceled or rejected. You can suppress that and manually check the state and rethrow if you need to. Use `AwaitNoThrow()` or `AwaitWithProgressNoThrow(minProgress, maxProgress)`. The awaited result will be `Promise.ResultContainer` or `Promise<T>.ResultContainer` that wraps the state and result or reject reason of the promise.
+
+```cs
+var resultContainer = await promise.AwaitNoThrow();
+resultContainer.RethrowIfRejected();
+bool isCanceled = resultContainer.State == Promise.State.Canceled;
+var result = resultContainer.Result;
+```
+
 ### Switching Execution Context
 
 Context switching in this case refers to switching execution between the main/UI thread and background threads. Executing code on a background thread frees up the UI thread to draw the application at a higher frame-rate and not freeze the application when executing an expensive computation.
@@ -1022,7 +1104,9 @@ To make things a little easier, there are shortcut functions to simply hop to th
 
 The `Foreground` option posts the continuation to `Promise.Config.ForegroundContext`. This property is set automatically in Unity, but in other UI frameworks it should be set at application startup (usually `Promise.Config.ForegroundContext = SynchronizationContext.Current` is enough).
 
-If your application uses multiple `SynchronizationContext`s, instead of using `SynchronizationOption.Foreground`, you should pass the proper `SynchronizationContext` directly to `WaitAsync`.
+If your application uses multiple `SynchronizationContext`s, instead of using `SynchronizationOption.Foreground`, you should pass the proper `SynchronizationContext` directly to `WaitAsync` or `Promise.SwitchToContext`.
+
+For context switching optimized for async/await, use `Promise.SwitchToForegroundAwait`, `Promise.SwitchToBackgroundAwait`, and `Promise.SwitchToContextAwait`. These functions return custom awaiters that avoid the overhead of `Promise`.
 
 Other APIs that allow you to pass `SynchronizationOption` or `SynchronizationContext` to configure the context that the callback executes on are `Promise.Progress` (default `Foreground`), `Promise.New` (default `Synchronous`), and `Promise.Run` (default `Background`).
 
@@ -1086,7 +1170,11 @@ public static Promise ForAsync(int min, int max, Action<int> action)
 
 (`Promise.ParallelForEach` is similar to `Parallel.ForEachAsync` in .Net 6+, but uses `Promise` instead of `Task` to be more efficient, and works in older runtimes. And even in newer runtimes, `Parallel.ForAsync` does not exist.)
 
-### Async Lock
+### Async Synchronization Primitives
+
+These types are asynchronous near-equivalent counterparts to `System.Threading` synchronization primitives (except `AsyncConditionVariable`, which does not currently have a synchronous counterpart in the BCL).
+
+#### AsyncLock
 
 `AsyncLock` (in the `Proto.Promises.Threading` namespace) can be used to coordinate mutual exclusive execution around asynchronous resources. It is similar to the normal `lock` keyword, except `lock` cannot be used around `await`s.
 The syntax is a little different: instead of `lock (mutex) { }`, the syntax is `using (await mutex.LockAsync()) { }`. Everything inside the `using` block will be protected by the lock.
@@ -1104,6 +1192,15 @@ public async Promise DoStuffAsync()
 }
 ```
 
+`AsyncLock` also supports synchronous locks, so a thread may try to enter a lock synchronously, even while another thread is holding it asynchronously. `using (_mutex.Lock()) { }`
+WARNING: doing so may cause a deadlock if the async function that holds the lock tries to switch context to the same thread before releasing the lock. Although it is supported, it is not recommended to mix synchronous and asynchronous locks. If at all possible, normal locks should be preferred.
+
+WARNING: `AsyncLock` does _not_ support re-entrance (recursion). If you attempt to enter the lock while it is already entered, it will result in a deadlock.
+
+Note: `AsyncLock` is only available in .Net Standard 2.1 (or Unity 2021.2) or newer platforms.
+
+### AsyncMonitor
+
 You may also use the `AsyncMonitor` class to `WaitAsync` and `Pulse` in a fashion very similar to the normal `Monitor` class.
 
 ```cs
@@ -1120,9 +1217,49 @@ public async Promise DoStuffAsync()
 }
 ```
 
-`AsyncLock` also supports synchronous locks, so a thread may try to enter a lock synchronously, even while another thread is holding it asynchronously. `using (_mutex.Lock()) { }`
-WARNING: doing so may cause a deadlock if the async function that holds the lock tries to switch context to the same thread before releasing the lock. Although it is supported, it is not recommended to mix synchronous and asynchronous locks. If at all possible, normal locks should be preferred.
+Note: `AsyncMonitor` is only available in .Net Standard 2.1 (or Unity 2021.2) or newer platforms.
 
-WARNING: `AsyncLock` does _not_ support re-entrance (recursion). If you attempt to enter the lock while it is already entered, it will result in a deadlock.
+#### AsyncReaderWriterLock
 
-Note: `AsyncLock` and `AsyncMonitor` are only available in .Net Standard 2.1 (or Unity 2021.2) or newer platforms.
+Similar to `System.Thread.ReaderWriterLockSlim`, except, just like `AsyncLock`, recursion is not supported. Also, unlike `ReaderWriterLockSlim`, this is a balanced reader/writer lock. That means readers and writers take turns so that no one will get starved out.
+
+Note: `AsyncReaderWriterLock` is only available in .Net Standard 2.1 (or Unity 2021.2) or newer platforms.
+
+```cs
+private readonly AsyncReaderWriterLock _rwl = new AsyncReaderWriterLock();
+
+public async Promise DoStuffAsync()
+{
+    using (await _rwl.ReaderLockAsync())
+    {
+        // Reader lock is shared, multiple readers can enter at the same time.
+    }
+    
+    using (await _rwl.WriterLockAsync())
+    {
+        // Writer lock is mutually exclusive, only one writer can enter at a time, and no readers can enter while a writer is entered.
+    }
+}
+```
+
+#### AsyncManualResetEvent
+
+Async version of [System.Threading.ManualResetEventSlim](https://learn.microsoft.com/en-us/dotnet/api/system.threading.manualreseteventslim).
+
+#### AsyncAutoResetEvent
+
+Async version of [System.Threading.AutoResetEvent](https://learn.microsoft.com/en-us/dotnet/api/system.threading.autoresetevent).
+
+#### AsyncSemaphore
+
+Async version of [System.Threading.SemaphoreSlim](https://learn.microsoft.com/en-us/dotnet/api/system.threading.semaphoreslim).
+
+#### AsyncCountdownEvent
+
+Async version of [System.Threading.CountdownEvent](https://learn.microsoft.com/en-us/dotnet/api/system.threading.countdownevent).
+
+#### AsyncConditionVariable
+
+Local version of `AsyncMonitor`. Use in place of `AsyncMonitor.WaitAsync(AsyncLock.Key)` and `AsyncMonitor.Pulse(AsyncLock.Key)` if you need wait/pulse logic for different conditions instead of global (like for an async version of a blocking collection). See `std::condition_variable` in C++ for inspiration.
+
+Note: `AsyncConditionVariable` is only available in .Net Standard 2.1 (or Unity 2021.2) or newer platforms.
