@@ -140,7 +140,7 @@ Scope(s): com.timcassell
 Or add `"com.timcassell.protopromise": "https://github.com/TimCassell/ProtoPromise.git?path=Package"` to `Packages/manifest.json`.
 
 You may append `#vX.X.X` to use a specific version, for example `#v2.5.0`.
-Note: The path changed in v2.5.0. For v2.0.0 - v2.4.0, see the [ChangeLog](../Package/CHANGELOG.md) for the old path.
+Note: The path changed in v2.5.0. For v2.0.0 - v2.4.1, see the [ChangeLog](../Package/CHANGELOG.md) for the old path.
 
 #### Unity Asset Store
 
