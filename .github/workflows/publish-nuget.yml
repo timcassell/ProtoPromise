@@ -34,7 +34,7 @@ jobs:
             echo "version ${VERSION} not found in ProtoPromiseUnityHelpers.csproj"
             exit 1
           fi
-          if ! grep -q "\"version\": \"${VERSION}\"" ProtoPromise_Unity/Assets/Plugins/ProtoPromise/package.json; then
+          if ! grep -q "\"version\": \"${VERSION}\"" Package/package.json; then
             echo "version ${VERSION} not found in package.json"
             exit 1
           fi
