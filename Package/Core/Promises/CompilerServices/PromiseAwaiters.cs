@@ -200,15 +200,12 @@ namespace Proto.Promises
 #if ENABLE_IL2CPP
             [MethodImpl(Internal.InlineOption)]
             static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseAwaiterVoid>.Create<PromiseAwaiterVoid>();
-            }
 #else
             static PromiseAwaiterVoid()
+#endif
             {
                 Internal.AwaitOverrider<PromiseAwaiterVoid>.Create<PromiseAwaiterVoid>();
             }
-#endif
         }
 
         partial struct PromiseAwaiter<T>
@@ -217,15 +214,12 @@ namespace Proto.Promises
 #if ENABLE_IL2CPP
             [MethodImpl(Internal.InlineOption)]
             static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseAwaiter<T>>.Create<PromiseAwaiter<T>>();
-            }
 #else
             static PromiseAwaiter()
+#endif
             {
                 Internal.AwaitOverrider<PromiseAwaiter<T>>.Create<PromiseAwaiter<T>>();
             }
-#endif
         }
 
         partial struct PromiseNoThrowAwaiterVoid
@@ -234,15 +228,12 @@ namespace Proto.Promises
 #if ENABLE_IL2CPP
             [MethodImpl(Internal.InlineOption)]
             static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseNoThrowAwaiterVoid>.Create<PromiseNoThrowAwaiterVoid>();
-            }
 #else
             static PromiseNoThrowAwaiterVoid()
+#endif
             {
                 Internal.AwaitOverrider<PromiseNoThrowAwaiterVoid>.Create<PromiseNoThrowAwaiterVoid>();
             }
-#endif
         }
 
         partial struct PromiseNoThrowAwaiter<T>
@@ -251,15 +242,12 @@ namespace Proto.Promises
 #if ENABLE_IL2CPP
             [MethodImpl(Internal.InlineOption)]
             static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseNoThrowAwaiter<T>>.Create<PromiseNoThrowAwaiter<T>>();
-            }
 #else
             static PromiseNoThrowAwaiter()
+#endif
             {
                 Internal.AwaitOverrider<PromiseNoThrowAwaiter<T>>.Create<PromiseNoThrowAwaiter<T>>();
             }
-#endif
         }
 
         partial struct PromiseProgressAwaiterVoid
@@ -268,15 +256,12 @@ namespace Proto.Promises
 #if ENABLE_IL2CPP
             [MethodImpl(Internal.InlineOption)]
             static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseProgressAwaiterVoid>.Create<PromiseProgressAwaiterVoid>();
-            }
 #else
             static PromiseProgressAwaiterVoid()
+#endif
             {
                 Internal.AwaitOverrider<PromiseProgressAwaiterVoid>.Create<PromiseProgressAwaiterVoid>();
             }
-#endif
         }
 
         partial struct PromiseProgressAwaiter<T>
@@ -285,15 +270,12 @@ namespace Proto.Promises
 #if ENABLE_IL2CPP
             [MethodImpl(Internal.InlineOption)]
             static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseProgressAwaiter<T>>.Create<PromiseProgressAwaiter<T>>();
-            }
 #else
             static PromiseProgressAwaiter()
+#endif
             {
                 Internal.AwaitOverrider<PromiseProgressAwaiter<T>>.Create<PromiseProgressAwaiter<T>>();
             }
-#endif
         }
 
         partial struct PromiseProgressNoThrowAwaiterVoid
@@ -302,15 +284,12 @@ namespace Proto.Promises
 #if ENABLE_IL2CPP
             [MethodImpl(Internal.InlineOption)]
             static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseProgressNoThrowAwaiterVoid>.Create<PromiseProgressNoThrowAwaiterVoid>();
-            }
 #else
             static PromiseProgressNoThrowAwaiterVoid()
+#endif
             {
                 Internal.AwaitOverrider<PromiseProgressNoThrowAwaiterVoid>.Create<PromiseProgressNoThrowAwaiterVoid>();
             }
-#endif
         }
 
         partial struct PromiseProgressNoThrowAwaiter<T>
@@ -319,15 +298,12 @@ namespace Proto.Promises
 #if ENABLE_IL2CPP
             [MethodImpl(Internal.InlineOption)]
             static partial void CreateOverride()
-            {
-                Internal.AwaitOverrider<PromiseProgressNoThrowAwaiter<T>>.Create<PromiseProgressNoThrowAwaiter<T>>();
-            }
 #else
             static PromiseProgressNoThrowAwaiter()
+#endif
             {
                 Internal.AwaitOverrider<PromiseProgressNoThrowAwaiter<T>>.Create<PromiseProgressNoThrowAwaiter<T>>();
             }
-#endif
         }
 #endif // !NETCOREAPP
 
