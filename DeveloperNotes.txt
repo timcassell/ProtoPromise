@@ -9,7 +9,7 @@ To create the UnityPackage for releases:
 
 Edit `Packages/README.md` to remove the `## Package Installation` and `## Latest Updates` sections, and other unnecessary information at the top (like benchmark results).
 
-1. Open `ProtoPromise_Unity` in Unity 5.5 (or 2017.1 since Unity 5.5 doesn't seem to work in Win 10)
+1. Open `ProtoPromise_Unity` in Unity 5.5 or 2017.1
 2. Copy `Package` folder to `Assets/Plugins/ProtoPromise`
 3. Delete `Tests` folder
 4. Rename `Samples~` to `Demo`
