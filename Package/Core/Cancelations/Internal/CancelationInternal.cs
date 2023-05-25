@@ -352,7 +352,7 @@ namespace Proto.Promises
                     // Callback could be invoked synchronously if the token is canceled on another thread,
                     // so we set a flag to prevent a deadlock, then check the flag again after the hookup to see if it was invoked.
                     ts_isLinkingToBclToken = true;
-                    _bclRegistration = token.Register(state =>
+                    _bclRegistration = token.Register(cancelRef =>
                     {
                         // This could be invoked synchronously if the token is canceled, so we check the flag to prevent a deadlock.
                         if (ts_isLinkingToBclToken)
@@ -361,7 +361,7 @@ namespace Proto.Promises
                             ts_isLinkingToBclToken = false;
                             return;
                         }
-                        state.UnsafeAs<CancelationRef>().Cancel();
+                        cancelRef.UnsafeAs<CancelationRef>().Cancel();
                     }, this, false);
 
                     if (!ts_isLinkingToBclToken)

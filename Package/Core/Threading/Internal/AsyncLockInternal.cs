@@ -775,11 +775,13 @@ namespace Proto.Promises
                     {
                         if (_isDisposedFlag != 0 | _waitPromise != null)
                         {
-                            throw _isDisposedFlag != 0
-                                ? new ObjectDisposedException("AsyncLock.Key")
-                                : new InvalidOperationException(
-                                    "This AsyncLock.Key instance has a pending AsyncMonitor.Wait(Async) associated with it. No other operation is permitted on this instance until it is complete.",
-                                    Internal.GetFormattedStacktrace(2));
+                            if (_isDisposedFlag != 0)
+                            {
+                                throw new ObjectDisposedException("AsyncLock.Key");
+                            }
+                            throw new InvalidOperationException(
+                                "This AsyncLock.Key instance has a pending AsyncMonitor.Wait(Async) associated with it. No other operation is permitted on this instance until it is complete.",
+                                Internal.GetFormattedStacktrace(2));
                         }
                     }
 

@@ -52,11 +52,18 @@
         <DefineConstants>$(DefineConstants);ENABLE_IL2CPP;CSHARP_7_3_OR_NEWER</DefineConstants>
       </PropertyGroup>
     </When>
-    <Otherwise>
+    <When Condition="'$(TargetFramework)'=='netstandard2.1'">
       <PropertyGroup>
         <!--For function pointers in await override implementation.-->
         <LangVersion>9</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <DefineConstants>$(DefineConstants);ENABLE_IL2CPP;CSHARP_7_3_OR_NEWER;UNITY_2021_2_OR_NEWER</DefineConstants>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup>
+        <!--Otherwise, we don't need any newer language features beyond 7.3.-->
+        <LangVersion>7.3</LangVersion>
         <DefineConstants>$(DefineConstants);CSHARP_7_3_OR_NEWER</DefineConstants>
       </PropertyGroup>
     </Otherwise>
