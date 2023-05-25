@@ -415,9 +415,6 @@ namespace Proto.Promises
                 _executingThread = Thread.CurrentThread;
                 _state = State.Canceled;
                 ++_internalRetainCounter;
-                _smallFields._locker.Exit();
-
-                Unlink();
 
                 // We call the delegates in LIFO order so that callbacks fire 'deepest first'.
                 // This is intended to help with nesting scenarios so that child enlisters cancel before their parents.
@@ -425,17 +422,16 @@ namespace Proto.Promises
                 List<Exception> exceptions = null;
                 while (true)
                 {
-                    _smallFields._locker.Enter();
                     // If the sentinel's previous points to itself, no more registrations exist.
                     var current = _registeredCallbacksHead._previous;
                     if (current == _registeredCallbacksHead)
                     {
-                        _smallFields._locker.Exit();
                         break;
                     }
                     current.RemoveFromLinkedList();
-                    _smallFields._locker.Exit();
 
+                    // Exit the lock before invoking arbitrary code, then re-enter after it completes.
+                    _smallFields._locker.Exit();
                     try
                     {
                         current.Invoke(this);
@@ -448,11 +444,12 @@ namespace Proto.Promises
                         }
                         exceptions.Add(e);
                     }
+                    _smallFields._locker.Enter();
                 }
 
                 _executingThread = null;
                 _state = State.CanceledComplete;
-                MaybeResetAndRepool();
+                MaybeResetAndRepoolAlreadyLocked();
                 if (exceptions != null)
                 {
                     // Propagate exceptions to caller as aggregate.
@@ -488,7 +485,6 @@ namespace Proto.Promises
 
                 ThrowIfInPool(this);
                 _state = State.Disposed;
-                Unlink();
                 UnregisterAll();
 
                 MaybeResetAndRepoolAlreadyLocked();
@@ -513,14 +509,6 @@ namespace Proto.Promises
                     current._previous = null;
                     current.Dispose();
                 } while (previous != null);
-            }
-
-            private void Unlink()
-            {
-                while (_links.IsNotEmpty)
-                {
-                    _links.Pop().TryUnregister();
-                }
             }
 
             [MethodImpl(InlineOption)]
@@ -580,12 +568,6 @@ namespace Proto.Promises
                 return true;
             }
 
-            private void MaybeResetAndRepool()
-            {
-                _smallFields._locker.Enter();
-                MaybeResetAndRepoolAlreadyLocked();
-            }
-
             private void MaybeResetAndRepoolAlreadyLocked()
             {
                 if (--_internalRetainCounter == 0 & _userRetainCounter == 0)
@@ -627,6 +609,11 @@ namespace Proto.Promises
                 }
 #endif
                 _state = State.Disposed;
+                // Unhook from other tokens and wait for the callbacks to complete before repooling.
+                while (_links.IsNotEmpty)
+                {
+                    _links.Pop().Dispose();
+                }
                 ObjectPool.MaybeRepool(this);
             }
 
