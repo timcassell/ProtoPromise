@@ -1,6 +1,6 @@
 ﻿For each new release:
 
-Before releasing, test the demo scene in Unity 5.5/2017.1 to make sure it works (no need to run tests as the test runner didn't exist back then).
+Before releasing, test the demo scene in Unity 5.5 to make sure it works (no need to run tests as the test runner didn't exist back then).
 
 Update the version in `ProtoPromise.csproj`, `ProtoPromiseUnityHelpers.csproj`, and `package.json`.
 
@@ -9,7 +9,7 @@ To create the UnityPackage for releases:
 
 Edit `Packages/README.md` to remove the `## Package Installation` and `## Latest Updates` sections, and other unnecessary information at the top (like benchmark results).
 
-1. Open `ProtoPromise_Unity` in Unity 5.5 or 2017.1
+1. Open `ProtoPromise_Unity` in Unity 5.5
 2. Copy `Package` folder to `Assets/Plugins/ProtoPromise`
 3. Delete `Tests` folder
 4. Rename `Samples~` to `Demo`

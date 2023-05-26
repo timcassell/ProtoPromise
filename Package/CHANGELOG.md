@@ -1,5 +1,13 @@
 # Change Log
 
+## v 2.5.1 - May 26, 2023
+
+Fixes:
+
+- Included IL2CPP fixes in .Net Standard 2.1 nuget package.
+- Fixed a race condition with linked `CancelationToken`s when object pooling is enabled.
+- Fixed a race condition when `Deferred.ReportProgress` is called concurrently with `Deferred.Resolve/Reject/Cancel`.
+
 ## v 2.5.0 - May 15, 2023
 
 Enhancements:

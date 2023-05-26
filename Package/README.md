@@ -19,7 +19,7 @@ Robust and efficient library for management of asynchronous operations.
 - Circular await detection
 - CLS compliant
 
-This library was built to work in all C#/.Net ecosystems, including Unity, Mono, .Net Framework, .Net Core, UI frameworks, and AOT compilation. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.
+This library was built to work in all C#/.Net ecosystems (.Net 3.5 or newer), including Unity (5.5 or newer), Mono, .Net Framework, .Net Core, UI frameworks, and AOT compilation. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.
 
 ProtoPromise conforms to the [Promises/A+ Spec](https://promisesaplus.com/) as far as is possible with C# (using static typing instead of dynamic), and further extends it to support Cancelations and Progress.
 
@@ -44,6 +44,12 @@ Compare performance to other async libraries:
 See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAsynchronousBenchmarks) for a full performance comparison.
 
 ## Latest Updates
+
+## v 2.5.1 - May 26, 2023
+
+- Included IL2CPP fixes in .Net Standard 2.1 nuget package.
+- Fixed a race condition with linked `CancelationToken`s when object pooling is enabled.
+- Fixed a race condition when `Deferred.ReportProgress` is called concurrently with `Deferred.Resolve/Reject/Cancel`.
 
 ## v 2.5.0 - May 15, 2023
 
