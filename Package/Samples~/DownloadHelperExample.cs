@@ -70,7 +70,7 @@ namespace Proto.Promises.Examples
 
         public static Promise<Texture2D> DownloadTexture(string url, CancelationToken cancelationToken = default(CancelationToken))
         {
-            var deferred = Promise.NewDeferred<Texture2D>(cancelationToken);
+            var deferred = Promise.NewDeferred<Texture2D>();
             var www = new WWW(url);
             // Start the Coroutine and convert it to a Promise with PromiseYielder.
             PromiseYielder.WaitFor(WaitForWebRequestWithProgress(deferred, www, cancelationToken))
@@ -88,6 +88,7 @@ namespace Proto.Promises.Examples
                     }
                 }, cancelationToken) // CancelationToken will prevent the .Then callback from being invoked if it is canceled before the webrequest completes.
                 .Finally(www.Dispose)
+                .CatchCancelation(deferred.Cancel)
                 .Forget();
             return deferred.Promise;
         }

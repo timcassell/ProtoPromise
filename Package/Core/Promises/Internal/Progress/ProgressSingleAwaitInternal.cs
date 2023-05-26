@@ -118,8 +118,7 @@ namespace Proto.Promises
                     }
 
                     Thread.MemoryBarrier(); // Make sure we read _next after we write progress to handle race condition of a progress listener being hooked up on another thread.
-                    _next.MaybeReportProgress(this, progress);
-                    return true;
+                    return _next.TryReportProgress(this, progress, deferredId, ref _idAndProgress);
                 }
             } // DeferredPromiseBase
 
