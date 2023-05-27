@@ -43,9 +43,10 @@ namespace Proto.Promises
             // For Merge/Race promises
             internal virtual void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index) { throw new System.InvalidOperationException(); }
 #if PROMISE_PROGRESS
-            internal virtual void MaybeReportProgress(PromiseRefBase reporter, double progress)
+            internal virtual bool TryReportProgress(PromiseRefBase reporter, double progress, int deferredId, ref PromiseRefBase.DeferredIdAndProgress idAndProgress)
             {
-                // Do nothing. This is overridden by actual progress listeners.
+                // Do nothing, just return whether the id matches. This is overridden by actual progress listeners.
+                return deferredId == idAndProgress._id;
             }
             internal virtual void MaybeReportProgress(ref ProgressReportValues progressReportValues)
             {

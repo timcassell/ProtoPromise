@@ -835,14 +835,24 @@ namespace Proto.Promises
                     ScheduleForProgress(this, _synchronizationContext);
                 }
 
-                internal override void MaybeReportProgress(PromiseRefBase reporter, double progress)
+                internal override bool TryReportProgress(PromiseRefBase reporter, double progress, int deferredId, ref DeferredIdAndProgress idAndProgress)
                 {
                     // Manually enter the lock so the next listener can enter its lock before unlocking this.
                     // This is necessary for race conditions so a progress report won't get ahead of another on a separate thread.
                     Monitor.Enter(this);
+
+                    // Another thread could have resolved and repooled this before this thread entered the lock,
+                    // so check to make sure the deferred is still valid.
+                    if (deferredId != idAndProgress._id)
+                    {
+                        Monitor.Exit(this);
+                        return false;
+                    }
+
                     var progressReportValues = new ProgressReportValues(null, reporter, this, progress);
                     MaybeReportProgressImpl(ref progressReportValues);
                     progressReportValues.ReportProgressToAllListeners();
+                    return true;
                 }
 
                 internal override void MaybeReportProgress(ref ProgressReportValues progressReportValues)
@@ -866,8 +876,6 @@ namespace Proto.Promises
 
                 private void MaybeReportProgressImpl(ref ProgressReportValues progressReportValues)
                 {
-                    ThrowIfInPool(this);
-
                     var reporter = progressReportValues._reporter;
                     progressReportValues._reporter = this;
                     float castedProgress = (float) progressReportValues._progress;
@@ -880,6 +888,9 @@ namespace Proto.Promises
                         progressReportValues._progressListener = null;
                         return;
                     }
+
+                    // Only check if this is in the pool after we verified the current reporter.
+                    ThrowIfInPool(this);
 
                     _progressFields._current = castedProgress;
                     progressReportValues._progress = Lerp(_progressFields._min, _progressFields._max, progressReportValues._progress);

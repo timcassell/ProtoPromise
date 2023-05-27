@@ -349,14 +349,24 @@ namespace Proto.Promises
                     MaybeDispose(negativeDetachedCount);
                 }
 
-                internal override void MaybeReportProgress(PromiseRefBase reporter, double progress)
+                internal override bool TryReportProgress(PromiseRefBase reporter, double progress, int deferredId, ref DeferredIdAndProgress idAndProgress)
                 {
                     // Manually enter the lock so the next listener can enter its lock before unlocking this.
                     // This is necessary for race conditions so a progress report won't get ahead of another on a separate thread.
                     Monitor.Enter(_owner);
+
+                    // Another thread could have resolved and repooled this before this thread entered the lock,
+                    // so check to make sure the deferred is still valid.
+                    if (deferredId != idAndProgress._id)
+                    {
+                        Monitor.Exit(_owner);
+                        return false;
+                    }
+
                     var progressReportValues = new ProgressReportValues(null, reporter, _owner, progress);
                     MaybeReportProgressImpl(ref progressReportValues);
                     progressReportValues.ReportProgressToAllListeners();
+                    return true;
                 }
 
                 internal override void MaybeReportProgress(ref ProgressReportValues progressReportValues)
@@ -369,12 +379,12 @@ namespace Proto.Promises
                     {
                         // Just set the current progress. This will be scheduled for invoke higher in the call stack.
                         _progressFields._current = (float) progressReportValues._progress;
-                        Monitor.Exit(this);
+                        Monitor.Exit(_owner);
                         progressReportValues._progressListener = null;
                         return;
                     }
 
-                    progressReportValues._lockedObject = this;
+                    progressReportValues._lockedObject = _owner;
                     MaybeReportProgressImpl(ref progressReportValues);
                 }
 
