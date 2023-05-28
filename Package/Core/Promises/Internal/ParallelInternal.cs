@@ -34,36 +34,39 @@ namespace Proto.Promises
 #endif
         internal struct ForLoopEnumerator : IEnumerator<int>
         {
-            private int _currentForIterator;
-            private int _currentForIncrement;
+            private int _current;
             private readonly int _toIndex;
 
+            [MethodImpl(InlineOption)]
             internal ForLoopEnumerator(int fromIndex, int toIndex)
             {
-                _currentForIterator = 0;
-                _currentForIncrement = fromIndex;
+                _current = fromIndex;
                 _toIndex = toIndex;
             }
 
-            int IEnumerator<int>.Current { get { return _currentForIterator; } }
-
-            object IEnumerator.Current { get { return _currentForIterator; } }
-
-            bool IEnumerator.MoveNext()
+            public int Current
             {
-                // We have to check if it's already complete before incrementing to prevent overflow.
-                if (_currentForIncrement >= _toIndex)
+                [MethodImpl(InlineOption)]
+                get
                 {
-                    return false;
+                    unchecked
+                    {
+                        return _current++;
+                    }
                 }
-                _currentForIterator = _currentForIncrement;
-                unchecked
-                {
-                    ++_currentForIncrement;
-                }
-                return _currentForIterator < _toIndex;
             }
 
+            object IEnumerator.Current { get { return Current; } }
+
+            [MethodImpl(InlineOption)]
+            public bool MoveNext()
+            {
+                // We just check if the index can be incremented.
+                // We don't do the actual MoveNext until Current is called to avoid an extra branch.
+                return _current < _toIndex;
+            }
+
+            [MethodImpl(InlineOption)]
             void IDisposable.Dispose() { }
 
             void IEnumerator.Reset()
@@ -81,11 +84,13 @@ namespace Proto.Promises
         {
             private readonly Func<TSource, CancelationToken, Promise> _body;
 
+            [MethodImpl(InlineOption)]
             internal ParallelBody(Func<TSource, CancelationToken, Promise> body)
             {
                 _body = body;
             }
 
+            [MethodImpl(InlineOption)]
             Promise IParallelBody<TSource>.Invoke(TSource source, CancelationToken cancelationToken)
             {
                 return _body.Invoke(source, cancelationToken);
@@ -97,12 +102,14 @@ namespace Proto.Promises
             private readonly Func<TSource, TCapture, CancelationToken, Promise> _body;
             private readonly TCapture _capturedValue;
 
+            [MethodImpl(InlineOption)]
             internal ParallelCaptureBody(TCapture capturedValue, Func<TSource, TCapture, CancelationToken, Promise> body)
             {
                 _capturedValue = capturedValue;
                 _body = body;
             }
 
+            [MethodImpl(InlineOption)]
             Promise IParallelBody<TSource>.Invoke(TSource source, CancelationToken cancelationToken)
             {
                 return _body.Invoke(source, _capturedValue, cancelationToken);
@@ -160,7 +167,7 @@ namespace Proto.Promises
                 private int _remainingAvailableWorkers;
                 private int _waitCounter;
                 private List<Exception> _exceptions;
-                private bool _wasCanceled;
+                private Promise.State _completionState;
 
                 private PromiseParallelForEach() { }
 
@@ -179,9 +186,9 @@ namespace Proto.Promises
                     promise.Reset();
                     promise._result = enumerator;
                     promise._body = body;
-                    promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
+                    promise._synchronizationContext = synchronizationContext;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
-                    promise._wasCanceled = false;
+                    promise._completionState = Promise.State.Resolved;
                     promise._cancelationSource = CancelationSource.New();
                     cancelationToken.TryRegister(promise, out promise._externalCancelationRegistration);
                     return promise;
@@ -197,7 +204,7 @@ namespace Proto.Promises
 
                 public void Cancel()
                 {
-                    _wasCanceled = true;
+                    _completionState = Promise.State.Canceled;
                     _cancelationSource.TryCancel();
                 }
 
@@ -217,12 +224,10 @@ namespace Proto.Promises
                 private void ExecuteWorker(bool launchNext)
                 {
                     // We do it this way instead of using async/await with a loop, because old language versions do not support async/await.
-                    SetCurrentInvoker(this);
                     Promise.Resolved()
                         .Then(ValueTuple.Create(this, launchNext), cv => cv.Item1.WorkerBody(cv.Item2))
                         .ContinueWith(this, (_this, resultContainer) => _this.AfterWorkerBody(resultContainer))
                         .Forget();
-                    ClearCurrentInvoker();
                 }
 
                 private Promise WorkerBody(bool launchNext)
@@ -255,8 +260,21 @@ namespace Proto.Promises
                     // on creating workers (though it's possible one worker could be executing while we're creating the next).
                     MaybeLaunchWorker(launchNext);
 
-                    // Process the loop body.
-                    return _body.Invoke(element, _cancelationSource.Token);
+#if PROMISE_DEBUG
+                    // Overwrite the current invoker so the causality trace will show the `Promise.ParallelForEach` call.
+                    SetCurrentInvoker(this);
+                    try
+#endif
+                    {
+                        // Process the loop body.
+                        return _body.Invoke(element, _cancelationSource.Token);
+                    }
+#if PROMISE_DEBUG
+                    finally
+                    {
+                        ClearCurrentInvoker();
+                    }
+#endif
                 }
 
                 private void AfterWorkerBody(Promise.ResultContainer resultContainer)
@@ -334,7 +352,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            HandleNextInternal(null, _wasCanceled ? Promise.State.Canceled : Promise.State.Resolved);
+                            HandleNextInternal(null, _completionState);
                         }
                     }
                 }
