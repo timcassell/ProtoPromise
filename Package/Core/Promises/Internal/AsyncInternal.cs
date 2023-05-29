@@ -267,8 +267,10 @@ namespace Proto.Promises
 
                         private void ContinueMethod()
                         {
+#if PROMISE_DEBUG
                             SetCurrentInvoker(_owner);
                             try
+#endif
                             {
                                 if (_owner._fields._executionContext != null)
                                 {
@@ -279,10 +281,12 @@ namespace Proto.Promises
                                     _stateMachine.MoveNext();
                                 }
                             }
+#if PROMISE_DEBUG
                             finally
                             {
                                 ClearCurrentInvoker();
                             }
+#endif
                         }
                     }
                 }
