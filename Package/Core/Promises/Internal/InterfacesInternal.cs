@@ -38,8 +38,6 @@ namespace Proto.Promises
             }
 
             internal virtual void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
-            // This is overridden in PromiseConfigured and PromiseProgress.
-            internal virtual void HandleFromContext() { throw new System.InvalidOperationException(); }
             // For Merge/Race promises
             internal virtual void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index) { throw new System.InvalidOperationException(); }
 #if PROMISE_PROGRESS
@@ -54,7 +52,6 @@ namespace Proto.Promises
                 Monitor.Exit(progressReportValues._lockedObject);
                 progressReportValues._progressListener = null;
             }
-            internal virtual void InvokeProgressFromContext() { throw new System.InvalidOperationException(); }
             internal virtual void MaybeHookupProgressToAwaited(PromiseRefBase current, PromiseRefBase awaited,
                 // We pass by reference so that we will know the values will be settled once the lock is entered on the progress listener.
                 ref PromiseRefBase.ProgressRange userProgressRange, ref PromiseRefBase.ProgressRange listenerProgressRange)

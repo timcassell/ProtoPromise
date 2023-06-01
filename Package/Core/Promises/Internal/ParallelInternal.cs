@@ -186,7 +186,7 @@ namespace Proto.Promises
                     promise.Reset();
                     promise._result = enumerator;
                     promise._body = body;
-                    promise._synchronizationContext = synchronizationContext;
+                    promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
                     promise._completionState = Promise.State.Resolved;
                     promise._cancelationSource = CancelationSource.New();
@@ -215,9 +215,11 @@ namespace Proto.Promises
                         --_remainingAvailableWorkers;
                         // We add to the wait counter before we run the worker to resolve a race condition where the counter could hit zero prematurely.
                         InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, 1);
-                        // We run the worker on the synchronization context, and we force async so that it will not block the current thread.
-                        Promise.Run(this, _this => _this.ExecuteWorker(true), _synchronizationContext, forceAsync: true)
-                            .Forget();
+
+                        ScheduleContextCallback(_synchronizationContext, this,
+                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(true),
+                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(true)
+                        );
                     }
                 }
 
@@ -302,10 +304,11 @@ namespace Proto.Promises
                     else
                     {
                         // Run the worker body again, but without launching another worker.
-                        // We run it on the synchronization context and force async,
-                        // because this is a recursive call and we don't want to cause a StackOverflowException.
-                        Promise.Run(this, _this => _this.ExecuteWorker(false), _synchronizationContext, forceAsync: true)
-                            .Forget();
+                        // We run it on the synchronization context, because this is a recursive call and we don't want to cause a StackOverflowException.
+                        ScheduleContextCallback(_synchronizationContext, this,
+                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(false),
+                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(false)
+                        );
                     }
                 }
 

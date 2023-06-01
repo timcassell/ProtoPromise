@@ -44,41 +44,6 @@ namespace Proto.Promises
 
 #else // !PROMISE_PROGRESS
 
-        private static readonly SendOrPostCallback s_synchronizationContextProgressCallback = ProgressFromContext;
-        private static readonly WaitCallback s_threadPoolProgressCallback = ProgressFromContext;
-
-        private static void ScheduleForProgress(HandleablePromiseBase progressable, SynchronizationContext context)
-        {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            if (context == null)
-            {
-                throw new InvalidOperationException("context cannot be null");
-            }
-#endif
-            if (context == BackgroundSynchronizationContextSentinel.s_instance)
-            {
-                ThreadPool.QueueUserWorkItem(s_threadPoolProgressCallback, progressable);
-            }
-            else
-            {
-                context.Post(s_synchronizationContextProgressCallback, progressable);
-            }
-        }
-
-        private static void ProgressFromContext(object state)
-        {
-            // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
-            try
-            {
-                state.UnsafeAs<HandleablePromiseBase>().InvokeProgressFromContext();
-            }
-            catch (Exception e)
-            {
-                // This should never happen.
-                ReportRejection(e, state as ITraceable);
-            }
-        }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -793,7 +758,25 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void InvokeProgressFromContext()
+                private void MaybeScheduleProgress()
+                {
+                    if (!_isProgressScheduled)
+                    {
+                        ScheduleProgress();
+                    }
+                }
+
+                private void ScheduleProgress()
+                {
+                    _isProgressScheduled = true;
+                    InterlockedAddWithUnsignedOverflowCheck(ref _progressFields._retainCounter, 1);
+                    ScheduleContextCallback(_synchronizationContext, this,
+                        obj => obj.UnsafeAs<PromiseProgress<TResult, TProgress>>().InvokeProgressFromContext(),
+                        obj => obj.UnsafeAs<PromiseProgress<TResult, TProgress>>().InvokeProgressFromContext()
+                    );
+                }
+
+                private void InvokeProgressFromContext()
                 {
                     float min, max, t;
                     lock (this)
@@ -818,21 +801,6 @@ namespace Proto.Promises
                     MaybeDispose();
 
                     ts_currentContext = currentContext;
-                }
-
-                private void MaybeScheduleProgress()
-                {
-                    if (!_isProgressScheduled)
-                    {
-                        ScheduleProgress();
-                    }
-                }
-
-                private void ScheduleProgress()
-                {
-                    _isProgressScheduled = true;
-                    InterlockedAddWithUnsignedOverflowCheck(ref _progressFields._retainCounter, 1);
-                    ScheduleForProgress(this, _synchronizationContext);
                 }
 
                 internal override bool TryReportProgress(PromiseRefBase reporter, double progress, int deferredId, ref DeferredIdAndProgress idAndProgress)
@@ -925,17 +893,6 @@ namespace Proto.Promises
                     MaybeDispose();
                 }
 
-                internal override void HandleFromContext()
-                {
-                    ThrowIfInPool(this);
-                    var currentContext = ts_currentContext;
-                    ts_currentContext = _synchronizationContext;
-
-                    Invoke1(_previousState);
-
-                    ts_currentContext = currentContext;
-                }
-
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
                 {
                     ThrowIfInPool(this);
@@ -976,7 +933,26 @@ namespace Proto.Promises
                         return;
                     }
 
-                    ScheduleForHandle(this, _synchronizationContext);
+                    ScheduleCompletionOnContext();
+                }
+
+                internal void ScheduleCompletionOnContext()
+                {
+                    ScheduleContextCallback(_synchronizationContext, this,
+                        obj => obj.UnsafeAs<PromiseProgress<TResult, TProgress>>().HandleFromContext(),
+                        obj => obj.UnsafeAs<PromiseProgress<TResult, TProgress>>().HandleFromContext()
+                    );
+                }
+
+                private void HandleFromContext()
+                {
+                    ThrowIfInPool(this);
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
+
+                    Invoke1(_previousState);
+
+                    ts_currentContext = currentContext;
                 }
 
                 private void Invoke1(Promise.State state)

@@ -38,39 +38,55 @@ namespace Proto.Promises
         [ThreadStatic]
         internal static SynchronizationContext ts_currentContext;
 
-        private static readonly SendOrPostCallback s_synchronizationContextHandleCallback = HandleFromContext;
-        private static readonly WaitCallback s_threadPoolHandleCallback = HandleFromContext;
-
-        private static void ScheduleForHandle(HandleablePromiseBase handleable, SynchronizationContext context)
+        private static void ScheduleContextCallback(SynchronizationContext context, object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback)
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             if (context == null)
             {
                 throw new System.InvalidOperationException("context cannot be null");
             }
-#endif
             if (context == BackgroundSynchronizationContextSentinel.s_instance)
             {
-                ThreadPool.QueueUserWorkItem(s_threadPoolHandleCallback, handleable);
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
+                    try
+                    {
+                        threadpoolCallback.Invoke(state);
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never happen.
+                        ReportRejection(e, state as ITraceable);
+                    }
+                }, null);
             }
             else
             {
-                context.Post(s_synchronizationContextHandleCallback, handleable);
+                context.Post(_ =>
+                {
+                    // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
+                    try
+                    {
+                        contextCallback.Invoke(state);
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never happen.
+                        ReportRejection(e, state as ITraceable);
+                    }
+                }, null);
             }
-        }
-
-        private static void HandleFromContext(object state)
-        {
-            // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
-            try
+#else
+            if (context == BackgroundSynchronizationContextSentinel.s_instance)
             {
-                state.UnsafeAs<HandleablePromiseBase>().HandleFromContext();
+                ThreadPool.QueueUserWorkItem(threadpoolCallback, state);
             }
-            catch (Exception e)
+            else
             {
-                // This should never happen.
-                ReportRejection(e, state as ITraceable);
+                context.Post(contextCallback, state);
             }
+#endif
         }
 
         internal static IRejectContainer CreateRejectContainer(object reason, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)

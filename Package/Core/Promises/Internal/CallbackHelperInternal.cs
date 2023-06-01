@@ -1365,7 +1365,7 @@ namespace Proto.Promises
                                     return CreateResolved(_this.Depth);
                                 }
                                 promise = PromiseProgress<VoidResult, TProgress>.GetOrCreateFromResolved(progress, new VoidResult(), _this.Depth, synchronizationContext, forceAsync, cancelationToken);
-                                ScheduleForHandle(promise, synchronizationContext);
+                                promise.ScheduleCompletionOnContext();
                                 return new Promise(promise, promise.Id, _this.Depth);
                             }
                             break;
@@ -1441,7 +1441,7 @@ namespace Proto.Promises
                                     return CreateResolved(result, _this.Depth);
                                 }
                                 promise = PromiseProgress<TResult, TProgress>.GetOrCreateFromResolved(progress, result, _this.Depth, synchronizationContext, forceAsync, cancelationToken);
-                                ScheduleForHandle(promise, synchronizationContext);
+                                promise.ScheduleCompletionOnContext();
                                 return new Promise<TResult>(promise, promise.Id, _this.Depth);
                             }
                             break;
