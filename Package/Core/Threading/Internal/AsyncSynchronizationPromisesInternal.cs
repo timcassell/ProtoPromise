@@ -69,10 +69,13 @@ namespace Proto.Promises
                         return;
                     }
                     // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
-                    ScheduleForHandle(this, _callerContext);
+                    ScheduleContextCallback(_callerContext, this,
+                        obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext(),
+                        obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext()
+                    );
                 }
 
-                internal override sealed void HandleFromContext()
+                private void HandleFromContext()
                 {
                     HandleNextInternal(_tempRejectContainer, _tempState);
                 }

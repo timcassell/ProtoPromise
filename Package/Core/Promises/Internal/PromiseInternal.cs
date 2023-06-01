@@ -1115,17 +1115,39 @@ namespace Proto.Promises
 
                     var next = ReadNextWaiterAndMaybeSetCompleted();
                     // Leave pending until this is awaited.
-                    if (next != PendingAwaitSentinel.s_instance)
+                    if (next == PendingAwaitSentinel.s_instance)
                     {
-                        if (!ShouldContinueSynchronous())
-                        {
-                            ScheduleForHandle(this, _synchronizationContext);
-                            return;
-                        }
+                        return;
+                    }
 
+                    if (ShouldContinueSynchronous())
+                    {
                         TryUnregisterCancelationAndSetTempState();
                         HandleNext(next, rejectContainer, state);
+                        return;
                     }
+
+                    ScheduleContinuationOnContext();
+                }
+
+                private void ScheduleContinuationOnContext()
+                {
+                    ScheduleContextCallback(_synchronizationContext, this,
+                        obj => obj.UnsafeAs<PromiseConfigured<TResult>>().HandleFromContext(),
+                        obj => obj.UnsafeAs<PromiseConfigured<TResult>>().HandleFromContext()
+                    );
+                }
+
+                private void HandleFromContext()
+                {
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
+
+                    TryUnregisterCancelationAndSetTempState();
+                    // We don't need to synchronize access here because this is only called when the previous promise completed or the token canceled, and the waiter has already been added, so there are no race conditions.
+                    HandleNext(_next, _tempRejectContainer, _tempState);
+
+                    ts_currentContext = currentContext;
                 }
 
                 void ICancelable.Cancel()
@@ -1146,16 +1168,18 @@ namespace Proto.Promises
 
                     var next = ReadNextWaiterAndMaybeSetCompleted();
                     // Leave pending until this is awaited.
-                    if (next != PendingAwaitSentinel.s_instance)
+                    if (next == PendingAwaitSentinel.s_instance)
                     {
-                        if (!ShouldContinueSynchronous())
-                        {
-                            ScheduleForHandle(this, _synchronizationContext);
-                            return;
-                        }
-
-                        HandleNext(next, _tempRejectContainer, _tempState);
+                        return;
                     }
+
+                    if (ShouldContinueSynchronous())
+                    {
+                        HandleNext(next, _tempRejectContainer, _tempState);
+                        return;
+                    }
+
+                    ScheduleContinuationOnContext();
                 }
 
                 private void TryUnregisterCancelationAndSetTempState()
@@ -1174,18 +1198,6 @@ namespace Proto.Promises
                         _tempRejectContainer = null;
                         _tempState = Promise.State.Canceled;
                     }
-                }
-
-                internal override void HandleFromContext()
-                {
-                    var currentContext = ts_currentContext;
-                    ts_currentContext = _synchronizationContext;
-
-                    TryUnregisterCancelationAndSetTempState();
-                    // We don't need to synchronize access here because this is only called when the previous promise completed or the token canceled, and the waiter has already been added, so there are no race conditions.
-                    HandleNext(_next, _tempRejectContainer, _tempState);
-
-                    ts_currentContext = currentContext;
                 }
 
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
@@ -1228,7 +1240,7 @@ namespace Proto.Promises
                         return null;
                     }
 
-                    ScheduleForHandle(this, _synchronizationContext);
+                    ScheduleContinuationOnContext();
                     previousWaiter = PendingAwaitSentinel.s_instance;
                     return null; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
                 }
