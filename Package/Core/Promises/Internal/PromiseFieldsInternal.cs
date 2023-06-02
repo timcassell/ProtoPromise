@@ -230,6 +230,20 @@ namespace Proto.Promises
                 private bool _forceAsync;
             }
 
+            partial class RunPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
+                where TDelegate : IDelegateRun
+            {
+                private SynchronizationContext _synchronizationContext;
+                private TDelegate _runner;
+            }
+
+            partial class RunWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IDelegateRunPromise
+            {
+                private SynchronizationContext _synchronizationContext;
+                private TDelegate _runner;
+            }
+
             partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
             {
                 internal ValueList<HandleablePromiseBase> _nextBranches = new ValueList<HandleablePromiseBase>(8);

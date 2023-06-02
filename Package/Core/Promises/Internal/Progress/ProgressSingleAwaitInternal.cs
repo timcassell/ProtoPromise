@@ -132,6 +132,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                new protected void Reset()
+                {
+                    base.Reset();
+                    _waitState = WaitState.First;
+                }
+
+                [MethodImpl(InlineOption)]
                 partial void SetSecondPreviousAndMaybeHookupProgress(PromiseRefBase secondPrevious, PromiseRefBase handler)
                 {
                     SetSecondPrevious(secondPrevious, handler);
