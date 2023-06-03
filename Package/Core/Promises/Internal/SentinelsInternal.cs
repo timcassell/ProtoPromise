@@ -159,10 +159,13 @@ namespace Proto.Promises
 
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
                 {
-                    // Set the previous waiter to pending await sentinel so the caller will do nothing.
-                    previousWaiter = PendingAwaitSentinel.s_instance;
-                    // Immediately handle the waiter.
-                    waiter.Handle(this, null, Promise.State.Canceled);
+                    // The id is unlikely to not match, but check just in case the Promise struct was torn.
+                    if (promiseId != Id)
+                    {
+                        previousWaiter = InvalidAwaitSentinel.s_instance;
+                        return InvalidAwaitSentinel.s_instance;
+                    }
+                    previousWaiter = PromiseCompletionSentinel.s_instance;
                     return null;
                 }
 

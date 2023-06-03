@@ -143,6 +143,7 @@ namespace Proto.Promises
                 {
                     SetSecondPrevious(secondPrevious, handler);
                     var listenerProgressRange = new ProgressRange(0f, 1f);
+                    Thread.MemoryBarrier(); // Prevent writes from moving after the read.
                     _next.MaybeHookupProgressToAwaited(this, secondPrevious, ref _progressRange, ref listenerProgressRange);
                 }
 
