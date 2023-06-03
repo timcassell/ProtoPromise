@@ -95,6 +95,16 @@ namespace Proto.Promises
                 void Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, PromiseRefBase owner);
                 bool IsNull { get; }
             }
+
+            internal interface IDelegateRun
+            {
+                void Invoke(PromiseRefBase owner);
+            }
+
+            internal interface IDelegateRunPromise
+            {
+                void Invoke(PromiseRefBase owner);
+            }
         }
     }
 }

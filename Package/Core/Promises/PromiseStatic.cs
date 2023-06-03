@@ -348,8 +348,7 @@ namespace Proto.Promises
         {
             ValidateArgument(action, "action", 1);
 
-            return SwitchToContext(synchronizationOption, forceAsync)
-                .Finally(action);
+            return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(action), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -364,8 +363,7 @@ namespace Proto.Promises
         {
             ValidateArgument(action, "action", 1);
 
-            return SwitchToContext(synchronizationOption, forceAsync)
-                .Finally(captureValue, action);
+            return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -379,8 +377,7 @@ namespace Proto.Promises
         {
             ValidateArgument(action, "action", 1);
 
-            return SwitchToContext(synchronizationContext, forceAsync)
-                .Finally(action);
+            return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(action), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         /// <summary>
@@ -395,8 +392,7 @@ namespace Proto.Promises
         {
             ValidateArgument(action, "action", 1);
 
-            return SwitchToContext(synchronizationContext, forceAsync)
-                .Finally(captureValue, action);
+            return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         /// <summary>
@@ -410,8 +406,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            return SwitchToContext(synchronizationOption, forceAsync)
-                .Then(function);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -426,8 +421,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            return SwitchToContext(synchronizationOption, forceAsync)
-                .Then(captureValue, function);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -441,8 +435,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            return SwitchToContext(synchronizationContext, forceAsync)
-                .Then(function);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         /// <summary>
@@ -457,8 +450,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            return SwitchToContext(synchronizationContext, forceAsync)
-                .Then(captureValue, function);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         /// <summary>
@@ -472,10 +464,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            Promise promise = SwitchToContext(synchronizationOption, forceAsync);
-            // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
-                .Then(function);
+            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -490,10 +479,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            Promise promise = SwitchToContext(synchronizationOption, forceAsync);
-            // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
-                .Then(captureValue, function);
+            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -507,10 +493,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            Promise promise = SwitchToContext(synchronizationContext, forceAsync);
-            // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
-                .Then(function);
+            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         /// <summary>
@@ -525,10 +508,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            Promise promise = SwitchToContext(synchronizationContext, forceAsync);
-            // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
-                .Then(captureValue, function);
+            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         /// <summary>
@@ -542,10 +522,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            Promise promise = SwitchToContext(synchronizationOption, forceAsync);
-            // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
-                .Then(function);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -560,10 +537,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            Promise promise = SwitchToContext(synchronizationOption, forceAsync);
-            // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
-                .Then(captureValue, function);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -577,10 +551,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            Promise promise = SwitchToContext(synchronizationContext, forceAsync);
-            // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
-                .Then(function);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         /// <summary>
@@ -595,10 +566,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, "function", 1);
 
-            Promise promise = SwitchToContext(synchronizationContext, forceAsync);
-            // Depth -1 to properly normalize the progress from the returned promise.
-            return new Promise(promise._ref, promise._id, Internal.NegativeOneDepth)
-                .Then(captureValue, function);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         /// <summary>

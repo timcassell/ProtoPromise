@@ -387,7 +387,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateVoidVoid : IAction, IFunc<Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
+            internal struct DelegateVoidVoid : IAction, IFunc<Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise, IDelegateRun
             {
                 private readonly Action _callback;
 
@@ -444,12 +444,19 @@ namespace Proto.Promises
                     Invoke();
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateRun.Invoke(PromiseRefBase owner)
+                {
+                    Invoke();
+                    owner.HandleNextInternal(null, Promise.State.Resolved);
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateVoidResult<TResult> : IFunc<TResult>, IFunc<Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
+            internal struct DelegateVoidResult<TResult> : IFunc<TResult>, IFunc<Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise, IDelegateRun
             {
                 private readonly Func<TResult> _callback;
 
@@ -505,6 +512,14 @@ namespace Proto.Promises
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, object rejectContainer, PromiseRefBase owner)
                 {
                     handler.MaybeDispose();
+                    TResult result = Invoke();
+                    owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
+                    owner.HandleNextInternal(null, Promise.State.Resolved);
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateRun.Invoke(PromiseRefBase owner)
+                {
                     TResult result = Invoke();
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
@@ -668,7 +683,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegatePromiseVoidVoid : IFunc<Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
+            internal struct DelegatePromiseVoidVoid : IFunc<Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRunPromise
             {
                 private readonly Func<Promise> _callback;
 
@@ -704,12 +719,19 @@ namespace Proto.Promises
                     Promise result = Invoke();
                     owner.WaitFor(result, handler);
                 }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateRunPromise.Invoke(PromiseRefBase owner)
+                {
+                    Promise result = Invoke();
+                    owner.WaitFor(result, null);
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegatePromiseVoidResult<TResult> : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
+            internal struct DelegatePromiseVoidResult<TResult> : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRunPromise
             {
                 private readonly Func<Promise<TResult>> _callback;
 
@@ -744,6 +766,13 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke();
                     owner.WaitFor(result, handler);
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateRunPromise.Invoke(PromiseRefBase owner)
+                {
+                    Promise<TResult> result = Invoke();
+                    owner.WaitFor(result, null);
                 }
             }
 
@@ -1227,7 +1256,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCaptureVoidVoid<TCapture> : IAction, IFunc<Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
+            internal struct DelegateCaptureVoidVoid<TCapture> : IAction, IFunc<Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise, IDelegateRun
             {
                 private readonly Action<TCapture> _callback;
                 private readonly TCapture _capturedValue;
@@ -1290,12 +1319,19 @@ namespace Proto.Promises
                     Invoke();
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                 }
+                
+                [MethodImpl(InlineOption)]
+                void IDelegateRun.Invoke(PromiseRefBase owner)
+                {
+                    Invoke();
+                    owner.HandleNextInternal(null, Promise.State.Resolved);
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCaptureVoidResult<TCapture, TResult> : IFunc<TResult>, IFunc<Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
+            internal struct DelegateCaptureVoidResult<TCapture, TResult> : IFunc<TResult>, IFunc<Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise, IDelegateRun
             {
                 private readonly Func<TCapture, TResult> _callback;
                 private readonly TCapture _capturedValue;
@@ -1357,6 +1393,14 @@ namespace Proto.Promises
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, object rejectContainer, PromiseRefBase owner)
                 {
                     handler.MaybeDispose();
+                    TResult result = Invoke();
+                    owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
+                    owner.HandleNextInternal(null, Promise.State.Resolved);
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateRun.Invoke(PromiseRefBase owner)
+                {
                     TResult result = Invoke();
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(null, Promise.State.Resolved);
@@ -1532,7 +1576,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCapturePromiseVoidVoid<TCapture> : IFunc<Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
+            internal struct DelegateCapturePromiseVoidVoid<TCapture> : IFunc<Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRunPromise
             {
                 private readonly Func<TCapture, Promise> _callback;
                 private readonly TCapture _capturedValue;
@@ -1574,12 +1618,19 @@ namespace Proto.Promises
                     Promise result = Invoke();
                     owner.WaitFor(result, handler);
                 }
+                
+                [MethodImpl(InlineOption)]
+                void IDelegateRunPromise.Invoke(PromiseRefBase owner)
+                {
+                    Promise result = Invoke();
+                    owner.WaitFor(result, null);
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCapturePromiseVoidResult<TCapture, TResult> : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
+            internal struct DelegateCapturePromiseVoidResult<TCapture, TResult> : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRunPromise
             {
                 private readonly Func<TCapture, Promise<TResult>> _callback;
                 private readonly TCapture _capturedValue;
@@ -1620,6 +1671,13 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke();
                     owner.WaitFor(result, handler);
+                }
+                
+                [MethodImpl(InlineOption)]
+                void IDelegateRunPromise.Invoke(PromiseRefBase owner)
+                {
+                    Promise<TResult> result = Invoke();
+                    owner.WaitFor(result, null);
                 }
             }
 

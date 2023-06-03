@@ -1140,6 +1140,8 @@ namespace Proto.Promises
 
                 private void HandleFromContext()
                 {
+                    ThrowIfInPool(this);
+
                     var currentContext = ts_currentContext;
                     ts_currentContext = _synchronizationContext;
 
@@ -1259,6 +1261,157 @@ namespace Proto.Promises
                         return true;
                     }
                     return false;
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed partial class RunPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
+                where TDelegate : IDelegateRun
+            {
+                private RunPromise() { }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                [MethodImpl(InlineOption)]
+                private static RunPromise<TResult, TDelegate> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<RunPromise<TResult, TDelegate>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new RunPromise<TResult, TDelegate>()
+                        : obj.UnsafeAs<RunPromise<TResult, TDelegate>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static RunPromise<TResult, TDelegate> GetOrCreate(TDelegate runner)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._runner = runner;
+                    return promise;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void ScheduleOnContext(SynchronizationContext context)
+                {
+                    _synchronizationContext = context;
+                    ScheduleContextCallback(context, this,
+                        obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run(),
+                        obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run()
+                    );
+                }
+
+                private void Run()
+                {
+                    ThrowIfInPool(this);
+
+                    var runner = _runner;
+                    _runner = default(TDelegate);
+
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
+                    _synchronizationContext = null;
+
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        runner.Invoke(this);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        HandleNextInternal(null, Promise.State.Canceled);
+                    }
+                    catch (Exception e)
+                    {
+                        var rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        HandleNextInternal(rejectContainer, Promise.State.Rejected);
+                    }
+                    ClearCurrentInvoker();
+                    ts_currentContext = currentContext;
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed partial class RunWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IDelegateRunPromise
+            {
+                private RunWaitPromise() { }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                [MethodImpl(InlineOption)]
+                private static RunWaitPromise<TResult, TDelegate> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<RunWaitPromise<TResult, TDelegate>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new RunWaitPromise<TResult, TDelegate>()
+                        : obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static RunWaitPromise<TResult, TDelegate> GetOrCreate(TDelegate runner)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._runner = runner;
+                    return promise;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void ScheduleOnContext(SynchronizationContext context)
+                {
+                    _synchronizationContext = context;
+                    ScheduleContextCallback(context, this,
+                        obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run(),
+                        obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run()
+                    );
+                }
+
+                private void Run()
+                {
+                    ThrowIfInPool(this);
+
+                    var runner = _runner;
+                    _runner = default(TDelegate);
+
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
+                    _synchronizationContext = null;
+
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        runner.Invoke(this);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        HandleNextInternal(null, Promise.State.Canceled);
+                    }
+                    catch (Exception e)
+                    {
+                        var rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        HandleNextInternal(rejectContainer, Promise.State.Rejected);
+                    }
+                    ClearCurrentInvoker();
+                    ts_currentContext = currentContext;
+                }
+
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                {
+                    // The returned promise is handling this.
+                    handler.SetCompletionState(rejectContainer, state);
+                    HandleSelf(handler, rejectContainer, state);
                 }
             }
 
