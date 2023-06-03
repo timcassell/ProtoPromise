@@ -287,6 +287,13 @@ namespace Proto.Promises
             {
             }
 
+            partial class DeferredNewPromise<TResult, TDelegate> : DeferredPromise<TResult>
+                where TDelegate : IDelegateNew<TResult>
+            {
+                private SynchronizationContext _synchronizationContext;
+                private TDelegate _runner;
+            }
+
             partial class PromiseResolve<TResult, TResolver> : PromiseSingleAwait<TResult>
                 where TResolver : IDelegateResolveOrCancel
             {

@@ -797,25 +797,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, "resolver", 1);
 
-            Deferred deferred = Deferred.New();
-            Promise.Run(ValueTuple.Create(deferred, resolver), cv =>
-            {
-                Deferred def = cv.Item1;
-                try
-                {
-                    cv.Item2.Invoke(def);
-                }
-                catch (OperationCanceledException)
-                {
-                    def.TryCancel(); // Don't rethrow cancelation.
-                }
-                catch (Exception e)
-                {
-                    if (!def.TryReject(e)) throw;
-                }
-            }, synchronizationOption, forceAsync)
-                .Forget();
-            return deferred.Promise;
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<T>(resolver), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -832,25 +814,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, "resolver", 1);
 
-            Deferred deferred = Deferred.New();
-            Promise.Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
-            {
-                Deferred def = cv.Item1;
-                try
-                {
-                    cv.Item2.Invoke(cv.Item3, def);
-                }
-                catch (OperationCanceledException)
-                {
-                    def.TryCancel(); // Don't rethrow cancelation.
-                }
-                catch (Exception e)
-                {
-                    if (!def.TryReject(e)) throw;
-                }
-            }, synchronizationOption, forceAsync)
-                .Forget();
-            return deferred.Promise;
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<TCapture, T>(captureValue, resolver), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -865,25 +829,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, "resolver", 1);
 
-            Deferred deferred = Deferred.New();
-            Promise.Run(ValueTuple.Create(deferred, resolver), cv =>
-            {
-                Deferred def = cv.Item1;
-                try
-                {
-                    cv.Item2.Invoke(def);
-                }
-                catch (OperationCanceledException)
-                {
-                    def.TryCancel(); // Don't rethrow cancelation.
-                }
-                catch (Exception e)
-                {
-                    if (!def.TryReject(e)) throw;
-                }
-            }, synchronizationContext, forceAsync)
-                .Forget();
-            return deferred.Promise;
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<T>(resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         /// <summary>
@@ -899,25 +845,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, "resolver", 1);
 
-            Deferred deferred = Deferred.New();
-            Promise.Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
-            {
-                Deferred def = cv.Item1;
-                try
-                {
-                    cv.Item2.Invoke(cv.Item3, def);
-                }
-                catch (OperationCanceledException)
-                {
-                    def.TryCancel(); // Don't rethrow cancelation.
-                }
-                catch (Exception e)
-                {
-                    if (!def.TryReject(e)) throw;
-                }
-            }, synchronizationContext, forceAsync)
-                .Forget();
-            return deferred.Promise;
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<TCapture, T>(captureValue, resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         /// <summary>
