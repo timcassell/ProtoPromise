@@ -96,6 +96,11 @@ namespace Proto.Promises
                 bool IsNull { get; }
             }
 
+            internal interface IDelegateNew<TResult>
+            {
+                void Invoke(DeferredPromise<TResult> owner);
+            }
+
             internal interface IDelegateRun
             {
                 void Invoke(PromiseRefBase owner);

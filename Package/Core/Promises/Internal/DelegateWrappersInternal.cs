@@ -291,6 +291,38 @@ namespace Proto.Promises
                 {
                     return new DelegateContinuePromiseCaptureArgResult<TCapture, TArg, TResult>(capturedValue, callback);
                 }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateNewPromiseVoid Create(Action<Promise.Deferred> callback)
+                {
+                    return new DelegateNewPromiseVoid(callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateNewPromiseResult<TResult> Create<TResult>(Action<Promise<TResult>.Deferred> callback)
+                {
+                    return new DelegateNewPromiseResult<TResult>(callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateNewPromiseCaptureVoid<TCapture> Create<TCapture>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Action<TCapture, Promise.Deferred> callback)
+                {
+                    return new DelegateNewPromiseCaptureVoid<TCapture>(capturedValue, callback);
+                }
+
+                [MethodImpl(InlineOption)]
+                public static DelegateNewPromiseCaptureResult<TCapture, TResult> Create<TCapture, TResult>(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Action<TCapture, Promise<TResult>.Deferred> callback)
+                {
+                    return new DelegateNewPromiseCaptureResult<TCapture, TResult>(capturedValue, callback);
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -383,6 +415,46 @@ namespace Proto.Promises
             }
 
             #region Regular Delegates
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal struct DelegateNewPromiseVoid : IDelegateNew<VoidResult>
+            {
+                private readonly Action<Promise.Deferred> _callback;
+
+                [MethodImpl(InlineOption)]
+                public DelegateNewPromiseVoid(Action<Promise.Deferred> callback)
+                {
+                    _callback = callback;
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateNew<VoidResult>.Invoke(DeferredPromise<VoidResult> owner)
+                {
+                    _callback.Invoke(new Promise.Deferred(owner, owner.Id, owner.DeferredId));
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal struct DelegateNewPromiseResult<TResult> : IDelegateNew<TResult>
+            {
+                private readonly Action<Promise<TResult>.Deferred> _callback;
+
+                [MethodImpl(InlineOption)]
+                public DelegateNewPromiseResult(Action<Promise<TResult>.Deferred> callback)
+                {
+                    _callback = callback;
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateNew<TResult>.Invoke(DeferredPromise<TResult> owner)
+                {
+                    _callback.Invoke(new Promise<TResult>.Deferred(owner, owner.Id, owner.DeferredId));
+                }
+            }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1252,6 +1324,58 @@ namespace Proto.Promises
             #endregion
 
             #region Delegates with capture value
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal struct DelegateNewPromiseCaptureVoid<TCapture> : IDelegateNew<VoidResult>
+            {
+                private readonly Action<TCapture, Promise.Deferred> _callback;
+                private readonly TCapture _capturedValue;
+
+                [MethodImpl(InlineOption)]
+                public DelegateNewPromiseCaptureVoid(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Action<TCapture, Promise.Deferred> callback)
+                {
+                    _callback = callback;
+                    _capturedValue = capturedValue;
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateNew<VoidResult>.Invoke(DeferredPromise<VoidResult> owner)
+                {
+                    _callback.Invoke(_capturedValue, new Promise.Deferred(owner, owner.Id, owner.DeferredId));
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal struct DelegateNewPromiseCaptureResult<TCapture, TResult> : IDelegateNew<TResult>
+            {
+                private readonly Action<TCapture, Promise<TResult>.Deferred> _callback;
+                private readonly TCapture _capturedValue;
+
+                [MethodImpl(InlineOption)]
+                public DelegateNewPromiseCaptureResult(
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TCapture capturedValue, Action<TCapture, Promise<TResult>.Deferred> callback)
+                {
+                    _callback = callback;
+                    _capturedValue = capturedValue;
+                }
+
+                [MethodImpl(InlineOption)]
+                void IDelegateNew<TResult>.Invoke(DeferredPromise<TResult> owner)
+                {
+                    _callback.Invoke(_capturedValue, new Promise<TResult>.Deferred(owner, owner.Id, owner.DeferredId));
+                }
+            }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]

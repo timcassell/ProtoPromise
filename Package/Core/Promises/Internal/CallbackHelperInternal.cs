@@ -324,6 +324,15 @@ namespace Proto.Promises
                     }
                 }
 
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> New<TDelegate>(TDelegate runner, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext, bool forceAsync)
+                    where TDelegate : IDelegateNew<TResult>
+                {
+                    var promise = DeferredNewPromise<TResult, TDelegate>.GetOrCreate(runner);
+                    promise.RunOrScheduleOnContext(invokeOption, synchronizationContext, forceAsync);
+                    return new Promise<TResult>(promise, promise.Id, 0);
+                }
+
                 internal static Promise<TResult> Run<TDelegate>(TDelegate runner, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext, bool forceAsync)
                     where TDelegate : IFunc<TResult>, IDelegateRun
                 {
@@ -1165,6 +1174,15 @@ namespace Proto.Promises
                         _this._ref.HookupCancelablePromise(promise, _this._id, cancelationToken, ref promise._cancelationHelper);
                     }
                     return new Promise<TResult>(promise, promise.Id, _this.Depth, _this._result);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise New<TDelegate>(TDelegate runner, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext, bool forceAsync)
+                    where TDelegate : IDelegateNew<VoidResult>
+                {
+                    var promise = DeferredNewPromise<VoidResult, TDelegate>.GetOrCreate(runner);
+                    promise.RunOrScheduleOnContext(invokeOption, synchronizationContext, forceAsync);
+                    return new Promise(promise, promise.Id, 0);
                 }
 
                 internal static Promise Run<TDelegate>(TDelegate runner, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext, bool forceAsync)

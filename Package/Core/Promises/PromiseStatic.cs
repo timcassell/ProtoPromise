@@ -190,25 +190,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, "resolver", 1);
 
-            Deferred deferred = Deferred.New();
-            Run(ValueTuple.Create(deferred, resolver), cv =>
-            {
-                Deferred def = cv.Item1;
-                try
-                {
-                    cv.Item2.Invoke(def);
-                }
-                catch (OperationCanceledException)
-                {
-                    def.TryCancel(); // Don't rethrow cancelation.
-                }
-                catch (Exception e)
-                {
-                    if (!def.TryReject(e)) throw;
-                }
-            }, synchronizationOption, forceAsync)
-                .Forget();
-            return deferred.Promise;
+            return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(resolver), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -223,25 +205,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, "resolver", 1);
 
-            Deferred deferred = Deferred.New();
-            Run(ValueTuple.Create(deferred, resolver), cv =>
-            {
-                Deferred def = cv.Item1;
-                try
-                {
-                    cv.Item2.Invoke(def);
-                }
-                catch (OperationCanceledException)
-                {
-                    def.TryCancel(); // Don't rethrow cancelation.
-                }
-                catch (Exception e)
-                {
-                    if (!def.TryReject(e)) throw;
-                }
-            }, synchronizationContext, forceAsync)
-                .Forget();
-            return deferred.Promise;
+            return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         [Obsolete("Prefer Promise<T>.New()"), EditorBrowsable(EditorBrowsableState.Never)]
@@ -270,25 +234,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, "resolver", 1);
 
-            Deferred deferred = Deferred.New();
-            Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
-            {
-                Deferred def = cv.Item1;
-                try
-                {
-                    cv.Item2.Invoke(cv.Item3, def);
-                }
-                catch (OperationCanceledException)
-                {
-                    def.TryCancel(); // Don't rethrow cancelation.
-                }
-                catch (Exception e)
-                {
-                    if (!def.TryReject(e)) throw;
-                }
-            }, synchronizationOption, forceAsync)
-                .Forget();
-            return deferred.Promise;
+            return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, resolver), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
 
         /// <summary>
@@ -304,25 +250,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, "resolver", 1);
 
-            Deferred deferred = Deferred.New();
-            Run(ValueTuple.Create(deferred, resolver, captureValue), cv =>
-            {
-                Deferred def = cv.Item1;
-                try
-                {
-                    cv.Item2.Invoke(cv.Item3, def);
-                }
-                catch (OperationCanceledException)
-                {
-                    def.TryCancel(); // Don't rethrow cancelation.
-                }
-                catch (Exception e)
-                {
-                    if (!def.TryReject(e)) throw;
-                }
-            }, synchronizationContext, forceAsync)
-                .Forget();
-            return deferred.Promise;
+            return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
         [Obsolete("Prefer Promise<T>.New()"), EditorBrowsable(EditorBrowsableState.Never)]

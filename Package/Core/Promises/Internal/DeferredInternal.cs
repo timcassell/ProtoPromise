@@ -253,6 +253,130 @@ namespace Proto.Promises
                     CancelDirect();
                 }
             }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed partial class DeferredNewPromise<TResult, TDelegate> : DeferredPromise<TResult>
+                where TDelegate : IDelegateNew<TResult>
+            {
+                private DeferredNewPromise() { }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                [MethodImpl(InlineOption)]
+                new private static DeferredNewPromise<TResult, TDelegate> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<DeferredNewPromise<TResult, TDelegate>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new DeferredNewPromise<TResult, TDelegate>()
+                        : obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static DeferredNewPromise<TResult, TDelegate> GetOrCreate(TDelegate runner)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._runner = runner;
+                    return promise;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void RunOrScheduleOnContext(SynchronizationOption invokeOption, SynchronizationContext context, bool forceAsync)
+                {
+                    switch (invokeOption)
+                    {
+                        case SynchronizationOption.Synchronous:
+                        {
+                            Run();
+                            return;
+                        }
+                        case SynchronizationOption.Foreground:
+                        {
+                            context = Promise.Config.ForegroundContext;
+                            if (context == null)
+                            {
+                                throw new InvalidOperationException(
+                                    "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
+                                    "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
+                                    GetFormattedStacktrace(2));
+                            }
+                            break;
+                        }
+                        case SynchronizationOption.Background:
+                        {
+                            context = Promise.Config.BackgroundContext;
+                            goto default;
+                        }
+                        default: // SynchronizationOption.Explicit
+                        {
+                            if (context == null)
+                            {
+                                context = BackgroundSynchronizationContextSentinel.s_instance;
+                            }
+                            break;
+                        }
+                    }
+
+                    if (!forceAsync & context == ts_currentContext)
+                    {
+                        Run();
+                        return;
+                    }
+
+                    _synchronizationContext = context;
+                    ScheduleContextCallback(context, this,
+                        obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run(),
+                        obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run()
+                    );
+                }
+
+                private void Run()
+                {
+                    ThrowIfInPool(this);
+
+                    var deferredId = DeferredId;
+                    var runner = _runner;
+                    _runner = default(TDelegate);
+
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
+                    _synchronizationContext = null;
+
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        runner.Invoke(this);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Don't do anything if the deferred was already completed.
+                        if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                        {
+                            CancelDirect();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                        {
+                            RejectDirect(Internal.CreateRejectContainer(e, int.MinValue, null, this));
+                        }
+                        else
+                        {
+                            // If the deferred was already completed, report the exception as unhandled.
+                            ReportRejection(e, this);
+                        }
+                    }
+                    ClearCurrentInvoker();
+                    ts_currentContext = currentContext;
+                }
+            }
         } // class PromiseRef
     } // class Internal
 } // namespace Proto.Promises
