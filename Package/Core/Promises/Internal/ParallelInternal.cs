@@ -162,7 +162,8 @@ namespace Proto.Promises
             {
                 private TParallelBody _body;
                 private CancelationRegistration _externalCancelationRegistration;
-                private CancelationSource _cancelationSource;
+                // Use the CancelationRef directly instead of CancelationSource struct to save memory.
+                private Internal.CancelationRef _cancelationRef;
                 private SynchronizationContext _synchronizationContext;
                 private int _remainingAvailableWorkers;
                 private int _waitCounter;
@@ -189,7 +190,7 @@ namespace Proto.Promises
                     promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
                     promise._completionState = Promise.State.Resolved;
-                    promise._cancelationSource = CancelationSource.New();
+                    promise._cancelationRef = CancelationRef.GetOrCreate();
                     cancelationToken.TryRegister(promise, out promise._externalCancelationRegistration);
                     return promise;
                 }
@@ -205,7 +206,7 @@ namespace Proto.Promises
                 public void Cancel()
                 {
                     _completionState = Promise.State.Canceled;
-                    _cancelationSource.TryCancel();
+                    _cancelationRef.Cancel();
                 }
 
                 internal void MaybeLaunchWorker(bool launchWorker)
@@ -225,96 +226,113 @@ namespace Proto.Promises
 
                 private void ExecuteWorker(bool launchNext)
                 {
-                    // We do it this way instead of using async/await with a loop, because old language versions do not support async/await.
-                    Promise.Resolved()
-                        .Then(ValueTuple.Create(this, launchNext), cv => cv.Item1.WorkerBody(cv.Item2))
-                        .ContinueWith(this, (_this, resultContainer) => _this.AfterWorkerBody(resultContainer))
-                        .Forget();
-                }
-
-                private Promise WorkerBody(bool launchNext)
-                {
-                    // The worker body. Each worker will execute this same body.
-                    if (_cancelationSource.IsCancelationRequested)
-                    {
-                        return Promise.Resolved();
-                    }
-
-                    // Get the next element from the enumerator. This requires locking around MoveNext/Current.
-                    TSource element;
-                    lock (this)
-                    {
-                        if (!_result.MoveNext())
-                        {
-                            // We cancel the source to notify completion, and return resolved instead of canceled
-                            // so that the ultimate promise will be resolved instead of canceled.
-                            _cancelationSource.TryCancel();
-                            return Promise.Resolved();
-                        }
-
-                        element = _result.Current;
-                    }
-
-                    // If the available workers allows it and we've not yet queued the next worker, do so now.  We wait
-                    // until after we've grabbed an item from the enumerator to a) avoid unnecessary contention on the
-                    // serialized resource, and b) avoid queueing another work if there aren't any more items.  Each worker
-                    // is responsible only for creating the next worker, which in turn means there can't be any contention
-                    // on creating workers (though it's possible one worker could be executing while we're creating the next).
-                    MaybeLaunchWorker(launchNext);
-
-#if PROMISE_DEBUG
-                    // Overwrite the current invoker so the causality trace will show the `Promise.ParallelForEach` call.
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
+                    
                     SetCurrentInvoker(this);
                     try
-#endif
                     {
-                        // Process the loop body.
-                        return _body.Invoke(element, _cancelationSource.Token);
+                        WorkerBody(launchNext);
                     }
-#if PROMISE_DEBUG
-                    finally
-                    {
-                        ClearCurrentInvoker();
-                    }
-#endif
-                }
-
-                private void AfterWorkerBody(Promise.ResultContainer resultContainer)
-                {
-                    var state = resultContainer.State;
-                    bool isWorkerComplete = state != Promise.State.Resolved | _cancelationSource.IsCancelationRequested;
-                    if (state == Promise.State.Rejected)
-                    {
-                        // Record the failure and then don't let the exception propagate.  The last worker to complete
-                        // will propagate exceptions as is appropriate to the top-level promise.
-                        Exception e = resultContainer.RejectReason as Exception
-                            // If the reason was not an exception, get the reason wrapped in an exception.
-                            ?? resultContainer._target._rejectContainer.UnsafeAs<IRejectContainer>().GetExceptionDispatchInfo().SourceException;
-                        RecordException(e);
-                    }
-                    else if (state == Promise.State.Canceled)
+                    catch (OperationCanceledException)
                     {
                         Cancel();
-                    }
-
-                    if (isWorkerComplete)
-                    {
                         MaybeComplete();
                     }
-                    else
+                    catch (Exception e)
                     {
-                        // Run the worker body again, but without launching another worker.
-                        // We run it on the synchronization context, because this is a recursive call and we don't want to cause a StackOverflowException.
+                        // Record the failure and then don't let the exception propagate. The last worker to complete
+                        // will propagate exceptions as is appropriate to the top-level promise.
+                        RecordException(e);
+                        MaybeComplete();
+                    }
+                    ClearCurrentInvoker();
+
+                    ts_currentContext = currentContext;
+                }
+
+                private void WorkerBody(bool launchNext)
+                {
+                    // The worker body. Each worker will execute this same body.
+                    while (true)
+                    {
+                        if (_cancelationRef._state >= CancelationRef.State.Canceled)
+                        {
+                            MaybeComplete();
+                            return;
+                        }
+
+                        // Get the next element from the enumerator. This requires locking around MoveNext/Current.
+                        TSource element;
+                        lock (this)
+                        {
+                            if (!_result.MoveNext())
+                            {
+                                // We cancel the source to notify completion.
+                                _cancelationRef.Cancel();
+                                MaybeComplete();
+                                return;
+                            }
+
+                            element = _result.Current;
+                        }
+
+                        // If the available workers allows it and we've not yet queued the next worker, do so now.  We wait
+                        // until after we've grabbed an item from the enumerator to a) avoid unnecessary contention on the
+                        // serialized resource, and b) avoid queueing another work if there aren't any more items.  Each worker
+                        // is responsible only for creating the next worker, which in turn means there can't be any contention
+                        // on creating workers (though it's possible one worker could be executing while we're creating the next).
+                        MaybeLaunchWorker(launchNext);
+
+                        // Process the loop body.
+                        var promise = _body.Invoke(element, new CancelationToken(_cancelationRef, _cancelationRef.TokenId));
+                        ValidateReturn(promise);
+
+                        if (promise._ref != null)
+                        {
+                            // The promise may still be pending, hook this up to rerun the loop when it completes.
+                            promise._ref.HookupExistingWaiter(promise._id, this);
+                            return;
+                        }
+
+                        // The promise was already complete successfully. Rerun the loop synchronously without launching another worker.
+                        launchNext = false;
+                    }
+                }
+
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                {
+                    handler.SetCompletionState(rejectContainer, state);
+                    handler.MaybeDispose();
+
+                    if (state == Promise.State.Resolved)
+                    {
+                        // Schedule the worker body to run again on the context, but without launching another worker.
                         ScheduleContextCallback(_synchronizationContext, this,
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(false),
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(false)
                         );
                     }
+                    else if (state == Promise.State.Canceled)
+                    {
+                        Cancel();
+                        MaybeComplete();
+                    }
+                    else
+                    {
+                        // Record the failure. The last worker to complete will propagate exceptions as is appropriate to the top-level promise.
+                        var container = rejectContainer.UnsafeAs<IRejectContainer>();
+                        var exception = container.Value as Exception
+                            // If the reason was not an exception, get the reason wrapped in an exception.
+                            ?? container.GetExceptionDispatchInfo().SourceException;
+                        RecordException(exception);
+                        MaybeComplete();
+                    }
                 }
 
                 private void RecordException(Exception e)
                 {
-                    _cancelationSource.TryCancel();
+                    _cancelationRef.Cancel();
 
                     lock (this)
                     {
@@ -331,19 +349,19 @@ namespace Proto.Promises
                     // If we're the last worker to complete, clean up and complete the operation.
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, -1) == 0)
                     {
+                        _externalCancelationRegistration.Dispose();
+                        _externalCancelationRegistration = default(CancelationRegistration);
+                        _cancelationRef.TryDispose(_cancelationRef.SourceId);
+                        _cancelationRef = null;
+
                         try
                         {
-                            _externalCancelationRegistration.Dispose();
                             _result.Dispose();
                         }
                         catch (Exception e)
                         {
                             RecordException(e);
                         }
-
-                        _cancelationSource.Dispose();
-                        _cancelationSource = default(CancelationSource);
-                        _externalCancelationRegistration = default(CancelationRegistration);
 
                         // Finally, complete the promise returned to the ParallelForEach caller.
                         // This must be the very last thing done.
@@ -359,8 +377,6 @@ namespace Proto.Promises
                         }
                     }
                 }
-
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
             } // class PromiseParallelForEach
         } // class PromiseRefBase
     } // class Internal
