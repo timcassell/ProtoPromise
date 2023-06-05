@@ -1,5 +1,20 @@
 # Change Log
 
+## v 2.5.2 - June 4, 2023
+
+Fixes:
+
+- Fixed causality traces with `Promise.ParallelForEach` and `Promise.ParallelFor`.
+- Fixed circular await detection with `Promise.ParallelForEach` and `Promise.ParallelFor`.
+- Fixed `Promise.Canceled()` caused the parent promise to be mutated after it was repooled.
+
+Optimizations:
+
+- Reduced memory and cpu of `Promise.ParallelForEach` and `Promise.ParallelFor`.
+- Reduced memory and cpu of `Promise.Run`.
+- Reduced memory and cpu of `Promise.New`.
+- Optimized internal context callbacks.
+
 ## v 2.5.1 - May 26, 2023
 
 Fixes:

@@ -45,20 +45,11 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-## v 2.5.1 - May 26, 2023
+## v 2.5.2 - June 4, 2023
 
-- Included IL2CPP fixes in .Net Standard 2.1 nuget package.
-- Fixed a race condition with linked `CancelationToken`s when object pooling is enabled.
-- Fixed a race condition when `Deferred.ReportProgress` is called concurrently with `Deferred.Resolve/Reject/Cancel`.
-
-## v 2.5.0 - May 15, 2023
-
-- Added `AsyncLazy` type.
-- Added more async synchronization primitives in the `Proto.Promises.Threading` namespace.
-- Added APIs to wait for promise result without throwing.
-- Added `SwitchToForegroundAwait`, `SwitchToBackgroundAwait`, and `SwitchToContextAwait` for more efficient context switch in `async` functions.
-- Added common Unity awaits in `PromiseYielder`.
-- Create custom `await` instructions in Unity by implementing `IAwaitInstruction` or `IAwaitWithProgressInstruction`.
+- Fixed causality traces and circular await detection with `Promise.ParallelForEach` and `Promise.ParallelFor`.
+- Fixed `Promise.Canceled()` caused the parent promise to be mutated after it was repooled.
+- Reduced memory and cpu of `Promise.ParallelForEach`, `Promise.ParallelFor`, `Promise.Run`, and `Promise.New`.
 
 See [ChangeLog](../Package/CHANGELOG.md) for the full changelog.
 
