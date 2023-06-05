@@ -77,7 +77,12 @@ namespace Proto.Promises
 
                 private void HandleFromContext()
                 {
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _callerContext;
+
                     HandleNextInternal(_tempRejectContainer, _tempState);
+
+                    ts_currentContext = currentContext;
                 }
 
                 internal void MaybeHookupCancelation(CancelationToken cancelationToken)

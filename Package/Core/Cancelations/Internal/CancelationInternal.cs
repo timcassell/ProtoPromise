@@ -463,7 +463,6 @@ namespace Proto.Promises
                 return _this != null && _this.TryDispose(sourceId);
             }
 
-            [MethodImpl(InlineOption)]
             internal bool TryDispose(int sourceId)
             {
                 _smallFields._locker.Enter();
