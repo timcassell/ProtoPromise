@@ -31,8 +31,14 @@ namespace Proto.Promises
 #endif
         partial struct CancelationToken : IRetainable, IEquatable<CancelationToken>
     {
-        private readonly Internal.CancelationRef _ref;
-        private readonly int _id;
+        /// <summary>
+        /// FOR INTERNAL USE ONLY!
+        /// </summary>
+        internal readonly Internal.CancelationRef _ref;
+        /// <summary>
+        /// FOR INTERNAL USE ONLY!
+        /// </summary>
+        internal readonly int _id;
 
         /// <summary>
         /// Returns an empty <see cref="CancelationToken"/>.
