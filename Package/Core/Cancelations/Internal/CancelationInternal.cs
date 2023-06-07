@@ -74,10 +74,20 @@ namespace Proto.Promises
             }
         }
 
+        internal abstract class CancelationLinkedListNode : HandleablePromiseBase
+        {
+            // _next and _previous are unsafe cast to CancelationLinkedListNode or CancelationCallbackNodeBase
+            // so that we can use them for linked list nodes while using the CancelationRef as the sentinel.
+            // This uses the least amount of memory while also avoiding null checks when adding and removing nodes.
+            internal CancelationLinkedListNode _previous;
+
+            internal virtual void Dispose() { throw new System.InvalidOperationException(); }
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed partial class CancelationRef : HandleablePromiseBase, ITraceable
+        internal sealed partial class CancelationRef : CancelationLinkedListNode, ITraceable
         {
             internal static readonly CancelationRef s_canceledSentinel;
 
@@ -163,8 +173,6 @@ namespace Proto.Promises
             private static bool ts_isLinkingToBclToken;
 #endif
             internal Thread _executingThread;
-            // Use a sentinel for the linked list so we don't need to null check.
-            private readonly LinkedSentinelNode _registeredCallbacksHead = new LinkedSentinelNode();
             // These must not be readonly.
             private ValueLinkedStack<LinkedCancelationNode> _links = new ValueLinkedStack<LinkedCancelationNode>();
             internal SmallFields _smallFields = SmallFields.Create();
@@ -191,6 +199,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private void Initialize(bool linkedToBclToken)
             {
+                ResetLinkedListSentinel();
                 _internalRetainCounter = 1; // 1 for Dispose.
                 _linkedToBclToken = linkedToBclToken;
                 _state = State.Pending;
@@ -210,9 +219,15 @@ namespace Proto.Promises
             internal static CancelationRef GetOrCreate()
             {
                 var cancelRef = GetFromPoolOrCreate();
-                cancelRef._next = null;
                 cancelRef.Initialize(false);
                 return cancelRef;
+            }
+
+            [MethodImpl(InlineOption)]
+            private void ResetLinkedListSentinel()
+            {
+                _next = this;
+                _previous = this;
             }
 
             [MethodImpl(InlineOption)]
@@ -385,7 +400,7 @@ namespace Proto.Promises
                     {
                         // Hook up the node instead of invoking since it might throw, and we need all registered callbacks to be invoked.
                         var node = nodeCreator.CreateNode(this, tokenId);
-                        _registeredCallbacksHead.InsertPrevious(node);
+                        InsertPrevious(node);
                         InvokeCallbacksAlreadyLocked();
                         return true;
                     }
@@ -395,10 +410,18 @@ namespace Proto.Promises
 
                 {
                     var node = nodeCreator.CreateNode(this, tokenId);
-                    _registeredCallbacksHead.InsertPrevious(node);
+                    InsertPrevious(node);
                     _smallFields._locker.Exit();
                     return true;
                 }
+            }
+
+            private void InsertPrevious(CancelationCallbackNodeBase node)
+            {
+                node._previous = _previous;
+                node._next = this;
+                _previous._next = node;
+                _previous = node;
             }
 
             [MethodImpl(InlineOption)]
@@ -434,12 +457,12 @@ namespace Proto.Promises
                 List<Exception> exceptions = null;
                 while (true)
                 {
-                    // If the sentinel's previous points to itself, no more registrations exist.
-                    var current = _registeredCallbacksHead._previous;
-                    if (current == _registeredCallbacksHead)
+                    // If the previous points to this, no more registrations exist.
+                    if (_previous == this)
                     {
                         break;
                     }
+                    var current = _previous.UnsafeAs<CancelationCallbackNodeBase>();
                     current.RemoveFromLinkedList();
 
                     // Exit the lock before invoking arbitrary code, then re-enter after it completes.
@@ -500,15 +523,16 @@ namespace Proto.Promises
 
             private void UnregisterAll()
             {
-                var previous = _registeredCallbacksHead._previous;
-                // If the previous references itself, then it is the sentinel and no registrations exist.
-                if (previous == _registeredCallbacksHead)
+                // If the previous points to this, no registrations exist.
+                if (_previous == this)
                 {
                     return;
                 }
+
+                var previous = _previous.UnsafeAs<CancelationLinkedListNode>();
                 // Set the last node's previous to null since null check is faster than reference comparison.
-                _registeredCallbacksHead._next.UnsafeAs<CancelationCallbackNodeBase>()._previous = null;
-                _registeredCallbacksHead.Reset();
+                _next.UnsafeAs<CancelationLinkedListNode>()._previous = null;
+                ResetLinkedListSentinel();
                 do
                 {
                     var current = previous;
@@ -610,7 +634,7 @@ namespace Proto.Promises
             {
                 ThrowIfInPool(this);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                if (_registeredCallbacksHead._next != _registeredCallbacksHead || _registeredCallbacksHead._previous != _registeredCallbacksHead)
+                if (_next != this || _previous != this)
                 {
                     throw new System.InvalidOperationException("CancelationToken callbacks have not been unregistered.");
                 }
@@ -853,32 +877,6 @@ namespace Proto.Promises
                 }
             } // class LinkedCancelationNode
 
-            private sealed class LinkedSentinelNode : CancelationCallbackNodeBase
-            {
-                internal LinkedSentinelNode()
-                {
-                    Reset();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void Reset()
-                {
-                    _next = this;
-                    _previous = this;
-                }
-
-                internal void InsertPrevious(CancelationCallbackNodeBase node)
-                {
-                    node._previous = _previous;
-                    node._next = this;
-                    _previous._next = node;
-                    _previous = node;
-                }
-
-                internal override void Invoke() { throw new System.InvalidOperationException(); }
-                internal override void Dispose() { throw new System.InvalidOperationException(); }
-            }
-
             private interface INodeCreator
             {
                 CancelationCallbackNodeBase CreateNode(CancelationRef parent, int tokenId);
@@ -943,17 +941,14 @@ namespace Proto.Promises
             }
         } // class CancelationRef
 
-        internal abstract class CancelationCallbackNodeBase : HandleablePromiseBase
+        internal abstract class CancelationCallbackNodeBase : CancelationLinkedListNode
         {
-            internal CancelationCallbackNodeBase _previous; // _next is HandleablePromiseBase which we just unsafe cast to CancelationCallbackNodeBase.
-
             internal abstract void Invoke();
-            internal abstract void Dispose();
 
             internal void RemoveFromLinkedList()
             {
                 _previous._next = _next;
-                _next.UnsafeAs<CancelationCallbackNodeBase>()._previous = _previous;
+                _next.UnsafeAs<CancelationLinkedListNode>()._previous = _previous;
                 _previous = null;
             }
         }
@@ -1318,7 +1313,7 @@ namespace Proto.Promises
                         CancelationConverter.AttachCancelationRef(_bclSource, this);
                         var del = new CancelDelegateToken<CancellationTokenSource>(_bclSource, source => source.Cancel(false));
                         var node = CallbackNodeImpl<CancelDelegateToken<CancellationTokenSource>>.GetOrCreate(del, this);
-                        _registeredCallbacksHead.InsertPrevious(node);
+                        InsertPrevious(node);
                     }
                     return _bclSource.Token;
                 }
