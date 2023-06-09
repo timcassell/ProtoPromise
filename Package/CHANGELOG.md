@@ -1,5 +1,16 @@
 # Change Log
 
+## v 2.5.3 - June 9, 2023
+
+Fixes:
+
+- Fixed circular await detection with `Promise.ParallelForEach` and `Promise.ParallelFor`.
+
+Optimizations:
+
+- Reduced memory of `CancelationSource`.
+- Reduced memory of linked `CancelationToken`s.
+
 ## v 2.5.2 - June 4, 2023
 
 Fixes:
