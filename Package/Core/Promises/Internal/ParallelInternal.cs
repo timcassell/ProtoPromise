@@ -156,14 +156,14 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : PromiseSingleAwait<TEnumerator>, ICancelable
+            internal sealed partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : PromiseSingleAwait<TEnumerator>, ICancelable
                 where TEnumerator : IEnumerator<TSource>
                 where TParallelBody : IParallelBody<TSource>
             {
                 private TParallelBody _body;
                 private CancelationRegistration _externalCancelationRegistration;
                 // Use the CancelationRef directly instead of CancelationSource struct to save memory.
-                private Internal.CancelationRef _cancelationRef;
+                private CancelationRef _cancelationRef;
                 private SynchronizationContext _synchronizationContext;
                 private int _remainingAvailableWorkers;
                 private int _waitCounter;
@@ -291,6 +291,7 @@ namespace Proto.Promises
                         if (promise._ref != null)
                         {
                             // The promise may still be pending, hook this up to rerun the loop when it completes.
+                            AddPending(promise._ref);
                             promise._ref.HookupExistingWaiter(promise._id, this);
                             return;
                         }
@@ -302,6 +303,7 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
                 {
+                    RemovePending(handler);
                     handler.SetCompletionState(rejectContainer, state);
                     handler.MaybeDispose();
 
@@ -377,6 +379,9 @@ namespace Proto.Promises
                         }
                     }
                 }
+
+                partial void AddPending(PromiseRefBase pendingPromise);
+                partial void RemovePending(PromiseRefBase completePromise);
             } // class PromiseParallelForEach
         } // class PromiseRefBase
     } // class Internal

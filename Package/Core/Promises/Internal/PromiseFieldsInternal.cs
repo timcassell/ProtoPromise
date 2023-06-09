@@ -434,11 +434,6 @@ namespace Proto.Promises
                 // We store the passthroughs for lazy progress subscribe.
                 // The passthroughs will be released when this has fully released if a progress listener did not do it already.
                 protected ValueLinkedStack<PromisePassThrough> _passThroughs;
-
-#if PROMISE_DEBUG
-                // This is used for circular promise chain detection.
-                protected Stack<PromiseRefBase> _previousPromises = new Stack<PromiseRefBase>();
-#endif
             }
 
             partial class MergePromise<TResult> : MultiHandleablePromiseBase<TResult>
