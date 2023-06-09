@@ -45,11 +45,11 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-## v 2.5.2 - June 4, 2023
+## v 2.5.3 - June 9, 2023
 
-- Fixed causality traces and circular await detection with `Promise.ParallelForEach` and `Promise.ParallelFor`.
-- Fixed `Promise.Canceled()` caused the parent promise to be mutated after it was repooled.
-- Reduced memory and cpu of `Promise.ParallelForEach`, `Promise.ParallelFor`, `Promise.Run`, and `Promise.New`.
+- Fixed circular await detection with `Promise.ParallelForEach` and `Promise.ParallelFor`.
+- Reduced memory of `CancelationSource`.
+- Reduced memory of linked `CancelationToken`s.
 
 See [ChangeLog](../Package/CHANGELOG.md) for the full changelog.
 
