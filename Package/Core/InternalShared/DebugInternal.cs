@@ -287,7 +287,7 @@ namespace Proto.Promises
                             throw new InvalidOperationException("Circular Promise chain detected.", GetFormattedStacktrace(other));
                         throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(other));
                     }
-                    prev.BorrowPassthroughs(previouses);
+                    prev.BorrowPreviousPromises(previouses);
                 }
 
                 if (previouses.Count > 0)
@@ -311,11 +311,13 @@ namespace Proto.Promises
                 }
             }
 
-            protected virtual void BorrowPassthroughs(Stack<PromiseRefBase> borrower) { }
+            protected virtual void BorrowPreviousPromises(Stack<PromiseRefBase> borrower) { }
 
             partial class MultiHandleablePromiseBase<TResult>
             {
-                protected override void BorrowPassthroughs(Stack<PromiseRefBase> borrower)
+                private readonly Stack<PromiseRefBase> _previousPromises = new Stack<PromiseRefBase>();
+
+                protected override void BorrowPreviousPromises(Stack<PromiseRefBase> borrower)
                 {
                     lock (_previousPromises)
                     {
@@ -323,6 +325,54 @@ namespace Proto.Promises
                         {
                             borrower.Push(promiseRef);
                         }
+                    }
+                }
+
+                partial void AddPending(PromiseRefBase pendingPromise)
+                {
+                    lock (_previousPromises)
+                    {
+                        _previousPromises.Push(pendingPromise);
+                    }
+                }
+
+                partial void ClearPending()
+                {
+                    lock (_previousPromises)
+                    {
+                        _previousPromises.Clear();
+                    }
+                }
+            }
+
+            partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource>
+            {
+                private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
+
+                protected override void BorrowPreviousPromises(Stack<PromiseRefBase> borrower)
+                {
+                    lock (_pendingPromises)
+                    {
+                        foreach (var promiseRef in _pendingPromises)
+                        {
+                            borrower.Push(promiseRef);
+                        }
+                    }
+                }
+
+                partial void AddPending(PromiseRefBase pendingPromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Add(pendingPromise);
+                    }
+                }
+
+                partial void RemovePending(PromiseRefBase completePromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Remove(completePromise);
                     }
                 }
             }

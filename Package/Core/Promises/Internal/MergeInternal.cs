@@ -32,6 +32,9 @@ namespace Proto.Promises
 #endif
             internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
+                partial void AddPending(PromiseRefBase pendingPromise);
+                partial void ClearPending();
+
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
 
                 // When each promise is completed, we decrement the wait count until it reaches zero before we handle the next waiter.
@@ -70,12 +73,7 @@ namespace Proto.Promises
                     _passThroughs = promisePassThroughs;
                     foreach (var passThrough in promisePassThroughs)
                     {
-#if PROMISE_DEBUG
-                        lock (_previousPromises)
-                        {
-                            _previousPromises.Push(passThrough.Owner);
-                        }
-#endif
+                        AddPending(passThrough.Owner);
                         passThrough.SetTargetAndAddToOwner(this);
                     }
                 }
@@ -87,12 +85,7 @@ namespace Proto.Promises
                     {
                         _passThroughs.Pop().Dispose();
                     }
-#if PROMISE_DEBUG
-                    lock (_previousPromises)
-                    {
-                        _previousPromises.Clear();
-                    }
-#endif
+                    ClearPending();
                 }
             }
 
