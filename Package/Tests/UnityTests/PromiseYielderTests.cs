@@ -657,6 +657,103 @@ namespace ProtoPromiseTests.Unity
         // Not testing WaitForEndOfFrame as there is no way to assert that it is actually in that execution stage.
         // Not testing WaitForAsyncOperation as I don't want to have to load something for unit testing.
 
+        [UnityTest]
+        public IEnumerator PromiseYielder_ManyEarlyWaitUntils()
+        {
+            // Use the testBehaviour to start the waits from Update so that it is ran early (before the PromiseYielder processes the queues).
+            var testBehaviour = behaviour.gameObject.AddComponent<WaitOneFrameTestBehaviour>();
+            try
+            {
+                var promise = testBehaviour.WaitOneFrameFromUpdate(() =>
+                {
+                    // Wait for the internal queues to be processed twice to make sure nothing breaks.
+                    const int waitFrameCount = 6;
+                    // Testing implementation detail of the internal array growing in size. Initial size is 64, so we need to create at least 65 waits.
+                    const int waitCount = 100;
+
+                    int initialFrame = Time.frameCount;
+                    Promise[] promises = new Promise[waitCount];
+                    for (int i = 0; i < waitCount; i++)
+                    {
+                        promises[i] = PromiseYielder.WaitUntil(() => Time.frameCount >= initialFrame + waitFrameCount).ToPromise();
+                    }
+                    return Promise.All(promises);
+                });
+                using (var yieldInstruction = promise.ToYieldInstruction())
+                {
+                    yield return yieldInstruction;
+                    yieldInstruction.GetResult();
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(testBehaviour);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielder_ManyLateWaitUntils()
+        {
+            if (Application.isBatchMode)
+            {
+                Assert.Inconclusive("Application is running in batchmode, WaitForEndOfFrame will not run.");
+                yield break;
+            }
+
+            // Use the testBehaviour to start the waits from EndOfFrame so that it is ran early (before the PromiseYielder processes the queues).
+            var testBehaviour = behaviour.gameObject.AddComponent<WaitOneFrameTestBehaviour>();
+            try
+            {
+                var promise = testBehaviour.WaitOneFrameFromEndOfFrame(() =>
+                {
+                    // Wait for the internal queues to be processed twice to make sure nothing breaks.
+                    const int waitFrameCount = 6;
+                    // Testing implementation detail of the internal array growing in size. Initial size is 64, so we need to create at least 65 waits.
+                    const int waitCount = 100;
+
+                    int initialFrame = Time.frameCount;
+                    Promise[] promises = new Promise[waitCount];
+                    for (int i = 0; i < waitCount; i++)
+                    {
+                        // Use capture value to make sure the internal queue is not the same queue used as PromiseYielder_ManyEarlyWaitUntils().
+                        promises[i] = PromiseYielder.WaitUntil(initialFrame, iFrame => Time.frameCount >= iFrame + waitFrameCount).ToPromise();
+                    }
+                    return Promise.All(promises);
+                });
+                using (var yieldInstruction = promise.ToYieldInstruction())
+                {
+                    yield return yieldInstruction;
+                    yieldInstruction.GetResult();
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(testBehaviour);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielder_ManyWaitWhiles()
+        {
+            // Wait for the internal queues to be processed twice to make sure nothing breaks.
+            const int waitFrameCount = 6;
+            // Testing implementation detail of the internal array growing in size. Initial size is 64, so we need to create at least 65 waits.
+            const int waitCount = 100;
+
+            int initialFrame = Time.frameCount;
+            Promise[] promises = new Promise[waitCount];
+            for (int i = 0; i < waitCount; i++)
+            {
+                promises[i] = PromiseYielder.WaitWhile(() => Time.frameCount < initialFrame + waitFrameCount).ToPromise();
+            }
+            var promise = Promise.All(promises);
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                yieldInstruction.GetResult();
+            }
+        }
+
 #if PROMISE_PROGRESS
         [UnityTest]
         public IEnumerator PromiseYielderWaitForFrames_ReportsProgress()

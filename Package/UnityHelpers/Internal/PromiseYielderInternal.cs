@@ -159,8 +159,10 @@ namespace Proto.Promises
                 int capacity = _nextQueue.Length;
                 if (index >= capacity)
                 {
-                    // We only resize the array that is currently being added to. We don't resize the other arrays until they need it.
-                    Array.Resize(ref _nextQueue, capacity * 2);
+                    int newCapcity = capacity * 2;
+                    Array.Resize(ref _currentQueue, newCapcity);
+                    Array.Resize(ref _nextQueue, newCapcity);
+                    Array.Resize(ref _followingQueue, newCapcity);
                 }
 
                 _nextQueue[index] = continuation;
@@ -177,8 +179,10 @@ namespace Proto.Promises
                 int capacity = _followingQueue.Length;
                 if (index >= capacity)
                 {
-                    // We only resize the array that is currently being added to. We don't resize the other arrays until they need it.
-                    Array.Resize(ref _followingQueue, capacity * 2);
+                    int newCapcity = capacity * 2;
+                    Array.Resize(ref _currentQueue, newCapcity);
+                    Array.Resize(ref _nextQueue, newCapcity);
+                    Array.Resize(ref _followingQueue, newCapcity);
                 }
 
                 _followingQueue[index] = continuation;
@@ -202,7 +206,7 @@ namespace Proto.Promises
                 {
                     current[i].Invoke();
                 }
-                Array.Clear(current, 0, max);
+                Array.Clear(_currentQueue, 0, max);
             }
         }
 
@@ -302,8 +306,10 @@ namespace Proto.Promises
                         capacity = _followingQueue.Length;
                         if (_followingCount >= capacity)
                         {
-                            // We only resize the array that is currently being added to. We don't resize the other one until it's needed.
-                            Array.Resize(ref _followingQueue, capacity * 2);
+                            int newCapcity = capacity * 2;
+                            Array.Resize(ref _currentQueue, newCapcity);
+                            Array.Resize(ref _nextQueue, newCapcity);
+                            Array.Resize(ref _followingQueue, newCapcity);
                         }
 
                         _followingQueue[_followingCount] = instruction;
@@ -320,8 +326,10 @@ namespace Proto.Promises
                     capacity = _nextQueue.Length;
                     if (potentialFutureCount >= capacity)
                     {
-                        // We only resize the array that is currently being added to. We don't resize the other one until it's needed.
-                        Array.Resize(ref _nextQueue, capacity * 2);
+                        int newCapcity = capacity * 2;
+                        Array.Resize(ref _currentQueue, newCapcity);
+                        Array.Resize(ref _nextQueue, newCapcity);
+                        Array.Resize(ref _followingQueue, newCapcity);
                     }
 
                     _nextQueue[_nextCount] = instruction;
@@ -349,7 +357,7 @@ namespace Proto.Promises
                         Evaluate(ref current[i]);
                         --_currentCount;
                     }
-                    Array.Clear(current, 0, max);
+                    Array.Clear(_currentQueue, 0, max);
                 }
 
                 [MethodImpl(Internal.InlineOption)]
