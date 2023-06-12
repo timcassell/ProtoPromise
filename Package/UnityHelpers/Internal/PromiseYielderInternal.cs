@@ -303,7 +303,7 @@ namespace Proto.Promises
                         if (_followingCount >= capacity)
                         {
                             // We only resize the array that is currently being added to. We don't resize the other one until it's needed.
-                            Array.Resize(ref _nextQueue, capacity * 2);
+                            Array.Resize(ref _followingQueue, capacity * 2);
                         }
 
                         _followingQueue[_followingCount] = instruction;
@@ -357,7 +357,7 @@ namespace Proto.Promises
                 {
                     if (!instruction.Evaluate())
                     {
-                        // This is hottest path, so we don't do a bounds check here (see Add).
+                        // This is hottest path, so we don't do a bounds check here (see WaitFor).
                         _nextQueue[_nextCount] = instruction;
                         ++_nextCount;
                     }
