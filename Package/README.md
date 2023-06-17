@@ -45,11 +45,9 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-## v 2.5.3 - June 9, 2023
+## v2.5.4 - June 17, 2023
 
-- Fixed circular await detection with `Promise.ParallelForEach` and `Promise.ParallelFor`.
-- Reduced memory of `CancelationSource`.
-- Reduced memory of linked `CancelationToken`s.
+- Fixed `IndexOutOfRangeException` when a `PromiseYielder` function is used more than 64 times simultaneously.
 
 See [ChangeLog](../Package/CHANGELOG.md) for the full changelog.
 
