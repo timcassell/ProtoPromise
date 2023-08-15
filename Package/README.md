@@ -1216,7 +1216,7 @@ Note: `AsyncMonitor` is only available in .Net Standard 2.1 (or Unity 2021.2) or
 
 #### AsyncReaderWriterLock
 
-Similar to `System.Thread.ReaderWriterLockSlim`, except, just like `AsyncLock`, recursion is not supported. Also, unlike `ReaderWriterLockSlim`, this is a balanced reader/writer lock. That means readers and writers take turns so that no one will get starved out.
+Similar to `System.Threading.ReaderWriterLockSlim`, except, just like `AsyncLock`, recursion is not supported. Also, unlike `ReaderWriterLockSlim`, this is a balanced reader/writer lock. That means readers and writers take turns so that no one will get starved out.
 
 Note: `AsyncReaderWriterLock` is only available in .Net Standard 2.1 (or Unity 2021.2) or newer platforms.
 
