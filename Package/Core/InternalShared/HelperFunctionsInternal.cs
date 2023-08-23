@@ -243,7 +243,11 @@ namespace Proto.Promises
         [MethodImpl(InlineOption)]
         internal static T UnsafeAs<T>(this object o) where T : class
         {
-#if NET5_0_OR_GREATER && !PROMISE_DEBUG && !PROTO_PROMISE_DEVELOPER_MODE
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            return (T) o;
+#elif UNITY_2020_1_OR_NEWER
+            return Unity.Collections.LowLevel.Unsafe.UnsafeUtility.As<T>(o);
+#elif NET5_0_OR_GREATER
             return Unsafe.As<T>(o);
 #else
             return (T) o;
