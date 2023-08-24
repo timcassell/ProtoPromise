@@ -36,6 +36,12 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+#if NETCOREAPP
+        private const MethodImplOptions AggressiveOptimizationOption = (MethodImplOptions) 512;
+#else
+        private const MethodImplOptions AggressiveOptimizationOption = 0;
+#endif
+
         partial class PromiseRefBase
         {
             [MethodImpl(InlineOption)]
@@ -142,7 +148,7 @@ namespace Proto.Promises
                     }
                 }
 
-                [MethodImpl(InlineOption)]
+                [MethodImpl(InlineOption | AggressiveOptimizationOption)]
                 internal static void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
                     where TAwaiter : INotifyCompletion
                     where TStateMachine : IAsyncStateMachine
@@ -165,7 +171,7 @@ namespace Proto.Promises
                     }
                 }
 
-                [MethodImpl(InlineOption)]
+                [MethodImpl(InlineOption | AggressiveOptimizationOption)]
                 internal static void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
                     where TAwaiter : ICriticalNotifyCompletion
                     where TStateMachine : IAsyncStateMachine
