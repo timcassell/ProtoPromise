@@ -27,6 +27,15 @@ namespace Proto.Promises
             PromiseBehaviour.Initialize();
         }
 
+        // AppDomain reload could be disabled in editor, so we need to explicitly reset static fields.
+        // See https://github.com/timcassell/ProtoPromise/issues/204
+        // https://docs.unity3d.com/Manual/DomainReloading.html
+        [RuntimeInitializeOnLoadMethod((RuntimeInitializeLoadType) 4)] // SubsystemRegistration
+        internal static void ResetStaticState()
+        {
+            PromiseBehaviour.ResetStaticState();
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -108,6 +117,7 @@ namespace Proto.Promises
                 {
                     UnityEngine.Debug.LogError("PromiseBehaviour destroyed! Removing PromiseSynchronizationContext from Promise.Config.ForegroundContext. PromiseYielder functions will stop working.");
                     ResetConfig();
+                    ResetStaticState();
                 }
             }
 
@@ -155,8 +165,6 @@ namespace Proto.Promises
                 _isApplicationQuitting = true;
                 if (Application.isEditor & s_instance == this)
                 {
-                    // AppDomain reload could be disabled in editor, so we need to explicitly reset static fields. See https://github.com/timcassell/ProtoPromise/issues/204
-                    ResetProcessors();
                     ResetConfig();
                     // Destroy this to prevent a memory leak.
                     Destroy(this);
@@ -167,7 +175,6 @@ namespace Proto.Promises
 
             private void ResetConfig()
             {
-                s_instance = null;
                 if (Promise.Config.ForegroundContext == _syncContext)
                 {
                     Promise.Config.ForegroundContext = null;
@@ -185,6 +192,15 @@ namespace Proto.Promises
                     SynchronizationContext.SetSynchronizationContext(_oldContext);
                 }
                 _syncContext.Execute(); // Clear out any pending callbacks.
+            }
+
+            internal static void ResetStaticState()
+            {
+                if (!ReferenceEquals(s_instance, null))
+                {
+                    s_instance.ResetProcessors();
+                    s_instance = null;
+                }
             }
         }
     }
