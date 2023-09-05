@@ -219,11 +219,11 @@ namespace Proto.Promises
             internal const int InitialCapacityPerType = 64;
 
             // This must not be readonly.
-            private Internal.ValueList<IInstructionProcessor> _processors;
+            private Internal.ValueList<InstructionProcessorBase> _processors;
 
             internal InstructionProcessorGroup(int initialProcessorCapacity)
             {
-                _processors = new Internal.ValueList<IInstructionProcessor>(initialProcessorCapacity);
+                _processors = new Internal.ValueList<InstructionProcessorBase>(initialProcessorCapacity);
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -255,23 +255,24 @@ namespace Proto.Promises
 
             internal void ResetProcessors()
             {
-                // We reset the generic static fields through the interface.
+                // We reset the generic static fields through the abstract class.
                 for (int i = 0, max = _processors.Count; i < max; ++i)
                 {
                     _processors[i].Reset();
                 }
             }
 
-            private interface IInstructionProcessor
+            // Using abstract class instead of interface, because virtual calls are 2x faster.
+            private abstract class InstructionProcessorBase
             {
-                void Process();
-                void Reset();
+                internal abstract void Process();
+                internal abstract void Reset();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class InstructionProcessor<TYieldInstruction> : IInstructionProcessor
+            private sealed class InstructionProcessor<TYieldInstruction> : InstructionProcessorBase
                 // struct constraint forces the compiler to generate specialized code for each type, which allows for inlining method calls.
                 where TYieldInstruction : struct, IYieldInstruction
             {
@@ -337,7 +338,7 @@ namespace Proto.Promises
                     ++_nextCount;
                 }
 
-                public void Process()
+                internal override void Process()
                 {
                     // Store the next in a local for iteration, and rotate queues.
                     var current = _nextQueue;
@@ -371,7 +372,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void IInstructionProcessor.Reset()
+                internal override void Reset()
                 {
                     // We reset the static field.
                     s_instance = null;
