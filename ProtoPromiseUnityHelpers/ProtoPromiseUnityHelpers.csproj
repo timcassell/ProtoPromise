@@ -31,7 +31,9 @@
       <PropertyGroup>
         <!-- The language version Unity supports with netstandard2.1. -->
         <LangVersion>9</LangVersion>
-        <DefineConstants>$(DefineConstants);CSHARP_7_3_OR_NEWER</DefineConstants>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <!--We check UNITY_2021_2_OR_NEWER to see if C#9 is supported, since Unity doesn't have a language define constant for it.-->
+        <DefineConstants>$(DefineConstants);CSHARP_7_3_OR_NEWER;UNITY_2021_2_OR_NEWER</DefineConstants>
       </PropertyGroup>
     </Otherwise>
   </Choose>

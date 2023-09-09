@@ -63,9 +63,11 @@
     </When>
     <Otherwise>
       <PropertyGroup>
-        <!--Otherwise, we don't need any newer language features beyond 7.3.-->
-        <LangVersion>7.3</LangVersion>
-        <DefineConstants>$(DefineConstants);CSHARP_7_3_OR_NEWER</DefineConstants>
+        <!--For function pointers.-->
+        <LangVersion>9</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <!--We check UNITY_2021_2_OR_NEWER to see if C#9 is supported, since Unity doesn't have a language define constant for it.-->
+        <DefineConstants>$(DefineConstants);CSHARP_7_3_OR_NEWER;UNITY_2021_2_OR_NEWER</DefineConstants>
       </PropertyGroup>
     </Otherwise>
   </Choose>
