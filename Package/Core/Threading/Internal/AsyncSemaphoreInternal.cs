@@ -221,7 +221,7 @@ namespace Proto.Promises
                 Promise<bool>.ResultContainer resultContainer;
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
                 resultContainer.RethrowIfRejected();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             internal void Release()

@@ -142,7 +142,7 @@ namespace ProtoPromiseTests.APIs
                 onContinue: r =>
                 {
                     Assert.AreEqual(r.State, Promise.State.Resolved);
-                    Assert.AreEqual(expected, r.Result);
+                    Assert.AreEqual(expected, r.Value);
                 }
             );
 
@@ -199,7 +199,7 @@ namespace ProtoPromiseTests.APIs
                 onContinue: r =>
                 {
                     Assert.AreEqual(r.State, Promise.State.Rejected);
-                    Assert.AreEqual(rejection, r.RejectReason);
+                    Assert.AreEqual(rejection, r.Reason);
                 }
             );
 
@@ -220,7 +220,7 @@ namespace ProtoPromiseTests.APIs
                 onContinue: r =>
                 {
                     Assert.AreEqual(r.State, Promise.State.Rejected);
-                    Assert.AreEqual(rejection, r.RejectReason);
+                    Assert.AreEqual(rejection, r.Reason);
                 }
             );
 

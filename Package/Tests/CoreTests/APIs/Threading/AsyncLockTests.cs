@@ -104,7 +104,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     isLocked = true;
                     return deferred1Continue.Promise.ContinueWith(_ => key);
                 })
-                .ContinueWith(r => r.Result.Dispose())
+                .ContinueWith(r => r.Value.Dispose())
                 .Forget();
 
             TestHelper.ExecuteForegroundCallbacks();
@@ -171,7 +171,7 @@ namespace ProtoPromiseTests.APIs.Threading
                         .ContinueWith(r =>
                         {
                             state = r.State;
-                            r.Result.Dispose();
+                            r.Value.Dispose();
                         });
                     Assert.AreEqual(Promise.State.Pending, state);
 
@@ -200,7 +200,7 @@ namespace ProtoPromiseTests.APIs.Threading
                         isLocked = true;
                         return deferred1Continue.Promise.ContinueWith(_ => key);
                     })
-                    .ContinueWith(r => r.Result.Dispose())
+                    .ContinueWith(r => r.Value.Dispose())
                     .Forget();
             })
                 .Forget();
@@ -211,7 +211,7 @@ namespace ProtoPromiseTests.APIs.Threading
             var promise2 = Promise.Run(() =>
             {
                 return mutex.LockAsync()
-                    .ContinueWith(r => r.Result.Dispose());
+                    .ContinueWith(r => r.Value.Dispose());
             })
                 .Finally(() => promise2IsComplete = true);
 
@@ -239,7 +239,7 @@ namespace ProtoPromiseTests.APIs.Threading
                         isLocked = true;
                         return deferred1Continue.Promise.ContinueWith(_ => key);
                     })
-                    .ContinueWith(r => r.Result.Dispose())
+                    .ContinueWith(r => r.Value.Dispose())
                     .Forget();
             })
                 .Forget();
@@ -259,7 +259,7 @@ namespace ProtoPromiseTests.APIs.Threading
                         deferred2HasLock = true;
                         return deferred2Continue.Promise.ContinueWith(_ => key);
                     })
-                    .ContinueWith(r => r.Result.Dispose());
+                    .ContinueWith(r => r.Value.Dispose());
             });
 
             SpinWait.SpinUntil(() => deferred2Ready);
@@ -268,7 +268,7 @@ namespace ProtoPromiseTests.APIs.Threading
             var promise3 = Promise.Run(() =>
             {
                 return mutex.LockAsync()
-                    .ContinueWith(r => r.Result.Dispose());
+                    .ContinueWith(r => r.Value.Dispose());
             })
                 .Finally(() => promise3Complete = true);
 
@@ -356,7 +356,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     .ContinueWith(r =>
                     {
                         state = r.State;
-                        r.Result.Dispose();
+                        r.Value.Dispose();
                     });
                 Assert.AreEqual(Promise.State.Pending, state);
 

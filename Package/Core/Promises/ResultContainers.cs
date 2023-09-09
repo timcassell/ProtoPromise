@@ -21,7 +21,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    [Obsolete("Promise.ResultContainer.RejectContainer is deprected, use RejectReason instead (returns object)", false), EditorBrowsable(EditorBrowsableState.Never)]
+    [Obsolete("Promise.ResultContainer.RejectContainer is deprecated, use RejectReason instead (returns object)", false), EditorBrowsable(EditorBrowsableState.Never)]
     public
 #if CSHARP_7_3_OR_NEWER
         readonly ref
@@ -150,13 +150,19 @@ namespace Proto.Promises
             /// <summary>
             /// Gets the reason of the rejected <see cref="Promise{T}"/>.
             /// </summary>
-            public object RejectReason
+            public object Reason
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _target.RejectReason; }
+                get { return _target.Reason; }
             }
 
-            [Obsolete("Prefer RejectReason", false), EditorBrowsable(EditorBrowsableState.Never)]
+            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
+            public object RejectReason
+            {
+                get { return Reason; }
+            }
+
+            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
             public ReasonContainer RejectContainer
             {
                 get { return _target.RejectContainer; }
@@ -261,7 +267,7 @@ namespace Proto.Promises
             /// <summary>
             /// Gets the result of the resolved <see cref="Promise{T}"/>.
             /// </summary>
-            public T Result
+            public T Value
             {
                 [MethodImpl(Internal.InlineOption)]
                 get { return _result; }
@@ -270,7 +276,7 @@ namespace Proto.Promises
             /// <summary>
             /// Gets the reason of the rejected <see cref="Promise{T}"/>.
             /// </summary>
-            public object RejectReason
+            public object Reason
             {
                 get
                 {
@@ -280,7 +286,19 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Prefer RejectReason", false), EditorBrowsable(EditorBrowsableState.Never)]
+            [Obsolete("Prefer Value", false), EditorBrowsable(EditorBrowsableState.Never)]
+            public T Result
+            {
+                get { return Value; }
+            }
+
+            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
+            public object RejectReason
+            {
+                get { return Reason; }
+            }
+
+            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
             public ReasonContainer RejectContainer
             {
                 get

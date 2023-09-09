@@ -100,7 +100,7 @@ namespace ProtoPromiseTests.APIs
             {
                 var resultContainer = await deferred.Promise.AwaitNoThrow();
                 resultContainer.RethrowIfRejectedOrCanceled();
-                Assert.AreEqual(expected, resultContainer.Result);
+                Assert.AreEqual(expected, resultContainer.Value);
                 continued = true;
             }
 
@@ -177,7 +177,7 @@ namespace ProtoPromiseTests.APIs
             {
                 var resultContainer = await Promise.Resolved(expected).AwaitNoThrow();
                 resultContainer.RethrowIfRejectedOrCanceled();
-                Assert.AreEqual(expected, resultContainer.Result);
+                Assert.AreEqual(expected, resultContainer.Value);
                 continued = true;
             }
 
@@ -228,7 +228,7 @@ namespace ProtoPromiseTests.APIs
             {
                 var resultContainer = await deferred.Promise.AwaitNoThrow();
                 Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                Assert.AreEqual(rejectValue, resultContainer.RejectReason);
+                Assert.AreEqual(rejectValue, resultContainer.Reason);
                 continued = true;
             }
 
@@ -279,7 +279,7 @@ namespace ProtoPromiseTests.APIs
             {
                 var resultContainer = await deferred.Promise.AwaitNoThrow();
                 Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                Assert.AreEqual(rejectValue, resultContainer.RejectReason);
+                Assert.AreEqual(rejectValue, resultContainer.Reason);
                 continued = true;
             }
 
@@ -324,7 +324,7 @@ namespace ProtoPromiseTests.APIs
             {
                 var resultContainer = await Promise.Rejected(rejectValue).AwaitNoThrow();
                 Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                Assert.AreEqual(rejectValue, resultContainer.RejectReason);
+                Assert.AreEqual(rejectValue, resultContainer.Reason);
                 continued = true;
             }
 
@@ -367,7 +367,7 @@ namespace ProtoPromiseTests.APIs
             {
                 var resultContainer = await Promise<int>.Rejected(rejectValue).AwaitNoThrow();
                 Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                Assert.AreEqual(rejectValue, resultContainer.RejectReason);
+                Assert.AreEqual(rejectValue, resultContainer.Reason);
                 continued = true;
             }
 

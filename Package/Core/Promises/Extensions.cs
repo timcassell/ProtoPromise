@@ -95,7 +95,7 @@ namespace Proto.Promises
                 {
                     if (resultContainer.State == Promise.State.Resolved)
                     {
-                        source.SetResult(resultContainer.Result);
+                        source.SetResult(resultContainer.Value);
                     }
                     else if (resultContainer.State == Promise.State.Canceled)
                     {

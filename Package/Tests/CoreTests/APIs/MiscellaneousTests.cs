@@ -1043,7 +1043,7 @@ namespace ProtoPromiseTests.APIs
             Assert.AreEqual(completeType, (CompleteType) resultContainer.State);
             if (completeType == CompleteType.Reject)
             {
-                Assert.AreEqual(expectedRejection, resultContainer.RejectReason);
+                Assert.AreEqual(expectedRejection, resultContainer.Reason);
             }
         }
 
@@ -1199,7 +1199,7 @@ namespace ProtoPromiseTests.APIs
                 Assert.AreEqual(throwType, (CompleteType) resultContainer.State);
                 if (throwType == CompleteType.Reject)
                 {
-                    Assert.AreEqual(expectedException, resultContainer.RejectReason);
+                    Assert.AreEqual(expectedException, resultContainer.Reason);
                 }
             }
         }
@@ -1263,11 +1263,11 @@ namespace ProtoPromiseTests.APIs
             Assert.AreEqual(completeType, (CompleteType) resultContainer.State);
             if (completeType == CompleteType.Resolve)
             {
-                Assert.AreEqual(expectedResult, resultContainer.Result);
+                Assert.AreEqual(expectedResult, resultContainer.Value);
             }
             else if (completeType == CompleteType.Reject)
             {
-                Assert.AreEqual(expectedException, resultContainer.RejectReason);
+                Assert.AreEqual(expectedException, resultContainer.Reason);
             }
         }
 
@@ -1338,7 +1338,7 @@ namespace ProtoPromiseTests.APIs
             if (!expectedTimeout)
             {
                 Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
-                Assert.AreEqual(expected, resultContainer.Result);
+                Assert.AreEqual(expected, resultContainer.Value);
             }
         }
 
@@ -1440,7 +1440,7 @@ namespace ProtoPromiseTests.APIs
                 Assert.AreEqual(throwType, (CompleteType) resultContainer.State);
                 if (throwType == CompleteType.Reject)
                 {
-                    Assert.AreEqual(expectedException, resultContainer.RejectReason);
+                    Assert.AreEqual(expectedException, resultContainer.Reason);
                 }
             }
         }

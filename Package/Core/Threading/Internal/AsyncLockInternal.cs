@@ -309,7 +309,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             internal AsyncLock.Key Lock(CancelationToken cancelationToken)
@@ -349,7 +349,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             internal bool TryEnter(out AsyncLock.Key key)
@@ -395,7 +395,7 @@ namespace Proto.Promises
                     .ContinueWith(resultContainer =>
                     {
                         resultContainer.RethrowIfRejected();
-                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Result);
+                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
                     });
             }
 
@@ -435,7 +435,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejected();
-                key = resultContainer.Result;
+                key = resultContainer.Value;
                 return resultContainer.State == Promise.State.Resolved;
             }
 

@@ -166,7 +166,7 @@ namespace Proto.Promises
         {
             var resultContainer = WaitForResultNoThrow();
             resultContainer.RethrowIfRejectedOrCanceled();
-            return resultContainer.Result;
+            return resultContainer.Value;
         }
 
         /// <summary>
@@ -219,7 +219,7 @@ namespace Proto.Promises
                 return false;
             }
             resultContainer.RethrowIfRejectedOrCanceled();
-            result = resultContainer.Result;
+            result = resultContainer.Value;
             return true;
         }
 

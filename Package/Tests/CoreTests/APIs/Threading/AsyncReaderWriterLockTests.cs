@@ -1971,7 +1971,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     .ContinueWith(r =>
                     {
                         state = r.State;
-                        r.Result.Dispose();
+                        r.Value.Dispose();
                     });
                 Assert.AreEqual(Promise.State.Pending, state);
 
@@ -2006,7 +2006,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     .ContinueWith(r =>
                     {
                         state = r.State;
-                        r.Result.Dispose();
+                        r.Value.Dispose();
                     });
                 Assert.AreEqual(Promise.State.Pending, state);
 
@@ -2041,7 +2041,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     .ContinueWith(r =>
                     {
                         state = r.State;
-                        r.Result.Dispose();
+                        r.Value.Dispose();
                     });
                 Assert.AreEqual(Promise.State.Pending, state);
 
@@ -2085,7 +2085,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     .ContinueWith(r =>
                     {
                         state = r.State;
-                        r.Result.Dispose();
+                        r.Value.Dispose();
                     });
                 Assert.AreEqual(Promise.State.Pending, state);
 

@@ -653,7 +653,7 @@ namespace ProtoPromiseTests.APIs
                 await deferred1.Promise.AwaitWithProgress(0f, 0.3f);
                 var resultContainer = await deferred2.Promise.AwaitWithProgressNoThrow(0.5f, 1f);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -684,7 +684,7 @@ namespace ProtoPromiseTests.APIs
                 await deferred1.Promise.AwaitWithProgress(0.3f);
                 var resultContainer = await deferred2.Promise.AwaitWithProgressNoThrow(1f);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -793,7 +793,7 @@ namespace ProtoPromiseTests.APIs
                 await Func1().AwaitWithProgress(0f, 0.3f);
                 var resultContainer = await Func2().AwaitWithProgressNoThrow(0.5f, 1f);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             async Promise<int> Func1()
@@ -805,7 +805,7 @@ namespace ProtoPromiseTests.APIs
             {
                 var resultContainer = await deferred2.Promise.AwaitWithProgressNoThrow(0f, 1f);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -836,7 +836,7 @@ namespace ProtoPromiseTests.APIs
                 await Func1().AwaitWithProgress(0.3f);
                 var resultContainer = await Func2().AwaitWithProgressNoThrow(1f);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             async Promise<int> Func1()
@@ -848,7 +848,7 @@ namespace ProtoPromiseTests.APIs
             {
                 var resultContainer = await deferred2.Promise.AwaitWithProgressNoThrow(0f, 1f);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -1103,7 +1103,7 @@ namespace ProtoPromiseTests.APIs
                     .CatchCancelation(() => 2)
                     .AwaitWithProgressNoThrow(0.5f, 1f);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -1151,7 +1151,7 @@ namespace ProtoPromiseTests.APIs
                     .CatchCancelation(() => 2)
                     .AwaitWithProgressNoThrow(1f);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
@@ -1201,7 +1201,7 @@ namespace ProtoPromiseTests.APIs
                     .CatchCancelation(() => deferred4.Promise)
                     .AwaitWithProgressNoThrow(0.5f, 1f);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: TestHelper.progressEpsilon * 2); // Increase delta to accommodate for internal scaling operations with loss of precision.
@@ -1265,7 +1265,7 @@ namespace ProtoPromiseTests.APIs
                     .CatchCancelation(() => deferred4.Promise)
                     .AwaitWithProgressNoThrow(1f);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: TestHelper.progressEpsilon * 2); // Increase delta to accommodate for internal scaling operations with loss of precision.
