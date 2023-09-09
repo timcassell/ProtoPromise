@@ -405,7 +405,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejected();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             internal AsyncReaderWriterLock.ReaderKey ReaderLock(CancelationToken cancelationToken)
@@ -460,7 +460,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             internal bool TryEnterReaderLock(out AsyncReaderWriterLock.ReaderKey readerKey)
@@ -536,7 +536,7 @@ namespace Proto.Promises
                     .ContinueWith(resultContainer =>
                     {
                         resultContainer.RethrowIfRejected();
-                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Result);
+                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
                     });
             }
 
@@ -591,7 +591,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejected();
-                readerKey = resultContainer.Result;
+                readerKey = resultContainer.Value;
                 return resultContainer.State == Promise.State.Resolved;
             }
 
@@ -682,7 +682,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejected();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             internal AsyncReaderWriterLock.WriterKey WriterLock(CancelationToken cancelationToken)
@@ -725,7 +725,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             internal bool TryEnterWriterLock(out AsyncReaderWriterLock.WriterKey writerKey)
@@ -782,7 +782,7 @@ namespace Proto.Promises
                     .ContinueWith(resultContainer =>
                     {
                         resultContainer.RethrowIfRejected();
-                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Result);
+                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
                     });
             }
 
@@ -826,7 +826,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejected();
-                writerKey = resultContainer.Result;
+                writerKey = resultContainer.Value;
                 return resultContainer.State == Promise.State.Resolved;
             }
 
@@ -938,7 +938,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejected();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             internal AsyncReaderWriterLock.UpgradeableReaderKey UpgradeableReaderLock(CancelationToken cancelationToken)
@@ -988,7 +988,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             internal bool TryEnterUpgradeableReaderLock(out AsyncReaderWriterLock.UpgradeableReaderKey readerKey)
@@ -1058,7 +1058,7 @@ namespace Proto.Promises
                     .ContinueWith(resultContainer =>
                     {
                         resultContainer.RethrowIfRejected();
-                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Result);
+                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
                     });
             }
 
@@ -1108,7 +1108,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejected();
-                readerKey = resultContainer.Result;
+                readerKey = resultContainer.Value;
                 return resultContainer.State == Promise.State.Resolved;
             }
 
@@ -1214,7 +1214,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejected();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             internal AsyncReaderWriterLock.WriterKey UpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
@@ -1262,7 +1262,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Result;
+                return resultContainer.Value;
             }
 
             internal bool TryUpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, out AsyncReaderWriterLock.WriterKey writerKey)
@@ -1330,7 +1330,7 @@ namespace Proto.Promises
                     .ContinueWith(resultContainer =>
                     {
                         resultContainer.RethrowIfRejected();
-                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Result);
+                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
                     });
             }
 
@@ -1380,7 +1380,7 @@ namespace Proto.Promises
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejected();
-                writerKey = resultContainer.Result;
+                writerKey = resultContainer.Value;
                 return resultContainer.State == Promise.State.Resolved;
             }
 

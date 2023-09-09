@@ -260,7 +260,7 @@ namespace Proto.Promises
                 promise
                     .ContinueWith(yieldInstruction, (yi, resultContainer) =>
                     {
-                        yi._result = resultContainer.Result;
+                        yi._result = resultContainer.Value;
                         yi._rejectContainer = resultContainer._rejectContainer;
                         yi._state = resultContainer.State;
                         yi.MaybeDispose();

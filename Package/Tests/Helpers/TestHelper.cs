@@ -568,7 +568,7 @@ namespace ProtoPromiseTests
                     }
                     else
                     {
-                        d.Reject(result.RejectReason);
+                        d.Reject(result.Reason);
                     }
                 })
                 .Forget();
@@ -592,7 +592,7 @@ namespace ProtoPromiseTests
                 {
                     if (result.State == Promise.State.Resolved)
                     {
-                        d.Resolve(result.Result);
+                        d.Resolve(result.Value);
                     }
                     else if (result.State == Promise.State.Canceled)
                     {
@@ -600,7 +600,7 @@ namespace ProtoPromiseTests
                     }
                     else
                     {
-                        d.Reject(result.RejectReason);
+                        d.Reject(result.Reason);
                     }
                 })
                 .Forget();

@@ -170,11 +170,11 @@ namespace ProtoPromiseTests.Concurrency
                         {
                             if (_expectedResolveValue is IEnumerable)
                             {
-                                CollectionAssert.AreEqual((IEnumerable) _expectedResolveValue, (IEnumerable) r.Result);
+                                CollectionAssert.AreEqual((IEnumerable) _expectedResolveValue, (IEnumerable) r.Value);
                             }
                             else
                             {
-                                Assert.AreEqual(_expectedResolveValue, r.Result);
+                                Assert.AreEqual(_expectedResolveValue, r.Value);
                             }
                         }
                         Success = true;

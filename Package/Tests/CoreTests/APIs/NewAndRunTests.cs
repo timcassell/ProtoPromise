@@ -109,7 +109,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -176,7 +176,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -242,7 +242,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -250,7 +250,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Resolve)
                     {
                         Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
-                        Assert.AreEqual(expectedResolveValue, resultContainer.Result);
+                        Assert.AreEqual(expectedResolveValue, resultContainer.Value);
                     }
                     else
                     {
@@ -311,7 +311,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -319,7 +319,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Resolve)
                     {
                         Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
-                        Assert.AreEqual(expectedResolveValue, resultContainer.Result);
+                        Assert.AreEqual(expectedResolveValue, resultContainer.Value);
                     }
                     else
                     {
@@ -410,7 +410,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -470,7 +470,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -530,7 +530,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -538,7 +538,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Resolve)
                     {
                         Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
-                        Assert.AreEqual(expectedResolveValue, resultContainer.Result);
+                        Assert.AreEqual(expectedResolveValue, resultContainer.Value);
                     }
                     else
                     {
@@ -593,7 +593,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -601,7 +601,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Resolve)
                     {
                         Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
-                        Assert.AreEqual(expectedResolveValue, resultContainer.Result);
+                        Assert.AreEqual(expectedResolveValue, resultContainer.Value);
                     }
                     else
                     {
@@ -720,7 +720,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -820,7 +820,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -919,7 +919,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -927,7 +927,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Resolve)
                     {
                         Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
-                        Assert.AreEqual(expectedResolveValue, resultContainer.Result);
+                        Assert.AreEqual(expectedResolveValue, resultContainer.Value);
                     }
                     else
                     {
@@ -1021,7 +1021,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Reject)
                     {
                         Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                        Assert.AreEqual(expectedRejectValue, resultContainer.RejectReason);
+                        Assert.AreEqual(expectedRejectValue, resultContainer.Reason);
                         invoked = true;
                         return;
                     }
@@ -1029,7 +1029,7 @@ namespace ProtoPromiseTests.APIs
                     if (completeType == CompleteType.Resolve)
                     {
                         Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
-                        Assert.AreEqual(expectedResolveValue, resultContainer.Result);
+                        Assert.AreEqual(expectedResolveValue, resultContainer.Value);
                     }
                     else
                     {
