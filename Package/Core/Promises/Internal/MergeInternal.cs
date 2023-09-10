@@ -253,7 +253,7 @@ namespace Proto.Promises
                 return MergePromiseT<TResult>.GetOrCreate(promisePassThroughs, value, pendingAwaits, completedProgress, depth, getResultFunc);
             }
 
-            internal sealed class MergeSettledPromise<TResult> : MergePromise<TResult>
+            internal sealed partial class MergeSettledPromise<TResult> : MergePromise<TResult>
             {
                 private static GetResultContainerDelegate<TResult> s_getResult;
 
@@ -300,7 +300,7 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     if (RemoveWaiterAndGetIsComplete())
                     {
-                        ReleaseAndHandleNext(rejectContainer, state);
+                        ReleaseAndHandleNext(null, Promise.State.Resolved);
                         return;
                     }
                     MaybeDispose();
