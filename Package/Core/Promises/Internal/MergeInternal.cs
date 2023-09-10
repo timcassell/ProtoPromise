@@ -83,20 +83,10 @@ namespace Proto.Promises
                     return Interlocked.Add(ref _waitCount, -1) == 0;
                 }
 
-                protected void ReleaseAndHandleNext(object rejectContainer, Promise.State state)
-                {
-                    // Decrement retain counter instead of calling MaybeDispose, since we know the next handler will call MaybeDispose.
-                    InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
-                    HandleNextInternal(rejectContainer, state);
-                }
-
                 protected void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
                 {
                     _waitCount = pendingAwaits;
-                    unchecked
-                    {
-                        _retainCounter = pendingAwaits + 1;
-                    }
+                    _retainCounter = pendingAwaits;
                     Reset(depth);
 
                     _passThroughs = promisePassThroughs;
@@ -168,7 +158,7 @@ namespace Proto.Promises
                     {
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        ReleaseAndHandleNext(rejectContainer, state);
+                        HandleNextInternal(rejectContainer, state);
                         return;
                     }
                     handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
@@ -232,7 +222,7 @@ namespace Proto.Promises
                     {
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        ReleaseAndHandleNext(rejectContainer, state);
+                        HandleNextInternal(rejectContainer, state);
                         return;
                     }
                     handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
@@ -300,7 +290,7 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     if (RemoveWaiterAndGetIsComplete())
                     {
-                        ReleaseAndHandleNext(null, Promise.State.Resolved);
+                        HandleNextInternal(null, Promise.State.Resolved);
                         return;
                     }
                     MaybeDispose();

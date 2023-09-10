@@ -136,25 +136,6 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static HandleablePromiseBase TryTakeOrInvalid<T, TActual>()
-                where T : HandleablePromiseBase
-                where TActual : T
-            {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                var obj = Type<T>.TryTakeOrInvalid();
-                if (s_trackObjectsForRelease & obj == PromiseRefBase.InvalidAwaitSentinel.s_instance)
-                {
-                    // Create here via reflection so that the object can be tracked.
-                    obj = Activator.CreateInstance(typeof(TActual), true).UnsafeAs<HandleablePromiseBase>();
-                }
-                MarkNotInPoolPrivate(obj);
-                return obj;
-#else
-                return TryTakeOrInvalid<T>();
-#endif
-            }
-
-            [MethodImpl(InlineOption)]
             internal static void MaybeRepool<T>(T obj) where T : HandleablePromiseBase
             {
                 MarkInPoolPrivate(obj);

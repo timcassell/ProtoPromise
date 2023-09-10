@@ -429,7 +429,7 @@ namespace Proto.Promises
 #region Multi Promises
             partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
-                volatile protected int _waitCount;
+                protected int _waitCount;
                 protected int _retainCounter;
                 // We store the passthroughs for lazy progress subscribe.
                 // The passthroughs will be released when this has fully released if a progress listener did not do it already.
