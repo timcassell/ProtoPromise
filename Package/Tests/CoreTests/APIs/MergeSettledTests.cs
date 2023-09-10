@@ -7,9 +7,23 @@
 using NUnit.Framework;
 using Proto.Promises;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+
+#if UNITY_5_5_OR_NEWER && !NET_LEGACY && !UNITY_2021_2_OR_NEWER
+// ITuple interface was added in net471, which Unity 2018 and 2019 don't support.
+namespace System.Runtime.CompilerServices
+{
+    public interface ITuple
+    {
+        int Length { get; }
+
+        object this[int index] { get; }
+    }
+}
+#endif
 
 namespace ProtoPromiseTests.APIs
 {
@@ -25,6 +39,27 @@ namespace ProtoPromiseTests.APIs
         public void Teardown()
         {
             TestHelper.Cleanup();
+        }
+
+        private class TupleWrapper : ITuple
+        {
+            private readonly ArrayList list = new ArrayList(7);
+
+            public object this[int index] { get { return list[index]; } }
+
+            public int Length { get { return list.Count; } }
+
+            internal TupleWrapper(object tuple)
+            {
+                var type = tuple.GetType();
+                for (int i = 1; i <= 7; ++i)
+                {
+                    var fieldInfo = type.GetField("Item" + i);
+                    if (fieldInfo == null) break;
+
+                    list.Add(fieldInfo.GetValue(tuple));
+                }
+            }
         }
 
         // There are a lot of MergeSettled methods, it's easier to use reflection to test them all.
@@ -218,7 +253,7 @@ namespace ProtoPromiseTests.APIs
 
         private static Promise<ITuple> ConvertPromise<T>(Promise<T> promise)
         {
-            return promise.Then(v => v as ITuple);
+            return promise.Then(v => v as ITuple ?? new TupleWrapper(v));
         }
 
         private const string rejectValue = "reject";
