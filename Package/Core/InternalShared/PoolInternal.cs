@@ -20,7 +20,45 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        internal static event Action OnClearPool;
+        // If C#9 is available, we use function pointers instead of delegates to clear the pool.
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+        // Pointers cannot be used as array types, so we have to wrap it in a struct.
+        private unsafe struct Ptr
+        {
+            internal delegate*<void> _ptr;
+        }
+
+        private static Ptr[] s_clearPoolPointers = new Ptr[64];
+        private static int s_clearPoolCount;
+        // Must not be readonly.
+        private static SpinLocker s_clearPoolLock = new SpinLocker();
+
+        internal static unsafe void ClearPool()
+        {
+            // We don't need to lock here.
+            var temp = s_clearPoolPointers;
+            for (int i = 0, max = s_clearPoolCount; i < max; ++i)
+            {
+                temp[i]._ptr();
+            }
+        }
+
+        internal static unsafe void AddClearPoolListener(delegate*<void> action)
+        {
+            s_clearPoolLock.Enter();
+            int count = s_clearPoolCount;
+            if (count >= s_clearPoolPointers.Length)
+            {
+                Array.Resize(ref s_clearPoolPointers, count * 2);
+            }
+            s_clearPoolPointers[count]._ptr = action;
+            // Volatile write the new count so when ClearPool is called it doesn't need to lock.
+            // This prevents the count write from being moved before the pointer write.
+            System.Threading.Volatile.Write(ref s_clearPoolCount, count + 1);
+            s_clearPoolLock.Exit();
+        }
+#else
+        private static event Action OnClearPool;
 
         internal static void ClearPool()
         {
@@ -30,6 +68,12 @@ namespace Proto.Promises
                 temp.Invoke();
             }
         }
+
+        internal static void AddClearPoolListener(Action action)
+        {
+            OnClearPool += action;
+        }
+#endif
 
         // Using static generic classes to hold the pools allows direct pool access at runtime without doing a dictionary lookup.
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -52,10 +96,11 @@ namespace Proto.Promises
                 // The downside to static pools instead of a Type dictionary is adding each type's clear function to the OnClearPool delegate consumes memory and is potentially more expensive than clearing a dictionary.
                 // This cost could be removed if Promise.Config.ObjectPoolingEnabled is made constant and set to false, and we add a check before accessing the pool.
                 // But as a general-purpose library, it makes more sense to leave that configurable at runtime.
-                static Type()
-                {
-                    OnClearPool += Clear;
-                }
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+                static unsafe Type() { AddClearPoolListener(&Clear); }
+#else
+                static Type() { AddClearPoolListener(Clear); }
+#endif
 
                 private static void Clear()
                 {
@@ -86,7 +131,7 @@ namespace Proto.Promises
                     obj = Activator.CreateInstance(typeof(T), true).UnsafeAs<HandleablePromiseBase>();
                 }
 #endif
-                MarkNotInPool(obj);
+                MarkNotInPoolPrivate(obj);
                 return obj;
             }
 
@@ -102,7 +147,7 @@ namespace Proto.Promises
                     // Create here via reflection so that the object can be tracked.
                     obj = Activator.CreateInstance(typeof(TActual), true).UnsafeAs<HandleablePromiseBase>();
                 }
-                MarkNotInPool(obj);
+                MarkNotInPoolPrivate(obj);
                 return obj;
 #else
                 return TryTakeOrInvalid<T>();
@@ -112,7 +157,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal static void MaybeRepool<T>(T obj) where T : HandleablePromiseBase
             {
-                MarkInPool(obj);
+                MarkInPoolPrivate(obj);
                 if (Promise.Config.ObjectPoolingEnabled)
                 {
                     Type<T>.Repool(obj);
@@ -126,38 +171,20 @@ namespace Proto.Promises
                 }
             }
 
-            static partial void MarkInPool(object obj);
-            static partial void MarkNotInPool(object obj);
+            static partial void MarkInPoolPrivate(object obj);
+            static partial void MarkNotInPoolPrivate(object obj);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            static partial void MarkInPool(object obj)
+            static partial void MarkInPoolPrivate(object obj)
             {
-                lock (s_pooledObjects)
-                {
-                    if (Promise.Config.ObjectPoolingEnabled && !s_pooledObjects.Add(obj))
-                    {
-                        throw new Exception("Same object was added to the pool twice: " + obj);
-                    }
-                    s_inUseObjects.Remove(obj);
-                }
+                MarkInPool(obj);
             }
 
-            static partial void MarkNotInPool(object obj)
+            static partial void MarkNotInPoolPrivate(object obj)
             {
-                if (obj == PromiseRefBase.InvalidAwaitSentinel.s_instance)
-                {
-                    return;
-                }
-                lock (s_pooledObjects)
-                {
-                    s_pooledObjects.Remove(obj);
-                    if (s_trackObjectsForRelease && !s_inUseObjects.Add(obj))
-                    {
-                        throw new Exception("Same object was taken from the pool twice: " + obj);
-                    }
-                }
+                MarkNotInPool(obj);
             }
 #endif
-        }
+        } // class ObjectPool
 
         internal static void Discard(object waste)
         {
@@ -173,19 +200,50 @@ namespace Proto.Promises
         static partial void ThrowIfInPool(object obj);
         static partial void MaybeThrowIfInPool(object obj, bool shouldCheck);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-        private static bool s_trackObjectsForRelease = false;
+        internal static bool s_trackObjectsForRelease = false;
         private static readonly HashSet<object> s_pooledObjects = new HashSet<object>();
         private static readonly HashSet<object> s_inUseObjects = new HashSet<object>();
 
-        static Internal()
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+        static unsafe Internal() { AddClearPoolListener(&ClearObjectTracking); }
+#else
+        static Internal() { AddClearPoolListener(ClearObjectTracking); }
+#endif
+
+        private static void ClearObjectTracking()
         {
-            OnClearPool += () =>
+            lock (s_pooledObjects)
             {
-                lock (s_pooledObjects)
+                s_pooledObjects.Clear();
+            }
+        }
+
+        internal static void MarkInPool(object obj)
+        {
+            lock (s_pooledObjects)
+            {
+                if (Promise.Config.ObjectPoolingEnabled && !s_pooledObjects.Add(obj))
                 {
-                    s_pooledObjects.Clear();
+                    throw new Exception("Same object was added to the pool twice: " + obj);
                 }
-            };
+                s_inUseObjects.Remove(obj);
+            }
+        }
+
+        internal static void MarkNotInPool(object obj)
+        {
+            if (obj == null || obj == PromiseRefBase.InvalidAwaitSentinel.s_instance)
+            {
+                return;
+            }
+            lock (s_pooledObjects)
+            {
+                s_pooledObjects.Remove(obj);
+                if (s_trackObjectsForRelease && !s_inUseObjects.Add(obj))
+                {
+                    throw new Exception("Same object was taken from the pool twice: " + obj);
+                }
+            }
         }
 
         static partial void ThrowIfInPool(object obj)
@@ -240,5 +298,5 @@ namespace Proto.Promises
             }
         }
 #endif
-    }
-}
+    } // class Internal
+} // namespace Proto.Promises

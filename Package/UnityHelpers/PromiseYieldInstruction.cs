@@ -1,13 +1,20 @@
 ﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
 #define NET_LEGACY
 #endif
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
 
+#pragma warning disable RECS0108 // Warns about static fields in generic types
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using UnityEngine;
 
@@ -159,29 +166,16 @@ namespace Proto.Promises
 #endif
         internal sealed class YieldInstructionVoid : PromiseYieldInstruction, Internal.ILinked<YieldInstructionVoid>
         {
-            // These must not be readonly.
-            private static Internal.ValueLinkedStack<YieldInstructionVoid> s_pool = new Internal.ValueLinkedStack<YieldInstructionVoid>();
-            private static Internal.SpinLocker s_spinLocker;
-
             private int _disposeChecker; // To detect if Dispose is called from multiple threads.
 
             YieldInstructionVoid Internal.ILinked<YieldInstructionVoid>.Next { get; set; }
-
-            static YieldInstructionVoid()
-            {
-                Internal.OnClearPool += () => s_pool = new Internal.ValueLinkedStack<YieldInstructionVoid>();
-            }
 
             private YieldInstructionVoid() { }
 
             public static YieldInstructionVoid GetOrCreate(Promise promise)
             {
-                YieldInstructionVoid yieldInstruction;
-                s_spinLocker.Enter();
-                yieldInstruction = s_pool.IsNotEmpty
-                    ? s_pool.Pop()
-                    : new YieldInstructionVoid();
-                s_spinLocker.Exit();
+                var yieldInstruction = LinkedPool.TryTakeOrNull<YieldInstructionVoid>()
+                    ?? new YieldInstructionVoid();
 
                 yieldInstruction._disposeChecker = 0;
                 yieldInstruction._state = Promise.State.Pending;
@@ -215,12 +209,7 @@ namespace Proto.Promises
                 if (Interlocked.Decrement(ref _retainCounter) == 0)
                 {
                     _rejectContainer = null;
-                    if (Promise.Config.ObjectPoolingEnabled)
-                    {
-                        s_spinLocker.Enter();
-                        s_pool.Push(this);
-                        s_spinLocker.Exit();
-                    }
+                    LinkedPool.MaybeRepool(this);
                 }
             }
         }
@@ -230,29 +219,16 @@ namespace Proto.Promises
 #endif
         internal sealed class YieldInstruction<T> : PromiseYieldInstruction<T>, Internal.ILinked<YieldInstruction<T>>
         {
-            // These must not be readonly.
-            private static Internal.ValueLinkedStack<YieldInstruction<T>> s_pool = new Internal.ValueLinkedStack<YieldInstruction<T>>();
-            private static Internal.SpinLocker s_spinLocker;
-
             private int _disposeChecker; // To detect if Dispose is called from multiple threads.
 
             YieldInstruction<T> Internal.ILinked<YieldInstruction<T>>.Next { get; set; }
-
-            static YieldInstruction()
-            {
-                Internal.OnClearPool += () => s_pool = new Internal.ValueLinkedStack<YieldInstruction<T>>();
-            }
 
             private YieldInstruction() { }
 
             public static YieldInstruction<T> GetOrCreate(Promise<T> promise)
             {
-                YieldInstruction<T> yieldInstruction;
-                s_spinLocker.Enter();
-                yieldInstruction = s_pool.IsNotEmpty
-                    ? s_pool.Pop()
-                    : new YieldInstruction<T>();
-                s_spinLocker.Exit();
+                var yieldInstruction = LinkedPool.TryTakeOrNull<YieldInstruction<T>>()
+                    ?? new YieldInstruction<T>();
 
                 yieldInstruction._disposeChecker = 0;
                 yieldInstruction._state = Promise.State.Pending;
@@ -287,14 +263,110 @@ namespace Proto.Promises
                 if (Interlocked.Decrement(ref _retainCounter) == 0)
                 {
                     _rejectContainer = null;
-                    if (Promise.Config.ObjectPoolingEnabled)
-                    {
-                        s_spinLocker.Enter();
-                        s_pool.Push(this);
-                        s_spinLocker.Exit();
-                    }
+                    LinkedPool.MaybeRepool(this);
                 }
             }
+        } // class YieldInstruction<T>
+
+        // Implemented a separate pool from Internal.ObjectPool, because we use ILinked<T> instead of HandleablePromiseBase.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        private static partial class LinkedPool
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private static class Type<T> where T : class, Internal.ILinked<T>
+            {
+                private static volatile T s_head;
+
+#if UNITY_2021_2_OR_NEWER
+                static unsafe Type() { Internal.AddClearPoolListener(&Clear); }
+#else
+                static Type() { Internal.AddClearPoolListener(Clear); }
+#endif
+
+                private static void Clear()
+                {
+                    s_head = null;
+                }
+
+                internal static T TryTakeOrNull()
+                {
+                    while (true)
+                    {
+                        T item = s_head;
+                        if (item == null)
+                        {
+                            return null;
+                        }
+                        T next = item.Next;
+                        if (Interlocked.CompareExchange(ref s_head, next, item) == item)
+                        {
+                            item.Next = null;
+                            return item;
+                        }
+                    }
+                }
+
+                internal static void Repool(T item)
+                {
+                    T next;
+                    do
+                    {
+                        next = s_head;
+                        item.Next = next;
+                    } while (Interlocked.CompareExchange(ref s_head, item, next) != next);
+                }
+            }
+
+            // We return null instead of using the `new` constraint, because it uses reflection.
+            [MethodImpl(Internal.InlineOption)]
+            internal static T TryTakeOrNull<T>() where T : class, Internal.ILinked<T>
+            {
+                var obj = Type<T>.TryTakeOrNull();
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                if (Internal.s_trackObjectsForRelease & obj == null)
+                {
+                    // Create here via reflection so that the object can be tracked.
+                    obj = Activator.CreateInstance(typeof(T), true).UnsafeAs<T>();
+                }
+#endif
+                MarkNotInPool(obj);
+                return obj;
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal static void MaybeRepool<T>(T obj) where T : class, Internal.ILinked<T>
+            {
+                MarkInPool(obj);
+                if (Promise.Config.ObjectPoolingEnabled)
+                {
+                    Type<T>.Repool(obj);
+                }
+                else
+                {
+                    // Finalizers are only used to validate that objects were used and released properly.
+                    // If the object is being repooled, it means it was released properly. If pooling is disabled, we don't need the finalizer anymore.
+                    // SuppressFinalize reduces pressure on the system when the GC runs.
+                    GC.SuppressFinalize(obj);
+                }
+            }
+
+            static partial void MarkInPool(object obj);
+            static partial void MarkNotInPool(object obj);
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            static partial void MarkInPool(object obj)
+            {
+                Internal.MarkInPool(obj);
+            }
+
+            static partial void MarkNotInPool(object obj)
+            {
+                Internal.MarkNotInPool(obj);
+            }
+#endif
         }
-    }
-}
+    } // class InternalHelper
+} // namespace Proto.Promises
