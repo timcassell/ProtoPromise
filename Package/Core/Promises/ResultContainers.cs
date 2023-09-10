@@ -84,6 +84,12 @@ namespace Proto.Promises
 #endif
             struct ResultContainer
         {
+            internal static ResultContainer Resolved
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return new ResultContainer(null, State.Resolved); }
+            }
+
             /// <summary>
             /// FOR INTERNAL USE ONLY!
             /// </summary>
@@ -316,6 +322,15 @@ namespace Proto.Promises
             {
                 var newContainer = new Promise<Internal.VoidResult>.ResultContainer(rhs._rejectContainer, rhs._state);
                 return new Promise.ResultContainer(newContainer);
+            }
+
+            /// <summary>
+            /// Wrap the value in <see cref="ResultContainer"/>.
+            /// </summary>
+            [MethodImpl(Internal.InlineOption)]
+            public static implicit operator ResultContainer(T value)
+            {
+                return new ResultContainer(value, null, Promise.State.Resolved);
             }
 
             partial void ValidateRejected();

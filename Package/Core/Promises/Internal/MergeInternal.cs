@@ -25,6 +25,35 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+        // If C#9 is available, we use function pointers instead of delegates.
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+        internal readonly unsafe struct GetResultDelegate<TResult>
+        {
+            private readonly delegate*<PromiseRefBase, int, ref TResult, void> _ptr;
+
+            [MethodImpl(InlineOption)]
+            internal GetResultDelegate(delegate*<PromiseRefBase, int, ref TResult, void> ptr) => _ptr = ptr;
+
+            [MethodImpl(InlineOption)]
+            internal void Invoke(PromiseRefBase handler, int index, ref TResult result) => _ptr(handler, index, ref result);
+        }
+
+        internal readonly unsafe struct GetResultContainerDelegate<TResult>
+        {
+            private readonly delegate*<PromiseRefBase, object, Promise.State, int, ref TResult, void> _ptr;
+
+            [MethodImpl(InlineOption)]
+            internal GetResultContainerDelegate(delegate*<PromiseRefBase, object, Promise.State, int, ref TResult, void> ptr) => _ptr = ptr;
+
+            [MethodImpl(InlineOption)]
+            internal void Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref TResult result) => _ptr(handler, rejectContainer, state, index, ref result);
+        }
+#else
+        internal delegate void GetResultDelegate<TResult>(PromiseRefBase handler, int index, ref TResult result);
+
+        internal delegate void GetResultContainerDelegate<TResult>(PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref TResult result);
+#endif
+
         partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -147,16 +176,42 @@ namespace Proto.Promises
                 }
             }
 
-            private abstract class MergePromiseT<TResult> : MergePromise<TResult>
+            internal sealed class MergePromiseT<TResult> : MergePromise<TResult>
             {
-                internal override sealed void MaybeDispose()
+                private static GetResultDelegate<TResult> s_getResult;
+
+                [MethodImpl(InlineOption)]
+                private static MergePromiseT<TResult> GetOrCreate()
+                {
+                    // We take the base type instead of the concrete type because the base type re-pools with its type.
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new MergePromiseT<TResult>()
+                        : obj.UnsafeAs<MergePromiseT<TResult>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static MergePromiseT<TResult> GetOrCreate(
+                    ValueLinkedStack<PromisePassThrough> promisePassThroughs,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TResult value,
+                    int pendingAwaits, ulong completedProgress, ushort depth,
+                    GetResultDelegate<TResult> getResultFunc)
+                {
+                    s_getResult = getResultFunc;
+                    var promise = GetOrCreate();
+                    promise._result = value;
+                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
                 {
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
                     {
                         Dispose();
-                        // We use this base type to repool so that we don't have to override MaybeDispose() on every merge promise, and this can be called directly instead of virtually.
-                        // The merge promises then try to take this base type from the pool, and create their concrete type if it doesn't exist.
-                        // Each merge promise type will be unique thanks to the differing <TResult> type (i.e. <List<T>>, <ValueTuple<T1, T2>>, etc).
                         ObjectPool.MaybeRepool(this);
                     }
                 }
@@ -166,7 +221,7 @@ namespace Proto.Promises
                     bool isComplete;
                     if (state == Promise.State.Resolved)
                     {
-                        ReadResult(handler, index);
+                        s_getResult.Invoke(handler, index, ref _result);
                         isComplete = RemoveWaiterAndGetIsComplete();
                     }
                     else
@@ -183,360 +238,86 @@ namespace Proto.Promises
                     handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                     MaybeDispose();
                 }
-
-                protected abstract void ReadResult(PromiseRefBase handler, int index);
             }
 
-            internal static MergePromise<IList<TResult>> GetOrCreateAllPromise<TResult>(
+            [MethodImpl(InlineOption)]
+            internal static MergePromise<TResult> GetOrCreateMergePromise<TResult>(
                 ValueLinkedStack<PromisePassThrough> promisePassThroughs,
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
-                IList<TResult> value,
-                int pendingAwaits, ulong completedProgress, ushort depth)
+                TResult value,
+                int pendingAwaits, ulong completedProgress, ushort depth,
+                GetResultDelegate<TResult> getResultFunc)
             {
-                var promise = AllPromise<TResult>.GetOrCreate();
-                promise._result = value;
-                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                return promise;
+                return MergePromiseT<TResult>.GetOrCreate(promisePassThroughs, value, pendingAwaits, completedProgress, depth, getResultFunc);
             }
 
-            private sealed class AllPromise<TResult> : MergePromiseT<IList<TResult>>
+            internal sealed class MergeSettledPromise<TResult> : MergePromise<TResult>
             {
+                private static GetResultContainerDelegate<TResult> s_getResult;
+
                 [MethodImpl(InlineOption)]
-                internal static AllPromise<TResult> GetOrCreate()
+                private static MergeSettledPromise<TResult> GetOrCreate()
                 {
                     // We take the base type instead of the concrete type because the base type re-pools with its type.
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<IList<TResult>>, AllPromise<TResult>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<MergeSettledPromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new AllPromise<TResult>()
-                        : obj.UnsafeAs<AllPromise<TResult>>();
+                        ? new MergeSettledPromise<TResult>()
+                        : obj.UnsafeAs<MergeSettledPromise<TResult>>();
                 }
 
-                protected override void ReadResult(PromiseRefBase handler, int index)
-                {
-                    _result[index] = handler.GetResult<TResult>();
-                }
-            }
-
-            internal static MergePromise<T1> GetOrCreateMergePromise<T1>(
-                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
+                [MethodImpl(InlineOption)]
+                internal static MergeSettledPromise<TResult> GetOrCreate(
+                    ValueLinkedStack<PromisePassThrough> promisePassThroughs,
 #if CSHARP_7_3_OR_NEWER
-                in
+                    in
 #endif
-                T1 value,
-                int pendingAwaits, ulong completedProgress, ushort depth)
-            {
-                var promise = MergePromiseTuple<T1>.GetOrCreate();
-                promise._result = value;
-                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                return promise;
-            }
-
-            private sealed class MergePromiseTuple<T1> : MergePromiseT<T1>
-            {
-                [MethodImpl(InlineOption)]
-                internal static MergePromiseTuple<T1> GetOrCreate()
+                    TResult value,
+                    int pendingAwaits, ulong completedProgress, ushort depth,
+                    GetResultContainerDelegate<TResult> getResultFunc)
                 {
-                    // We take the base type instead of the concrete type because the base type re-pools with its type.
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<T1>, MergePromiseTuple<T1>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new MergePromiseTuple<T1>()
-                        : obj.UnsafeAs<MergePromiseTuple<T1>>();
+                    s_getResult = getResultFunc;
+                    var promise = GetOrCreate();
+                    promise._result = value;
+                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                    return promise;
                 }
 
-                protected override void ReadResult(PromiseRefBase handler, int index)
+                internal override void MaybeDispose()
                 {
-                    if (index == 0)
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
                     {
-                        _result = handler.GetResult<T1>();
+                        Dispose();
+                        ObjectPool.MaybeRepool(this);
                     }
                 }
+
+                internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                {
+                    s_getResult.Invoke(handler, rejectContainer, state, index, ref _result);
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+                    if (RemoveWaiterAndGetIsComplete())
+                    {
+                        ReleaseAndHandleNext(rejectContainer, state);
+                        return;
+                    }
+                    MaybeDispose();
+                }
             }
 
-            internal static MergePromise<ValueTuple<T1, T2>> GetOrCreateMergePromise<T1, T2>(
+            [MethodImpl(InlineOption)]
+            internal static MergeSettledPromise<TResult> GetOrCreateMergeSettledPromise<TResult>(
                 ValueLinkedStack<PromisePassThrough> promisePassThroughs,
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
-                ValueTuple<T1, T2> value,
-                int pendingAwaits, ulong completedProgress, ushort depth)
+                TResult value,
+                int pendingAwaits, ulong completedProgress, ushort depth,
+                GetResultContainerDelegate<TResult> getResultFunc)
             {
-                var promise = MergePromiseTuple<T1, T2>.GetOrCreate();
-                promise._result = value;
-                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                return promise;
-            }
-
-            private sealed class MergePromiseTuple<T1, T2> : MergePromiseT<ValueTuple<T1, T2>>
-            {
-                [MethodImpl(InlineOption)]
-                internal static MergePromiseTuple<T1, T2> GetOrCreate()
-                {
-                    // We take the base type instead of the concrete type because the base type re-pools with its type.
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2>>, MergePromiseTuple<T1, T2>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new MergePromiseTuple<T1, T2>()
-                        : obj.UnsafeAs<MergePromiseTuple<T1, T2>>();
-                }
-
-                protected override void ReadResult(PromiseRefBase handler, int index)
-                {
-                    switch (index)
-                    {
-                        case 0:
-                            _result.Item1 = handler.GetResult<T1>();
-                            break;
-                        case 1:
-                            _result.Item2 = handler.GetResult<T2>();
-                            break;
-                    }
-                }
-            }
-
-            internal static MergePromise<ValueTuple<T1, T2, T3>> GetOrCreateMergePromise<T1, T2, T3>(
-                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                ValueTuple<T1, T2, T3> value,
-                int pendingAwaits, ulong completedProgress, ushort depth)
-            {
-                var promise = MergePromiseTuple<T1, T2, T3>.GetOrCreate();
-                promise._result = value;
-                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                return promise;
-            }
-
-            private sealed class MergePromiseTuple<T1, T2, T3> : MergePromiseT<ValueTuple<T1, T2, T3>>
-            {
-                [MethodImpl(InlineOption)]
-                internal static MergePromiseTuple<T1, T2, T3> GetOrCreate()
-                {
-                    // We take the base type instead of the concrete type because the base type re-pools with its type.
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2, T3>>, MergePromiseTuple<T1, T2, T3>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new MergePromiseTuple<T1, T2, T3>()
-                        : obj.UnsafeAs<MergePromiseTuple<T1, T2, T3>>();
-                }
-
-                protected override void ReadResult(PromiseRefBase handler, int index)
-                {
-                    switch (index)
-                    {
-                        case 0:
-                            _result.Item1 = handler.GetResult<T1>();
-                            break;
-                        case 1:
-                            _result.Item2 = handler.GetResult<T2>();
-                            break;
-                        case 2:
-                            _result.Item3 = handler.GetResult<T3>();
-                            break;
-                    }
-                }
-            }
-
-            internal static MergePromise<ValueTuple<T1, T2, T3, T4>> GetOrCreateMergePromise<T1, T2, T3, T4>(
-                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                ValueTuple<T1, T2, T3, T4> value,
-                int pendingAwaits, ulong completedProgress, ushort depth)
-            {
-                var promise = MergePromiseTuple<T1, T2, T3, T4>.GetOrCreate();
-                promise._result = value;
-                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                return promise;
-            }
-
-            private sealed class MergePromiseTuple<T1, T2, T3, T4> : MergePromiseT<ValueTuple<T1, T2, T3, T4>>
-            {
-                [MethodImpl(InlineOption)]
-                internal static MergePromiseTuple<T1, T2, T3, T4> GetOrCreate()
-                {
-                    // We take the base type instead of the concrete type because the base type re-pools with its type.
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2, T3, T4>>, MergePromiseTuple<T1, T2, T3, T4>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new MergePromiseTuple<T1, T2, T3, T4>()
-                        : obj.UnsafeAs<MergePromiseTuple<T1, T2, T3, T4>>();
-                }
-
-                protected override void ReadResult(PromiseRefBase handler, int index)
-                {
-                    switch (index)
-                    {
-                        case 0:
-                            _result.Item1 = handler.GetResult<T1>();
-                            break;
-                        case 1:
-                            _result.Item2 = handler.GetResult<T2>();
-                            break;
-                        case 2:
-                            _result.Item3 = handler.GetResult<T3>();
-                            break;
-                        case 3:
-                            _result.Item4 = handler.GetResult<T4>();
-                            break;
-                    }
-                }
-            }
-
-            internal static MergePromise<ValueTuple<T1, T2, T3, T4, T5>> GetOrCreateMergePromise<T1, T2, T3, T4, T5>(
-                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                ValueTuple<T1, T2, T3, T4, T5> value,
-                int pendingAwaits, ulong completedProgress, ushort depth)
-            {
-                var promise = MergePromiseTuple<T1, T2, T3, T4, T5>.GetOrCreate();
-                promise._result = value;
-                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                return promise;
-            }
-
-            private sealed class MergePromiseTuple<T1, T2, T3, T4, T5> : MergePromiseT<ValueTuple<T1, T2, T3, T4, T5>>
-            {
-                [MethodImpl(InlineOption)]
-                internal static MergePromiseTuple<T1, T2, T3, T4, T5> GetOrCreate()
-                {
-                    // We take the base type instead of the concrete type because the base type re-pools with its type.
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5>>, MergePromiseTuple<T1, T2, T3, T4, T5>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new MergePromiseTuple<T1, T2, T3, T4, T5>()
-                        : obj.UnsafeAs<MergePromiseTuple<T1, T2, T3, T4, T5>>();
-                }
-
-                protected override void ReadResult(PromiseRefBase handler, int index)
-                {
-                    switch (index)
-                    {
-                        case 0:
-                            _result.Item1 = handler.GetResult<T1>();
-                            break;
-                        case 1:
-                            _result.Item2 = handler.GetResult<T2>();
-                            break;
-                        case 2:
-                            _result.Item3 = handler.GetResult<T3>();
-                            break;
-                        case 3:
-                            _result.Item4 = handler.GetResult<T4>();
-                            break;
-                        case 4:
-                            _result.Item5 = handler.GetResult<T5>();
-                            break;
-                    }
-                }
-            }
-
-            internal static MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6>> GetOrCreateMergePromise<T1, T2, T3, T4, T5, T6>(
-                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                ValueTuple<T1, T2, T3, T4, T5, T6> value,
-                int pendingAwaits, ulong completedProgress, ushort depth)
-            {
-                var promise = MergePromiseTuple<T1, T2, T3, T4, T5, T6>.GetOrCreate();
-                promise._result = value;
-                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                return promise;
-            }
-
-            private sealed class MergePromiseTuple<T1, T2, T3, T4, T5, T6> : MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6>>
-            {
-                [MethodImpl(InlineOption)]
-                internal static MergePromiseTuple<T1, T2, T3, T4, T5, T6> GetOrCreate()
-                {
-                    // We take the base type instead of the concrete type because the base type re-pools with its type.
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6>>, MergePromiseTuple<T1, T2, T3, T4, T5, T6>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new MergePromiseTuple<T1, T2, T3, T4, T5, T6>()
-                        : obj.UnsafeAs<MergePromiseTuple<T1, T2, T3, T4, T5, T6>>();
-                }
-
-                protected override void ReadResult(PromiseRefBase handler, int index)
-                {
-                    switch (index)
-                    {
-                        case 0:
-                            _result.Item1 = handler.GetResult<T1>();
-                            break;
-                        case 1:
-                            _result.Item2 = handler.GetResult<T2>();
-                            break;
-                        case 2:
-                            _result.Item3 = handler.GetResult<T3>();
-                            break;
-                        case 3:
-                            _result.Item4 = handler.GetResult<T4>();
-                            break;
-                        case 4:
-                            _result.Item5 = handler.GetResult<T5>();
-                            break;
-                        case 5:
-                            _result.Item6 = handler.GetResult<T6>();
-                            break;
-                    }
-                }
-            }
-
-            internal static MergePromise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> GetOrCreateMergePromise<T1, T2, T3, T4, T5, T6, T7>(
-                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                ValueTuple<T1, T2, T3, T4, T5, T6, T7> value,
-                int pendingAwaits, ulong completedProgress, ushort depth)
-            {
-                var promise = MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>.GetOrCreate();
-                promise._result = value;
-                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                return promise;
-            }
-
-            private sealed class MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7> : MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>
-            {
-                [MethodImpl(InlineOption)]
-                internal static MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7> GetOrCreate()
-                {
-                    // We take the base type instead of the concrete type because the base type re-pools with its type.
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>, MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>()
-                        : obj.UnsafeAs<MergePromiseTuple<T1, T2, T3, T4, T5, T6, T7>>();
-                }
-
-                protected override void ReadResult(PromiseRefBase handler, int index)
-                {
-                    switch (index)
-                    {
-                        case 0:
-                            _result.Item1 = handler.GetResult<T1>();
-                            break;
-                        case 1:
-                            _result.Item2 = handler.GetResult<T2>();
-                            break;
-                        case 2:
-                            _result.Item3 = handler.GetResult<T3>();
-                            break;
-                        case 3:
-                            _result.Item4 = handler.GetResult<T4>();
-                            break;
-                        case 4:
-                            _result.Item5 = handler.GetResult<T5>();
-                            break;
-                        case 5:
-                            _result.Item6 = handler.GetResult<T6>();
-                            break;
-                        case 6:
-                            _result.Item7 = handler.GetResult<T7>();
-                            break;
-                    }
-                }
+                return MergeSettledPromise<TResult>.GetOrCreate(promisePassThroughs, value, pendingAwaits, completedProgress, depth, getResultFunc);
             }
         } // class PromiseRefBase
     } // class Internal
