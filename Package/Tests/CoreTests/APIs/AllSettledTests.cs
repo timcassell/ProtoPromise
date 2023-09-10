@@ -958,7 +958,6 @@ namespace ProtoPromiseTests.APIs
             ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
             Promise.AllSettled(deferred1.Promise, deferred2.Promise, deferred3.Promise)
                 .SubscribeProgressAndAssert(progressHelper, 0f / 3f)
-                .Catch(() => { })
                 .Forget();
 
             progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 3f);
