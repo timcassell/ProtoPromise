@@ -10,6 +10,8 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
@@ -142,7 +144,6 @@ namespace Proto.Promises
                 return new Promise(promise, promise.Id, maxDepth);
             }
         }
-
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
         {
             return Promise<T>.All(promise1, promise2, valueContainer);
@@ -179,6 +180,44 @@ namespace Proto.Promises
             return Promise<T>.AllNonAlloc(promises, valueContainer);
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        private static partial class MergeResultFuncs
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private static class One<T1>
+            {
+                [MethodImpl(Internal.InlineOption)]
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref T1 result)
+                {
+                    if (index == 0)
+                    {
+                        result = handler.GetResult<T1>();
+                    }
+                }
+
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+                internal static unsafe Internal.GetResultDelegate<T1> Func
+                {
+                    [MethodImpl(Internal.InlineOption)]
+                    get { return new(&GetMergeResult); }
+                }
+#else
+                internal static readonly Internal.GetResultDelegate<T1> Func =
+                    (Internal.PromiseRefBase handler, int index, ref T1 result) => GetMergeResult(handler, index, ref result);
+#endif
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal static Internal.GetResultDelegate<T1> GetOne<T1>()
+            {
+                return One<T1>.Func;
+            }
+        }
+
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the value of <paramref name="promise1"/> when both promises have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
@@ -200,8 +239,48 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetOne<T1>());
             return new Promise<T1>(promise, promise.Id, maxDepth);
+        }
+
+        private static partial class MergeResultFuncs
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private static class Two<T1, T2>
+            {
+                [MethodImpl(Internal.InlineOption)]
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2> result)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            result.Item2 = handler.GetResult<T2>();
+                            break;
+                    }
+                }
+
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2>> Func
+                {
+                    [MethodImpl(Internal.InlineOption)]
+                    get { return new(&GetMergeResult); }
+                }
+#else
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2>> Func =
+                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2> result) => GetMergeResult(handler, index, ref result);
+#endif
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal static Internal.GetResultDelegate<ValueTuple<T1, T2>> GetTwo<T1, T2>()
+            {
+                return Two<T1, T2>.Func;
+            }
         }
 
         /// <summary>
@@ -225,7 +304,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetTwo<T1, T2>());
             return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, maxDepth);
         }
 
@@ -252,8 +331,51 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetTwo<T1, T2>());
             return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, maxDepth);
+        }
+
+        private static partial class MergeResultFuncs
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private static class Three<T1, T2, T3>
+            {
+                [MethodImpl(Internal.InlineOption)]
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3> result)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            result.Item2 = handler.GetResult<T2>();
+                            break;
+                        case 2:
+                            result.Item3 = handler.GetResult<T3>();
+                            break;
+                    }
+                }
+
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2, T3>> Func
+                {
+                    [MethodImpl(Internal.InlineOption)]
+                    get { return new(&GetMergeResult); }
+                }
+#else
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3>> Func =
+                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3> result) => GetMergeResult(handler, index, ref result);
+#endif
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal static Internal.GetResultDelegate<ValueTuple<T1, T2, T3>> GetThree<T1, T2, T3>()
+            {
+                return Three<T1, T2, T3>.Func;
+            }
         }
 
         /// <summary>
@@ -279,7 +401,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetThree<T1, T2, T3>());
             return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id, maxDepth);
         }
 
@@ -308,8 +430,54 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetThree<T1, T2, T3>());
             return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id, maxDepth);
+        }
+
+        private static partial class MergeResultFuncs
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private static class Four<T1, T2, T3, T4>
+            {
+                [MethodImpl(Internal.InlineOption)]
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4> result)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            result.Item2 = handler.GetResult<T2>();
+                            break;
+                        case 2:
+                            result.Item3 = handler.GetResult<T3>();
+                            break;
+                        case 3:
+                            result.Item4 = handler.GetResult<T4>();
+                            break;
+                    }
+                }
+
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4>> Func
+                {
+                    [MethodImpl(Internal.InlineOption)]
+                    get { return new(&GetMergeResult); }
+                }
+#else
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4>> Func =
+                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4> result) => GetMergeResult(handler, index, ref result);
+#endif
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal static Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4>> GetFour<T1, T2, T3, T4>()
+            {
+                return Four<T1, T2, T3, T4>.Func;
+            }
         }
 
         /// <summary>
@@ -337,7 +505,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
             return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id, maxDepth);
         }
 
@@ -368,8 +536,57 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
             return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id, maxDepth);
+        }
+
+        private static partial class MergeResultFuncs
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private static class Five<T1, T2, T3, T4, T5>
+            {
+                [MethodImpl(Internal.InlineOption)]
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5> result)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            result.Item2 = handler.GetResult<T2>();
+                            break;
+                        case 2:
+                            result.Item3 = handler.GetResult<T3>();
+                            break;
+                        case 3:
+                            result.Item4 = handler.GetResult<T4>();
+                            break;
+                        case 4:
+                            result.Item5 = handler.GetResult<T5>();
+                            break;
+                    }
+                }
+
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5>> Func
+                {
+                    [MethodImpl(Internal.InlineOption)]
+                    get { return new(&GetMergeResult); }
+                }
+#else
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5>> Func =
+                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5> result) => GetMergeResult(handler, index, ref result);
+#endif
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal static Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5>> GetFive<T1, T2, T3, T4, T5>()
+            {
+                return Five<T1, T2, T3, T4, T5>.Func;
+            }
         }
 
         /// <summary>
@@ -399,7 +616,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
             return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id, maxDepth);
         }
 
@@ -432,8 +649,60 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
             return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id, maxDepth);
+        }
+
+        private static partial class MergeResultFuncs
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private static class Six<T1, T2, T3, T4, T5, T6>
+            {
+                [MethodImpl(Internal.InlineOption)]
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5, T6> result)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            result.Item2 = handler.GetResult<T2>();
+                            break;
+                        case 2:
+                            result.Item3 = handler.GetResult<T3>();
+                            break;
+                        case 3:
+                            result.Item4 = handler.GetResult<T4>();
+                            break;
+                        case 4:
+                            result.Item5 = handler.GetResult<T5>();
+                            break;
+                        case 5:
+                            result.Item6 = handler.GetResult<T6>();
+                            break;
+                    }
+                }
+
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6>> Func
+                {
+                    [MethodImpl(Internal.InlineOption)]
+                    get { return new(&GetMergeResult); }
+                }
+#else
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6>> Func =
+                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5, T6> result) => GetMergeResult(handler, index, ref result);
+#endif
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal static Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6>> GetSix<T1, T2, T3, T4, T5, T6>()
+            {
+                return Six<T1, T2, T3, T4, T5, T6>.Func;
+            }
         }
 
         /// <summary>
@@ -465,7 +734,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
             return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id, maxDepth);
         }
 
@@ -500,8 +769,63 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
             return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id, maxDepth);
+        }
+
+        private static partial class MergeResultFuncs
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private static class Seven<T1, T2, T3, T4, T5, T6, T7>
+            {
+                [MethodImpl(Internal.InlineOption)]
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5, T6, T7> result)
+                {
+                    switch (index)
+                    {
+                        case 0:
+                            result.Item1 = handler.GetResult<T1>();
+                            break;
+                        case 1:
+                            result.Item2 = handler.GetResult<T2>();
+                            break;
+                        case 2:
+                            result.Item3 = handler.GetResult<T3>();
+                            break;
+                        case 3:
+                            result.Item4 = handler.GetResult<T4>();
+                            break;
+                        case 4:
+                            result.Item5 = handler.GetResult<T5>();
+                            break;
+                        case 5:
+                            result.Item6 = handler.GetResult<T6>();
+                            break;
+                        case 6:
+                            result.Item7 = handler.GetResult<T7>();
+                            break;
+                    }
+                }
+
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Func
+                {
+                    [MethodImpl(Internal.InlineOption)]
+                    get { return new(&GetMergeResult); }
+                }
+#else
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Func =
+                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5, T6, T7> result) => GetMergeResult(handler, index, ref result);
+#endif
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal static Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> GetSeven<T1, T2, T3, T4, T5, T6, T7>()
+            {
+                return Seven<T1, T2, T3, T4, T5, T6, T7>.Func;
+            }
         }
 
         /// <summary>
@@ -535,7 +859,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
             return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, maxDepth);
         }
 
@@ -572,7 +896,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(value, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
             return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, maxDepth);
         }
     }

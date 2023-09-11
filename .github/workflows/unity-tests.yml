@@ -71,7 +71,7 @@ jobs:
             }
         # Editor uses 2018.4 to test Net3.5 and Net4.x.
         # Standalone uses 2019.4 and 2021.3 to test IL2CPP with netstandard 2.0 and netstandard2.1.
-        unityVersion: [2018.4.36f1, 2019.4.40f1, 2021.3.15f1]
+        unityVersion: [2018.4.36f1, 2019.4.40f1, 2021.3.29f1]
         devMode:
           - {
               name: devMode,
@@ -95,7 +95,7 @@ jobs:
             }
           - {
               testMode: { name: Editor },
-              unityVersion: 2021.3.15f1
+              unityVersion: 2021.3.29f1
             }
           # Standalone with IL2CPP can only be built with 2019.4+ (unity-builder docker images constraint), which doesn't support Net3.5.
           - {

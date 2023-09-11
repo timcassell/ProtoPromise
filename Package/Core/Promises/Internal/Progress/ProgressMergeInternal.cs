@@ -46,33 +46,57 @@ namespace Proto.Promises
 
             partial class MergePromise<TResult>
             {
-                internal sealed override PromiseRefBase AddProgressWaiter(short promiseId, out HandleablePromiseBase previousWaiter, ref ProgressHookupValues progressHookupValues)
-                {
-                    var promiseSingleAwait = AddWaiterImpl(promiseId, progressHookupValues.ProgressListener, out previousWaiter);
-                    if (previousWaiter == PendingAwaitSentinel.s_instance)
-                    {
-                        SetProgressValuesAndGetPrevious(ref progressHookupValues);
-                    }
-                    return promiseSingleAwait;
-                }
-
-                new private void SetProgressValuesAndGetPrevious(ref ProgressHookupValues progressHookupValues)
+                protected void SetProgressValuesAndGetPrevious(ref ProgressHookupValues progressHookupValues, bool reportUnresolved)
                 {
                     ThrowIfInPool(this);
                     // Retain this until we've hooked up progress to the passthroughs. This is necessary because we take the passthroughs, then put back the ones that are unable to be hooked up.
                     InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
                     progressHookupValues.RegisterHandler(this);
-                    ProgressMerger.MaybeHookup(this, _completeProgress, _passThroughs.TakeAndClear(), ref progressHookupValues);
+                    ProgressMerger.MaybeHookup(this, _completeProgress, _passThroughs.TakeAndClear(), ref progressHookupValues, reportUnresolved);
                 }
 
-                internal override sealed bool TryHookupProgressListenerAndGetPrevious(ref ProgressHookupValues progressHookupValues)
+                internal override PromiseRefBase AddProgressWaiter(short promiseId, out HandleablePromiseBase previousWaiter, ref ProgressHookupValues progressHookupValues)
+                {
+                    var promiseSingleAwait = AddWaiterImpl(promiseId, progressHookupValues.ProgressListener, out previousWaiter);
+                    if (previousWaiter == PendingAwaitSentinel.s_instance)
+                    {
+                        SetProgressValuesAndGetPrevious(ref progressHookupValues, false);
+                    }
+                    return promiseSingleAwait;
+                }
+
+                internal override bool TryHookupProgressListenerAndGetPrevious(ref ProgressHookupValues progressHookupValues)
                 {
                     if (CompareExchangeWaiter(progressHookupValues.ProgressListener, progressHookupValues._expectedWaiter) != progressHookupValues._expectedWaiter)
                     {
                         progressHookupValues._previous = null;
                         return false;
                     }
-                    SetProgressValuesAndGetPrevious(ref progressHookupValues);
+                    SetProgressValuesAndGetPrevious(ref progressHookupValues, false);
+                    return true;
+                }
+            }
+
+            partial class MergeSettledPromise<TResult>
+            {
+                internal override PromiseRefBase AddProgressWaiter(short promiseId, out HandleablePromiseBase previousWaiter, ref ProgressHookupValues progressHookupValues)
+                {
+                    var promiseSingleAwait = AddWaiterImpl(promiseId, progressHookupValues.ProgressListener, out previousWaiter);
+                    if (previousWaiter == PendingAwaitSentinel.s_instance)
+                    {
+                        SetProgressValuesAndGetPrevious(ref progressHookupValues, true);
+                    }
+                    return promiseSingleAwait;
+                }
+
+                internal override bool TryHookupProgressListenerAndGetPrevious(ref ProgressHookupValues progressHookupValues)
+                {
+                    if (CompareExchangeWaiter(progressHookupValues.ProgressListener, progressHookupValues._expectedWaiter) != progressHookupValues._expectedWaiter)
+                    {
+                        progressHookupValues._previous = null;
+                        return false;
+                    }
+                    SetProgressValuesAndGetPrevious(ref progressHookupValues, true);
                     return true;
                 }
             }
@@ -115,7 +139,7 @@ namespace Proto.Promises
                         : obj.UnsafeAs<ProgressMerger>();
                 }
 
-                private static ProgressMerger GetOrCreate(PromiseRefBase targetMergePromise, ulong completedProgress, ulong expectedProgress, ValueLinkedStack<PromisePassThrough> passThroughs)
+                private static ProgressMerger GetOrCreate(PromiseRefBase targetMergePromise, ulong completedProgress, ulong expectedProgress, ValueLinkedStack<PromisePassThrough> passThroughs, bool reportUnresolved)
                 {
                     var merger = GetOrCreate();
                     merger._next = null;
@@ -123,6 +147,7 @@ namespace Proto.Promises
                     merger._passThroughs = passThroughs;
                     merger._currentProgress = completedProgress;
                     merger._divisorReciprocal = 1d / expectedProgress;
+                    merger._reportUnresolved = reportUnresolved;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     merger._disposed = false;
 #endif
@@ -138,7 +163,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                internal static void MaybeHookup(PromiseRefBase targetMergePromise, ulong completedProgress, ValueLinkedStack<PromisePassThrough> passThroughs, ref ProgressHookupValues progressHookupValues)
+                internal static void MaybeHookup(PromiseRefBase targetMergePromise, ulong completedProgress, ValueLinkedStack<PromisePassThrough> passThroughs, ref ProgressHookupValues progressHookupValues, bool reportUnresolved)
                 {
                     progressHookupValues._previous = null;
                     ushort depth = targetMergePromise.Depth;
@@ -155,7 +180,7 @@ namespace Proto.Promises
                     {
                         expectedProgress += pt.Depth + 1u;
                     }
-                    var merger = GetOrCreate(targetMergePromise, completedProgress, expectedProgress, passThroughs);
+                    var merger = GetOrCreate(targetMergePromise, completedProgress, expectedProgress, passThroughs, reportUnresolved);
                     progressHookupValues._currentProgress = completedProgress * merger._divisorReciprocal;
 
                     progressHookupValues.AddPassthrough(merger);
@@ -236,10 +261,10 @@ namespace Proto.Promises
                     var progressReportValues = new ProgressReportValues(null, this, lockedObject, maxProgress);
                     UpdateProgress(oldProgress, ref progressReportValues);
 
-                    // We only report the progress if the handler was not the last completed, and the state is resolved.
+                    // We only report the progress if the handler was not the last completed, and the state is resolved (or the merge type is All/MergeSettled).
                     // We check the more common case first.
                     bool isComplete = InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0;
-                    if (!isComplete & state == Promise.State.Resolved)
+                    if (!isComplete & (_reportUnresolved | state == Promise.State.Resolved))
                     {
                         progressReportValues.ReportProgressToAllListeners();
                     }

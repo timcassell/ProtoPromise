@@ -546,6 +546,7 @@ namespace Proto.Promises
                 private double _currentProgress;
                 private double _divisorReciprocal; // 1 / expectedProgress since multiplying is faster than dividing.
                 volatile private int _retainCounter;
+                private bool _reportUnresolved;
                 // The passthroughs are only stored during the hookup.
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE

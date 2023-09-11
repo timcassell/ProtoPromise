@@ -523,6 +523,23 @@ namespace Proto.Promises
 
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 
+        [MethodImpl(Internal.InlineOption)]
+        private static void GetAllResult(Internal.PromiseRefBase handler, int index, ref IList<T> result)
+        {
+            result[index] = handler.GetResult<T>();
+        }
+
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+        private static unsafe Internal.GetResultDelegate<IList<T>> GetAllResultFunc
+        {
+            [MethodImpl(Internal.InlineOption)]
+            get { return new(&GetAllResult); }
+        }
+#else
+        private static readonly Internal.GetResultDelegate<IList<T>> GetAllResultFunc =
+            (Internal.PromiseRefBase handler, int index, ref IList<T> result) => GetAllResult(handler, index, ref result);
+#endif
+
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
@@ -569,7 +586,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateAllPromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth, GetAllResultFunc);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
 
@@ -624,7 +641,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateAllPromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth, GetAllResultFunc);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
 
@@ -684,7 +701,7 @@ namespace Proto.Promises
             {
                 return Internal.CreateResolved(valueContainer, maxDepth);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateAllPromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth, GetAllResultFunc);
             return new Promise<IList<T>>(promise, promise.Id, maxDepth);
         }
 
@@ -772,7 +789,7 @@ namespace Proto.Promises
                     return Internal.CreateResolved(valueContainer, maxDepth);
                 }
 
-                var promise = Internal.PromiseRefBase.GetOrCreateAllPromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth);
+                var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth, GetAllResultFunc);
                 return new Promise<IList<T>>(promise, promise.Id, maxDepth);
             }
         }
@@ -782,6 +799,270 @@ namespace Proto.Promises
         {
             ValidateArgument(valueContainer, "valueContainer", 1);
             return All(promises, valueContainer);
+        }
+
+        [MethodImpl(Internal.InlineOption)]
+        private static void GetAllResultContainer(Internal.PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref IList<ResultContainer> result)
+        {
+            result[index] = new ResultContainer(handler.GetResult<T>(), rejectContainer, state);
+        }
+        
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+        private static unsafe Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc
+        {
+            [MethodImpl(Internal.InlineOption)]
+            get { return new(&GetAllResultContainer); }
+        }
+#else
+        private static readonly Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc =
+            (Internal.PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref IList<ResultContainer> result) => GetAllResultContainer(handler, rejectContainer, state, index, ref result);
+#endif
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order when they have all completed.
+        /// </summary>
+        /// <param name="promise1">The first promise to combine.</param>
+        /// <param name="promise2">The second promise to combine.</param>
+        /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<ResultContainer>> AllSettled(Promise<T> promise1, Promise<T> promise2, IList<ResultContainer> valueContainer = null)
+        {
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+            int pendingCount = 0;
+            ulong completedProgress = 0;
+            ushort maxDepth = 0;
+
+            ValidateArgument(promise1, "promise1", 1);
+            T v0 = default(T);
+            Internal.PrepareForMerge(promise1, ref v0, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            ValidateArgument(promise2, "promise2", 1);
+            T v1 = default(T);
+            Internal.PrepareForMerge(promise2, ref v1, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+
+            if (valueContainer == null)
+            {
+                valueContainer = new ResultContainer[2] { v0, v1 };
+            }
+            else
+            {
+                // Make sure list has the same count as promises.
+                int listSize = valueContainer.Count;
+                while (listSize > 2)
+                {
+                    valueContainer.RemoveAt(--listSize);
+                }
+                while (listSize < 2)
+                {
+                    valueContainer.Add(default(ResultContainer));
+                    ++listSize;
+                }
+                valueContainer[0] = v0;
+                valueContainer[1] = v1;
+            }
+
+            if (pendingCount == 0)
+            {
+                return Internal.CreateResolved(valueContainer, maxDepth);
+            }
+            var promise = Internal.PromiseRefBase.GetOrCreateMergeSettledPromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth, GetAllResultContainerFunc);
+            return new Promise<IList<ResultContainer>>(promise, promise.Id, maxDepth);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order when they have all completed.
+        /// </summary>
+        /// <param name="promise1">The first promise to combine.</param>
+        /// <param name="promise2">The second promise to combine.</param>
+        /// <param name="promise3">The third promise to combine.</param>
+        /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<ResultContainer>> AllSettled(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<ResultContainer> valueContainer = null)
+        {
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+            int pendingCount = 0;
+            ulong completedProgress = 0;
+            ushort maxDepth = 0;
+
+            ValidateArgument(promise1, "promise1", 1);
+            T v0 = default(T);
+            Internal.PrepareForMerge(promise1, ref v0, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            ValidateArgument(promise2, "promise2", 1);
+            T v1 = default(T);
+            Internal.PrepareForMerge(promise2, ref v1, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            ValidateArgument(promise3, "promise3", 1);
+            T v2 = default(T);
+            Internal.PrepareForMerge(promise3, ref v2, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+
+            if (valueContainer == null)
+            {
+                valueContainer = new ResultContainer[3] { v0, v1, v2 };
+            }
+            else
+            {
+                // Make sure list has the same count as promises.
+                int listSize = valueContainer.Count;
+                while (listSize > 3)
+                {
+                    valueContainer.RemoveAt(--listSize);
+                }
+                while (listSize < 3)
+                {
+                    valueContainer.Add(default(T));
+                    ++listSize;
+                }
+                valueContainer[0] = v0;
+                valueContainer[1] = v1;
+                valueContainer[2] = v2;
+            }
+
+            if (pendingCount == 0)
+            {
+                return Internal.CreateResolved(valueContainer, maxDepth);
+            }
+            var promise = Internal.PromiseRefBase.GetOrCreateMergeSettledPromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth, GetAllResultContainerFunc);
+            return new Promise<IList<ResultContainer>>(promise, promise.Id, maxDepth);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order when they have all completed.
+        /// </summary>
+        /// <param name="promise1">The first promise to combine.</param>
+        /// <param name="promise2">The second promise to combine.</param>
+        /// <param name="promise3">The third promise to combine.</param>
+        /// <param name="promise4">The fourth promise to combine.</param>
+        /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<ResultContainer>> AllSettled(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<ResultContainer> valueContainer = null)
+        {
+            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+            int pendingCount = 0;
+            ulong completedProgress = 0;
+            ushort maxDepth = 0;
+
+            ValidateArgument(promise1, "promise1", 1);
+            T v0 = default(T);
+            Internal.PrepareForMerge(promise1, ref v0, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            ValidateArgument(promise2, "promise2", 1);
+            T v1 = default(T);
+            Internal.PrepareForMerge(promise2, ref v1, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            ValidateArgument(promise3, "promise3", 1);
+            T v2 = default(T);
+            Internal.PrepareForMerge(promise3, ref v2, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            ValidateArgument(promise4, "promise4", 1);
+            T v3 = default(T);
+            Internal.PrepareForMerge(promise4, ref v3, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
+
+            if (valueContainer == null)
+            {
+                valueContainer = new ResultContainer[4] { v0, v1, v2, v3 };
+            }
+            else
+            {
+                // Make sure list has the same count as promises.
+                int listSize = valueContainer.Count;
+                while (listSize > 4)
+                {
+                    valueContainer.RemoveAt(--listSize);
+                }
+                while (listSize < 4)
+                {
+                    valueContainer.Add(default(T));
+                    ++listSize;
+                }
+                valueContainer[0] = v0;
+                valueContainer[1] = v1;
+                valueContainer[2] = v2;
+                valueContainer[3] = v3;
+            }
+
+            if (pendingCount == 0)
+            {
+                return Internal.CreateResolved(valueContainer, maxDepth);
+            }
+            var promise = Internal.PromiseRefBase.GetOrCreateMergeSettledPromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth, GetAllResultContainerFunc);
+            return new Promise<IList<ResultContainer>>(promise, promise.Id, maxDepth);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
+        /// </summary>
+        public static Promise<IList<ResultContainer>> AllSettled(params Promise<T>[] promises)
+        {
+            return AllSettled(promises, new ResultContainer[promises.Length]);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
+        /// </summary>
+        /// <param name="promises">The promises to combine.</param>
+        /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<ResultContainer>> AllSettled(Promise<T>[] promises, IList<ResultContainer> valueContainer = null)
+        {
+            return AllSettled(promises.GetGenericEnumerator(), valueContainer);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
+        /// </summary>
+        /// <param name="promises">The promises to combine.</param>
+        /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<ResultContainer>> AllSettled(IEnumerable<Promise<T>> promises, IList<ResultContainer> valueContainer = null)
+        {
+            return AllSettled(promises.GetEnumerator(), valueContainer);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
+        /// </summary>
+        /// <param name="promises">The enumerator of promises to combine.</param>
+        /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<ResultContainer>> AllSettled<TEnumerator>(TEnumerator promises, IList<ResultContainer> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
+        {
+            ValidateArgument(promises, "promises", 1);
+
+            using (promises)
+            {
+                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
+                int pendingCount = 0;
+                ulong completedProgress = 0;
+                ushort maxDepth = 0;
+
+                if (valueContainer == null)
+                {
+                    valueContainer = new List<ResultContainer>();
+                }
+
+                int i = 0;
+                int listSize = valueContainer.Count;
+                while (promises.MoveNext())
+                {
+                    var p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    T value = default(T);
+                    Internal.PrepareForMerge(p, ref value, ref passThroughs, i, ref pendingCount, ref completedProgress, ref maxDepth);
+                    // Make sure list has the same count as promises.
+                    if (listSize < (i + 1))
+                    {
+                        ++listSize;
+                        valueContainer.Add(value);
+                    }
+                    else
+                    {
+                        valueContainer[i] = value;
+                    }
+                    ++i;
+                }
+                // Make sure list has the same count as promises.
+                while (listSize > i)
+                {
+                    valueContainer.RemoveAt(--listSize);
+                }
+
+                if (pendingCount == 0)
+                {
+                    return Internal.CreateResolved(valueContainer, maxDepth);
+                }
+
+                var promise = Internal.PromiseRefBase.GetOrCreateMergeSettledPromise(passThroughs, valueContainer, pendingCount, completedProgress, maxDepth, GetAllResultContainerFunc);
+                return new Promise<IList<ResultContainer>>(promise, promise.Id, maxDepth);
+            }
         }
 
         /// <summary>
