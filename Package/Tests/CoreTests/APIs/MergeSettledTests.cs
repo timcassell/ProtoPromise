@@ -41,6 +41,9 @@ namespace ProtoPromiseTests.APIs
             TestHelper.Cleanup();
         }
 
+#if !ENABLE_IL2CPP
+        // IL2CPP does not support MakeGenericMethod and MakeGenericType, so remove these tests from the IL2CPP build.
+
         private class TupleWrapper : ITuple
         {
             private readonly ArrayList list = new ArrayList(7);
@@ -357,6 +360,8 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsTrue(invoked);
         }
+
+#endif // !ENABLE_IL2CPP
 
 #if PROMISE_PROGRESS
         [Test]
