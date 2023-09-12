@@ -821,7 +821,7 @@ namespace Proto.Promises
                     _parent = null;
                     if (shouldRepool)
                     {
-                        // Only repool here if WaitForInvokeCompleteAndDispose() was called synchronously from inside the invoke.
+                        // Only repool here if UnhookAndDispose() was called synchronously from inside the invoke.
                         Repool();
                     }
                 }
