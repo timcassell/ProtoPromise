@@ -58,7 +58,7 @@ namespace Proto.Promises
                         _result = handler.GetResult<TResult>();
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        ReleaseAndHandleNext(rejectContainer, state);
+                        HandleNextInternal(rejectContainer, state);
                         return;
                     }
                     handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
@@ -110,7 +110,7 @@ namespace Proto.Promises
                         _result = index;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        ReleaseAndHandleNext(rejectContainer, state);
+                        HandleNextInternal(rejectContainer, state);
                         return;
                     }
                     handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
@@ -162,7 +162,7 @@ namespace Proto.Promises
                         _result = new ValueTuple<int, TResult>(index, handler.GetResult<TResult>());
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        ReleaseAndHandleNext(rejectContainer, state);
+                        HandleNextInternal(rejectContainer, state);
                         return;
                     }
                     handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
@@ -217,7 +217,7 @@ namespace Proto.Promises
                         _result = handler.GetResult<TResult>();
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        ReleaseAndHandleNext(rejectContainer, state);
+                        HandleNextInternal(rejectContainer, state);
                         return;
                     }
                     handler.SuppressRejection = true;
@@ -273,7 +273,7 @@ namespace Proto.Promises
                         _result = index;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        ReleaseAndHandleNext(rejectContainer, state);
+                        HandleNextInternal(rejectContainer, state);
                         return;
                     }
                     handler.SuppressRejection = true;
@@ -329,7 +329,7 @@ namespace Proto.Promises
                         _result = new ValueTuple<int, TResult>(index, handler.GetResult<TResult>());
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        ReleaseAndHandleNext(rejectContainer, state);
+                        HandleNextInternal(rejectContainer, state);
                         return;
                     }
                     handler.SuppressRejection = true;
