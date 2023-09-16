@@ -13,6 +13,7 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0250 // Make struct 'readonly'
@@ -29,10 +30,15 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+        internal interface IParallelEnumerator<T> : IDisposable
+        {
+            bool TryMoveNext(object lockObj, CancelationRef cancelationRef, out T value);
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal struct ForLoopEnumerator : IEnumerator<int>
+        internal struct ForLoopEnumerator : IParallelEnumerator<int>
         {
             private int _current;
             private readonly int _toIndex;
@@ -44,35 +50,70 @@ namespace Proto.Promises
                 _toIndex = toIndex;
             }
 
-            public int Current
-            {
-                [MethodImpl(InlineOption)]
-                get
-                {
-                    unchecked
-                    {
-                        return _current++;
-                    }
-                }
-            }
-
-            object IEnumerator.Current { get { return Current; } }
-
             [MethodImpl(InlineOption)]
-            public bool MoveNext()
+            public bool TryMoveNext(object lockObj, CancelationRef cancelationRef, out int value)
             {
-                // We just check if the index can be incremented.
-                // We don't do the actual MoveNext until Current is called to avoid an extra branch.
-                return _current < _toIndex;
+                int current;
+                do
+                {
+                    // cancelationRef._state is a volatile read, so we don't need to volatile read _current.
+                    var canceled = cancelationRef._state >= CancelationRef.State.Canceled;
+                    current = _current;
+                    if (current >= _toIndex | canceled)
+                    {
+                        value = 0;
+                        return false;
+                    }
+                } while (Interlocked.CompareExchange(ref _current, current + 1, current) != current);
+
+                value = current;
+                return true;
             }
 
             [MethodImpl(InlineOption)]
             void IDisposable.Dispose() { }
+        }
 
-            void IEnumerator.Reset()
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal struct GenericEnumerator<TEnumerator, T> : IParallelEnumerator<T>
+            where TEnumerator : IEnumerator<T>
+        {
+            // This must not be readonly, in case the enumerator is a struct.
+#pragma warning disable IDE0044 // Add readonly modifier
+            private TEnumerator _enumerator;
+#pragma warning restore IDE0044 // Add readonly modifier
+
+            [MethodImpl(InlineOption)]
+            internal GenericEnumerator(TEnumerator enumerator)
             {
-                throw new NotImplementedException();
+                _enumerator = enumerator;
             }
+
+            [MethodImpl(InlineOption)]
+            public bool TryMoveNext(object lockObj, CancelationRef cancelationRef, out T value)
+            {
+                // Get the next element from the enumerator. This requires locking around MoveNext/Current.
+                lock (lockObj)
+                {
+                    if (cancelationRef._state >= CancelationRef.State.Canceled || !_enumerator.MoveNext())
+                    {
+                        // Exit the lock before writing the value.
+                        goto ReturnFalse;
+                    }
+
+                    value = _enumerator.Current;
+                }
+                return true;
+
+            ReturnFalse:
+                value = default(T);
+                return false;
+            }
+
+            [MethodImpl(InlineOption)]
+            void IDisposable.Dispose() { }
         }
 
         internal interface IParallelBody<TSource>
@@ -116,6 +157,36 @@ namespace Proto.Promises
             }
         }
 
+        internal static Promise ParallelFor<TParallelBody>(int fromIndex, int toIndex, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
+            where TParallelBody : IParallelBody<int>
+        {
+            if (maxDegreeOfParallelism == -1)
+            {
+                maxDegreeOfParallelism = Environment.ProcessorCount;
+            }
+            else if (maxDegreeOfParallelism < 1)
+            {
+                throw new ArgumentOutOfRangeException("maxDegreeOfParallelism", "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
+            }
+
+            // Just return immediately if from >= to.
+            if (fromIndex >= toIndex)
+            {
+                return Promise.Resolved();
+            }
+
+            // One fast up-front check for cancelation before we start the whole operation.
+            if (cancelationToken.IsCancelationRequested)
+            {
+                return Promise.Canceled();
+            }
+
+            var promise = PromiseRefBase.PromiseParallelForEach<ForLoopEnumerator, TParallelBody, int>.GetOrCreate(
+                new ForLoopEnumerator(fromIndex, toIndex), body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            promise.MaybeLaunchWorker(true);
+            return new Promise(promise, promise.Id, 0);
+        }
+
         internal static Promise ParallelForEach<TEnumerator, TParallelBody, TSource>(TEnumerator enumerator, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
             where TEnumerator : IEnumerator<TSource>
             where TParallelBody : IParallelBody<TSource>
@@ -137,16 +208,10 @@ namespace Proto.Promises
                 return Promise.Canceled();
             }
 
-            try
-            {
-                var promise = PromiseRefBase.PromiseParallelForEach<TEnumerator, TParallelBody, TSource>.GetOrCreate(enumerator, body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
-                promise.MaybeLaunchWorker(true);
-                return new Promise(promise, promise.Id, 0);
-            }
-            catch (Exception e)
-            {
-                return Promise.Rejected(e);
-            }
+            var promise = PromiseRefBase.PromiseParallelForEach<GenericEnumerator<TEnumerator, TSource>, TParallelBody, TSource>.GetOrCreate(
+                new GenericEnumerator<TEnumerator, TSource>(enumerator), body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            promise.MaybeLaunchWorker(true);
+            return new Promise(promise, promise.Id, 0);
         }
 
         partial class PromiseRefBase
@@ -157,7 +222,7 @@ namespace Proto.Promises
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal sealed partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : PromiseSingleAwait<TEnumerator>, ICancelable
-                where TEnumerator : IEnumerator<TSource>
+                where TEnumerator : IParallelEnumerator<TSource>
                 where TParallelBody : IParallelBody<TSource>
             {
                 private TParallelBody _body;
@@ -236,7 +301,7 @@ namespace Proto.Promises
                     }
                     catch (OperationCanceledException)
                     {
-                        Cancel();
+                        _completionState = Promise.State.Canceled;
                         MaybeComplete();
                     }
                     catch (Exception e)
@@ -256,25 +321,11 @@ namespace Proto.Promises
                     // The worker body. Each worker will execute this same body.
                     while (true)
                     {
-                        if (_cancelationRef._state >= CancelationRef.State.Canceled)
+                        TSource element;
+                        if (!_result.TryMoveNext(this, _cancelationRef, out element))
                         {
                             MaybeComplete();
                             return;
-                        }
-
-                        // Get the next element from the enumerator. This requires locking around MoveNext/Current.
-                        TSource element;
-                        lock (this)
-                        {
-                            if (!_result.MoveNext())
-                            {
-                                // We cancel the source to notify completion.
-                                _cancelationRef.Cancel();
-                                MaybeComplete();
-                                return;
-                            }
-
-                            element = _result.Current;
                         }
 
                         // If the available workers allows it and we've not yet queued the next worker, do so now.  We wait
@@ -317,7 +368,7 @@ namespace Proto.Promises
                     }
                     else if (state == Promise.State.Canceled)
                     {
-                        Cancel();
+                        _completionState = Promise.State.Canceled;
                         MaybeComplete();
                     }
                     else
@@ -334,8 +385,6 @@ namespace Proto.Promises
 
                 private void RecordException(Exception e)
                 {
-                    _cancelationRef.Cancel();
-
                     lock (this)
                     {
                         if (_exceptions == null)
@@ -348,6 +397,10 @@ namespace Proto.Promises
 
                 private void MaybeComplete()
                 {
+                    // We cancel the source to notify completion to other threads.
+                    // This may be called multiple times. It's fine because it checks internally if it's already canceled.
+                    _cancelationRef.Cancel();
+
                     // If we're the last worker to complete, clean up and complete the operation.
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, -1) == 0)
                     {
