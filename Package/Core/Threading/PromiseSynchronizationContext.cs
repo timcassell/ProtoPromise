@@ -19,86 +19,91 @@ using System.Threading;
 namespace Proto.Promises.Threading
 {
     /// <summary>
-    /// A <see cref="SynchronizationContext"/> used to schedule callbacks to the thread that it was created on.
+    /// A <see cref="SynchronizationContext"/> used to schedule callbacks to the thread with which it is associated.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public sealed class PromiseSynchronizationContext : SynchronizationContext
     {
+        // Send callbacks are implemented as a linked-list, because we have to make sure the ExceptionDispatchInfo is still valid by the time the original thread reads it.
+        // Post callbacks are implemented as a contiguous list for fast add and invoke, with minimal memory.
+        // Post is also expected to be used more frequently than Send, so we want it to be as efficient as possible, rather than sharing an implementation.
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private sealed class SyncCallback : Internal.HandleablePromiseBase
+        private struct PostCallback
         {
-            ExceptionDispatchInfo _capturedInfo;
-            private SendOrPostCallback _callback;
-            private object _state;
-            private bool _needsPulse;
-
-            private SyncCallback() { }
+            internal readonly SendOrPostCallback _callback;
+            internal readonly object _state;
 
             [MethodImpl(Internal.InlineOption)]
-            private static SyncCallback GetOrCreate()
+            internal PostCallback(SendOrPostCallback callback, object state)
             {
-                var obj = Internal.ObjectPool.TryTakeOrInvalid<SyncCallback>();
-                return obj == Internal.PromiseRefBase.InvalidAwaitSentinel.s_instance
-                    ? new SyncCallback()
-                    : obj.UnsafeAs<SyncCallback>();
+                _callback = callback;
+                _state = state;
             }
 
-            internal static SyncCallback GetOrCreate(SendOrPostCallback callback, object state, bool needsPulse)
+            [MethodImpl(Internal.InlineOption)]
+            internal void Invoke()
+            {
+                _callback.Invoke(_state);
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        private sealed class SendCallback : Internal.HandleablePromiseBase
+        {
+            private PostCallback _callback;
+            private ExceptionDispatchInfo _capturedInfo;
+            private readonly AutoResetEvent _callbackCompletedEvent = new AutoResetEvent(false);
+
+            private SendCallback() { }
+
+            [MethodImpl(Internal.InlineOption)]
+            private static SendCallback GetOrCreate()
+            {
+                var obj = Internal.ObjectPool.TryTakeOrInvalid<SendCallback>();
+                return obj == Internal.PromiseRefBase.InvalidAwaitSentinel.s_instance
+                    ? new SendCallback()
+                    : obj.UnsafeAs<SendCallback>();
+            }
+
+            internal static SendCallback GetOrCreate(SendOrPostCallback callback, object state)
             {
                 var sc = GetOrCreate();
                 sc._next = null;
-                sc._callback = callback;
-                sc._state = state;
-                sc._needsPulse = needsPulse;
+                sc._callback = new PostCallback(callback, state);
                 return sc;
             }
 
             internal void Invoke()
             {
-                if (!_needsPulse)
+                try
                 {
-                    InvokeAndDispose();
-                    return;
+                    _callback.Invoke();
                 }
-
-                lock (this) // Normally not safe to lock on `this`, but it's safe here because the class is private and a reference will never be used elsewhere.
+                catch (Exception e)
                 {
-                    try
-                    {
-                        InvokeWithoutDispose();
-                    }
-                    catch (Exception e)
-                    {
-                        _capturedInfo = ExceptionDispatchInfo.Capture(e);
-                    }
-                    finally
-                    {
-                        Monitor.Pulse(this);
-                    }
+                    _capturedInfo = ExceptionDispatchInfo.Capture(e);
                 }
-            }
-
-            private void InvokeWithoutDispose()
-            {
-                _callback.Invoke(_state);
+                finally
+                {
+                    _callbackCompletedEvent.Set();
+                }
             }
 
             internal void Send(PromiseSynchronizationContext parent)
             {
-                ExceptionDispatchInfo capturedInfo;
-                lock (this)
-                {
-                    parent._syncLocker.Enter();
-                    parent._syncQueue.Enqueue(this);
-                    parent._syncLocker.Exit();
+                parent._syncLocker.Enter();
+                parent._sendQueue.Enqueue(this);
+                parent._syncLocker.Exit();
 
-                    Monitor.Wait(this);
-                    capturedInfo = _capturedInfo;
-                }
+                _callbackCompletedEvent.WaitOne();
+                var capturedInfo = _capturedInfo;
 
                 Dispose(); // Dispose after invoke.
 #if NET_LEGACY
@@ -115,27 +120,22 @@ namespace Proto.Promises.Threading
 #endif
             }
 
-            private void InvokeAndDispose()
-            {
-                SendOrPostCallback cb = _callback;
-                object state = _state;
-                Dispose();
-                cb.Invoke(state);
-            }
-
             private void Dispose()
             {
+                _callback = default(PostCallback);
                 _capturedInfo = default(ExceptionDispatchInfo);
-                _callback = null;
-                _state = null;
                 Internal.ObjectPool.MaybeRepool(this);
             }
         }
 
         private readonly Thread _thread;
+        // We swap these when Execute() is called.
+        private PostCallback[] _postQueue;
+        private PostCallback[] _executing;
         // These must not be readonly.
-        private Internal.ValueLinkedQueue<Internal.HandleablePromiseBase> _syncQueue = new Internal.ValueLinkedQueue<Internal.HandleablePromiseBase>();
+        private Internal.ValueLinkedQueue<Internal.HandleablePromiseBase> _sendQueue = new Internal.ValueLinkedQueue<Internal.HandleablePromiseBase>();
         private Internal.SpinLocker _syncLocker;
+        private int _postCount;
         private bool _isInvoking;
 
         /// <summary>
@@ -153,6 +153,9 @@ namespace Proto.Promises.Threading
                 throw new ArgumentNullException("runThread", "runThread may not be null", Internal.GetFormattedStacktrace(1));
             }
             _thread = runThread;
+            // Start with a modest initial capacity. This will grow in Post() if necessary.
+            _postQueue = new PostCallback[8];
+            _executing = new PostCallback[8];
         }
 
         /// <summary>
@@ -174,9 +177,14 @@ namespace Proto.Promises.Threading
                 throw new System.ArgumentNullException("d", "SendOrPostCallback may not be null.");
             }
 
-            SyncCallback syncCallback = SyncCallback.GetOrCreate(d, state, false);
             _syncLocker.Enter();
-            _syncQueue.Enqueue(syncCallback);
+            int count = _postCount;
+            if (count >= _postQueue.Length)
+            {
+                Array.Resize(ref _postQueue, count * 2);
+            }
+            _postQueue[count] = new PostCallback(d, state);
+            _postCount = count + 1;
             _syncLocker.Exit();
         }
 
@@ -196,7 +204,7 @@ namespace Proto.Promises.Threading
                 return;
             }
 
-            SyncCallback.GetOrCreate(d, state, true).Send(this);
+            SendCallback.GetOrCreate(d, state).Send(this);
         }
 
         /// <summary>
@@ -220,21 +228,35 @@ namespace Proto.Promises.Threading
                 while (true)
                 {
                     _syncLocker.Enter();
-                    var syncStack = _syncQueue.MoveElementsToStack();
+                    var sendStack = _sendQueue.MoveElementsToStack();
+                    var postQueue = _postQueue;
+                    int postCount = _postCount;
+                    _postCount = 0;
+                    // Swap the executing and pending arrays.
+                    _postQueue = _executing;
+                    _executing = postQueue;
                     _syncLocker.Exit();
 
-                    if (syncStack.IsEmpty)
+                    if (sendStack.IsEmpty & postCount == 0)
                     {
                         break;
                     }
 
+                    // Execute Send callbacks first so that their waiting threads may continue sooner.
+                    // We don't need to catch exceptions here because it's already handled in the SendCallback.Invoke().
+                    while (sendStack.IsNotEmpty)
+                    {
+                        sendStack.Pop().UnsafeAs<SendCallback>().Invoke();
+                    }
+
                     // Catch all exceptions and continue executing callbacks until all are exhausted, then if there are any, throw all exceptions wrapped in AggregateException.
                     List<Exception> exceptions = null;
-                    do
+                    for (int i = 0; i < postCount; ++i)
                     {
                         try
                         {
-                            syncStack.Pop().UnsafeAs<SyncCallback>().Invoke();
+                            postQueue[i].Invoke();
+                            postQueue[i] = default(PostCallback);
                         }
                         catch (Exception e)
                         {
@@ -244,7 +266,7 @@ namespace Proto.Promises.Threading
                             }
                             exceptions.Add(e);
                         }
-                    } while (syncStack.IsNotEmpty);
+                    }
 
                     if (exceptions != null)
                     {
