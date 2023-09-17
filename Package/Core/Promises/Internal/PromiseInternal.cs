@@ -178,7 +178,7 @@ namespace Proto.Promises
             private bool TryWaitForCompletion(PromiseRefBase promise, TimeSpan timeout, ValueStopwatch stopwatch)
             {
                 // We do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 if (timeout.Milliseconds == Timeout.Infinite)
                 {
                     while (promise.State == Promise.State.Pending & !spinner.NextSpinWillYield)
@@ -259,7 +259,7 @@ namespace Proto.Promises
                 }
 
                 // Wait until we're sure the other thread has continued.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 while (waitState <= CompletedState)
                 {
                     spinner.SpinOnce();
@@ -512,7 +512,7 @@ namespace Proto.Promises
 
             private void WaitUntilStateIsNotPendingCore()
             {
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 while (State == Promise.State.Pending)
                 {
                     spinner.SpinOnce();

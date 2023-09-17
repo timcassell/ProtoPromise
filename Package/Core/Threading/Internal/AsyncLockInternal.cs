@@ -286,7 +286,7 @@ namespace Proto.Promises
             internal AsyncLock.Key Lock()
             {
                 // Since this is a synchronous lock, we do a short spinwait before entering the full lock.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 while (Volatile.Read(ref _currentKey) != 0 & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
@@ -315,7 +315,7 @@ namespace Proto.Promises
             internal AsyncLock.Key Lock(CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (Volatile.Read(ref _currentKey) != 0 & !isCanceled & !spinner.NextSpinWillYield)
                 {
@@ -402,7 +402,7 @@ namespace Proto.Promises
             internal bool TryEnter(out AsyncLock.Key key, CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (Volatile.Read(ref _currentKey) != 0 & !isCanceled & !spinner.NextSpinWillYield)
                 {

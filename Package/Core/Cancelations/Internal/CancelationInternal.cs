@@ -869,7 +869,7 @@ namespace Proto.Promises
                     }
 
                     // Spin until this has been disposed.
-                    var spinner = new SpinWait();
+                    var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                     while (_parent != null)
                     {
                         spinner.SpinOnce();
@@ -1075,7 +1075,7 @@ namespace Proto.Promises
                 if (idsMatch & parentIsCanceling
                     & parent._executingThread != Thread.CurrentThread)
                 {
-                    var spinner = new SpinWait();
+                    var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                     // _this._nodeId will be incremented when the callback is complete and this is disposed.
                     // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
                     // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.

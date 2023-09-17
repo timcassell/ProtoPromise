@@ -409,7 +409,7 @@ namespace Proto.Promises
             internal AsyncReaderWriterLock.ReaderKey ReaderLock()
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 while (!CanEnterReaderLock(_lockType) & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
@@ -451,7 +451,7 @@ namespace Proto.Promises
             internal AsyncReaderWriterLock.ReaderKey ReaderLock(CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (!CanEnterReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
                 {
@@ -577,7 +577,7 @@ namespace Proto.Promises
             internal bool TryEnterReaderLock(out AsyncReaderWriterLock.ReaderKey readerKey, CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (!CanEnterReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
                 {
@@ -688,7 +688,7 @@ namespace Proto.Promises
             internal AsyncReaderWriterLock.WriterKey WriterLock()
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 while (_lockType != AsyncReaderWriterLockType.None & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
@@ -720,7 +720,7 @@ namespace Proto.Promises
             internal AsyncReaderWriterLock.WriterKey WriterLock(CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (_lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
                 {
@@ -821,7 +821,7 @@ namespace Proto.Promises
             internal bool TryEnterWriterLock(out AsyncReaderWriterLock.WriterKey writerKey, CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (_lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
                 {
@@ -945,7 +945,7 @@ namespace Proto.Promises
             internal AsyncReaderWriterLock.UpgradeableReaderKey UpgradeableReaderLock()
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 while (!CanEnterUpgradeableReaderLock(_lockType) & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
@@ -981,7 +981,7 @@ namespace Proto.Promises
             internal AsyncReaderWriterLock.UpgradeableReaderKey UpgradeableReaderLock(CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (!CanEnterUpgradeableReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
                 {
@@ -1093,7 +1093,7 @@ namespace Proto.Promises
             internal bool TryEnterUpgradeableReaderLock(out AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (!CanEnterUpgradeableReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
                 {
@@ -1208,7 +1208,7 @@ namespace Proto.Promises
             internal AsyncReaderWriterLock.WriterKey UpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 while (_readerLockCount != 1 & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
@@ -1245,7 +1245,7 @@ namespace Proto.Promises
             internal AsyncReaderWriterLock.WriterKey UpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (_readerLockCount != 1 & !isCanceled & !spinner.NextSpinWillYield)
                 {
@@ -1362,7 +1362,7 @@ namespace Proto.Promises
             internal bool TryUpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, out AsyncReaderWriterLock.WriterKey writerKey, CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (_readerLockCount != 1 & !isCanceled & !spinner.NextSpinWillYield)
                 {

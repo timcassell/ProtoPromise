@@ -282,7 +282,7 @@ namespace Proto.Promises
                 [MethodImpl(MethodImplOptions.NoInlining)]
                 private void WaitForHookup()
                 {
-                    var spinner = new SpinWait();
+                    var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                     while (_retainCounter == 0)
                     {
                         spinner.SpinOnce();

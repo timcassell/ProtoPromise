@@ -259,7 +259,7 @@ namespace Proto.Promises
             private void EnterCore()
             {
                 // Spin until we successfully get lock.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 do
                 {
                     spinner.SpinOnce();

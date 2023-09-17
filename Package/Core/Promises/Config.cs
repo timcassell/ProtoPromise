@@ -64,6 +64,8 @@ namespace Proto.Promises
 #endif
         public static class Config
         {
+            internal static readonly TimeSpan SpinTimeout = TimeSpan.FromSeconds(1);
+
             [Obsolete("Use ProgressPrecision to get the precision of progress reports."), EditorBrowsable(EditorBrowsableState.Never)]
             public static readonly int ProgressDecimalBits = 32;
 

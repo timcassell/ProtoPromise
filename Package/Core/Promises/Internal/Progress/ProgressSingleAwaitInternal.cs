@@ -222,7 +222,7 @@ namespace Proto.Promises
                 [MethodImpl(MethodImplOptions.NoInlining)]
                 private void WaitForSecondPreviousAssignmentCore()
                 {
-                    var spinner = new SpinWait();
+                    var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                     while (_waitState == WaitState.SettingSecond)
                     {
                         spinner.SpinOnce();

@@ -165,7 +165,7 @@ namespace Proto.Promises
             internal void Wait()
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isSet = _currentCount == 0;
                 while (!isSet & !spinner.NextSpinWillYield)
                 {
@@ -197,7 +197,7 @@ namespace Proto.Promises
             internal bool TryWait(CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
+                var spinner = new SpinWaitWithTimeout(Promise.Config.SpinTimeout);
                 bool isSet = _currentCount == 0;
                 bool isCanceled = cancelationToken.IsCancelationRequested;
                 while (!isSet & !isCanceled & !spinner.NextSpinWillYield)
