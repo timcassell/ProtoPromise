@@ -24,12 +24,9 @@ namespace Proto.Promises
         public static Promise ParallelFor(int fromIndex, int toIndex, Func<int, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default(CancelationToken), int maxDegreeOfParallelism = -1)
         {
-            // Just return immediately if from >= to.
-            if (fromIndex >= toIndex)
-            {
-                return Resolved();
-            }
-            return Promise<int>.ParallelForEach(new Internal.ForLoopEnumerator(fromIndex, toIndex), body, Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
+            ValidateArgument(body, "body", 1);
+
+            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelBody<int>(body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for loop in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
@@ -43,12 +40,9 @@ namespace Proto.Promises
         public static Promise ParallelFor(int fromIndex, int toIndex, Func<int, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default(CancelationToken), int maxDegreeOfParallelism = -1)
         {
-            // Just return immediately if from >= to.
-            if (fromIndex >= toIndex)
-            {
-                return Resolved();
-            }
-            return Promise<int>.ParallelForEach(new Internal.ForLoopEnumerator(fromIndex, toIndex), body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
+            ValidateArgument(body, "body", 1);
+
+            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelBody<int>(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for loop in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
@@ -62,12 +56,9 @@ namespace Proto.Promises
         public static Promise ParallelFor<TCapture>(int fromIndex, int toIndex, TCapture captureValue, Func<int, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default(CancelationToken), int maxDegreeOfParallelism = -1)
         {
-            // Just return immediately if from >= to.
-            if (fromIndex >= toIndex)
-            {
-                return Resolved();
-            }
-            return Promise<int>.ParallelForEach(new Internal.ForLoopEnumerator(fromIndex, toIndex), captureValue, body, Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
+            ValidateArgument(body, "body", 1);
+
+            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelCaptureBody<int, TCapture>(captureValue, body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for loop in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
@@ -82,12 +73,9 @@ namespace Proto.Promises
         public static Promise ParallelFor<TCapture>(int fromIndex, int toIndex, TCapture captureValue, Func<int, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default(CancelationToken), int maxDegreeOfParallelism = -1)
         {
-            // Just return immediately if from >= to.
-            if (fromIndex >= toIndex)
-            {
-                return Resolved();
-            }
-            return Promise<int>.ParallelForEach(new Internal.ForLoopEnumerator(fromIndex, toIndex), captureValue, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
+            ValidateArgument(body, "body", 1);
+
+            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelCaptureBody<int, TCapture>(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for each operation on an <see cref="IEnumerable{TSource}"/> in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
