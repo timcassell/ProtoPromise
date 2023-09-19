@@ -547,13 +547,18 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void HandleNextAlreadyAwaited(object rejectContainer, Promise.State state)
+            private void HandleNextAlreadyAwaited(object rejectContainer, Promise.State state)
             {
                 ExchangeWaiter(InvalidAwaitSentinel.s_instance).Handle(this, rejectContainer, state);
             }
 
-            internal void HandleNext(HandleablePromiseBase nextHandler, object rejectContainer, Promise.State state)
+            protected void HandleNextInternal(object rejectContainer, Promise.State state)
             {
+                // We pass the rejectContainer and state to the waiter instead of setting it here,
+                // because we don't want to break the registered progress promises chain if this is registered to a progress listener.
+                // If the waiter is a progress listener, it will handle it, otherwise any other waiter will just set the values like normal.
+                ThrowIfInPool(this);
+                var nextHandler = _next;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 if (nextHandler == PromiseCompletionSentinel.s_instance || nextHandler == InvalidAwaitSentinel.s_instance)
                 {
@@ -592,7 +597,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal HandleablePromiseBase ReadNextWaiterAndMaybeSetCompleted()
+            private HandleablePromiseBase ReadNextWaiterAndMaybeSetCompleted()
             {
                 var nextWaiter = CompareExchangeWaiter(PromiseCompletionSentinel.s_instance, PendingAwaitSentinel.s_instance);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -602,16 +607,6 @@ namespace Proto.Promises
                 }
 #endif
                 return nextWaiter;
-            }
-
-            [MethodImpl(InlineOption)]
-            protected void HandleNextInternal(object rejectContainer, Promise.State state)
-            {
-                // We pass the rejectContainer and state to the waiter instead of setting it here,
-                // because we don't want to break the registered progress promises chain if this is registered to a progress listener.
-                // If the waiter is a progress listener, it will handle it, otherwise any other waiter will just set the values like normal.
-                ThrowIfInPool(this);
-                HandleNext(_next, rejectContainer, state);
             }
 
             private void MaybeReportUnhandledRejection(object rejectContainer, Promise.State state)
