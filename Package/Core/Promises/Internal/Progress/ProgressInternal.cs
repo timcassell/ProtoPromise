@@ -1030,8 +1030,14 @@ namespace Proto.Promises
 
                 private void HandleNextFromContext()
                 {
+                    ThrowIfInPool(this);
+                    var currentContext = ts_currentContext;
+                    ts_currentContext = _synchronizationContext;
+
                     // We don't need to synchronize access here because this is only called when the waiter is added after Invoke1 has completed and this has been awaited, so there are no race conditions.
                     HandleNextInternal(_previousRejectContainer, _previousState);
+
+                    ts_currentContext = currentContext;
                 }
 
                 internal override bool GetIsCompleted(short promiseId)
