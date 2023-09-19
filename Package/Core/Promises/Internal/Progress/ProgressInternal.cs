@@ -469,9 +469,6 @@ namespace Proto.Promises
             internal sealed partial class PromiseProgress<TResult, TProgress> : PromiseSingleAwait<TResult>, ICancelable
                 where TProgress : IProgress<float>
             {
-                private static readonly WaitCallback s_threadPoolCallback = ExecuteFromContext;
-                private static readonly SendOrPostCallback s_synchronizationContextCallback = ExecuteFromContext;
-
                 internal bool IsInvoking1
                 {
                     [MethodImpl(InlineOption)]
@@ -967,7 +964,13 @@ namespace Proto.Promises
                         InterlockedAddWithUnsignedOverflowCheck(ref _progressFields._retainCounter, -1);
                     }
 
-                    HandleNextInternal(_previousRejectContainer, _previousState);
+                    // Leave pending until this is awaited.
+                    if (ReadNextWaiterAndMaybeSetCompleted() == PendingAwaitSentinel.s_instance)
+                    {
+                        return;
+                    }
+
+                    HandleNextAlreadyAwaited(_previousRejectContainer, _previousState);
                 }
 
                 void ICancelable.Cancel()
@@ -979,11 +982,6 @@ namespace Proto.Promises
 
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
                 {
-                    if (ShouldInvokeSynchronous())
-                    {
-                        return AddWaiterImpl(promiseId, waiter, out previousWaiter);
-                    }
-
                     if (promiseId != Id)
                     {
                         previousWaiter = InvalidAwaitSentinel.s_instance;
@@ -1006,42 +1004,34 @@ namespace Proto.Promises
                 private PromiseRefBase VerifyAndHandleWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
                 {
                     // We do the verification process here instead of in the caller, because we need to handle continuations on the synchronization context.
-                    if (CompareExchangeWaiter(waiter, PromiseCompletionSentinel.s_instance) != PromiseCompletionSentinel.s_instance)
+                    bool shouldContinueSynchronous = ShouldInvokeSynchronous();
+                    var setWaiter = shouldContinueSynchronous ? InvalidAwaitSentinel.s_instance : waiter;
+                    if (CompareExchangeWaiter(setWaiter, PromiseCompletionSentinel.s_instance) != PromiseCompletionSentinel.s_instance)
                     {
                         previousWaiter = InvalidAwaitSentinel.s_instance;
                         return InvalidAwaitSentinel.s_instance;
                     }
 
-                    // If this was configured to execute progress on a SynchronizationContext or the ThreadPool, force the waiter to execute on the same context for consistency.
-                    if (_synchronizationContext == null)
+                    if (shouldContinueSynchronous)
                     {
-                        // If there is no context, send it to the ThreadPool.
-                        ThreadPool.QueueUserWorkItem(s_threadPoolCallback, this);
+                        SetCompletionState(_previousRejectContainer, _previousState);
+                        previousWaiter = waiter;
+                        return null;
                     }
-                    else
-                    {
-                        _synchronizationContext.Post(s_synchronizationContextCallback, this);
-                    }
+
+                    // This was configured to execute progress on a SynchronizationContext or the ThreadPool, force the waiter to execute on the same context for consistency.
+                    ScheduleContextCallback(_synchronizationContext, this,
+                        obj => obj.UnsafeAs<PromiseProgress<TResult, TProgress>>().HandleNextFromContext(),
+                        obj => obj.UnsafeAs<PromiseProgress<TResult, TProgress>>().HandleNextFromContext()
+                    );
                     previousWaiter = PendingAwaitSentinel.s_instance;
                     return null; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
                 }
 
-                private static void ExecuteFromContext(object state)
+                private void HandleNextFromContext()
                 {
-                    // In case this is executed from a background thread, catch the exception and report it instead of crashing the app.
-                    try
-                    {
-                        // This handles the waiter that was added after this was already complete.
-                        var _this = state.UnsafeAs<PromiseProgress<TResult, TProgress>>();
-                        ThrowIfInPool(_this);
-                        // We don't need to synchronize access here because this is only called when the waiter is added after Invoke1 has completed, so there are no race conditions.
-                        _this.HandleNext(_this._next, _this._previousRejectContainer, _this._previousState);
-                    }
-                    catch (Exception e)
-                    {
-                        // This should never happen.
-                        ReportRejection(e, state as ITraceable);
-                    }
+                    // We don't need to synchronize access here because this is only called when the waiter is added after Invoke1 has completed and this has been awaited, so there are no race conditions.
+                    HandleNextInternal(_previousRejectContainer, _previousState);
                 }
 
                 internal override bool GetIsCompleted(short promiseId)
@@ -1053,7 +1043,7 @@ namespace Proto.Promises
                         && CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance)
                     {
                         WasAwaitedOrForgotten = true;
-                        State = _previousState;
+                        SetCompletionState(_previousRejectContainer, _previousState);
                         return true;
                     }
                     return false;

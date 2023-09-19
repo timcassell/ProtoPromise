@@ -546,6 +546,12 @@ namespace Proto.Promises
                 return this.UnsafeAs<PromiseRef<TResult>>()._result;
             }
 
+            [MethodImpl(InlineOption)]
+            internal void HandleNextAlreadyAwaited(object rejectContainer, Promise.State state)
+            {
+                ExchangeWaiter(InvalidAwaitSentinel.s_instance).Handle(this, rejectContainer, state);
+            }
+
             internal void HandleNext(HandleablePromiseBase nextHandler, object rejectContainer, Promise.State state)
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -1113,9 +1119,8 @@ namespace Proto.Promises
                     _tempState = state;
                     handler.MaybeDispose();
 
-                    var next = ReadNextWaiterAndMaybeSetCompleted();
                     // Leave pending until this is awaited.
-                    if (next == PendingAwaitSentinel.s_instance)
+                    if (ReadNextWaiterAndMaybeSetCompleted() == PendingAwaitSentinel.s_instance)
                     {
                         return;
                     }
@@ -1123,7 +1128,7 @@ namespace Proto.Promises
                     if (ShouldContinueSynchronous())
                     {
                         TryUnregisterCancelationAndSetTempState();
-                        HandleNext(next, rejectContainer, state);
+                        HandleNextAlreadyAwaited(rejectContainer, state);
                         return;
                     }
 
@@ -1147,7 +1152,7 @@ namespace Proto.Promises
 
                     TryUnregisterCancelationAndSetTempState();
                     // We don't need to synchronize access here because this is only called when the previous promise completed or the token canceled, and the waiter has already been added, so there are no race conditions.
-                    HandleNext(_next, _tempRejectContainer, _tempState);
+                    HandleNextAlreadyAwaited(_tempRejectContainer, _tempState);
 
                     ts_currentContext = currentContext;
                 }
@@ -1168,16 +1173,15 @@ namespace Proto.Promises
                     _tempRejectContainer = null;
                     _tempState = Promise.State.Canceled;
 
-                    var next = ReadNextWaiterAndMaybeSetCompleted();
                     // Leave pending until this is awaited.
-                    if (next == PendingAwaitSentinel.s_instance)
+                    if (ReadNextWaiterAndMaybeSetCompleted() == PendingAwaitSentinel.s_instance)
                     {
                         return;
                     }
 
                     if (ShouldContinueSynchronous())
                     {
-                        HandleNext(next, _tempRejectContainer, _tempState);
+                        HandleNextAlreadyAwaited(_tempRejectContainer, _tempState);
                         return;
                     }
 
