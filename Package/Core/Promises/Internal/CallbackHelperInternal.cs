@@ -1541,10 +1541,10 @@ namespace Proto.Promises
                     in
 #endif
                     TProgress progress,
-                    float value,
-                    ITraceable traceable)
+                    float value)
                     where TProgress : IProgress<float>
                 {
+                    var traceable = SynchronousTraceable;
                     SetCurrentInvoker(traceable);
                     try
                     {
@@ -1587,7 +1587,7 @@ namespace Proto.Promises
                                 {
                                     _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
                                 }
-                                InvokeAndCatchProgress(progress, 1, null);
+                                InvokeAndCatchProgress(progress, 1);
                                 return CreateResolved(_this.Depth);
                             }
                             break;
@@ -1623,7 +1623,7 @@ namespace Proto.Promises
                                 }
                                 if (!forceAsync & synchronizationContext == ts_currentContext)
                                 {
-                                    InvokeAndCatchProgress(progress, 1, null);
+                                    InvokeAndCatchProgress(progress, 1);
                                     return CreateResolved(_this.Depth);
                                 }
                                 promise = PromiseProgress<VoidResult, TProgress>.GetOrCreateFromResolved(progress, new VoidResult(), _this.Depth, synchronizationContext, forceAsync, cancelationToken);
@@ -1666,7 +1666,7 @@ namespace Proto.Promises
                             if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                             {
                                 TResult result = GetResultFromResolved(_this);
-                                InvokeAndCatchProgress(progress, 1, null);
+                                InvokeAndCatchProgress(progress, 1);
                                 return CreateResolved(result, _this.Depth);
                             }
                             break;
@@ -1699,7 +1699,7 @@ namespace Proto.Promises
                                 TResult result = GetResultFromResolved(_this);
                                 if (!forceAsync & synchronizationContext == ts_currentContext)
                                 {
-                                    InvokeAndCatchProgress(progress, 1, null);
+                                    InvokeAndCatchProgress(progress, 1);
                                     return CreateResolved(result, _this.Depth);
                                 }
                                 promise = PromiseProgress<TResult, TProgress>.GetOrCreateFromResolved(progress, result, _this.Depth, synchronizationContext, forceAsync, cancelationToken);

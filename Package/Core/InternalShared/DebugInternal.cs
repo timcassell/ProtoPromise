@@ -66,6 +66,34 @@ namespace Proto.Promises
             SetCreatedStacktrace(traceable, skipFrames);
         }
 
+#if PROMISE_DEBUG
+        private sealed class SyncTrace : ITraceable
+        {
+            CausalityTrace ITraceable.Trace { get; set; }
+
+            private SyncTrace() { }
+
+            internal static ITraceable GetCurrent(int skipFrames)
+            {
+                if (Promise.Config.DebugCausalityTracer != Promise.TraceLevel.All)
+                {
+                    return null;
+                }
+
+                var syncTrace = new SyncTrace();
+                SetCreatedStacktrace(syncTrace, skipFrames + 1);
+                return syncTrace;
+            }
+        }
+
+        private static ITraceable SynchronousTraceable
+        {
+            get { return SyncTrace.GetCurrent(2); }
+        }
+#else
+        private const ITraceable SynchronousTraceable = null;
+#endif
+
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames);
         static partial void SetCurrentInvoker(ITraceable current);
         static partial void ClearCurrentInvoker();

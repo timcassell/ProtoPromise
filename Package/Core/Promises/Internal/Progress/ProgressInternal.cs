@@ -575,7 +575,6 @@ namespace Proto.Promises
                     _rejectContainerOrPreviousOrLink = current;
                     cancelationToken.TryRegister(this, out _cancelationRegistration); // Very important, must register after promise is fully setup (previous is already assigned).
 
-                    TProgress callback;
                     double reportProgress;
                     PromiseRefBase promiseSingleAwait;
                     lock (this)
@@ -593,7 +592,6 @@ namespace Proto.Promises
 
                                 if (ShouldInvokeSynchronous())
                                 {
-                                    callback = _progress;
                                     reportProgress = Lerp(_progressFields._min, _progressFields._max, _progressFields._current);
                                     // Retain and exit the lock before invoking so we're not holding the lock while user code runs.
                                     InterlockedAddWithUnsignedOverflowCheck(ref _progressFields._retainCounter, 1);
@@ -616,7 +614,7 @@ namespace Proto.Promises
                 InvokeProgressSynchronous:
                     if (!IsInvoking1 & !IsCanceled & !_cancelationRegistration.Token.IsCancelationRequested)
                     {
-                        CallbackHelperVoid.InvokeAndCatchProgress(callback, (float) reportProgress, this);
+                        InvokeAndCatchProgress((float) reportProgress);
                     }
                     MaybeDispose();
                 }
@@ -635,6 +633,20 @@ namespace Proto.Promises
                     current.WaitUntilStateIsNotPending();
                     // Call HandleCompletion instead of Handle so we don't have to worry about unregistering promises that were never registered.
                     HandleCompletion(current, current._rejectContainerOrPreviousOrLink, current.State);
+                }
+
+                private void InvokeAndCatchProgress(float value)
+                {
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        _progress.Report(value);
+                    }
+                    catch (Exception e)
+                    {
+                        ReportRejection(e, this);
+                    }
+                    ClearCurrentInvoker();
                 }
 
                 internal override void MaybeHookupProgressToAwaited(PromiseRefBase current, PromiseRefBase awaited, ref ProgressRange userProgressRange, ref ProgressRange listenerProgressRange)
@@ -694,7 +706,7 @@ namespace Proto.Promises
                     if (!IsInvoking1 & !IsCanceled & !_cancelationRegistration.Token.IsCancelationRequested)
                     {
                         var reportProgress = (float) Lerp(reportMin, reportMax, reportT);
-                        CallbackHelperVoid.InvokeAndCatchProgress(_progress, reportProgress, this);
+                        InvokeAndCatchProgress(reportProgress);
                     }
 
                     Monitor.Enter(this);
@@ -793,7 +805,7 @@ namespace Proto.Promises
                     float value = (float) Lerp(min, max, t);
                     if (!IsInvoking1 & !IsCanceled & !_cancelationRegistration.Token.IsCancelationRequested)
                     {
-                        CallbackHelperVoid.InvokeAndCatchProgress(_progress, value, this);
+                        InvokeAndCatchProgress(value);
                     }
                     MaybeDispose();
 
@@ -872,7 +884,7 @@ namespace Proto.Promises
                     InterlockedAddWithUnsignedOverflowCheck(ref _progressFields._retainCounter, 1);
                     Monitor.Exit(this);
 
-                    CallbackHelperVoid.InvokeAndCatchProgress(_progress, (float) progressReportValues._progress, this);
+                    InvokeAndCatchProgress((float) progressReportValues._progress);
 
                     Monitor.Enter(this);
                     // Because we exited the lock and re-entered, some values may have changed on another thread (or even on the same thread from user code).
@@ -958,7 +970,7 @@ namespace Proto.Promises
                     {
                         if (state == Promise.State.Resolved)
                         {
-                            CallbackHelperVoid.InvokeAndCatchProgress(_progress, 1f, this);
+                            InvokeAndCatchProgress(1f);
                         }
                         // Release since Cancel() will not be invoked.
                         InterlockedAddWithUnsignedOverflowCheck(ref _progressFields._retainCounter, -1);
