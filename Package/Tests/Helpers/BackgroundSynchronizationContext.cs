@@ -11,13 +11,14 @@ namespace ProtoPromiseTests
     // This also allows the test runner to wait for all background actions to complete.
     public sealed class BackgroundSynchronizationContext : SynchronizationContext
     {
+        // Pool threads globally because creating new threads is expensive.
+        private static Stack<ThreadRunner> s_pool = new Stack<ThreadRunner>();
+
         volatile private int _runningActionCount;
 
         private sealed class ThreadRunner
         {
-            // Pool threads globally because creating new threads is expensive.
-            private static readonly Stack<ThreadRunner> _pool = new Stack<ThreadRunner>();
-
+            private Stack<ThreadRunner> _pool;
             private BackgroundSynchronizationContext _owner;
             private readonly object _locker = new object();
             private SendOrPostCallback _callback;
@@ -28,12 +29,13 @@ namespace ProtoPromiseTests
                 Interlocked.Increment(ref owner._runningActionCount);
                 bool reused = false;
                 ThreadRunner threadRunner = null;
-                lock (_pool)
+                var pool = s_pool;
+                lock (pool)
                 {
-                    if (_pool.Count > 0)
+                    if (pool.Count > 0)
                     {
                         reused = true;
-                        threadRunner = _pool.Pop();
+                        threadRunner = pool.Pop();
                     }
                 }
                 if (!reused)
@@ -42,6 +44,7 @@ namespace ProtoPromiseTests
                 }
                 lock (threadRunner._locker)
                 {
+                    threadRunner._pool = pool;
                     threadRunner._owner = owner;
                     threadRunner._callback = callback;
                     threadRunner._state = state;
@@ -94,6 +97,8 @@ namespace ProtoPromiseTests
             TimeSpan timeout = TimeSpan.FromSeconds(runningActions);
             if (!SpinWait.SpinUntil(() => _runningActionCount == 0, timeout))
             {
+                s_pool = new Stack<ThreadRunner>();
+                _runningActionCount = 0;
                 throw new TimeoutException("WaitForAllThreadsToComplete timed out after " + timeout + ", _runningActionCount: " + _runningActionCount);
             }
         }
