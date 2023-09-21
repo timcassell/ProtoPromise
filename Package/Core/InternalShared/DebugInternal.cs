@@ -154,6 +154,8 @@ namespace Proto.Promises
 
         internal static string FormatStackTrace(IEnumerable<StackTrace> stackTraces)
         {
+            const string CausalitySplitMessage = "--- End of stack trace from the previous location where the exception was thrown ---";
+
 #if NET_LEGACY
             // Format stack trace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
             var _stackTraces = new List<string>();
@@ -161,10 +163,6 @@ namespace Proto.Promises
             var sb = new System.Text.StringBuilder();
             foreach (StackTrace st in stackTraces)
             {
-                if (st == null)
-                {
-                    continue;
-                }
                 string stackTrace = st.ToString();
                 if (string.IsNullOrEmpty(stackTrace))
                 {
@@ -174,46 +172,71 @@ namespace Proto.Promises
                 {
                     if (!trace.Contains("Proto.Promises"))
                     {
-                        sb.Append(trace)
-                            .Replace(":line ", ":")
-                            .Replace("(", " (")
-                            .Replace(") in", ") [0x00000] in"); // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
-                        _stackTraces.Add(sb.ToString());
-                        sb.Length = 0;
+                        sb.AppendLine(trace);
                     }
                 }
+                sb.Replace(":line ", ":")
+                    .Replace("(", " (")
+                    .Replace(") in", ") [0x00000] in"); // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
+                _stackTraces.Add(sb.ToString());
+                sb.Length = 0;
             }
-            foreach (var trace in _stackTraces)
+            if (_stackTraces.Count == 0)
             {
-                sb.Append(trace).Append(" " + Environment.NewLine);
+                return " ";
             }
-            sb.Append(" ");
+            if (_stackTraces.Count == 1)
+            {
+                return _stackTraces[0] + " ";
+            }
+            for (int i = 0, max = _stackTraces.Count - 1; i < max ; ++i)
+            {
+                sb.Append(_stackTraces[i]).Append(" ")
+                    .AppendLine()
+                    .Append(CausalitySplitMessage).Append(" ")
+                    .AppendLine();
+
+            }
+            sb.Append(_stackTraces[_stackTraces.Count - 1]).Append(" ");
             return sb.ToString();
 #else // NET_LEGACY
             // StackTrace.ToString() format issue was fixed in the new runtime.
-            var stackFrames = new List<StackFrame>();
-            foreach (StackTrace stackTrace in stackTraces)
-            {
-                stackFrames.AddRange(stackTrace.GetFrames());
-            }
+            var causalityTrace = stackTraces
+                .Select(stackTrace => stackTrace.GetFrames()
+                    .Where(frame =>
+                    {
+                        // Ignore DebuggerNonUserCode and DebuggerHidden.
+                        var methodType = frame?.GetMethod();
+                        return methodType != null
+                            && !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false)
+                            && !IsNonUserCode(methodType.DeclaringType);
+                    })
+                    // Create a new StackTrace to get proper formatting.
+                    .Select(frame => new StackTrace(frame).ToString())
+                )
+                .Select(filteredStackTrace => string.Join(
+                    Environment.NewLine,
+                    filteredStackTrace
+                    )
+                );
 
-            var trace = stackFrames
-                .Where(frame =>
-                {
-                    // Ignore DebuggerNonUserCode and DebuggerHidden.
-                    var methodType = frame?.GetMethod();
-                    return methodType != null
-                        && !methodType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
-                        && !methodType.DeclaringType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
-                        && !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false);
-                })
-                // Create a new StackTrace to get proper formatting.
-                .Select(frame => new StackTrace(frame).ToString())
-                .ToArray();
-
-            return string.Join(Environment.NewLine, trace);
+            return string.Join(
+                Environment.NewLine + CausalitySplitMessage + Environment.NewLine,
+                causalityTrace);
 #endif // NET_LEGACY
         }
+
+#if !NET_LEGACY
+        private static bool IsNonUserCode(System.Reflection.MemberInfo memberInfo)
+        {
+            if (memberInfo == null)
+            {
+                return false;
+            }
+            return memberInfo.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
+                || IsNonUserCode(memberInfo.DeclaringType);
+        }
+#endif // !NET_LEGACY
 
         partial interface ITraceable
         {
