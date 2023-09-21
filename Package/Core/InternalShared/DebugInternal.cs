@@ -163,10 +163,6 @@ namespace Proto.Promises
             var sb = new System.Text.StringBuilder();
             foreach (StackTrace st in stackTraces)
             {
-                if (st == null)
-                {
-                    continue;
-                }
                 string stackTrace = st.ToString();
                 if (string.IsNullOrEmpty(stackTrace))
                 {
@@ -176,14 +172,14 @@ namespace Proto.Promises
                 {
                     if (!trace.Contains("Proto.Promises"))
                     {
-                        sb.Append(trace)
-                            .Replace(":line ", ":")
-                            .Replace("(", " (")
-                            .Replace(") in", ") [0x00000] in"); // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
-                        _stackTraces.Add(sb.ToString());
-                        sb.Length = 0;
+                        sb.AppendLine(trace);
                     }
                 }
+                sb.Replace(":line ", ":")
+                    .Replace("(", " (")
+                    .Replace(") in", ") [0x00000] in"); // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
+                _stackTraces.Add(sb.ToString());
+                sb.Length = 0;
             }
             if (_stackTraces.Count == 0)
             {
