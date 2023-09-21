@@ -211,10 +211,14 @@ namespace Proto.Promises
                     {
                         // Ignore DebuggerNonUserCode and DebuggerHidden.
                         var methodType = frame?.GetMethod();
+                        var declaringType = methodType?.DeclaringType;
                         return methodType != null
                             && !methodType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
-                            && !methodType.DeclaringType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
-                            && !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false);
+                            && !declaringType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
+                            && !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false)
+                            // Also ignore all types from this assembly and friend assemblies (because of compiler-generated types).
+                            && declaringType.Assembly != typeof(Promise).Assembly
+                            && !FriendAssemblies.Contains(declaringType.Assembly.GetName().Name);
                     })
                     // Create a new StackTrace to get proper formatting.
                     .Select(frame => new StackTrace(frame).ToString())
