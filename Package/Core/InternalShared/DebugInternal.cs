@@ -207,14 +207,9 @@ namespace Proto.Promises
                     {
                         // Ignore DebuggerNonUserCode and DebuggerHidden.
                         var methodType = frame?.GetMethod();
-                        var declaringType = methodType?.DeclaringType;
                         return methodType != null
-                            && !methodType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
-                            && !declaringType.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
                             && !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false)
-                            // Also ignore all types from this assembly and friend assemblies (because of compiler-generated types).
-                            && declaringType.Assembly != typeof(Promise).Assembly
-                            && !FriendAssemblies.Contains(declaringType.Assembly.GetName().Name);
+                            && !IsNonUserCode(methodType.DeclaringType);
                     })
                     // Create a new StackTrace to get proper formatting.
                     .Select(frame => new StackTrace(frame).ToString())
@@ -230,6 +225,18 @@ namespace Proto.Promises
                 causalityTrace);
 #endif // NET_LEGACY
         }
+
+#if !NET_LEGACY
+        private static bool IsNonUserCode(System.Reflection.MemberInfo memberInfo)
+        {
+            if (memberInfo == null)
+            {
+                return false;
+            }
+            return memberInfo.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
+                || IsNonUserCode(memberInfo.DeclaringType);
+        }
+#endif // !NET_LEGACY
 
         partial interface ITraceable
         {
