@@ -15,6 +15,7 @@ namespace ProtoPromiseTests
         private static Stack<ThreadRunner> s_pool = new Stack<ThreadRunner>();
 
         volatile private int _runningActionCount;
+        volatile private bool _neverCompleted;
 
         private sealed class ThreadRunner
         {
@@ -26,6 +27,10 @@ namespace ProtoPromiseTests
 
             public static void Run(BackgroundSynchronizationContext owner, SendOrPostCallback callback, object state)
             {
+                if (owner._neverCompleted)
+                {
+                    throw new Exception("A previous thread never completed, not running action.");
+                }
                 Interlocked.Increment(ref owner._runningActionCount);
                 bool reused = false;
                 ThreadRunner threadRunner = null;
@@ -99,6 +104,7 @@ namespace ProtoPromiseTests
             {
                 s_pool = new Stack<ThreadRunner>();
                 _runningActionCount = 0;
+                _neverCompleted = true;
                 throw new TimeoutException("WaitForAllThreadsToComplete timed out after " + timeout + ", _runningActionCount: " + _runningActionCount);
             }
         }
