@@ -117,7 +117,7 @@ namespace ProtoPromiseTests
                 _runningActionCount = 0;
                 NeverCompleted = true;
 
-#if !NETCOREAPP
+#if !NETCOREAPP && (!UNITY_5_5_OR_NEWER || NET_LEGACY)
                 List<Exception> exceptions = new List<Exception>();
                 lock (s_runningThreads)
                 {
