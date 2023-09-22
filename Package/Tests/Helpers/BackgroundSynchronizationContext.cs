@@ -124,16 +124,18 @@ namespace ProtoPromiseTests
                     foreach (var thread in s_runningThreads)
                     {
 #pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0612 // Type or member is obsolete
                         thread.Suspend();
                         var stackTrace = new StackTrace(thread, true);
                         exceptions.Add(new Proto.Promises.UnreleasedObjectException("Deadlocked thread", stackTrace.ToString()));
+#pragma warning restore CS0612 // Type or member is obsolete
 #pragma warning restore CS0618 // Type or member is obsolete
                     }
                     s_runningThreads.Clear();
                 }
                 if (exceptions.Count > 0)
                 {
-                    throw new System.AggregateException("WaitForAllThreadsToComplete timed out after " + timeout + ", _runningActionCount: " + _runningActionCount, exceptions);
+                    throw new Proto.Promises.AggregateException("WaitForAllThreadsToComplete timed out after " + timeout + ", _runningActionCount: " + _runningActionCount, exceptions);
                 }
 #endif
                 throw new TimeoutException("WaitForAllThreadsToComplete timed out after " + timeout + ", _runningActionCount: " + _runningActionCount);
