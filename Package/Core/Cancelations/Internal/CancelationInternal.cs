@@ -331,13 +331,14 @@ namespace Proto.Promises
                 bool isTokenMatched = tokenId == TokenId;
                 if (!isTokenMatched | state != State.Pending)
                 {
-                    _smallFields._locker.Exit();
                     if (isTokenMatched & state >= State.Canceled)
                     {
                         ThrowIfInPool(this);
+                        _smallFields._locker.Exit();
                         nodeCreator.Invoke();
                         return true;
                     }
+                    _smallFields._locker.Exit();
                     return false;
                 }
 
