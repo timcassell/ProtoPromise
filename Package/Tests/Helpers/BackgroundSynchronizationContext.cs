@@ -1,6 +1,7 @@
 ﻿using Proto.Promises;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
@@ -13,6 +14,7 @@ namespace ProtoPromiseTests
     {
         // Pool threads globally because creating new threads is expensive.
         private static Stack<ThreadRunner> s_pool = new Stack<ThreadRunner>();
+        private static readonly HashSet<Thread> s_runningThreads = new HashSet<Thread>();
 
         volatile private int _runningActionCount;
         volatile private bool _neverCompleted;
@@ -69,6 +71,10 @@ namespace ProtoPromiseTests
             {
                 while (true)
                 {
+                    lock (s_runningThreads)
+                    {
+                        s_runningThreads.Add(Thread.CurrentThread);
+                    }
                     BackgroundSynchronizationContext owner = _owner;
                     SendOrPostCallback callback = _callback;
                     object state = _state;
@@ -78,6 +84,11 @@ namespace ProtoPromiseTests
                     _state = null;
                     SetSynchronizationContext(owner);
                     callback.Invoke(state);
+
+                    lock (s_runningThreads)
+                    {
+                        s_runningThreads.Remove(Thread.CurrentThread);
+                    }
                     Interlocked.Decrement(ref owner._runningActionCount);
                     lock (_locker)
                     {
@@ -105,6 +116,26 @@ namespace ProtoPromiseTests
                 s_pool = new Stack<ThreadRunner>();
                 _runningActionCount = 0;
                 _neverCompleted = true;
+
+#if !NETCOREAPP
+                List<Exception> exceptions = new List<Exception>();
+                lock (s_runningThreads)
+                {
+                    foreach (var thread in s_runningThreads)
+                    {
+#pragma warning disable CS0618 // Type or member is obsolete
+                        thread.Suspend();
+                        var stackTrace = new StackTrace(thread, true);
+                        exceptions.Add(new Proto.Promises.UnreleasedObjectException("Deadlocked thread", stackTrace.ToString()));
+#pragma warning restore CS0618 // Type or member is obsolete
+                    }
+                    s_runningThreads.Clear();
+                }
+                if (exceptions.Count > 0)
+                {
+                    throw new System.AggregateException("WaitForAllThreadsToComplete timed out after " + timeout + ", _runningActionCount: " + _runningActionCount, exceptions);
+                }
+#endif
                 throw new TimeoutException("WaitForAllThreadsToComplete timed out after " + timeout + ", _runningActionCount: " + _runningActionCount);
             }
         }
