@@ -125,6 +125,10 @@ namespace ProtoPromiseTests
 
                 _stopwatch = Stopwatch.StartNew();
             }
+            else if (_backgroundContext.NeverCompleted)
+            {
+                throw new Exception("A background thread never completed, not running any further tests.");
+            }
 
             SynchronizationContext.SetSynchronizationContext(_foregroundContext);
             Promise.Manager.ThreadStaticSynchronizationContext = _foregroundContext;

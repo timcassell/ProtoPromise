@@ -17,7 +17,7 @@ namespace ProtoPromiseTests
         private static readonly HashSet<Thread> s_runningThreads = new HashSet<Thread>();
 
         volatile private int _runningActionCount;
-        volatile private bool _neverCompleted;
+        public volatile bool NeverCompleted;
 
         private sealed class ThreadRunner
         {
@@ -29,7 +29,7 @@ namespace ProtoPromiseTests
 
             public static void Run(BackgroundSynchronizationContext owner, SendOrPostCallback callback, object state)
             {
-                if (owner._neverCompleted)
+                if (owner.NeverCompleted)
                 {
                     throw new Exception("A previous thread never completed, not running action.");
                 }
@@ -115,7 +115,7 @@ namespace ProtoPromiseTests
             {
                 s_pool = new Stack<ThreadRunner>();
                 _runningActionCount = 0;
-                _neverCompleted = true;
+                NeverCompleted = true;
 
 #if !NETCOREAPP
                 List<Exception> exceptions = new List<Exception>();
