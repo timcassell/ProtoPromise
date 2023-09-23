@@ -132,7 +132,16 @@ namespace ProtoPromiseTests
 
             SynchronizationContext.SetSynchronizationContext(_foregroundContext);
             Promise.Manager.ThreadStaticSynchronizationContext = _foregroundContext;
-            TestContext.Progress.WriteLine("Begin time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
+            WriteProgress("Begin time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
+        }
+
+        private static void WriteProgress(string progress)
+        {
+#if UNITY_5_5_OR_NEWER
+            Console.WriteLine(progress);
+#else
+            TestContext.Progress.WriteLine(progress);
+#endif
         }
 
         public static void AssertRejection(object expected, object actual)
@@ -176,7 +185,7 @@ namespace ProtoPromiseTests
 #endif
 
             s_expectedUncaughtRejectValue = null;
-            TestContext.Progress.WriteLine("Success time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
+            WriteProgress("Success time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
         }
 
         private static void WaitForAllThreadsToCompleteAndGcCollect()
