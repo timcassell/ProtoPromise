@@ -15,11 +15,11 @@ jobs:
       fail-fast: false
       matrix:
         testMode:
-          - {
-              name: Editor,
-              value: PlayMode,
-              buildTargetId: 1
-            }
+          # - {
+          #     name: Editor,
+          #     value: PlayMode,
+          #     buildTargetId: 1
+          #   }
           - {
               name: Standalone,
               value: Standalone,
