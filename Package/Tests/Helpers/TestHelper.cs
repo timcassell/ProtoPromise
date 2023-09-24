@@ -128,6 +128,7 @@ namespace ProtoPromiseTests
             else if (_backgroundContext.NeverCompleted)
             {
                 Assert.Inconclusive("A background thread never completed, not running any further tests.");
+                System.Environment.Exit(1);
             }
 
             SynchronizationContext.SetSynchronizationContext(_foregroundContext);
