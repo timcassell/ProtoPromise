@@ -127,13 +127,17 @@ namespace ProtoPromiseTests
             }
             else if (_backgroundContext.NeverCompleted)
             {
-                Assert.Inconclusive("A background thread never completed, not running any further tests.");
-                System.Environment.Exit(1);
+                Kill();
             }
 
             SynchronizationContext.SetSynchronizationContext(_foregroundContext);
             Promise.Manager.ThreadStaticSynchronizationContext = _foregroundContext;
             WriteProgress("Begin time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
+        }
+
+        private static void Kill()
+        {
+            Kill();
         }
 
         private static void WriteProgress(string progress)
