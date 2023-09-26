@@ -1,4 +1,5 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
+﻿/*
+#if !PROTO_PROMISE_PROGRESS_DISABLE
 #define PROMISE_PROGRESS
 #else
 #undef PROMISE_PROGRESS
@@ -1489,3 +1490,4 @@ namespace ProtoPromiseTests.Unity
 #endif // CSHARP_7_3_OR_NEWER
     }
 }
+*/
