@@ -4,7 +4,7 @@
     <!--We target .Net Framework 3.5 to support old Unity versions, and we also target .Net Standard 2.1 to support new Unity versions, even after it drops old Framework support.-->
     <TargetFrameworks>net35;netstandard2.1</TargetFrameworks>
     <Configurations>Release;Debug;</Configurations>
-    <Version>2.5.4</Version>
+    <Version>2.6.0</Version>
   </PropertyGroup>
 
   <PropertyGroup>

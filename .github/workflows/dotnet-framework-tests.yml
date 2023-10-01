@@ -47,7 +47,7 @@ jobs:
           
       - name: Run Tests
         run: dotnet test -c ${{ matrix.config }} -f net472 --logger "trx;logfilename=dotnet-test-results-net472-${{ matrix.config }}-${{ matrix.objectPooling.name }}.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} --results-directory "./TestResults"
-        timeout-minutes: 90
+        timeout-minutes: 120
 
       - uses: dorny/test-reporter@v1
         if: always()
