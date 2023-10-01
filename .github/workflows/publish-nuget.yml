@@ -10,7 +10,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Verify commit exists in origin/master
         run: |
@@ -71,7 +71,7 @@ jobs:
           nuget-api-key: ${{ secrets.NUGET_API_KEY }}
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v3
         with:
           global-json-file: global.json
 

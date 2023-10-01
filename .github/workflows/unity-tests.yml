@@ -138,15 +138,14 @@ jobs:
 
       - name: Run tests
         id: tests
-        # The commit that added standalone support (new version has not yet been released).
-        uses: game-ci/unity-test-runner@31086d985910613d75c32ba965f657df9c298820
+        uses: game-ci/unity-test-runner@v3
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}
         with:
           projectPath: ProtoPromise_Unity
           testMode: ${{ matrix.testMode.value }}
           unityVersion: ${{ matrix.unityVersion }}
-        timeout-minutes: 90
+        timeout-minutes: 120
 
       # Workaround for NUnit XML (see https://github.com/dorny/test-reporter/issues/98#issuecomment-867106931)
       - name: Install NUnit
@@ -179,7 +178,7 @@ jobs:
           path: "*_junit.xml"
           reporter: java-junit
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: always()
         with:
           name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.mode.name }}-${{ matrix.progress.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
