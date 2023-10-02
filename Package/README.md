@@ -45,9 +45,13 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-## v2.5.4 - June 17, 2023
+### v2.6.0 - October 2, 2023
 
-- Fixed `IndexOutOfRangeException` when a `PromiseYielder` function is used more than 64 times simultaneously.
+- Added `Promise.AllSettled` and `Promise.MergeSettled` APIs.
+- Fixed a `NullReferenceException` after `OnApplicationQuit`.
+- Fixed some race conditions.
+- Performance improvements.
+- Renamed `ResultContainer` properties to more closely match ES6.
 
 See [ChangeLog](../Package/CHANGELOG.md) for the full changelog.
 
@@ -70,10 +74,11 @@ See [ChangeLog](../Package/CHANGELOG.md) for the full changelog.
 - [Promises that are already settled](#promises-that-are-already-settled)
 - [Progress reporting](#progress-reporting)
 - [Combining Multiple Async Operations](#combining-multiple-async-operations)
-    - [All Parallel](#all-parallel)
-    - [Merge Parallel](#merge-parallel)
-    - [Race Parallel](#race-parallel)
-    - [First Parallel](#first-parallel)
+    - [All](#all)
+    - [Merge](#merge)
+    - [AllSettled and MergeSettled](#allsettled-and-mergesettled)
+    - [Race](#race)
+    - [First](#first)
     - [Sequence](#sequence)
 - [Task Interoperability](#task-interoperability)
 - [Unity Coroutines Interoperability](#unity-coroutines-interoperability)
@@ -564,11 +569,11 @@ async Promise Func()
 
 ## Combining Multiple Async Operations
 
-### All Parallel
+### All
 
-The `All` function combines multiple async operations to run in parallel. It converts a collection of promises or a variable length parameter list of promises into a single promise that yields a collection.
+The `All` function combines multiple async operations that are currently running. It converts a collection of promises or a variable length parameter list of promises into a single promise, and if those promises are non-void, it yields a list containing the results of those promises in the same order.
 
-Say that each promise yields a value of type T, the resulting promise then yields a collection with values of type T.
+Say that each promise yields a value of type `string`, the resulting promise then yields an `IList<string>`.
 
 Here is an example that extracts links from multiple pages and merges the results:
 
@@ -590,7 +595,7 @@ Promise.All(Download("http://www.google.com"), Download("http://www.bing.com")) 
 
 Progress from an All promise will be normalized from all of the input promises.
 
-### Merge Parallel
+### Merge
 
 The `Merge` function behaves just like the `All` function, except that it can be used to combine multiple types, and instead of yielding an `IList<T>`, it yields a `ValueTuple<>` that contains the types of the promises provided to the function.
 
@@ -603,7 +608,37 @@ Promise.Merge(Download("http://www.google.com"), DownloadImage("http://www.examp
     })
 ```
 
-### Race Parallel
+### AllSettled and MergeSettled
+
+The `AllSettled` and `MergeSettled` functions behave very similar to `All` and `Merge`, except they yield a collection/tuple of `ResultContainer`s instead of the raw type. This is because they capture the state of each promise. The returned promise waits until all promises are complete, whether they are resolved, rejected, or canceled (in contrast, `All` and `Merge` immediately reject or cancel the returned promise when any promise is rejected or canceled).
+
+```cs
+Promise.MergeSettled(Download("http://www.google.com"), DownloadImage("http://www.example.com/image.jpg"))  // Download HTML and image.
+    .Then(resultContainers =>                         // Receives ValueTuple<Promise<string>.ResultContainer, Promise<Texture>.ResultContainer>.
+    {
+        var result1 = resultContainers.Item1;
+        var result2 = resultContainers.Item2;
+        if (result1.State == Promise.State.Resolved)
+        {
+            Console.WriteLine(result1.Value);    // Print the HTML.
+        }
+        else if (result1.State == Promise.State.Rejected)
+        {
+            Console.WriteLine(result1.Reason);    // Print the reject reason.
+        }
+        
+        if (result2.State == Promise.State.Resolved)
+        {
+            image.SetTexture(result2.Value);     // Assign the texture to an image object.
+        }
+        else if (result2.State == Promise.State.Rejected)
+        {
+            Console.WriteLine(result2.Reason);    // Print the reject reason.
+        }
+    })
+```
+
+### Race
 
 The `Race` function is similar to the `All` function, but it is the first async operation that settles that wins the race and the promise adopts its state.
 
@@ -615,7 +650,7 @@ Promise.Race(Download("http://www.google.com"), Download("http://www.bing.com"))
 
 Progress from a Race promise will be the maximum of those reported by all the input promises.
 
-### First Parallel
+### First
 
 The `First` function is almost idential to `Race` except that if a promise is rejected or canceled, the First promise will remain pending until one of the input promises is resolved or they are all rejected/canceled.
 
@@ -1049,7 +1084,7 @@ Normally when you await a promise in an `async Promise` function, it will throw 
 var resultContainer = await promise.AwaitNoThrow();
 resultContainer.RethrowIfRejected();
 bool isCanceled = resultContainer.State == Promise.State.Canceled;
-var result = resultContainer.Result;
+var result = resultContainer.Value;
 ```
 
 ### Switching Execution Context
@@ -1163,7 +1198,7 @@ public static Promise ForAsync(int min, int max, Action<int> action)
 }
 ```
 
-(`Promise.ParallelForEach` is similar to `Parallel.ForEachAsync` in .Net 6+, but uses `Promise` instead of `Task` to be more efficient, and works in older runtimes. And even in newer runtimes, `Parallel.ForAsync` does not exist.)
+(`Promise.ParallelForEach` is similar to `Parallel.ForEachAsync` in .Net 6+, but uses `Promise` instead of `Task` to be more efficient, and works in older runtimes.)
 
 ### Async Synchronization Primitives
 
