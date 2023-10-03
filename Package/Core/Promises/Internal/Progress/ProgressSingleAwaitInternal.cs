@@ -295,6 +295,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 partial void SetAwaitedComplete(PromiseRefBase handler)
                 {
+#if PROMISE_DEBUG
+                    _previous = null;
+#endif
                     // Resolve race condition with progress hookup.
                     // Only nullify _rejectContainerOrPreviousOrLink if it's the same as the handler,
                     // otherwise it could break the registered promise chain.
