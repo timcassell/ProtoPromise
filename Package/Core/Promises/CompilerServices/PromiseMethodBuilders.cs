@@ -88,8 +88,8 @@ namespace Proto.Promises
     {
         /// <summary>
         /// Provides a builder for asynchronous methods that return <see cref="Promise"/>.
-        /// This type is intended for compiler use only.
         /// </summary>
+        /// <remarks>This type is intended for compiler use rather than use directly in code.</remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -144,8 +144,8 @@ namespace Proto.Promises
 
         /// <summary>
         /// Provides a builder for asynchronous methods that return <see cref="Promise{T}"/>.
-        /// This type is intended for compiler use only.
         /// </summary>
+        /// <remarks>This type is intended for compiler use rather than use directly in code.</remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif

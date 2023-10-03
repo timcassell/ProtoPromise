@@ -393,13 +393,18 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            protected void Reset()
+            protected void ResetWithoutStacktrace()
             {
                 _next = PendingAwaitSentinel.s_instance;
                 _state = Promise.State.Pending;
                 _wasAwaitedorForgotten = false;
                 _suppressRejection = false;
+            }
 
+            [MethodImpl(InlineOption)]
+            protected void Reset()
+            {
+                ResetWithoutStacktrace();
                 SetCreatedStacktrace(this, 3);
             }
 
