@@ -77,7 +77,7 @@ namespace Proto.Promises
             // This is used as the backing reference to 3 different awaiters. MoveNextAsync (Promise<bool>), DisposeAsync (Promise), and YieldAsync (AsyncStreamYielder<T>).
             // We use `Interlocked.CompareExchange(ref _enumerableId` to enforce only 1 awaiter uses it at a time, in the correct order.
             // We use a separate field for AsyncStreamYielder continuation, because using _next for 2 separate async functions (the iterator and the consumer) proves problematic.
-            private PromiseRefBase _iteratorPromiseRef;
+            protected PromiseRefBase _iteratorPromiseRef;
             private T _current;
             private int _iteratorCompleteExpectedId;
             private int _iteratorCompleteId;
@@ -184,14 +184,27 @@ namespace Proto.Promises
                 }
 
                 ThrowIfInPool(this);
-                _current = default;
-                // The async iterator function is not already complete, we move the async state machine forward.
-                // Once that happens, GetResultForAsyncStreamYielder will be called which throws the special exception.
-                // If DisposeAsync was called before MoveNextAsync (the async iterator function never started), this just sets the promise to complete.
-                _iteratorCompleteExpectedId = newId;
-                _iteratorCompleteId = newId;
                 _disposed = true;
-                MoveNext();
+                // Invalidate the previous awaiter.
+                IncrementPromiseIdAndClearPrevious();
+                // Reset for the next awaiter.
+                ResetWithoutStacktrace();
+                // If MoveNextAsync was never called, the iterator promise is null.
+                var iteratorPromise = InterlockedExchange(ref _iteratorPromiseRef, null);
+                if (iteratorPromise == null)
+                {
+                    HandleNextInternal(null, Promise.State.Resolved);
+                }
+                else
+                {
+                    // The async iterator function is not already complete, we move the async state machine forward.
+                    // Once that happens, GetResultForAsyncStreamYielder will be called which throws the special exception.
+                    // If DisposeAsync was called before MoveNextAsync (the async iterator function never started), this just sets the promise to complete.
+                    _current = default;
+                    _iteratorCompleteExpectedId = newId;
+                    _iteratorCompleteId = newId;
+                    iteratorPromise.Handle(this, null, Promise.State.Resolved);
+                }
                 return new Promise(this, Id, 0);
             }
 
@@ -260,15 +273,6 @@ namespace Proto.Promises
                 HandleNextInternal(null, Promise.State.Resolved);
             }
 
-            protected void MoveNext()
-            {
-                // Dispose to invalidate the previous awaiter.
-                Dispose();
-                ResetWithoutStacktrace();
-                // Handle iterator promise to move the async state machine forward.
-                InterlockedExchange(ref _iteratorPromiseRef, null).Handle(this, null, Promise.State.Resolved);
-            }
-
             protected abstract void StartOrMoveNext(int enumerableId);
         }
 
@@ -316,7 +320,12 @@ namespace Proto.Promises
             {
                 if (_iterator.IsNull)
                 {
-                    MoveNext();
+                    // Invalidate the previous awaiter.
+                    IncrementPromiseIdAndClearPrevious();
+                    // Reset for the next awaiter.
+                    ResetWithoutStacktrace();
+                    // Handle iterator promise to move the async state machine forward.
+                    InterlockedExchange(ref _iteratorPromiseRef, null).Handle(this, null, Promise.State.Resolved);
                     return;
                 }
 

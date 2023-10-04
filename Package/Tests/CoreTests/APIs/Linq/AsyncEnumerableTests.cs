@@ -197,6 +197,32 @@ namespace ProtoPromiseTests.APIs
 
             Assert.True(didCompleteFinallyBlock);
         }
+
+        [Test]
+        public void AsyncEnumerableDisposeAsyncEnumeratorWithoutIterating()
+        {
+            var enumerable = AsyncEnumerable.Create<int>(async (writer, _) =>
+            {
+                await writer.YieldAsync(42);
+            });
+
+            bool runnerIsComplete = false;
+            int count = 0;
+
+            var runner = Promise.Run(async () =>
+            {
+                var enumerator = enumerable.GetAsyncEnumerator();
+                await enumerator.DisposeAsync();
+
+                Assert.AreEqual(0, count);
+                runnerIsComplete = true;
+            }, SynchronizationOption.Synchronous);
+
+            Assert.True(runnerIsComplete);
+
+            runner
+                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+        }
     }
 }
 

@@ -427,6 +427,12 @@ namespace Proto.Promises
                     throw new System.InvalidOperationException("Promise disposed while pending: " + this);
                 }
 #endif
+                IncrementPromiseIdAndClearPrevious();
+            }
+
+            [MethodImpl(InlineOption)]
+            protected void IncrementPromiseIdAndClearPrevious()
+            {
                 IncrementPromiseId();
 #if PROMISE_DEBUG
                 _previous = null;
