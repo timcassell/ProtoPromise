@@ -69,217 +69,221 @@ namespace Proto.Promises
                 => _func.Invoke(_capturedValue, streamWriter, cancelationToken);
         }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal abstract class AsyncEnumerableBase<T> : PromiseRefBase.PromiseSingleAwait<bool>
+        partial class PromiseRefBase
         {
-            // This is used as the backing reference to 3 different awaiters. MoveNextAsync (Promise<bool>), DisposeAsync (Promise), and YieldAsync (AsyncStreamYielder<T>).
-            // We use `Interlocked.CompareExchange(ref _enumerableId` to enforce only 1 awaiter uses it at a time, in the correct order.
-            // We use a separate field for AsyncStreamYielder continuation, because using _next for 2 separate async functions (the iterator and the consumer) proves problematic.
-            protected PromiseRefBase _iteratorPromiseRef;
-            private T _current;
-            private int _iteratorCompleteExpectedId;
-            private int _iteratorCompleteId;
-            protected int _enumerableId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
-            protected bool _disposed;
-            protected CancelationToken _cancelationToken;
-
-            internal int EnumerableId
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal abstract class AsyncEnumerableBase<T> : PromiseSingleAwait<bool>
             {
+                // This is used as the backing reference to 3 different awaiters. MoveNextAsync (Promise<bool>), DisposeAsync (Promise), and YieldAsync (AsyncStreamYielder<T>).
+                // We use `Interlocked.CompareExchange(ref _enumerableId` to enforce only 1 awaiter uses it at a time, in the correct order.
+                // We use a separate field for AsyncStreamYielder continuation, because using _next for 2 separate async functions (the iterator and the consumer) proves problematic.
+                protected PromiseRefBase _iteratorPromiseRef;
+                private T _current;
+                private int _iteratorCompleteExpectedId;
+                private int _iteratorCompleteId;
+                protected int _enumerableId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
+                protected bool _disposed;
+                protected CancelationToken _cancelationToken;
+
+                internal int EnumerableId
+                {
+                    [MethodImpl(InlineOption)]
+                    get { return _enumerableId; }
+                }
+
+                internal Linq.AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
+                {
+                    int newId = id + 1;
+                    if (Interlocked.CompareExchange(ref _enumerableId, newId, id) != id)
+                    {
+                        throw new InvalidOperationException("AsyncEnumerable.GetAsyncEnumerator: instance is not valid. AsyncEnumerable may only be used once.", GetFormattedStacktrace(2));
+                    }
+                    _cancelationToken = cancelationToken;
+                    return new Linq.AsyncEnumerator<T>(this, newId);
+                }
+
                 [MethodImpl(InlineOption)]
-                get { return _enumerableId; }
-            }
-
-            internal Linq.AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
-            {
-                int newId = id + 1;
-                if (Interlocked.CompareExchange(ref _enumerableId, newId, id) != id)
+                internal T GetCurrent(int id)
                 {
-                    throw new InvalidOperationException("AsyncEnumerable.GetAsyncEnumerator: instance is not valid. AsyncEnumerable may only be used once.", GetFormattedStacktrace(2));
+                    if (_enumerableId != id)
+                    {
+                        throw new InvalidOperationException("AsyncEnumerable.GetCurrent: instance is not valid, or the MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                    }
+                    return _current;
                 }
-                _cancelationToken = cancelationToken;
-                return new Linq.AsyncEnumerator<T>(this, newId);
-            }
 
-            [MethodImpl(InlineOption)]
-            internal T GetCurrent(int id)
-            {
-                if (_enumerableId != id)
+                [MethodImpl(InlineOption)]
+                internal Promise<bool> MoveNextAsync(int id)
                 {
-                    throw new InvalidOperationException("AsyncEnumerable.GetCurrent: instance is not valid, or the MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                    // We increment by 1 when MoveNextAsync, then decrement by 1 when YieldAsync.
+                    int newId = id + 1;
+                    // When the async iterator function completes, we set it to the id + 2 so we can detect that case.
+                    int iteratorCompleteId = id + 2;
+                    int oldId = Interlocked.CompareExchange(ref _enumerableId, newId, id);
+                    if (oldId != id)
+                    {
+                        if (oldId == iteratorCompleteId)
+                        {
+                            // The async iterator function is already complete. Return a resolved promise with `false` result.
+                            return Promise.Resolved(false);
+                        }
+                        throw new InvalidOperationException("AsyncEnumerable.MoveNextAsync: instance is not valid, or the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                    }
+                    ThrowIfInPool(this);
+                    _current = default;
+                    _iteratorCompleteExpectedId = newId;
+                    _iteratorCompleteId = iteratorCompleteId;
+                    _result = false;
+                    StartOrMoveNext(newId);
+                    return new Promise<bool>(this, Id, 0);
                 }
-                return _current;
-            }
 
-            [MethodImpl(InlineOption)]
-            internal Promise<bool> MoveNextAsync(int id)
-            {
-                // We increment by 1 when MoveNextAsync, then decrement by 1 when YieldAsync.
-                int newId = id + 1;
-                // When the async iterator function completes, we set it to the id + 2 so we can detect that case.
-                int iteratorCompleteId = id + 2;
-                int oldId = Interlocked.CompareExchange(ref _enumerableId, newId, id);
-                if (oldId != id)
+                [MethodImpl(InlineOption)]
+                internal AsyncStreamYielder<T> YieldAsync(in T value, int id)
                 {
+                    int newId = id - 1;
+                    if (Interlocked.CompareExchange(ref _enumerableId, newId, id) != id)
+                    {
+                        throw new InvalidOperationException("AsyncStreamWriter.YieldAsync: instance is not valid. This must only be called from the iterator method, and not within any catch or finally blocks.", GetFormattedStacktrace(2));
+                    }
+                    ThrowIfInPool(this);
+                    _current = value;
+                    _iteratorCompleteExpectedId = newId;
+                    // When the async iterator function completes, we set it to the original id + 2 so we can detect that case.
+                    _iteratorCompleteId = newId + 2;
+                    return new AsyncStreamYielder<T>(this, newId);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal Promise DisposeAsync(int id)
+                {
+                    int newId = id + 3;
+                    // When the async iterator function completes before DisposeAsync is called, it's set to id + 2.
+                    int iteratorCompleteId = id + 2;
+                    // Common case is DisposeAsync is called after the async iterator function is complete.
+                    int oldId = Interlocked.CompareExchange(ref _enumerableId, newId, iteratorCompleteId);
                     if (oldId == iteratorCompleteId)
                     {
-                        // The async iterator function is already complete. Return a resolved promise with `false` result.
-                        return Promise.Resolved(false);
+                        // The async iterator function is already complete, dispose this and return a resolved promise.
+                        _disposed = true;
+                        MaybeDispose();
+                        return Promise.Resolved();
                     }
-                    throw new InvalidOperationException("AsyncEnumerable.MoveNextAsync: instance is not valid, or the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
-                }
-                ThrowIfInPool(this);
-                _current = default;
-                _iteratorCompleteExpectedId = newId;
-                _iteratorCompleteId = iteratorCompleteId;
-                _result = false;
-                StartOrMoveNext(newId);
-                return new Promise<bool>(this, Id, 0);
-            }
 
-            [MethodImpl(InlineOption)]
-            internal AsyncStreamYielder<T> YieldAsync(in T value, int id)
-            {
-                int newId = id - 1;
-                if (Interlocked.CompareExchange(ref _enumerableId, newId, id) != id)
-                {
-                    throw new InvalidOperationException("AsyncStreamWriter.YieldAsync: instance is not valid. This must only be called from the iterator method, and not within any catch or finally blocks.", GetFormattedStacktrace(2));
-                }
-                ThrowIfInPool(this);
-                _current = value;
-                _iteratorCompleteExpectedId = newId;
-                // When the async iterator function completes, we set it to the original id + 2 so we can detect that case.
-                _iteratorCompleteId = newId + 2;
-                return new AsyncStreamYielder<T>(this, newId);
-            }
-
-            [MethodImpl(InlineOption)]
-            internal Promise DisposeAsync(int id)
-            {
-                int newId = id + 3;
-                // When the async iterator function completes before DisposeAsync is called, it's set to id + 2.
-                int iteratorCompleteId = id + 2;
-                // Common case is DisposeAsync is called after the async iterator function is complete.
-                int oldId = Interlocked.CompareExchange(ref _enumerableId, newId, iteratorCompleteId);
-                if (oldId == iteratorCompleteId)
-                {
-                    // The async iterator function is already complete, dispose this and return a resolved promise.
-                    _disposed = true;
-                    MaybeDispose();
-                    return Promise.Resolved();
-                }
-
-                // Otherwise, DisposeAsync was likely called to stop iterating early (`break` keyword in `await foreach` loop).
-                // We do another CompareExchange in case it was an invalid call.
-                oldId = Interlocked.CompareExchange(ref _enumerableId, newId, id);
-                if (oldId != id)
-                {
-                    if (oldId == id + 1)
+                    // Otherwise, DisposeAsync was likely called to stop iterating early (`break` keyword in `await foreach` loop).
+                    // We do another CompareExchange in case it was an invalid call.
+                    oldId = Interlocked.CompareExchange(ref _enumerableId, newId, id);
+                    if (oldId != id)
                     {
-                        throw new InvalidOperationException("AsyncEnumerable.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                        if (oldId == id + 1)
+                        {
+                            throw new InvalidOperationException("AsyncEnumerable.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                        }
+                        // IAsyncEnumerable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
+                        return Promise.Resolved();
                     }
-                    // IAsyncEnumerable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
-                    return Promise.Resolved();
-                }
 
-                ThrowIfInPool(this);
-                _disposed = true;
-                // Invalidate the previous awaiter.
-                IncrementPromiseIdAndClearPrevious();
-                // Reset for the next awaiter.
-                ResetWithoutStacktrace();
-                // If MoveNextAsync was never called, the iterator promise is null.
-                var iteratorPromise = InterlockedExchange(ref _iteratorPromiseRef, null);
-                if (iteratorPromise == null)
-                {
-                    HandleNextInternal(null, Promise.State.Resolved);
-                }
-                else
-                {
+                    ThrowIfInPool(this);
+                    _disposed = true;
+                    // If MoveNextAsync was never called, the iterator promise is null.
+                    var iteratorPromise = InterlockedExchange(ref _iteratorPromiseRef, null);
+                    if (iteratorPromise == null)
+                    {
+                        // The async iterator function never started, dispose this and return a resolved promise.
+                        State = Promise.State.Resolved;
+                        MaybeDispose();
+                        return Promise.Resolved();
+                    }
+
                     // The async iterator function is not already complete, we move the async state machine forward.
                     // Once that happens, GetResultForAsyncStreamYielder will be called which throws the special exception.
                     // If DisposeAsync was called before MoveNextAsync (the async iterator function never started), this just sets the promise to complete.
                     _current = default;
                     _iteratorCompleteExpectedId = newId;
                     _iteratorCompleteId = newId;
+                    // Invalidate the previous awaiter.
+                    IncrementPromiseIdAndClearPrevious();
+                    // Reset for the next awaiter.
+                    ResetWithoutStacktrace();
                     iteratorPromise.Handle(this, null, Promise.State.Resolved);
+                    return new Promise(this, Id, 0);
                 }
-                return new Promise(this, Id, 0);
-            }
 
-            internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
-            {
-                // This is called when the async iterator function completes.
-                ThrowIfInPool(this);
-                handler.SetCompletionState(rejectContainer, state);
-                if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
+                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
                 {
-                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
-                    rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create iterator function completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
-                    state = Promise.State.Rejected;
-                }
-                else
-                {
-                    handler.SuppressRejection = true;
-                    handler.MaybeDispose();
-                }
-                HandleNextInternal(rejectContainer, state);
-            }
-
-            protected void HandleFromSynchronouslyCompletedIterator()
-            {
-                ThrowIfInPool(this);
-                object rejectContainer = null;
-                Promise.State state = Promise.State.Resolved;
-                if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
-                {
-                    rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create iterator function completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
-                    state = Promise.State.Rejected;
-                }
-                HandleNextInternal(rejectContainer, state);
-            }
-
-            internal void GetResultForAsyncStreamYielder(int enumerableId)
-            {
-                int enumId = _enumerableId;
-                // We add 1 because MoveNextAsync is expected to be called before this.
-                if (enumId != enumerableId + 1)
-                {
-                    // If it wasn't MoveNextAsync, then it should've been DisposeAsync.
-                    if (enumId == enumerableId + 3)
+                    // This is called when the async iterator function completes.
+                    ThrowIfInPool(this);
+                    handler.SetCompletionState(rejectContainer, state);
+                    if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
-                        // DisposeAsync was called early (before the async iterator function completed).
-                        // Reset in case the async iterator function completes synchronously from Start.
-                        ResetWithoutStacktrace();
-                        // Throw this special exception so that the async iterator function will run any finally blocks and complete.
-                        throw AsyncEnumerableDisposedException.s_instance;
+                        handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
+                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create iterator function completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        state = Promise.State.Rejected;
                     }
-                    throw new InvalidOperationException("AsyncStreamYielder.GetResult: instance is not valid. This should only be called from the iterator method, and it may only be called once.", GetFormattedStacktrace(2));
+                    else
+                    {
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
+                    }
+                    HandleNextInternal(rejectContainer, state);
                 }
-                // Reset in case the async iterator function completes synchronously from Start.
-                ResetWithoutStacktrace();
-            }
 
-            [MethodImpl(InlineOption)]
-            internal void AwaitOnCompletedForAsyncStreamYielder(PromiseRefBase asyncPromiseRef, int enumerableId)
-            {
-                if (_enumerableId != enumerableId || Interlocked.CompareExchange(ref _iteratorPromiseRef, asyncPromiseRef, null)  != null)
+                protected void HandleFromSynchronouslyCompletedIterator()
                 {
-                    throw new InvalidOperationException("AsyncStreamYielder: invalid await. Only one await is allowed.", GetFormattedStacktrace(2));
+                    ThrowIfInPool(this);
+                    object rejectContainer = null;
+                    Promise.State state = Promise.State.Resolved;
+                    if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
+                    {
+                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create iterator function completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        state = Promise.State.Rejected;
+                    }
+                    HandleNextInternal(rejectContainer, state);
                 }
-                // Complete the MoveNextAsync promise.
-                _result = true;
-                HandleNextInternal(null, Promise.State.Resolved);
-            }
 
-            protected abstract void StartOrMoveNext(int enumerableId);
-        }
+                internal void GetResultForAsyncStreamYielder(int enumerableId)
+                {
+                    int enumId = _enumerableId;
+                    // We add 1 because MoveNextAsync is expected to be called before this.
+                    if (enumId != enumerableId + 1)
+                    {
+                        // If it wasn't MoveNextAsync, then it should've been DisposeAsync.
+                        if (enumId == enumerableId + 3)
+                        {
+                            // DisposeAsync was called early (before the async iterator function completed).
+                            // Reset in case the async iterator function completes synchronously from Start.
+                            ResetWithoutStacktrace();
+                            // Throw this special exception so that the async iterator function will run any finally blocks and complete.
+                            throw AsyncEnumerableDisposedException.s_instance;
+                        }
+                        throw new InvalidOperationException("AsyncStreamYielder.GetResult: instance is not valid. This should only be called from the iterator method, and it may only be called once.", GetFormattedStacktrace(2));
+                    }
+                    // Reset in case the async iterator function completes synchronously from Start.
+                    ResetWithoutStacktrace();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void AwaitOnCompletedForAsyncStreamYielder(PromiseRefBase asyncPromiseRef, int enumerableId)
+                {
+                    if (_enumerableId != enumerableId || Interlocked.CompareExchange(ref _iteratorPromiseRef, asyncPromiseRef, null) != null)
+                    {
+                        throw new InvalidOperationException("AsyncStreamYielder: invalid await. Only one await is allowed.", GetFormattedStacktrace(2));
+                    }
+                    // Complete the MoveNextAsync promise.
+                    _result = true;
+                    HandleNextInternal(null, Promise.State.Resolved);
+                }
+
+                protected abstract void StartOrMoveNext(int enumerableId);
+            } // class AsyncEnumerableBase<T>
+        } // class PromiseRefBase
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncEnumerableImpl<TValue, TIterator> : AsyncEnumerableBase<TValue>
+        internal sealed class AsyncEnumerableImpl<TValue, TIterator> : PromiseRefBase.AsyncEnumerableBase<TValue>
             where TIterator : IAsyncIterator<TValue>
         {
             private TIterator _iterator;
@@ -347,7 +351,7 @@ namespace Proto.Promises
                 // We hook this up directly to the returned promise so we can know when the iteration is complete, and use this for the DisposeAsync promise.
                 iteratorPromise._ref.HookupExistingWaiter(iteratorPromise._id, this);
             }
-        }
-    }
+        } // class AsyncEnumerableImpl<TValue, TIterator>
+    } // class Internal
 #endif
-}
+} // namespace Proto.Promises

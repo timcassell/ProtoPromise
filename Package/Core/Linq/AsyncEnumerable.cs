@@ -46,7 +46,7 @@ namespace Proto.Promises.Linq
 #endif
     public readonly struct AsyncEnumerable<T> : IAsyncEnumerable<T>
     {
-        private readonly Internal.AsyncEnumerableBase<T> _target;
+        private readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
         private readonly int _id;
 
         /// <summary>
@@ -62,7 +62,7 @@ namespace Proto.Promises.Linq
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal AsyncEnumerable(Internal.AsyncEnumerableBase<T> target)
+        internal AsyncEnumerable(Internal.PromiseRefBase.AsyncEnumerableBase<T> target)
         {
             _target = target;
             _id = _target.EnumerableId;
@@ -95,11 +95,11 @@ namespace Proto.Promises.Linq
 #endif
     public readonly struct AsyncEnumerator<T> : IAsyncEnumerator<T>
     {
-        private readonly Internal.AsyncEnumerableBase<T> _target;
+        private readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
         private readonly int _id;
 
         [MethodImpl(Internal.InlineOption)]
-        internal AsyncEnumerator(Internal.AsyncEnumerableBase<T> target, int id)
+        internal AsyncEnumerator(Internal.PromiseRefBase.AsyncEnumerableBase<T> target, int id)
         {
             _target = target;
             _id = id;

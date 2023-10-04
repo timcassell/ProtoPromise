@@ -13,11 +13,11 @@ namespace Proto.Promises.Async.CompilerServices
 #endif
     public readonly struct AsyncStreamWriter<T>
     {
-        private readonly Internal.AsyncEnumerableBase<T> _target;
+        private readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
         private readonly int _id;
 
         [MethodImpl(Internal.InlineOption)]
-        internal AsyncStreamWriter(Internal.AsyncEnumerableBase<T> target, int id)
+        internal AsyncStreamWriter(Internal.PromiseRefBase.AsyncEnumerableBase<T> target, int id)
         {
             _target = target;
             _id = id;
@@ -41,11 +41,11 @@ namespace Proto.Promises.Async.CompilerServices
 #endif
     public readonly partial struct AsyncStreamYielder<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
     {
-        private readonly Internal.AsyncEnumerableBase<T> _target;
+        private readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
         private readonly int _enumerableId;
 
         [MethodImpl(Internal.InlineOption)]
-        internal AsyncStreamYielder(Internal.AsyncEnumerableBase<T> target, int enumerableId)
+        internal AsyncStreamYielder(Internal.PromiseRefBase.AsyncEnumerableBase<T> target, int enumerableId)
         {
             _target = target;
             _enumerableId = enumerableId;
