@@ -45,14 +45,6 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
             [MethodImpl(InlineOption)]
-            internal void HookupAsyncStreamYielder(PromiseRefBase awaiter, short promiseId)
-            {
-                // We don't set _previous to avoid an infinite loop in the circular await detection.
-                ValidateAwait(awaiter, promiseId);
-                awaiter.HookupExistingWaiter(promiseId, this);
-            }
-
-            [MethodImpl(InlineOption)]
             internal void HookupAwaiter(PromiseRefBase awaiter, short promiseId)
             {
                 ValidateAwait(awaiter, promiseId);

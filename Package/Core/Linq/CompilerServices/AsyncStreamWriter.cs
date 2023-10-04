@@ -25,10 +25,10 @@ namespace Proto.Promises.Async.CompilerServices
 
         /// <summary>
         /// Asynchronously writes the <paramref name="value"/> to the stream.
-        /// <see langword="await"/> the returned <see cref="AsyncStreamYielder"/> to pause execution until the reader has requested the async iterator to move forward.
+        /// <see langword="await"/> the returned <see cref="AsyncStreamYielder{T}"/> to pause execution until the reader has requested the async iterator to move forward.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public AsyncStreamYielder YieldAsync(T value)
+        public AsyncStreamYielder<T> YieldAsync(T value)
             => _target.YieldAsync(value, _id);
     }
 
@@ -39,18 +39,16 @@ namespace Proto.Promises.Async.CompilerServices
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly partial struct AsyncStreamYielder : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+    public readonly partial struct AsyncStreamYielder<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
     {
-        private readonly Internal.PromiseRefBase _target;
+        private readonly Internal.AsyncEnumerableBase<T> _target;
         private readonly int _enumerableId;
-        private readonly short _promiseId;
 
         [MethodImpl(Internal.InlineOption)]
-        internal AsyncStreamYielder(Internal.PromiseRefBase target, int enumerableId)
+        internal AsyncStreamYielder(Internal.AsyncEnumerableBase<T> target, int enumerableId)
         {
             _target = target;
             _enumerableId = enumerableId;
-            _promiseId = target.Id;
             CreateOverride();
         }
 
@@ -65,7 +63,7 @@ namespace Proto.Promises.Async.CompilerServices
         static AsyncStreamYielder()
 #endif
         {
-            Internal.AwaitOverrider<AsyncStreamYielder>.Create<AsyncStreamYielder>();
+            Internal.AwaitOverrider<AsyncStreamYielder<T>>.Create<AsyncStreamYielder<T>>();
         }
 #endif
 
@@ -73,25 +71,25 @@ namespace Proto.Promises.Async.CompilerServices
         /// Returns this.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public AsyncStreamYielder GetAwaiter() => this;
+        public AsyncStreamYielder<T> GetAwaiter() => this;
 
         /// <summary>Gets whether the reader has requested the async iterator to move forward.</summary>
         /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
         public bool IsCompleted
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return _target.GetIsCompleted(_promiseId); }
+            get { return false; }
         }
 
         /// <summary>Ends the await.</summary>
         /// <remarks>This method is intended for compiler use rather than use directly in code.</remarks>
         [MethodImpl(Internal.InlineOption)]
         public void GetResult()
-            => _target.GetResultForAsyncStreamYielder(_promiseId, _enumerableId);
+            => _target.GetResultForAsyncStreamYielder(_enumerableId);
 
         [MethodImpl(Internal.InlineOption)]
         void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref Internal.PromiseRefBase.AsyncPromiseFields asyncFields)
-            => asyncPromiseRef.HookupAwaiter(_target, _promiseId);
+            => _target.AwaitOnCompletedForAsyncStreamYielder(asyncPromiseRef, _enumerableId);
 
         void INotifyCompletion.OnCompleted(Action continuation)
             => throw new InvalidOperationException("AsyncStreamYielder must only be used in AsyncEnumerable methods.");
