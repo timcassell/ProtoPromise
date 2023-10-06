@@ -100,6 +100,12 @@
     <None Remove="nuget\**" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
+    <PackageReference Include="System.ValueTuple">
+      <Version>4.5.0</Version>
+    </PackageReference>
+  </ItemGroup>
+
   <ItemGroup Condition="'$(TargetFramework)' == 'net45' OR '$(TargetFramework)' == 'net47' OR '$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Threading.Tasks.Extensions">
       <Version>4.5.4</Version>
@@ -108,7 +114,7 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net47' OR '$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netcoreapp2.1'">
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces">
-      <Version>6.0.0</Version>
+      <Version>5.0.0</Version>
     </PackageReference>
   </ItemGroup>
 

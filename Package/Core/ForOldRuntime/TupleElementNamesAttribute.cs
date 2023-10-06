@@ -2,7 +2,7 @@
 #define NET_LEGACY
 #endif
 
-#if NET_LEGACY || NET45
+#if NET_LEGACY
 
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
