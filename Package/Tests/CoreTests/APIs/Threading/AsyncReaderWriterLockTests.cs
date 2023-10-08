@@ -1924,6 +1924,68 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 
         [Test]
+        public void AsyncReaderWriterLock_CanceledUpgradeableReaderLock_AllowsReaderLock()
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cts = CancelationSource.New();
+            Promise<AsyncReaderWriterLock.ReaderKey> readerLockPromise = default;
+
+            rwl.WriterLockAsync()
+                .Then(key =>
+                {
+                    var canceledLockPromise = rwl.UpgradeableReaderLockAsync(cts.Token);
+                    readerLockPromise = rwl.ReaderLockAsync();
+                    cts.Cancel();
+
+                    key.Dispose();
+                    return canceledLockPromise.CatchCancelation(() => { });
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            bool tookReaderLock = false;
+            readerLockPromise.Then(key =>
+            {
+                tookReaderLock = true;
+                key.Dispose();
+            })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.True(tookReaderLock);
+            cts.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_CanceledUpgradeableReaderLock_AllowsWriterLock()
+        {
+            var rwl = new AsyncReaderWriterLock();
+            var cts = CancelationSource.New();
+            Promise<AsyncReaderWriterLock.WriterKey> writerLockPromise = default;
+
+            rwl.WriterLockAsync()
+                .Then(key =>
+                {
+                    var canceledLockPromise = rwl.UpgradeableReaderLockAsync(cts.Token);
+                    writerLockPromise = rwl.WriterLockAsync();
+                    cts.Cancel();
+
+                    key.Dispose();
+                    return canceledLockPromise.CatchCancelation(() => { });
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            bool tookWriterLock = false;
+            writerLockPromise.Then(key =>
+            {
+                tookWriterLock = true;
+                key.Dispose();
+            })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.True(tookWriterLock);
+            cts.Dispose();
+        }
+
+        [Test]
         public void AsyncReaderWriterLock_CanceledUpgradedWriterLock_CancelsPromise()
         {
             var rwl = new AsyncReaderWriterLock();

@@ -219,10 +219,9 @@ namespace Proto.Promises
             private ValueLinkedQueue<AsyncUpgradeableReaderLockPromise> _upgradeQueue = new ValueLinkedQueue<AsyncUpgradeableReaderLockPromise>();
             private AsyncWriterLockPromise _upgradeWaiter;
             private long _currentKey;
-            // This either stores the next key normally, or the previous key if the lock is upgraded.
-            // This is done to avoid a branch instruction when an upgraded writer lock is released,
-            // and so we don't have to store the previous key in the WriterKey struct.
-            private long _nextKey = KeyGenerator<AsyncReaderWriterLockInternal>.Next();
+            // This stores the previous reader key from an upgraded writer.
+            // We store it here instead of in the WriterKey struct to prevent bloating other types that store the struct (like async state machines).
+            private long _previousReaderKey;
             private uint _readerLockCount;
             private uint _readerWaitCount;
             volatile private AsyncReaderWriterLockType _lockType;
@@ -261,16 +260,20 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private void SetNextKey()
             {
-                _currentKey = _nextKey;
-                _nextKey = KeyGenerator<AsyncReaderWriterLockInternal>.Next();
+                _currentKey = KeyGenerator<AsyncReaderWriterLockInternal>.Next();
             }
 
             [MethodImpl(InlineOption)]
             private void SetNextAndPreviousKeys()
             {
-                var temp = _nextKey;
-                _nextKey = _currentKey;
-                _currentKey = temp;
+                _previousReaderKey = _currentKey;
+                SetNextKey();
+            }
+
+            [MethodImpl(InlineOption)]
+            private void RestorePreviousKey()
+            {
+                _currentKey = _previousReaderKey;
             }
 
             [MethodImpl(InlineOption)]
@@ -1457,6 +1460,21 @@ namespace Proto.Promises
 
             internal void ReleaseWriterLock(long key)
             {
+                // TODO: create UpgradedWriterKey to use instead of WriterKey to remove branches.
+                // Will be a breaking change, so probably has to wait until a major version update (v3).
+
+                if (_writerType == AsyncReaderWriterLockType.Writer)
+                {
+                    ReleaseNormalWriterLock(key);
+                }
+                else
+                {
+                    ReleaseUpgradedWriterLock(key);
+                }
+            }
+
+            internal void ReleaseNormalWriterLock(long key)
+            {
                 ValueLinkedStack<AsyncReaderLockPromise> readers;
                 AsyncUpgradeableReaderLockPromise upgradeablePromise;
                 AsyncWriterLockPromise writerPromise;
@@ -1467,62 +1485,34 @@ namespace Proto.Promises
                         ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
                     }
 
-                    var writerType = _writerType;
-                    // If the writer type is upgraded, we add 1 more reader count since it was removed when the lock was upgraded.
-                    // This does the calculation without a branch. Unchecked context since we already checked for overflow when the reader lock was acquired.
-                    unchecked
-                    {
-                        _readerWaitCount += (uint) ((byte) writerType >> 2);
-                    }
+                    // If there are any normal readers waiting, we resolve them, even if there are more writer waiters.
+                    // This prevents writers from starving readers.
+                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
                     bool hasWaitingWriter = _writerQueue.IsNotEmpty;
-                    // If there are any readers waiting (including the upgradeable reader that is releasing its writer lock),
-                    // we resolve them, even if there are more writer waiters. This prevents writers from starving readers.
-                    if (_readerWaitCount != 0)
+                    bool prioritizedWriter = hasWaitingWriter & PrioritizeWriters;
+                    if (_readerWaitCount != 0 & !prioritizedWriter)
                     {
-                        // This either sets the next key, or reverts the key, depending if it was an upgraded lock or a regular lock, without a branch.
                         SetNextKey();
-                        if (!hasWaitingWriter)
-                        {
-                            _lockType = AsyncReaderWriterLockType.Reader | (_lockType & ~AsyncReaderWriterLockType.Writer);
-                        }
-                        // Unless there is a waiting writer, and the contention strategy is writer prioritized.
-                        else if (PrioritizeWriters)
-                        {
-                            if (writerType == AsyncReaderWriterLockType.Writer)
-                            {
-                                writerPromise = _writerQueue.Dequeue();
-                                goto ResolveWriter;
-                            }
-                            unchecked
-                            {
-                                ++_readerLockCount;
-                                --_readerWaitCount;
-                            }
-                            _writerType = AsyncReaderWriterLockType.None;
-                            return;
-                        }
-                        else
-                        {
-                            _lockType |= AsyncReaderWriterLockType.Reader;
-                        }
+                        var lockType = hasWaitingWriter
+                            ? AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Writer
+                            : AsyncReaderWriterLockType.Reader;
                         _writerType = AsyncReaderWriterLockType.None;
                         _readerLockCount = _readerWaitCount;
                         _readerWaitCount = 0;
                         readers = _readerQueue.MoveElementsToStack();
-                        if (writerType == AsyncReaderWriterLockType.Upgradeable | _upgradeQueue.IsEmpty)
+                        if (_upgradeQueue.IsEmpty)
                         {
+                            _lockType = lockType;
                             goto ResolveReaders;
                         }
                         IncrementReaderLockCount();
-                        _lockType |= AsyncReaderWriterLockType.Upgradeable;
+                        _lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
                         upgradeablePromise = _upgradeQueue.Dequeue();
                         goto ResolveReadersAndUpgradeableReader;
                     }
 
-                    // At this point, we know it was a regular writer, and there are no waiting normal readers.
                     // Check upgrade queue before writer queue, to prevent writers from starving upgradeable readers.
-                    // Unless the contention strategy is writer prioritized, and there is a waiting writer.
-                    bool prioritizedWriter = hasWaitingWriter & PrioritizeWriters;
+                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
                     if (_upgradeQueue.IsNotEmpty & !prioritizedWriter)
                     {
                         _lockType = hasWaitingWriter
@@ -1548,7 +1538,6 @@ namespace Proto.Promises
                     }
                 } // lock
 
-            ResolveWriter:
                 writerPromise.Resolve(_currentKey);
                 return;
 
@@ -1564,6 +1553,55 @@ namespace Proto.Promises
 
             ResolveUpgradeableReader:
                 upgradeablePromise.Resolve(_currentKey);
+            }
+
+            internal void ReleaseUpgradedWriterLock(long key)
+            {
+                ValueLinkedStack<AsyncReaderLockPromise> readers;
+                lock (this)
+                {
+                    if (_currentKey != key)
+                    {
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
+                    }
+
+                    // This reverts the key to the previous reader key so that releasing the UpgradeableReaderKey will work.
+                    RestorePreviousKey();
+
+                    // If there are any normal readers waiting, we resolve them, even if there are more writer waiters.
+                    // This prevents writers from starving readers.
+                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
+                    bool hasWaitingWriter = _writerQueue.IsNotEmpty;
+                    bool prioritizedWriter = hasWaitingWriter & PrioritizeWriters;
+                    if (_readerQueue.IsEmpty | prioritizedWriter)
+                    {
+                        // We set reader count to 1 since it was removed when the lock was upgraded.
+                        _readerLockCount = 1;
+                        _lockType = hasWaitingWriter
+                            ? AsyncReaderWriterLockType.Upgradeable | AsyncReaderWriterLockType.Writer
+                            : AsyncReaderWriterLockType.Upgradeable;
+                        _writerType = AsyncReaderWriterLockType.None;
+                        return;
+                    }
+
+                    // We add 1 more reader count since it was removed when the lock was upgraded.
+                    // Unchecked context since we already checked for overflow when the reader lock was acquired.
+                    unchecked
+                    {
+                        _readerLockCount = _readerWaitCount + 1;
+                    }
+                    _readerWaitCount = 0;
+                    _lockType = hasWaitingWriter
+                        ? AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable | AsyncReaderWriterLockType.Writer
+                        : AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable;
+                    _writerType = AsyncReaderWriterLockType.None;
+                    readers = _readerQueue.MoveElementsToStack();
+                } // lock
+
+                do
+                {
+                    readers.Pop().Resolve(_currentKey);
+                } while (readers.IsNotEmpty);
             }
 
             internal void ReleaseUpgradeableReaderLock(long key)
