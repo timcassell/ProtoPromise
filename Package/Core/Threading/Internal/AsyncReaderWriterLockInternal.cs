@@ -906,7 +906,7 @@ namespace Proto.Promises
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                while (_lockType != AsyncReaderWriterLockType.None & !spinner.NextSpinWillYield)
+                while (_lockType > AsyncReaderWriterLockType.Reader & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
                 }
@@ -946,7 +946,7 @@ namespace Proto.Promises
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
+                while (_lockType > AsyncReaderWriterLockType.Reader & !isCanceled & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
                     isCanceled = cancelationToken.IsCancelationRequested;
@@ -1067,7 +1067,7 @@ namespace Proto.Promises
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
+                while (_lockType > AsyncReaderWriterLockType.Reader & !isCanceled & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
                     isCanceled = cancelationToken.IsCancelationRequested;
