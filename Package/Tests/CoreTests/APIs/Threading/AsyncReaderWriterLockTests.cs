@@ -2676,6 +2676,191 @@ namespace ProtoPromiseTests.APIs.Threading
             }
         }
 
+        [Test]
+        public void AsyncReaderWriterLock_PrioritizeWritersPrefersWriters()
+        {
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeWriters);
+
+            bool enteredReaderLock = false;
+            bool enteredUpgradeableReaderLock = false;
+
+            var writerKey = rwl.WriterLock();
+            rwl.ReaderLockAsync()
+                .Then(readerKey =>
+                {
+                    enteredReaderLock = true;
+                    readerKey.Dispose();
+                })
+                .Forget();
+            Assert.False(enteredReaderLock);
+
+            rwl.UpgradeableReaderLockAsync()
+                .Then(readerKey =>
+                {
+                    enteredUpgradeableReaderLock = true;
+                    readerKey.Dispose();
+                })
+                .Forget();
+            Assert.False(enteredUpgradeableReaderLock);
+
+            rwl.WriterLockAsync()
+                .Then(writerKey2 => writerKey = writerKey2)
+                .Forget();
+
+            writerKey.Dispose();
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.False(enteredReaderLock);
+            Assert.False(enteredUpgradeableReaderLock);
+
+            writerKey.Dispose();
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.True(enteredReaderLock);
+            Assert.True(enteredUpgradeableReaderLock);
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_PrioritizeReadersPrefersReaders()
+        {
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeReaders);
+
+            bool enteredWriterLock = false;
+
+            var readerKey1 = rwl.ReaderLock();
+            rwl.WriterLockAsync()
+                .Then(writerKey =>
+                {
+                    enteredWriterLock = true;
+                    writerKey.Dispose();
+                })
+                .Forget();
+            Assert.False(enteredWriterLock);
+
+            bool enteredUpgradeableReaderLock = false;
+            bool enteredUpgradedWriterLock = false;
+            var upgradeableReaderKey = default(AsyncReaderWriterLock.UpgradeableReaderKey);
+            var upgradedWriterKey = default(AsyncReaderWriterLock.WriterKey);
+
+            rwl.UpgradeableReaderLockAsync()
+                .Then(readerKey =>
+                {
+                    upgradeableReaderKey = readerKey;
+                    enteredUpgradeableReaderLock = true;
+                    rwl.UpgradeToWriterLockAsync(readerKey)
+                        .Then(key =>
+                        {
+                            enteredUpgradedWriterLock = true;
+                            upgradedWriterKey = key;
+                        })
+                        .Forget();
+                })
+                .Forget();
+            Assert.True(enteredUpgradeableReaderLock);
+            Assert.False(enteredUpgradedWriterLock);
+
+            bool enteredReader2 = false;
+            var readerKey2 = default(AsyncReaderWriterLock.ReaderKey);
+
+            rwl.ReaderLockAsync()
+                .Then(key =>
+                {
+                    enteredReader2 = true;
+                    readerKey2 = key;
+                })
+                .Forget();
+
+            Assert.True(enteredReader2);
+
+            readerKey1.Dispose();
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.False(enteredWriterLock);
+            Assert.False(enteredUpgradedWriterLock);
+
+            readerKey2.Dispose();
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.True(enteredUpgradedWriterLock);
+            Assert.False(enteredWriterLock);
+
+            upgradedWriterKey.Dispose();
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.False(enteredWriterLock);
+
+            upgradeableReaderKey.Dispose();
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.True(enteredWriterLock);
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_PrioritizeUpgradeableReadersPrefersReadersAndUpgradedWriters()
+        {
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+
+            bool enteredWriterLock = false;
+
+            var readerKey1 = rwl.ReaderLock();
+            rwl.WriterLockAsync()
+                .Then(writerKey =>
+                {
+                    enteredWriterLock = true;
+                    writerKey.Dispose();
+                })
+                .Forget();
+            Assert.False(enteredWriterLock);
+
+            bool enteredUpgradeableReaderLock = false;
+            bool enteredUpgradedWriterLock = false;
+            var upgradeableReaderKey = default(AsyncReaderWriterLock.UpgradeableReaderKey);
+            var upgradedWriterKey = default(AsyncReaderWriterLock.WriterKey);
+
+            rwl.UpgradeableReaderLockAsync()
+                .Then(readerKey =>
+                {
+                    upgradeableReaderKey = readerKey;
+                    enteredUpgradeableReaderLock = true;
+                    rwl.UpgradeToWriterLockAsync(readerKey)
+                        .Then(key =>
+                        {
+                            enteredUpgradedWriterLock = true;
+                            upgradedWriterKey = key;
+                        })
+                        .Forget();
+                })
+                .Forget();
+            Assert.True(enteredUpgradeableReaderLock);
+            Assert.False(enteredUpgradedWriterLock);
+
+            bool enteredReader2 = false;
+            var readerKey2 = default(AsyncReaderWriterLock.ReaderKey);
+
+            rwl.ReaderLockAsync()
+                .Then(key =>
+                {
+                    enteredReader2 = true;
+                    readerKey2 = key;
+                })
+                .Forget();
+
+            Assert.False(enteredReader2);
+
+            readerKey1.Dispose();
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.False(enteredReader2);
+            Assert.False(enteredWriterLock);
+            Assert.True(enteredUpgradedWriterLock);
+
+            upgradedWriterKey.Dispose();
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.True(enteredReader2);
+            Assert.False(enteredWriterLock);
+
+            readerKey2.Dispose();
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.False(enteredWriterLock);
+
+            upgradeableReaderKey.Dispose();
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.True(enteredWriterLock);
+        }
+
 #if PROTO_PROMISE_TEST_GC_ENABLED
         [Test]
         public void AsyncReaderWriterLock_AbandonedLockIsReported()
