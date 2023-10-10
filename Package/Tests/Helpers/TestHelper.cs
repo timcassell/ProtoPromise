@@ -125,7 +125,7 @@ namespace ProtoPromiseTests
 
                 _stopwatch = Stopwatch.StartNew();
             }
-            else if (_backgroundContext.NeverCompleted)
+            else if (_backgroundContext.NeverCompleted || _stopwatch.Elapsed.TotalMinutes > 110)
             {
                 Kill();
             }
