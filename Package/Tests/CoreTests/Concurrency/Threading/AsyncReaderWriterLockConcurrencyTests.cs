@@ -29,6 +29,8 @@ namespace ProtoPromiseTests.Concurrency.Threading
 
         private static IEnumerable<TestCaseData> GetLockTypeCounts()
         {
+            int count = 0;
+
             // Dirty way to get a combination for readers, writers, and upgradeables that are async, sync, or try lock entries.
             for (int numReaders = 0; numReaders < ConcurrentRunnerCount; ++numReaders)
             for (int numWriters = 0; numWriters < ConcurrentRunnerCount; ++numWriters)
@@ -55,7 +57,9 @@ namespace ProtoPromiseTests.Concurrency.Threading
                     yield return new TestCaseData(
                         numReaders,         numReadersAsync,        numReadersTry,
                         numWriters,         numWritersAsync,        numWritersTry,
-                        numUpgradeables,    numUpgradeablesAsync,   numUpgradeablesTry
+                        numUpgradeables,    numUpgradeablesAsync,   numUpgradeablesTry,
+                        // To keep test times down, we alternate the contention strategy, instead of producing combinations.
+                        (AsyncReaderWriterLock.ContentionStrategy) (++count % 4)
                     );
                 }
             }
@@ -65,9 +69,10 @@ namespace ProtoPromiseTests.Concurrency.Threading
         public void AsyncReaderWriterLock_EnteredConcurrenctly_LocksProperly(
             int numReaders,         int numReadersAsync,        int numReadersTry,
             int numWriters,         int numWritersAsync,        int numWritersTry,
-            int numUpgradeables,    int numUpgradeablesAsync,   int numUpgradeablesTry)
+            int numUpgradeables,    int numUpgradeablesAsync,   int numUpgradeablesTry,
+            AsyncReaderWriterLock.ContentionStrategy contentionStrategy)
         {
-            var rwl = new AsyncReaderWriterLock();
+            var rwl = new AsyncReaderWriterLock(contentionStrategy);
 
             int lockCount = 0; // 0 for unlocked, -1 for writer locked, otherwise the count of readers.
             int upgradeableLockCount = 0;
