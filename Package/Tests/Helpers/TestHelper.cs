@@ -124,8 +124,16 @@ namespace ProtoPromiseTests
                 Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
 
                 _stopwatch = Stopwatch.StartNew();
+
+                // Spin up a thread to wait in the background for a timeout, then kill the app if it hasn't already ended.
+                new Thread(_ =>
+                {
+                    Thread.Sleep(new TimeSpan(1, 30, 0));
+                    Environment.Exit(1);
+                    Kill();
+                }){ IsBackground = true }.Start();
             }
-            else if (_backgroundContext.NeverCompleted || _stopwatch.Elapsed.TotalMinutes > 110)
+            else if (_backgroundContext.NeverCompleted || _stopwatch.Elapsed.TotalMinutes > 100)
             {
                 Kill();
             }
