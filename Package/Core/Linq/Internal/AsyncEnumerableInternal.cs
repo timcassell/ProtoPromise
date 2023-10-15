@@ -93,6 +93,23 @@ namespace Proto.Promises
                     get { return _enumerableId; }
                 }
 
+                ~AsyncEnumerableBase()
+                {
+                    try
+                    {
+                        if (!_disposed)
+                        {
+                            string message = "An AsyncEnumerable's resources were garbage collected without it being disposed. You must call DisposeAsync on the AsyncEnumerator.";
+                            ReportRejection(new UnreleasedObjectException(message), this);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never happen.
+                        ReportRejection(e, this);
+                    }
+                }
+
                 internal Linq.AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
                 {
                     int newId = id + 1;
@@ -168,7 +185,7 @@ namespace Proto.Promises
                     {
                         // The async iterator function is already complete, dispose this and return a resolved promise.
                         _disposed = true;
-                        MaybeDispose();
+                        DisposeAndReturnToPool();
                         return Promise.Resolved();
                     }
 
@@ -181,25 +198,24 @@ namespace Proto.Promises
                         {
                             throw new InvalidOperationException("AsyncEnumerable.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
                         }
-                        // IAsyncEnumerable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
+                        // IAsyncDisposable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
                         return Promise.Resolved();
                     }
 
                     ThrowIfInPool(this);
                     _disposed = true;
-                    // If MoveNextAsync was never called, the iterator promise is null.
                     var iteratorPromise = InterlockedExchange(ref _iteratorPromiseRef, null);
                     if (iteratorPromise == null)
                     {
-                        // The async iterator function never started, dispose this and return a resolved promise.
+                        // If DisposeAsync was called before MoveNextAsync, the async iterator function never started.
+                        // Dispose this and return a resolved promise.
                         State = Promise.State.Resolved;
-                        MaybeDispose();
+                        DisposeAndReturnToPool();
                         return Promise.Resolved();
                     }
 
                     // The async iterator function is not already complete, we move the async state machine forward.
                     // Once that happens, GetResultForAsyncStreamYielder will be called which throws the special exception.
-                    // If DisposeAsync was called before MoveNextAsync (the async iterator function never started), this just sets the promise to complete.
                     _current = default;
                     _iteratorCompleteExpectedId = newId;
                     _iteratorCompleteId = newId;
@@ -277,6 +293,8 @@ namespace Proto.Promises
                 }
 
                 protected abstract void StartOrMoveNext(int enumerableId);
+
+                protected abstract void DisposeAndReturnToPool();
             } // class AsyncEnumerableBase<T>
         } // class PromiseRefBase
 
@@ -309,14 +327,19 @@ namespace Proto.Promises
                 return enumerable;
             }
 
+            protected override void DisposeAndReturnToPool()
+            {
+                Dispose();
+                _cancelationToken = default;
+                ObjectPool.MaybeRepool(this);
+            }
+
             internal override void MaybeDispose()
             {
-                // This is called on every MoveNextAsync, we only fully dispose and return to pool from DisposeAsync.
+                // This is called on every MoveNextAsync, we only fully dispose and return to pool after DisposeAsync is called.
                 if (_disposed)
                 {
-                    Dispose();
-                    _cancelationToken = default;
-                    ObjectPool.MaybeRepool(this);
+                    DisposeAndReturnToPool();
                 }
             }
 
@@ -338,7 +361,7 @@ namespace Proto.Promises
                 var iteratorPromise = iterator.Start(new AsyncStreamWriter<TValue>(this, enumerableId), _cancelationToken)._promise;
                 if (iteratorPromise._ref == null)
                 {
-                    // Already complete. This can happen if no yields occurred in the async iterator function.
+                    // Already complete. This can happen if no awaits occurred in the async iterator function.
                     HandleFromSynchronouslyCompletedIterator();
                     return;
                 }

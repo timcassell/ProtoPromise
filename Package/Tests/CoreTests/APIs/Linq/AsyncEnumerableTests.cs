@@ -50,19 +50,27 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void AsyncEnumerableCompletesAsynchronouslyWithValues(
-            [Values(0, 1, 2, 10)] int yieldCount)
+        public void AsyncEnumerableProducesCorrectValues(
+            [Values(0, 1, 2, 10)] int yieldCount,
+            [Values] bool iteratorIsAsync,
+            [Values] bool consumerIsAsync)
         {
             var deferred = Promise.NewDeferred();
             bool runnerIsComplete = false;
 
             var enumerable = AsyncEnumerable.Create<int>(async (writer, _) =>
             {
-                await deferred.Promise;
+                if (iteratorIsAsync)
+                {
+                    await deferred.Promise;
+                }
                 for (int i = 0; i < yieldCount; i++)
                 {
                     await writer.YieldAsync(i);
-                    await deferred.Promise;
+                    if (iteratorIsAsync)
+                    {
+                        await deferred.Promise;
+                    }
                 }
             });
 
@@ -74,29 +82,49 @@ namespace ProtoPromiseTests.APIs
                 {
                     Assert.AreEqual(count, item);
                     ++count;
+                    if (consumerIsAsync)
+                    {
+                        await deferred.Promise;
+                    }
+                }
+                if (consumerIsAsync)
+                {
+                    await deferred.Promise;
                 }
 
                 Assert.AreEqual(yieldCount, count);
                 runnerIsComplete = true;
             }, SynchronizationOption.Synchronous);
 
-            Assert.False(runnerIsComplete);
-            int iterations = yieldCount == 0
-                ? yieldCount - 1
-                : yieldCount;
-            for (int i = 0; i < iterations; i++)
+            Assert.AreNotEqual(iteratorIsAsync || consumerIsAsync, runnerIsComplete);
+            int awaitCount = iteratorIsAsync && consumerIsAsync ? yieldCount * 2
+                : iteratorIsAsync || consumerIsAsync ? yieldCount
+                : 0;
+            for (int i = 0; i < awaitCount; i++)
             {
                 var def = deferred;
                 deferred = Promise.NewDeferred();
                 def.Resolve();
             }
 
-            Assert.False(runnerIsComplete);
+            if (iteratorIsAsync)
+            {
+                Assert.False(runnerIsComplete);
+                var def = deferred;
+                deferred = Promise.NewDeferred();
+                def.Resolve();
+            }
+            Assert.AreNotEqual(consumerIsAsync, runnerIsComplete);
             deferred.Resolve();
             Assert.True(runnerIsComplete);
 
             runner
                 .WaitWithTimeout(TimeSpan.FromSeconds(1));
+
+            if (deferred.IsValid)
+            {
+                deferred.Promise.Forget();
+            }
         }
 
         [Test]
@@ -201,8 +229,10 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void AsyncEnumerableDisposeAsyncEnumeratorWithoutIterating()
         {
+            bool didIterate = false;
             var enumerable = AsyncEnumerable.Create<int>(async (writer, _) =>
             {
+                didIterate = true;
                 await writer.YieldAsync(42);
             });
 
@@ -219,6 +249,7 @@ namespace ProtoPromiseTests.APIs
             }, SynchronizationOption.Synchronous);
 
             Assert.True(runnerIsComplete);
+            Assert.False(didIterate);
 
             runner
                 .WaitWithTimeout(TimeSpan.FromSeconds(1));
