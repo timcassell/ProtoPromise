@@ -207,7 +207,7 @@ namespace Proto.Promises
                     var iteratorPromise = InterlockedExchange(ref _iteratorPromiseRef, null);
                     if (iteratorPromise == null)
                     {
-                        // If DisposeAsync was called before MoveNextAsync, the async iterator function never started.
+                        // DisposeAsync was called before MoveNextAsync, the async iterator function never started.
                         // Dispose this and return a resolved promise.
                         State = Promise.State.Resolved;
                         DisposeAndReturnToPool();

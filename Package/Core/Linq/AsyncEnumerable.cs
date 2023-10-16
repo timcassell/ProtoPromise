@@ -6,6 +6,8 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 namespace Proto.Promises.Linq
 {
 #if NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
@@ -40,7 +42,7 @@ namespace Proto.Promises.Linq
 
     /// <summary>
     /// Exposes an enumerator that provides asynchronous iteration over values of a specified type.
-    /// This type may only be consumed once.
+    /// An instance of this type may only be consumed once.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -124,7 +126,7 @@ namespace Proto.Promises.Linq
 
     /// <summary>
     /// Supports a simple asynchronous iteration over a generic collection.
-    /// This type may only be consumed once.
+    /// An instance of this type may only be consumed once.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
