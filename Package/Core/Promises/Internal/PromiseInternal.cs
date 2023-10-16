@@ -188,7 +188,7 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    while (promise.State == Promise.State.Pending & stopwatch.GetElapsedTime() >= timeout & !spinner.NextSpinWillYield)
+                    while (promise.State == Promise.State.Pending & !spinner.NextSpinWillYield & stopwatch.GetElapsedTime() < timeout)
                     {
                         spinner.SpinOnce();
                     }
