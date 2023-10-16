@@ -1,6 +1,7 @@
 using Proto.Promises.Async.CompilerServices;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -81,9 +82,44 @@ namespace Proto.Promises.Linq
         [MethodImpl(Internal.InlineOption)]
         public AsyncEnumerator<T> GetAsyncEnumerator() => GetAsyncEnumerator(CancelationToken.None);
 
-        // TODO: add ConfigureAwait and WithCancellation methods to avoid IAsyncEnumerable extensions.
-
         IAsyncEnumerator<T> IAsyncEnumerable<T>.GetAsyncEnumerator(CancellationToken cancellationToken) => GetAsyncEnumerator(cancellationToken.ToCancelationToken());
+
+        /// <summary>
+        /// Sets the <see cref="CancelationToken"/> to be passed to <see cref="AsyncEnumerable{T}.GetAsyncEnumerator(CancelationToken)"/> when iterating.
+        /// </summary>
+        /// <param name="cancelationToken">The cancelation token to use.</param>
+        /// <returns>The configured enumerable.</returns>
+        public ConfiguredAsyncEnumerable<T> WithCancelation(CancelationToken cancelationToken)
+            => new ConfiguredAsyncEnumerable<T>(this, cancelationToken, Internal.SynchronizationOption.Synchronous, null, false);
+
+        /// <summary>
+        /// Configures how awaits on the promises returned from an async iteration will be performed.
+        /// </summary>
+        /// <param name="synchronizationOption">On which context the continuations will be executed.</param>
+        /// <param name="forceAsync">If true, forces the continuations to be invoked asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
+        /// <returns>The configured enumerable.</returns>
+        public ConfiguredAsyncEnumerable<T> ConfigureAwait(SynchronizationOption synchronizationOption, bool forceAsync = false)
+            => new ConfiguredAsyncEnumerable<T>(this, CancelationToken.None, (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
+
+        /// <summary>
+        /// Configures how awaits on the promises returned from an async iteration will be performed.
+        /// </summary>
+        /// <param name="synchronizationContext">The context on which the continuations will be executed.</param>
+        /// <param name="forceAsync">If true, forces the continuations to be invoked asynchronously.</param>
+        /// <returns>The configured enumerable.</returns>
+        public ConfiguredAsyncEnumerable<T> ConfigureAwait(SynchronizationContext synchronizationContext, bool forceAsync = false)
+            => new ConfiguredAsyncEnumerable<T>(this, CancelationToken.None, Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+        // These methods exist to hide the built-in IAsyncEnumerable extension methods, and use promise-optimized implementations instead if they are used.
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public ConfiguredAsyncEnumerable<T> WithCancellation(CancellationToken cancellationToken)
+            => WithCancelation(cancellationToken.ToCancelationToken());
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public ConfiguredAsyncEnumerable<T> ConfigureAwait(bool continueOnCapturedContext)
+            => continueOnCapturedContext ? ConfigureAwait(SynchronizationContext.Current) : ConfigureAwait(SynchronizationOption.Background);
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
     }
 
     /// <summary>

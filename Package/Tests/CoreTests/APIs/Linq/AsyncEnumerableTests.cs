@@ -4,7 +4,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Linq;
 using System;
-using System.Threading.Tasks;
+using System.Threading;
 
 namespace ProtoPromiseTests.APIs
 {
@@ -253,6 +253,255 @@ namespace ProtoPromiseTests.APIs
 
             runner
                 .WaitWithTimeout(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncEnumerableRespectsCancelationToken(
+            [Values] bool iteratorIsAsync,
+            [Values] bool consumerIsAsync)
+        {
+            const int yieldCount = 10;
+            var cancelationSource = CancelationSource.New();
+            var deferred = Promise.NewDeferred();
+            bool runnerIsComplete = false;
+
+            var enumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+            {
+                cancelationToken.ThrowIfCancelationRequested();
+                if (iteratorIsAsync)
+                {
+                    await deferred.Promise.WaitAsync(cancelationToken);
+                }
+                for (int i = 0; i < yieldCount; i++)
+                {
+                    await writer.YieldAsync(i);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    if (iteratorIsAsync)
+                    {
+                        await deferred.Promise.WaitAsync(cancelationToken);
+                    }
+                }
+            });
+
+            int count = 0;
+
+            var runner = Promise.Run(async () =>
+            {
+                try
+                {
+                    await foreach (var item in enumerable.WithCancelation(cancelationSource.Token))
+                    {
+                        Assert.AreEqual(count, item);
+                        ++count;
+                        if (consumerIsAsync)
+                        {
+                            await deferred.Promise;
+                        }
+                        if (count == 2)
+                        {
+                            cancelationSource.Cancel();
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    if (consumerIsAsync)
+                    {
+                        await deferred.Promise;
+                    }
+                    Assert.AreEqual(2, count);
+                    runnerIsComplete = true;
+                }
+            }, SynchronizationOption.Synchronous);
+
+            Assert.AreNotEqual(iteratorIsAsync || consumerIsAsync, runnerIsComplete);
+            int awaitCount = iteratorIsAsync && consumerIsAsync ? 4
+                : iteratorIsAsync || consumerIsAsync ? 2
+                : 0;
+            for (int i = 0; i < awaitCount; i++)
+            {
+                var def = deferred;
+                deferred = Promise.NewDeferred();
+                def.Resolve();
+            }
+
+            Assert.AreNotEqual(consumerIsAsync, runnerIsComplete);
+            deferred.Resolve();
+            Assert.True(runnerIsComplete);
+
+            runner
+                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+
+            if (deferred.IsValid)
+            {
+                deferred.Promise.Forget();
+            }
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncEnumerableRespectsConfigureAwait(
+            [Values(0, 1, 2, 10)] int yieldCount,
+            [Values] bool iteratorIsAsync,
+            [Values] bool consumerIsAsync,
+            [Values] SynchronizationType synchronizationType)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            bool didAwaitDeferred = false;
+            var deferred = Promise.NewDeferred();
+            bool runnerIsComplete = false;
+
+            var enumerable = AsyncEnumerable.Create<int>(async (writer, _) =>
+            {
+                if (iteratorIsAsync)
+                {
+                    var promise = deferred.Promise;
+                    didAwaitDeferred = true;
+                    await promise;
+                }
+                if (synchronizationType != SynchronizationType.Synchronous)
+                {
+                    await Promise.SwitchToContextAwait(synchronizationType == SynchronizationType.Background ? TestHelper._foregroundContext : TestHelper._backgroundContext);
+                }
+                for (int i = 0; i < yieldCount; i++)
+                {
+                    await writer.YieldAsync(i);
+                    if (iteratorIsAsync)
+                    {
+                        var promise = deferred.Promise;
+                        didAwaitDeferred = true;
+                        await promise;
+                    }
+                    if (synchronizationType != SynchronizationType.Synchronous)
+                    {
+                        await Promise.SwitchToContextAwait(synchronizationType == SynchronizationType.Background ? TestHelper._foregroundContext : TestHelper._backgroundContext);
+                    }
+                }
+            });
+
+            int count = 0;
+
+            var runner = Promise.Run(async () =>
+            {
+                var configuredEnumerable = synchronizationType == SynchronizationType.Explicit
+                    ? enumerable.ConfigureAwait(TestHelper._foregroundContext)
+                    : enumerable.ConfigureAwait((SynchronizationOption) synchronizationType);
+                await foreach (var item in configuredEnumerable)
+                {
+                    TestHelper.AssertCallbackContext(synchronizationType, SynchronizationType.Foreground, foregroundThread);
+                    Assert.AreEqual(count, item);
+                    ++count;
+                    if (consumerIsAsync)
+                    {
+                        var promise = deferred.Promise;
+                        didAwaitDeferred = true;
+                        await promise;
+                    }
+                }
+                TestHelper.AssertCallbackContext(synchronizationType, SynchronizationType.Foreground, foregroundThread);
+                if (consumerIsAsync)
+                {
+                    var promise = deferred.Promise;
+                    didAwaitDeferred = true;
+                    await promise;
+                }
+
+                Assert.AreEqual(yieldCount, count);
+                runnerIsComplete = true;
+            }, SynchronizationOption.Synchronous);
+
+            if (iteratorIsAsync || consumerIsAsync)
+            {
+                if (!SpinWait.SpinUntil(() =>
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                    return didAwaitDeferred;
+                }, TimeSpan.FromSeconds(1)))
+                {
+                    throw new TimeoutException();
+                }
+                Assert.False(runnerIsComplete);
+            }
+            else
+            {
+                if (!SpinWait.SpinUntil(() =>
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                    return runnerIsComplete;
+                }, TimeSpan.FromSeconds(1)))
+                {
+                    throw new TimeoutException();
+                }
+            }
+            int awaitCount = iteratorIsAsync && consumerIsAsync ? yieldCount * 2
+                : iteratorIsAsync || consumerIsAsync ? yieldCount
+                : 0;
+            for (int i = 0; i < awaitCount; i++)
+            {
+                if (!SpinWait.SpinUntil(() =>
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                    return didAwaitDeferred;
+                }, TimeSpan.FromSeconds(1)))
+                {
+                    throw new TimeoutException();
+                }
+                didAwaitDeferred = false;
+                var def = deferred;
+                deferred = Promise.NewDeferred();
+                def.Resolve();
+            }
+
+            if (iteratorIsAsync)
+            {
+                if (!SpinWait.SpinUntil(() =>
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                    return didAwaitDeferred;
+                }, TimeSpan.FromSeconds(1)))
+                {
+                    throw new TimeoutException();
+                }
+                didAwaitDeferred = false;
+                Assert.False(runnerIsComplete);
+                var def = deferred;
+                deferred = Promise.NewDeferred();
+                def.Resolve();
+            }
+            if (consumerIsAsync)
+            {
+                if (!SpinWait.SpinUntil(() =>
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                    return didAwaitDeferred;
+                }, TimeSpan.FromSeconds(1)))
+                {
+                    throw new TimeoutException();
+                }
+                Assert.False(runnerIsComplete);
+            }
+            else
+            {
+                if (!SpinWait.SpinUntil(() =>
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                    return runnerIsComplete;
+                }, TimeSpan.FromSeconds(1)))
+                {
+                    throw new TimeoutException();
+                }
+            }
+            deferred.Resolve();
+            Assert.True(runnerIsComplete);
+
+            runner
+                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+
+            if (deferred.IsValid)
+            {
+                deferred.Promise.Forget();
+            }
         }
     }
 }

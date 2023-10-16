@@ -43,7 +43,11 @@ namespace Proto.Promises
         /// <summary>
         /// Returns an empty <see cref="CancelationToken"/>.
         /// </summary>
-        public static CancelationToken None { get { return default(CancelationToken); } }
+        public static CancelationToken None
+        {
+            [MethodImpl(Internal.InlineOption)]
+            get { return default(CancelationToken); }
+        }
 
         /// <summary>
         /// FOR INTERNAL USE ONLY!
