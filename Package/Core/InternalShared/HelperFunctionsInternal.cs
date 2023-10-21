@@ -246,7 +246,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             return (T) o;
 #elif UNITY_2020_1_OR_NEWER
-            return Unity.Collections.LowLevel.Unsafe.UnsafeUtility.As<T>(o);
+            return Unity.Collections.LowLevel.Unsafe.UnsafeUtility.As<object, T>(ref o);
 #elif NET5_0_OR_GREATER
             return Unsafe.As<T>(o);
 #else
