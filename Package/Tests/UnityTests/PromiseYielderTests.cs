@@ -189,27 +189,27 @@ namespace ProtoPromiseTests.Unity
         [UnityTest]
         public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrameMultiple()
         {
-            int currentFrame = Time.frameCount;
+            int initialFrame = Time.frameCount;
 
             var promise = PromiseYielder.WaitOneFrame().ToPromise()
                 .Then(() =>
                 {
-                    Assert.AreEqual(currentFrame + 1, Time.frameCount);
+                    Assert.AreEqual(1, Time.frameCount - initialFrame);
                     return PromiseYielder.WaitOneFrame().ToPromise();
                 })
                 .Then(() =>
                 {
-                    Assert.AreEqual(currentFrame + 2, Time.frameCount);
+                    Assert.AreEqual(2, Time.frameCount - initialFrame);
                     return PromiseYielder.WaitOneFrame().ToPromise();
                 })
                 .Then(() =>
                 {
-                    Assert.AreEqual(currentFrame + 3, Time.frameCount);
+                    Assert.AreEqual(3, Time.frameCount - initialFrame);
                     return PromiseYielder.WaitOneFrame().ToPromise();
                 })
                 .Then(() =>
                 {
-                    Assert.AreEqual(currentFrame + 4, Time.frameCount);
+                    Assert.AreEqual(4, Time.frameCount - initialFrame);
                 });
             using (var yieldInstruction = promise.ToYieldInstruction())
             {
@@ -919,21 +919,21 @@ namespace ProtoPromiseTests.Unity
         [UnityTest]
         public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrameMultiple_Async()
         {
-            int currentFrame = Time.frameCount;
+            int initialFrame = Time.frameCount;
 
             async Promise Func()
             {
                 await PromiseYielder.WaitOneFrame();
-                Assert.AreEqual(currentFrame + 1, Time.frameCount);
+                Assert.AreEqual(1, Time.frameCount - initialFrame);
 
                 await PromiseYielder.WaitOneFrame();
-                Assert.AreEqual(currentFrame + 2, Time.frameCount);
+                Assert.AreEqual(2, Time.frameCount - initialFrame);
 
                 await PromiseYielder.WaitOneFrame();
-                Assert.AreEqual(currentFrame + 3, Time.frameCount);
+                Assert.AreEqual(3, Time.frameCount - initialFrame);
 
                 await PromiseYielder.WaitOneFrame();
-                Assert.AreEqual(currentFrame + 4, Time.frameCount);
+                Assert.AreEqual(4, Time.frameCount - initialFrame);
             }
 
             using (var yieldInstruction = Func().ToYieldInstruction())

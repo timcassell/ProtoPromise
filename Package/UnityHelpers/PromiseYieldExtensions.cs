@@ -18,6 +18,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 
 namespace Proto.Promises
 {
@@ -272,71 +273,98 @@ namespace Proto.Promises
             return new AwaitInstructionAwaiter<TAwaitInstruction>(awaitInstruction, cancelationToken).ToPromise();
         }
 
+        /// <summary>
+        /// Converts the <paramref name="awaiter"/> to a <see cref="Promise"/>.
+        /// </summary>
+#if CSHARP_7_3_OR_NEWER
+        public static async Promise ToPromise<TAwaiter>(this TAwaiter awaiter)
+            where TAwaiter : IAwaiter<TAwaiter>
+        {
+            await awaiter;
+        }
+#else // CSHARP_7_3_OR_NEWER
+        public static Promise ToPromise<TAwaiter>(this TAwaiter awaiter)
+            where TAwaiter : IAwaiter<TAwaiter>
+        {
+            __d__0<TAwaiter> stateMachine = default(__d__0<TAwaiter>);
+            stateMachine.__t__builder = PromiseMethodBuilder.Create();
+            stateMachine.awaiter = awaiter;
+            stateMachine.__1__state = -1;
+            stateMachine.__t__builder.Start(ref stateMachine);
+            return stateMachine.__t__builder.Task;
+        }
+
         // Manually creating the state machine that `await awaiter` would generate, because old C# versions don't support async/await.
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private struct AwaiterStateMachine<TAwaiter> : IAsyncStateMachine
-            where TAwaiter : IAwaiter<TAwaiter>
+        [StructLayout(LayoutKind.Auto)]
+        [CompilerGenerated]
+        private struct __d__0<TAwaiter> : IAsyncStateMachine where TAwaiter : IAwaiter<TAwaiter>
         {
-            internal PromiseMethodBuilder _builder;
-            internal TAwaiter _awaiter;
-            internal int _state;
+            public int __1__state;
 
-            void IAsyncStateMachine.MoveNext()
+            public PromiseMethodBuilder __t__builder;
+
+            public TAwaiter awaiter;
+
+            private TAwaiter __u__1;
+
+            private void MoveNext()
             {
-                int num = _state;
+                int num = __1__state;
                 try
                 {
-                    TAwaiter awaiter;
+                    TAwaiter val;
                     if (num != 0)
                     {
-                        awaiter = _awaiter.GetAwaiter();
-                        if (!awaiter.IsCompleted)
+                        val = awaiter.GetAwaiter();
+                        if (!val.IsCompleted)
                         {
-                            num = _state = 0;
-                            _builder.AwaitUnsafeOnCompleted(ref awaiter, ref this);
+                            num = (__1__state = 0);
+                            __u__1 = val;
+                            __t__builder.AwaitUnsafeOnCompleted(ref val, ref this);
                             return;
                         }
                     }
                     else
                     {
-                        awaiter = _awaiter;
-                        _awaiter = default(TAwaiter);
-                        num = _state = -1;
+                        val = __u__1;
+                        __u__1 = default(TAwaiter);
+                        num = (__1__state = -1);
                     }
-                    awaiter.GetResult();
+                    val.GetResult();
                 }
                 catch (Exception exception)
                 {
-                    _state = -2;
-                    _builder.SetException(exception);
+                    __1__state = -2;
+                    __t__builder.SetException(exception);
                     return;
                 }
-                _state = -2;
-                _builder.SetResult();
+                __1__state = -2;
+                __t__builder.SetResult();
+            }
+
+            void IAsyncStateMachine.MoveNext()
+            {
+                //ILSpy generated this explicit interface implementation from .override directive in MoveNext
+                this.MoveNext();
+            }
+
+            [DebuggerHidden]
+            private void SetStateMachine(IAsyncStateMachine stateMachine)
+            {
+                __t__builder.SetStateMachine(stateMachine);
             }
 
             void IAsyncStateMachine.SetStateMachine(IAsyncStateMachine stateMachine)
             {
-                _builder.SetStateMachine(stateMachine);
+                //ILSpy generated this explicit interface implementation from .override directive in SetStateMachine
+                this.SetStateMachine(stateMachine);
             }
         }
-
-        /// <summary>
-        /// Converts the <paramref name="awaiter"/> to a <see cref="Promise"/>.
-        /// </summary>
-        public static Promise ToPromise<TAwaiter>(this TAwaiter awaiter)
-            where TAwaiter : IAwaiter<TAwaiter>
-        {
-            var stateMachine = default(AwaiterStateMachine<TAwaiter>);
-            stateMachine._builder = PromiseMethodBuilder.Create();
-            stateMachine._awaiter = awaiter;
-            stateMachine._state = -1;
-            stateMachine._builder.Start(ref stateMachine);
-            return stateMachine._builder.Task;
-        }
+#endif // !CSHARP_7_3_OR_NEWER
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
