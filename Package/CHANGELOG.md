@@ -1,5 +1,17 @@
 # Change Log
 
+## v2.6.1 - October 21, 2023
+
+Fixes:
+
+- Fixed compilation error in RELEASE mode in Unity 2020.1 or newer.
+- Fixed `PromiseYielder.WaitOneFrame().ToPromise()` waits an extra frame in Unity versions older than 2021.2.
+- `netstandard2.0` package no longer breaks `netcoreapp3.0` and older build targets.
+ 
+Optimizations:
+
+- Fixed spin waits for some synchronous operations.
+
 ## v2.6.0 - October 2, 2023
 
 Enhancements:

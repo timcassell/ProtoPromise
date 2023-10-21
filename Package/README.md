@@ -45,13 +45,12 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-### v2.6.0 - October 2, 2023
+### v2.6.1 - October 21, 2023
 
-- Added `Promise.AllSettled` and `Promise.MergeSettled` APIs.
-- Fixed a `NullReferenceException` after `OnApplicationQuit`.
-- Fixed some race conditions.
-- Performance improvements.
-- Renamed `ResultContainer` properties to more closely match ES6.
+- Fixed compilation error in RELEASE mode in Unity 2020.1 or newer.
+- Fixed `PromiseYielder.WaitOneFrame().ToPromise()` waits an extra frame in Unity versions older than 2021.2.
+- `netstandard2.0` package no longer breaks `netcoreapp3.0` and older build targets.
+- Fixed spin waits for some synchronous operations.
 
 See [ChangeLog](../Package/CHANGELOG.md) for the full changelog.
 
