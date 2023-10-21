@@ -123,7 +123,7 @@ jobs:
 
       - name: Rewrite ProjectSettings
         run: |
-          DefineSymbols="${{ matrix.testMode.symbol }};${{ matrix.progress.symbol }};${{ matrix.objectPooling.symbol }};${{ matrix.devMode.symbol }}"
+          DefineSymbols="${{ matrix.mode.symbol }};${{ matrix.progress.symbol }};${{ matrix.objectPooling.symbol }};${{ matrix.devMode.symbol }}"
           DefineOriginal="  scriptingDefineSymbols: {}"
           DefineReplace="  scriptingDefineSymbols: \\n    ${{ matrix.testMode.buildTargetId }}: $DefineSymbols"
           sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
