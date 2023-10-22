@@ -24,9 +24,61 @@ namespace Proto.Promises.Threading
     public sealed partial class AsyncReaderWriterLock
     {
         /// <summary>
-        /// Creates a new async-compatible reader/writer lock that does not support re-entrancy.
+        /// The strategy used to resolve reader and writer contention on the <see cref="AsyncReaderWriterLock"/>.
         /// </summary>
-        public AsyncReaderWriterLock() { }
+        public enum ContentionStrategy
+        {
+            /// <summary>
+            /// The default, recommended contention strategy that prevents reader or writer starvation.
+            /// If there is contention on the lock between readers and writers, they take turns.
+            /// </summary>
+            Balanced,
+            /// <summary>
+            /// A contention strategy that prefers writers over readers.
+            /// </summary>
+            /// <remarks>
+            /// This strategy is not recommended! It can cause reader starvation.
+            /// Only use this strategy if you have profiled your use case and found this strategy to be necessary!
+            /// </remarks>
+            PrioritizeWriters,
+            /// <summary>
+            /// A contention strategy that prefers readers over writers.
+            /// </summary>
+            /// <remarks>
+            /// This strategy is not recommended! It can cause writer starvation.
+            /// Only use this strategy if you have profiled your use case and found this strategy to be necessary!
+            /// </remarks>
+            PrioritizeReaders,
+            /// <summary>
+            /// A contention strategy that prefers readers over writers, except when an upgradeable reader upgrades to a writer.
+            /// </summary>
+            /// <remarks>
+            /// This strategy is not recommended! It can cause normal writer starvation.
+            /// Only use this strategy if you have profiled your use case and found this strategy to be necessary!
+            /// </remarks>
+            PrioritizeUpgradeableReaders
+        }
+
+        // We wrap the impl with another class so that we can lock on it safely.
+        private readonly Internal.AsyncReaderWriterLockInternal _impl;
+
+        /// <summary>
+        /// Creates a new async-compatible reader/writer lock that does not support re-entrancy, with a balanced contention strategy.
+        /// </summary>
+        public AsyncReaderWriterLock() : this(ContentionStrategy.Balanced) { }
+
+        /// <summary>
+        /// Creates a new async-compatible reader/writer lock that does not support re-entrancy, with the provided contention strategy.
+        /// </summary>
+        /// <param name="contentionStrategy">The strategy used to resolve reader and writer contention on the lock.</param>
+        /// <remarks>
+        /// Using a strategy other than <see cref="ContentionStrategy.Balanced"/> is not recommended! It can cause reader or writer starvation.
+        /// Only use another strategy if you have profiled your use case and found it to be necessary!
+        /// </remarks>
+        public AsyncReaderWriterLock(ContentionStrategy contentionStrategy)
+        {
+            _impl = new Internal.AsyncReaderWriterLockInternal(contentionStrategy);
+        }
 
         /// <summary>
         /// Asynchronously acquire the lock as a reader.

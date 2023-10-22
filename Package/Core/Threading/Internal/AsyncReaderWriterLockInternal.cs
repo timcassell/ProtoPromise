@@ -219,28 +219,61 @@ namespace Proto.Promises
             private ValueLinkedQueue<AsyncUpgradeableReaderLockPromise> _upgradeQueue = new ValueLinkedQueue<AsyncUpgradeableReaderLockPromise>();
             private AsyncWriterLockPromise _upgradeWaiter;
             private long _currentKey;
-            // This either stores the next key normally, or the previous key if the lock is upgraded.
-            // This is done to avoid a branch instruction when an upgraded writer lock is released,
-            // and so we don't have to store the previous key in the WriterKey struct.
-            private long _nextKey = KeyGenerator<AsyncReaderWriterLockInternal>.Next();
+            // This stores the previous reader key from an upgraded writer.
+            // We store it here instead of in the WriterKey struct to prevent bloating other types that store the struct (like async state machines).
+            private long _previousReaderKey;
             private uint _readerLockCount;
             private uint _readerWaitCount;
             volatile private AsyncReaderWriterLockType _lockType;
             private AsyncReaderWriterLockType _writerType;
+            private readonly AsyncReaderWriterLock.ContentionStrategy _contentionStrategy;
+
+            private bool PrioritizeWriters
+            {
+                [MethodImpl(InlineOption)]
+                get { return _contentionStrategy == AsyncReaderWriterLock.ContentionStrategy.PrioritizeWriters; }
+            }
+
+            private bool PrioritizeReaders
+            {
+                [MethodImpl(InlineOption)]
+                get { return _contentionStrategy == AsyncReaderWriterLock.ContentionStrategy.PrioritizeReaders; }
+            }
+
+            private bool PrioritizeUpgradeableReaders
+            {
+                [MethodImpl(InlineOption)]
+                get { return _contentionStrategy == AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders; }
+            }
+
+            private bool PrioritizeReadersOrUpgradeableReaders
+            {
+                [MethodImpl(InlineOption)]
+                get { return _contentionStrategy >= AsyncReaderWriterLock.ContentionStrategy.PrioritizeReaders; }
+            }
+
+            internal AsyncReaderWriterLockInternal(AsyncReaderWriterLock.ContentionStrategy contentionStrategy)
+            {
+                _contentionStrategy = contentionStrategy;
+            }
 
             [MethodImpl(InlineOption)]
             private void SetNextKey()
             {
-                _currentKey = _nextKey;
-                _nextKey = KeyGenerator<AsyncReaderWriterLockInternal>.Next();
+                _currentKey = KeyGenerator<AsyncReaderWriterLockInternal>.Next();
             }
 
             [MethodImpl(InlineOption)]
             private void SetNextAndPreviousKeys()
             {
-                var temp = _nextKey;
-                _nextKey = _currentKey;
-                _currentKey = temp;
+                _previousReaderKey = _currentKey;
+                SetNextKey();
+            }
+
+            [MethodImpl(InlineOption)]
+            private void RestorePreviousKey()
+            {
+                _currentKey = _previousReaderKey;
             }
 
             [MethodImpl(InlineOption)]
@@ -281,6 +314,19 @@ namespace Proto.Promises
                 }
             }
 
+            [MethodImpl(InlineOption)]
+            private bool CanEnterReaderLock(AsyncReaderWriterLockType currentLockType)
+            {
+                // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
+                // If a writer lock is taken or waiting to be taken, and the contention strategy is not reader prioritized,
+                // we wait for it to be released, to prevent starvation.
+                bool noWriters = (currentLockType & AsyncReaderWriterLockType.Writer) == 0;
+                bool noUpgradeWriter = (currentLockType & (AsyncReaderWriterLockType.Writer | AsyncReaderWriterLockType.Upgradeable)) == 0;
+                bool writerDoesNotOwnLock = _writerType == AsyncReaderWriterLockType.None;
+                bool prioritizedEntrance = writerDoesNotOwnLock & (PrioritizeReaders | (PrioritizeUpgradeableReaders & noUpgradeWriter));
+                return noWriters | prioritizedEntrance;
+            }
+
             internal Promise<AsyncReaderWriterLock.ReaderKey> ReaderLockAsync()
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
@@ -294,9 +340,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                    if (CanEnterReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -339,9 +383,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                    if (CanEnterReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -368,7 +410,7 @@ namespace Proto.Promises
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                while ((_lockType & AsyncReaderWriterLockType.Writer) != 0 & !spinner.NextSpinWillYield)
+                while (!CanEnterReaderLock(_lockType) & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
                 }
@@ -382,9 +424,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                    if (CanEnterReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -413,7 +453,7 @@ namespace Proto.Promises
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
-                while ((_lockType & AsyncReaderWriterLockType.Writer) != 0 & !isCanceled & !spinner.NextSpinWillYield)
+                while (!CanEnterReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
                     isCanceled = cancelationToken.IsCancelationRequested;
@@ -436,9 +476,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                    if (CanEnterReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -474,9 +512,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                    // If a writer lock is taken or waiting to be taken, we do not take the reader lock, to prevent starvation.
-                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                    if (CanEnterReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -505,9 +541,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                    if (CanEnterReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -545,7 +579,7 @@ namespace Proto.Promises
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
-                while ((_lockType & AsyncReaderWriterLockType.Writer) != 0 & !isCanceled & !spinner.NextSpinWillYield)
+                while (!CanEnterReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
                     isCanceled = cancelationToken.IsCancelationRequested;
@@ -560,9 +594,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if ((lockType & AsyncReaderWriterLockType.Writer) == 0)
+                    if (CanEnterReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -830,6 +862,20 @@ namespace Proto.Promises
                 return resultContainer.State == Promise.State.Resolved;
             }
 
+            [MethodImpl(InlineOption)]
+            private bool CanEnterUpgradeableReaderLock(AsyncReaderWriterLockType currentLockType)
+            {
+                // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
+                // Only 1 upgradeable reader lock is allowed at a time.
+                // If a writer lock is taken or waiting to be taken, and the contention strategy is not reader prioritized,
+                // we wait for it to be released, to prevent starvation.
+                bool noWritersOrUpgradeableReaders = currentLockType <= AsyncReaderWriterLockType.Reader;
+                bool writerDoesNotOwnLock = _writerType == AsyncReaderWriterLockType.None;
+                bool noUpgradeableReaders = _upgradeQueue.IsEmpty & (currentLockType & AsyncReaderWriterLockType.Upgradeable) == 0;
+                bool prioritizedEntrance = writerDoesNotOwnLock & noUpgradeableReaders & PrioritizeReadersOrUpgradeableReaders;
+                return noWritersOrUpgradeableReaders | prioritizedEntrance;
+            }
+
             internal Promise<AsyncReaderWriterLock.UpgradeableReaderKey> UpgradeableReaderLockAsync()
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
@@ -841,10 +887,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with the upgradeable reader lock.
-                    // Only 1 upgradeable reader lock is allowed at a time.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if (lockType <= AsyncReaderWriterLockType.Reader)
+                    if (CanEnterUpgradeableReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -881,10 +924,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with the upgradeable reader lock.
-                    // Only 1 upgradeable reader lock is allowed at a time.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if (lockType <= AsyncReaderWriterLockType.Reader)
+                    if (CanEnterUpgradeableReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -906,7 +946,7 @@ namespace Proto.Promises
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                while (_lockType > AsyncReaderWriterLockType.Reader & !spinner.NextSpinWillYield)
+                while (!CanEnterUpgradeableReaderLock(_lockType) & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
                 }
@@ -919,10 +959,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with the upgradeable reader lock.
-                    // Only 1 upgradeable reader lock is allowed at a time.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if (lockType <= AsyncReaderWriterLockType.Reader)
+                    if (CanEnterUpgradeableReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -946,7 +983,7 @@ namespace Proto.Promises
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_lockType > AsyncReaderWriterLockType.Reader & !isCanceled & !spinner.NextSpinWillYield)
+                while (!CanEnterUpgradeableReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
                     isCanceled = cancelationToken.IsCancelationRequested;
@@ -968,10 +1005,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with the upgradeable reader lock.
-                    // Only 1 upgradeable reader lock is allowed at a time.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if (lockType <= AsyncReaderWriterLockType.Reader)
+                    if (CanEnterUpgradeableReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -1001,10 +1035,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with the upgradeable reader lock.
-                    // Only 1 upgradeable reader lock is allowed at a time.
-                    // If a writer lock is taken or waiting to be taken, we do not take the upgradeable reader lock, to prevent starvation.
-                    if (lockType <= AsyncReaderWriterLockType.Reader)
+                    if (CanEnterUpgradeableReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -1031,10 +1062,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with the upgradeable reader lock.
-                    // Only 1 upgradeable reader lock is allowed at a time.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if (lockType <= AsyncReaderWriterLockType.Reader)
+                    if (CanEnterUpgradeableReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -1067,7 +1095,7 @@ namespace Proto.Promises
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
                 bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_lockType > AsyncReaderWriterLockType.Reader & !isCanceled & !spinner.NextSpinWillYield)
+                while (!CanEnterUpgradeableReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
                     isCanceled = cancelationToken.IsCancelationRequested;
@@ -1081,10 +1109,7 @@ namespace Proto.Promises
                     // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     var lockType = _lockType;
 
-                    // Normal reader locks can be taken simultaneously along with the upgradeable reader lock.
-                    // Only 1 upgradeable reader lock is allowed at a time.
-                    // If a writer lock is taken or waiting to be taken, we wait for it to be released, to prevent starvation.
-                    if (lockType <= AsyncReaderWriterLockType.Reader)
+                    if (CanEnterUpgradeableReaderLock(lockType))
                     {
                         IncrementReaderLockCount();
                         if (lockType == AsyncReaderWriterLockType.None)
@@ -1435,6 +1460,21 @@ namespace Proto.Promises
 
             internal void ReleaseWriterLock(long key)
             {
+                // TODO: create UpgradedWriterKey to use instead of WriterKey to remove branches.
+                // Will be a breaking change, so probably has to wait until a major version update (v3).
+
+                if (_writerType == AsyncReaderWriterLockType.Writer)
+                {
+                    ReleaseNormalWriterLock(key);
+                }
+                else
+                {
+                    ReleaseUpgradedWriterLock(key);
+                }
+            }
+
+            internal void ReleaseNormalWriterLock(long key)
+            {
                 ValueLinkedStack<AsyncReaderLockPromise> readers;
                 AsyncUpgradeableReaderLockPromise upgradeablePromise;
                 AsyncWriterLockPromise writerPromise;
@@ -1445,54 +1485,45 @@ namespace Proto.Promises
                         ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
                     }
 
-                    // If the writer type is upgraded, we add 1 more reader count since it was removed when the lock was upgraded.
-                    // This does the calculation without a branch. Unchecked context since we already checked for overflow when the reader lock was acquired.
-                    unchecked
+                    // If there are any normal readers waiting, we resolve them, even if there are more writer waiters.
+                    // This prevents writers from starving readers.
+                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
+                    bool hasWaitingWriter = _writerQueue.IsNotEmpty;
+                    bool prioritizedWriter = hasWaitingWriter & PrioritizeWriters;
+                    if (_readerWaitCount != 0 & !prioritizedWriter)
                     {
-                        _readerWaitCount += (uint) ((byte) _writerType >> 2);
-                    }
-                    // If there are any readers waiting (including the upgradeable reader that is releasing its writer lock),
-                    // we resolve them, even if there are more writer waiters. This prevents writers from starving readers.
-                    if (_readerWaitCount != 0)
-                    {
-                        if (_writerQueue.IsEmpty)
-                        {
-                            _lockType = AsyncReaderWriterLockType.Reader | (_lockType & ~AsyncReaderWriterLockType.Writer);
-                        }
-                        else
-                        {
-                            _lockType |= AsyncReaderWriterLockType.Reader;
-                        }
-                        var writerType = _writerType;
+                        SetNextKey();
+                        var lockType = hasWaitingWriter
+                            ? AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Writer
+                            : AsyncReaderWriterLockType.Reader;
                         _writerType = AsyncReaderWriterLockType.None;
                         _readerLockCount = _readerWaitCount;
                         _readerWaitCount = 0;
-                        // This either sets the next key, or reverts the key, depending if it was an upgraded lock or a regular lock, without a branch.
-                        SetNextKey();
                         readers = _readerQueue.MoveElementsToStack();
-                        if (writerType == AsyncReaderWriterLockType.Upgradeable | _upgradeQueue.IsEmpty)
+                        if (_upgradeQueue.IsEmpty)
                         {
+                            _lockType = lockType;
                             goto ResolveReaders;
                         }
                         IncrementReaderLockCount();
-                        _lockType |= AsyncReaderWriterLockType.Upgradeable;
+                        _lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
                         upgradeablePromise = _upgradeQueue.Dequeue();
                         goto ResolveReadersAndUpgradeableReader;
                     }
 
-                    // At this point, we know it was a regular writer, and there are no waiting normal readers.
                     // Check upgrade queue before writer queue, to prevent writers from starving upgradeable readers.
-                    if (_upgradeQueue.IsNotEmpty)
+                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
+                    if (_upgradeQueue.IsNotEmpty & !prioritizedWriter)
                     {
-                        _lockType = _writerQueue.IsEmpty
-                            ? AsyncReaderWriterLockType.Upgradeable
-                            : _lockType | AsyncReaderWriterLockType.Upgradeable;
+                        _lockType = hasWaitingWriter
+                            ? _lockType | AsyncReaderWriterLockType.Upgradeable
+                            : AsyncReaderWriterLockType.Upgradeable;
                         _writerType = AsyncReaderWriterLockType.None;
                         IncrementReaderLockCount();
                         upgradeablePromise = _upgradeQueue.Dequeue();
                         goto ResolveUpgradeableReader;
                     }
-                    else if (_writerQueue.IsNotEmpty)
+                    else if (hasWaitingWriter)
                     {
                         SetNextKey();
                         writerPromise = _writerQueue.Dequeue();
@@ -1524,6 +1555,55 @@ namespace Proto.Promises
                 upgradeablePromise.Resolve(_currentKey);
             }
 
+            internal void ReleaseUpgradedWriterLock(long key)
+            {
+                ValueLinkedStack<AsyncReaderLockPromise> readers;
+                lock (this)
+                {
+                    if (_currentKey != key)
+                    {
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
+                    }
+
+                    // This reverts the key to the previous reader key so that releasing the UpgradeableReaderKey will work.
+                    RestorePreviousKey();
+
+                    // If there are any normal readers waiting, we resolve them, even if there are more writer waiters.
+                    // This prevents writers from starving readers.
+                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
+                    bool hasWaitingWriter = _writerQueue.IsNotEmpty;
+                    bool prioritizedWriter = hasWaitingWriter & PrioritizeWriters;
+                    if (_readerQueue.IsEmpty | prioritizedWriter)
+                    {
+                        // We set reader count to 1 since it was removed when the lock was upgraded.
+                        _readerLockCount = 1;
+                        _lockType = hasWaitingWriter
+                            ? AsyncReaderWriterLockType.Upgradeable | AsyncReaderWriterLockType.Writer
+                            : AsyncReaderWriterLockType.Upgradeable;
+                        _writerType = AsyncReaderWriterLockType.None;
+                        return;
+                    }
+
+                    // We add 1 more reader count since it was removed when the lock was upgraded.
+                    // Unchecked context since we already checked for overflow when the reader lock was acquired.
+                    unchecked
+                    {
+                        _readerLockCount = _readerWaitCount + 1;
+                    }
+                    _readerWaitCount = 0;
+                    _lockType = hasWaitingWriter
+                        ? AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable | AsyncReaderWriterLockType.Writer
+                        : AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable;
+                    _writerType = AsyncReaderWriterLockType.None;
+                    readers = _readerQueue.MoveElementsToStack();
+                } // lock
+
+                do
+                {
+                    readers.Pop().Resolve(_currentKey);
+                } while (readers.IsNotEmpty);
+            }
+
             internal void ReleaseUpgradeableReaderLock(long key)
             {
                 AsyncUpgradeableReaderLockPromise upgradeablePromise;
@@ -1543,8 +1623,9 @@ namespace Proto.Promises
                     if (_readerLockCount != 0)
                     {
                         // If there's a regular writer waiting, do nothing, to prevent starvation.
+                        // Unless the contention strategy is (upgradeable)reader prioritized.
                         // Otherwise, if there's an upgradeable reader waiting, resolve it.
-                        if (_writerQueue.IsNotEmpty | _upgradeQueue.IsEmpty)
+                        if (_upgradeQueue.IsEmpty | (_writerQueue.IsNotEmpty & !PrioritizeReadersOrUpgradeableReaders))
                         {
                             _lockType &= ~AsyncReaderWriterLockType.Upgradeable;
                             return;
@@ -1555,14 +1636,17 @@ namespace Proto.Promises
                     }
 
                     // Check writer queue before checking upgrade queue, to prevent starvation.
-                    if (_writerQueue.IsNotEmpty)
+                    // Unless there is a waiting upgradeable reader, and the contention strategy is (upgradeable)reader prioritized.
+                    bool hasUpgradeable = _upgradeQueue.IsNotEmpty;
+                    bool prioritizedUpgradeable = hasUpgradeable & PrioritizeReadersOrUpgradeableReaders;
+                    if (_writerQueue.IsNotEmpty & !prioritizedUpgradeable)
                     {
                         writerPromise = _writerQueue.Dequeue();
                         _lockType &= ~AsyncReaderWriterLockType.Upgradeable;
                         _writerType = AsyncReaderWriterLockType.Writer;
                         SetNextKey();
                     }
-                    else if (_upgradeQueue.IsNotEmpty)
+                    else if (hasUpgradeable)
                     {
                         IncrementReaderLockCount();
                         upgradeablePromise = _upgradeQueue.Dequeue();
@@ -1953,9 +2037,6 @@ namespace Proto.Promises
 #if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         partial class AsyncReaderWriterLock
         {
-            // We wrap the impl with another class so that we can lock on it safely.
-            private readonly Internal.AsyncReaderWriterLockInternal _impl = new Internal.AsyncReaderWriterLockInternal();
-
             partial struct ReaderKey
             {
                 internal readonly Internal.AsyncReaderWriterLockKey _impl;
