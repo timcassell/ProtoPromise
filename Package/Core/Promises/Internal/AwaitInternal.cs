@@ -196,89 +196,112 @@ namespace Proto.Promises
 #if !NETCOREAPP
         // Override AwaitOnCompleted implementation to prevent boxing in Unity.
 #if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER // Even though CIL has always had function pointers, Unity did not properly support the CIL instructions until C# 9/ .Net Standard 2.1 support was added.
-        internal unsafe abstract class AwaitOverrider<T> where T : INotifyCompletion
+        internal unsafe static class AwaitOverrider<TAwaiter> where TAwaiter : INotifyCompletion
         {
-#pragma warning disable IDE0044 // Add readonly modifier
-            private static delegate*<ref T, PromiseRefBase, ref PromiseRefBase.AsyncPromiseFields, void> s_awaitOverrider;
-#pragma warning restore IDE0044 // Add readonly modifier
+            internal static delegate*<ref TAwaiter, PromiseRefBase, Action, ref PromiseRefBase.AsyncPromiseFields, void> s_awaitFunc = &DefaultAwaitOnCompleted;
 
             [MethodImpl(InlineOption)]
-            internal static bool IsOverridden()
+            private static void DefaultAwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation, ref PromiseRefBase.AsyncPromiseFields asyncFields)
             {
-                return s_awaitOverrider != null;
+                awaiter.OnCompleted(continuation);
             }
 
             [MethodImpl(InlineOption)]
-            internal static void Create<TAwaiter>() where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
+            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation, ref PromiseRefBase.AsyncPromiseFields asyncFields)
             {
-                AwaitOverriderImpl<TAwaiter>.Create();
+                // We call the function without a branch. If the awaiter is not a known awaiter type, the default function will be called.
+                s_awaitFunc(ref awaiter, asyncPromiseRef, continuation, ref asyncFields);
+            }
+        }
+
+        internal unsafe static class CriticalAwaitOverrider<TAwaiter> where TAwaiter : ICriticalNotifyCompletion
+        {
+            internal static delegate*<ref TAwaiter, PromiseRefBase, Action, ref PromiseRefBase.AsyncPromiseFields, void> s_awaitFunc = &DefaultAwaitOnCompleted;
+
+            [MethodImpl(InlineOption)]
+            private static void DefaultAwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation, ref PromiseRefBase.AsyncPromiseFields asyncFields)
+            {
+                awaiter.UnsafeOnCompleted(continuation);
             }
 
             [MethodImpl(InlineOption)]
-            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields)
+            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation, ref PromiseRefBase.AsyncPromiseFields asyncFields)
             {
-                s_awaitOverrider(ref awaiter, asyncPromiseRef, ref asyncFields);
+                // We call the function without a branch. If the awaiter is not a known awaiter type, the default function will be called.
+                s_awaitFunc(ref awaiter, asyncPromiseRef, continuation, ref asyncFields);
+            }
+        }
+
+        internal unsafe static class AwaitOverriderImpl<TAwaiter> where TAwaiter : struct, ICriticalNotifyCompletion, IPromiseAwaiter
+        {
+            [MethodImpl(InlineOption)]
+            internal static void Create()
+            {
+                // This is called multiple times in IL2CPP, but we don't need a null check since the function pointer doesn't allocate.
+                AwaitOverrider<TAwaiter>.s_awaitFunc = &AwaitOnCompletedOverride;
+                CriticalAwaitOverrider<TAwaiter>.s_awaitFunc = &AwaitOnCompletedOverride;
             }
 
-            private sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
+            [MethodImpl(InlineOption)]
+            private static void AwaitOnCompletedOverride(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation, ref PromiseRefBase.AsyncPromiseFields asyncFields)
             {
-                [MethodImpl(InlineOption)]
-                internal static void Create()
-                {
-                    // This is called multiple times in IL2CPP, but we don't need a null check since the function pointer doesn't allocate.
-                    s_awaitOverrider = &AwaitOnCompletedVirt;
-                }
-
-                [MethodImpl(InlineOption)]
-                private static void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields)
-                {
-                    awaiter.AwaitOnCompletedInternal(asyncPromiseRef, ref asyncFields);
-                }
+                awaiter.AwaitOnCompletedInternal(asyncPromiseRef, ref asyncFields);
             }
         }
 #else // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER
-        internal abstract class AwaitOverrider<T> where T : INotifyCompletion
+        internal abstract class AwaitOverrider<TAwaiter> where TAwaiter : INotifyCompletion
         {
-            private static AwaitOverrider<T> s_awaitOverrider;
+            internal static AwaitOverrider<TAwaiter> s_awaitOverrider;
 
             [MethodImpl(InlineOption)]
-            internal static bool IsOverridden()
+            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation, ref PromiseRefBase.AsyncPromiseFields asyncFields)
             {
-                return s_awaitOverrider != null;
-            }
-
-            [MethodImpl(InlineOption)]
-            internal static void Create<TAwaiter>() where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
-            {
-                AwaitOverriderImpl<TAwaiter>.Create();
-            }
-
-            [MethodImpl(InlineOption)]
-            internal static void AwaitOnCompletedInternal(ref T awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields)
-            {
-                s_awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef, ref asyncFields);
-            }
-
-            protected abstract void AwaitOnCompletedVirt(ref T awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields);
-
-            private sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, T, ICriticalNotifyCompletion, IPromiseAwaiter
-            {
-                [MethodImpl(InlineOption)]
-                internal static void Create()
+                if (s_awaitOverrider != null)
                 {
+                    s_awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef, ref asyncFields);
+                }
+                else
+                {
+                    awaiter.OnCompleted(continuation);
+                }
+            }
+
+            internal abstract void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields);
+        }
+
+        internal static class CriticalAwaitOverrider<TAwaiter> where TAwaiter : ICriticalNotifyCompletion
+        {
+            [MethodImpl(InlineOption)]
+            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation, ref PromiseRefBase.AsyncPromiseFields asyncFields)
+            {
+                if (AwaitOverrider<TAwaiter>.s_awaitOverrider != null)
+                {
+                    AwaitOverrider<TAwaiter>.s_awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef, ref asyncFields);
+                }
+                else
+                {
+                    awaiter.UnsafeOnCompleted(continuation);
+                }
+            }
+        }
+
+        internal sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, ICriticalNotifyCompletion, IPromiseAwaiter
+        {
+            [MethodImpl(InlineOption)]
+            internal static void Create()
+            {
 #if ENABLE_IL2CPP // This is called multiple times in IL2CPP, so check for null.
-                    if (s_awaitOverrider == null)
+                if (s_awaitOverrider == null)
 #endif
-                    {
-                        s_awaitOverrider = new AwaitOverriderImpl<TAwaiter>();
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                protected override void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields)
                 {
-                    awaiter.AwaitOnCompletedInternal(asyncPromiseRef, ref asyncFields);
+                    s_awaitOverrider = new AwaitOverriderImpl<TAwaiter>();
                 }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal override void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref PromiseRefBase.AsyncPromiseFields asyncFields)
+            {
+                awaiter.AwaitOnCompletedInternal(asyncPromiseRef, ref asyncFields);
             }
         }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER

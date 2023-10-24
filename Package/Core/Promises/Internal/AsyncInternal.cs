@@ -155,20 +155,19 @@ namespace Proto.Promises
                 {
                     SetStateMachine(ref stateMachine, ref _ref);
 #if NETCOREAPP
+                    // These checks and cast are eliminated by the JIT.
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
                         ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref, ref _ref._fields);
                     }
-#else
-                    if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
-                    {
-                        AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref, ref _ref._fields);
-                    }
-#endif
                     else
                     {
                         awaiter.OnCompleted(_ref.MoveNext);
                     }
+#else
+                    // Unity does not optimize the pattern, so we have to call through AwaitOverrider to avoid boxing allocations.
+                    AwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext, ref _ref._fields);
+#endif
                 }
 
                 [MethodImpl(InlineOption | AggressiveOptimizationOption)]
@@ -178,20 +177,19 @@ namespace Proto.Promises
                 {
                     SetStateMachine(ref stateMachine, ref _ref);
 #if NETCOREAPP
+                    // These checks and cast are eliminated by the JIT.
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
                         ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref, ref _ref._fields);
                     }
-#else
-                    if (null != default(TAwaiter) && AwaitOverrider<TAwaiter>.IsOverridden())
-                    {
-                        AwaitOverrider<TAwaiter>.AwaitOnCompletedInternal(ref awaiter, _ref, ref _ref._fields);
-                    }
-#endif
                     else
                     {
                         awaiter.UnsafeOnCompleted(_ref.MoveNext);
                     }
+#else
+                    // Unity does not optimize the pattern, so we have to call through CriticalAwaitOverrider to avoid boxing allocations.
+                    CriticalAwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext, ref _ref._fields);
+#endif
                 }
 
                 partial void SetAwaitedComplete(PromiseRefBase handler);

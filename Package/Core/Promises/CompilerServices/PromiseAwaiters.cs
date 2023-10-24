@@ -204,7 +204,7 @@ namespace Proto.Promises
             static PromiseAwaiterVoid()
 #endif
             {
-                Internal.AwaitOverrider<PromiseAwaiterVoid>.Create<PromiseAwaiterVoid>();
+                Internal.AwaitOverriderImpl<PromiseAwaiterVoid>.Create();
             }
         }
 
@@ -218,7 +218,7 @@ namespace Proto.Promises
             static PromiseAwaiter()
 #endif
             {
-                Internal.AwaitOverrider<PromiseAwaiter<T>>.Create<PromiseAwaiter<T>>();
+                Internal.AwaitOverriderImpl<PromiseAwaiter<T>>.Create();
             }
         }
 
@@ -232,7 +232,7 @@ namespace Proto.Promises
             static PromiseNoThrowAwaiterVoid()
 #endif
             {
-                Internal.AwaitOverrider<PromiseNoThrowAwaiterVoid>.Create<PromiseNoThrowAwaiterVoid>();
+                Internal.AwaitOverriderImpl<PromiseNoThrowAwaiterVoid>.Create();
             }
         }
 
@@ -246,7 +246,7 @@ namespace Proto.Promises
             static PromiseNoThrowAwaiter()
 #endif
             {
-                Internal.AwaitOverrider<PromiseNoThrowAwaiter<T>>.Create<PromiseNoThrowAwaiter<T>>();
+                Internal.AwaitOverriderImpl<PromiseNoThrowAwaiter<T>>.Create();
             }
         }
 
@@ -260,7 +260,7 @@ namespace Proto.Promises
             static PromiseProgressAwaiterVoid()
 #endif
             {
-                Internal.AwaitOverrider<PromiseProgressAwaiterVoid>.Create<PromiseProgressAwaiterVoid>();
+                Internal.AwaitOverriderImpl<PromiseProgressAwaiterVoid>.Create();
             }
         }
 
@@ -274,7 +274,7 @@ namespace Proto.Promises
             static PromiseProgressAwaiter()
 #endif
             {
-                Internal.AwaitOverrider<PromiseProgressAwaiter<T>>.Create<PromiseProgressAwaiter<T>>();
+                Internal.AwaitOverriderImpl<PromiseProgressAwaiter<T>>.Create();
             }
         }
 
@@ -288,7 +288,7 @@ namespace Proto.Promises
             static PromiseProgressNoThrowAwaiterVoid()
 #endif
             {
-                Internal.AwaitOverrider<PromiseProgressNoThrowAwaiterVoid>.Create<PromiseProgressNoThrowAwaiterVoid>();
+                Internal.AwaitOverriderImpl<PromiseProgressNoThrowAwaiterVoid>.Create();
             }
         }
 
@@ -302,7 +302,7 @@ namespace Proto.Promises
             static PromiseProgressNoThrowAwaiter()
 #endif
             {
-                Internal.AwaitOverrider<PromiseProgressNoThrowAwaiter<T>>.Create<PromiseProgressNoThrowAwaiter<T>>();
+                Internal.AwaitOverriderImpl<PromiseProgressNoThrowAwaiter<T>>.Create();
             }
         }
 #endif // !NETCOREAPP
