@@ -63,7 +63,7 @@ namespace Proto.Promises.Async.CompilerServices
         static AsyncStreamYielder()
 #endif
         {
-            Internal.AwaitOverrider<AsyncStreamYielder<T>>.Create<AsyncStreamYielder<T>>();
+            Internal.AwaitOverriderImpl<AsyncStreamYielder<T>>.Create();
         }
 #endif
 
