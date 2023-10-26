@@ -55,8 +55,11 @@ namespace Proto.Promises.Analyzer
         private static void AnalyzeAwaitExpressionSyntax(SyntaxNodeAnalysisContext context)
         {
             var awaitNode = (AwaitExpressionSyntax) context.Node;
-            var awaitType = context.SemanticModel.GetTypeInfo(awaitNode.Expression).Type;
-            if (awaitType?.ToString() != "Proto.Promises.Async.CompilerServices.AsyncStreamYielder")
+            var awaitType = context.SemanticModel.GetTypeInfo(awaitNode.Expression).Type as INamedTypeSymbol;
+            bool isAsyncYield = awaitType?.Arity == 1
+                && awaitType.ContainingAssembly.Name == "ProtoPromise"
+                && awaitType.ConstructUnboundGenericType().ToDisplayString() == "Proto.Promises.Async.CompilerServices.AsyncStreamYielder<>";
+            if (!isAsyncYield)
             {
                 return;
             }
