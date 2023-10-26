@@ -393,13 +393,18 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            protected void Reset()
+            protected void ResetWithoutStacktrace()
             {
                 _next = PendingAwaitSentinel.s_instance;
                 _state = Promise.State.Pending;
                 _wasAwaitedorForgotten = false;
                 _suppressRejection = false;
+            }
 
+            [MethodImpl(InlineOption)]
+            protected void Reset()
+            {
+                ResetWithoutStacktrace();
                 SetCreatedStacktrace(this, 3);
             }
 
@@ -422,6 +427,12 @@ namespace Proto.Promises
                     throw new System.InvalidOperationException("Promise disposed while pending: " + this);
                 }
 #endif
+                IncrementPromiseIdAndClearPrevious();
+            }
+
+            [MethodImpl(InlineOption)]
+            protected void IncrementPromiseIdAndClearPrevious()
+            {
                 IncrementPromiseId();
 #if PROMISE_DEBUG
                 _previous = null;
