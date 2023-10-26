@@ -9,9 +9,9 @@ namespace Proto.Promises.Analyzer
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class YieldAsyncAnalyzer : DiagnosticAnalyzer
     {
-        public const string YieldAsyncTryCatchId = "YieldAsyncTryCatch";
-        public const string YieldAsyncCatchId = "YieldAsyncCatch";
-        public const string YieldAsyncFinallyId = "YieldAsyncFinally";
+        public const string YieldAsyncTryCatchId = "PPAE001";
+        public const string YieldAsyncCatchId = "PPAE002";
+        public const string YieldAsyncFinallyId = "PPAE003";
 
         private static readonly DiagnosticDescriptor YieldAsyncTryCatchDiagnostic = new DiagnosticDescriptor(
             YieldAsyncTryCatchId,
