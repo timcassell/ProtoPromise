@@ -28,7 +28,7 @@
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/timcassell/ProtoPromise</RepositoryUrl>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <Description>ProtoPromise.Analyzer</Description>
+    <Description>Analyzer for ProtoPromise</Description>
     <Copyright>Copyright ©2023 Tim Cassell</Copyright>
     <PackageTags>ProtoPromise.Analyzer, analyzers</PackageTags>
     <DevelopmentDependency>true</DevelopmentDependency>
