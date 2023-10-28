@@ -26,10 +26,10 @@ jobs:
           global-json-file: global.json
 
       - name: Build Package
-        run: dotnet build ./ProtoPromise.Analyzer/ProtoPromise.Analyzer.Package -c Release /p:PackageVersion=${{ github.event.inputs.version }}
+        run: dotnet build ./ProtoPromise.Analyzer/ProtoPromise.Analyzer -c Release /p:PackageVersion=${{ github.event.inputs.version }}
 
       - name: Push Package
-        run: dotnet nuget push ./ProtoPromise.Analyzer/ProtoPromise.Analyzer.Package/bin/Release/ProtoPromise.Analyzer.${{ github.event.inputs.version }}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push ./ProtoPromise.Analyzer/ProtoPromise.Analyzer/bin/Release/ProtoPromise.Analyzer.${{ github.event.inputs.version }}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
