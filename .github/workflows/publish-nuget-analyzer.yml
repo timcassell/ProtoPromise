@@ -1,0 +1,39 @@
+name: Publish analyzer nuget package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
+        description: package version (SemVer)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup nuget
+        uses: nuget/setup-nuget@v1
+        with:
+          nuget-api-key: ${{ secrets.NUGET_API_KEY }}
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          global-json-file: global.json
+
+      - name: Build Package
+        run: dotnet build ./ProtoPromise.Analyzer/ProtoPromise.Analyzer -c Release /p:PackageVersion=${{ github.event.inputs.version }}
+
+      - name: Push Package
+        run: dotnet nuget push ./ProtoPromise.Analyzer/ProtoPromise.Analyzer/bin/Release/ProtoPromise.Analyzer.${{ github.event.inputs.version }}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+      - name: Push Unity Helpers
+        run: dotnet nuget push ProtoPromiseUnityHelpers.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}

@@ -76,10 +76,10 @@ jobs:
           global-json-file: global.json
 
       - name: Build Debug
-        run: dotnet build -c Debug
+        run: dotnet build -c Debug /p:IsNugetBuild=true
 
       - name: Build Release
-        run: dotnet build -c Release
+        run: dotnet build -c Release /p:IsNugetBuild=true
 
       - name: Pack ProtoPromise
         run: nuget pack ProtoPromise/nuget/ProtoPromise.nuspec

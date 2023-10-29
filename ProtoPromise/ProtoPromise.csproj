@@ -118,4 +118,13 @@
     </PackageReference>
   </ItemGroup>
 
+  <!--Exclude the analyzer reference while building the nuget package.-->
+  <ItemGroup Condition="'$(IsNugetBuild)' != 'true' AND '$(TargetFramework)' != 'net35' AND '$(TargetFramework)' != 'net40' AND '$(TargetFramework)' != 'net45'">
+    <ProjectReference Include="..\ProtoPromise.Analyzer\ProtoPromise.Analyzer\ProtoPromise.Analyzer.csproj"
+                      PrivateAssets="all"
+                      ReferenceOutputAssembly="false"
+                      OutputItemType="Analyzer"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+  </ItemGroup>
+
 </Project>
