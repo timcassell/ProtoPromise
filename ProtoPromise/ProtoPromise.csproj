@@ -49,9 +49,16 @@
         <DefineConstants>$(DefineConstants);ENABLE_IL2CPP</DefineConstants>
       </PropertyGroup>
     </When>
-    <When Condition="'$(TargetFramework)'=='net47' OR '$(TargetFramework)'=='netstandard2.0'">
+    <When Condition="'$(TargetFramework)'=='netstandard2.0'">
       <PropertyGroup>
         <LangVersion>7.3</LangVersion>
+        <DefineConstants>$(DefineConstants);ENABLE_IL2CPP;CSHARP_7_3_OR_NEWER</DefineConstants>
+      </PropertyGroup>
+    </When>
+    <When Condition="'$(TargetFramework)'=='net47'">
+      <PropertyGroup>
+        <!--For await foreach-->
+        <LangVersion>8</LangVersion>
         <DefineConstants>$(DefineConstants);ENABLE_IL2CPP;CSHARP_7_3_OR_NEWER</DefineConstants>
       </PropertyGroup>
     </When>
