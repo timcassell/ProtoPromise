@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises.Linq
 {
@@ -25,6 +27,14 @@ namespace Proto.Promises.Linq
                 }
             });
         }
+
+        /// <summary>
+        /// Returns <paramref name="source"/>.
+        /// </summary>
+        // This is used to avoid an expensive boxing and wrapping if ToAsyncEnumerable is accidentally used on a raw AsyncEnumerable<T> instance.
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        [MethodImpl(Internal.InlineOption)]
+        public static AsyncEnumerable<T> ToAsyncEnumerable<T>(this AsyncEnumerable<T> source) => source;
     }
 #endif // NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
 }
