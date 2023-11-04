@@ -25,19 +25,13 @@ namespace Proto.Promises.Linq
         /// Create a new <see cref="AsyncEnumerable{T}"/> async stream from the specified <paramref name="asyncIterator"/> function.
         /// </summary>
         public static AsyncEnumerable<T> Create<T>(Func<AsyncStreamWriter<T>, CancelationToken, AsyncEnumerableMethod> asyncIterator)
-        {
-            var enumerable = Internal.AsyncEnumerableImpl<T, Internal.AsyncIterator<T>>.GetOrCreate(new Internal.AsyncIterator<T>(asyncIterator));
-            return new AsyncEnumerable<T>(enumerable);
-        }
+            => AsyncEnumerable<T>.Create(asyncIterator);
 
         /// <summary>
         /// Create a new <see cref="AsyncEnumerable{T}"/> async stream from the specified <paramref name="captureValue"/> and <paramref name="asyncIterator"/> function.
         /// </summary>
         public static AsyncEnumerable<T> Create<T, TCapture>(TCapture captureValue, Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncEnumerableMethod> asyncIterator)
-        {
-            var enumerable = Internal.AsyncEnumerableImpl<T, Internal.AsyncIterator<T, TCapture>>.GetOrCreate(new Internal.AsyncIterator<T, TCapture>(captureValue, asyncIterator));
-            return new AsyncEnumerable<T>(enumerable);
-        }
+            => AsyncEnumerable<T>.Create(captureValue, asyncIterator);
     }
 
     /// <summary>
@@ -47,7 +41,28 @@ namespace Proto.Promises.Linq
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly struct AsyncEnumerable<T> : IAsyncEnumerable<T>
+    public readonly partial struct AsyncEnumerable<T> : IAsyncEnumerable<T>
+    {
+        /// <summary>
+        /// Create a new <see cref="AsyncEnumerable{T}"/> async stream from the specified <paramref name="asyncIterator"/> function.
+        /// </summary>
+        public static AsyncEnumerable<T> Create(Func<AsyncStreamWriter<T>, CancelationToken, AsyncEnumerableMethod> asyncIterator)
+        {
+            var enumerable = Internal.AsyncEnumerableImpl<T, Internal.AsyncIterator<T>>.GetOrCreate(new Internal.AsyncIterator<T>(asyncIterator));
+            return new AsyncEnumerable<T>(enumerable);
+        }
+
+        /// <summary>
+        /// Create a new <see cref="AsyncEnumerable{T}"/> async stream from the specified <paramref name="captureValue"/> and <paramref name="asyncIterator"/> function.
+        /// </summary>
+        public static AsyncEnumerable<T> Create<TCapture>(TCapture captureValue, Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncEnumerableMethod> asyncIterator)
+        {
+            var enumerable = Internal.AsyncEnumerableImpl<T, Internal.AsyncIterator<T, TCapture>>.GetOrCreate(new Internal.AsyncIterator<T, TCapture>(captureValue, asyncIterator));
+            return new AsyncEnumerable<T>(enumerable);
+        }
+    }
+
+    public readonly partial struct AsyncEnumerable<T> : IAsyncEnumerable<T>
     {
         private readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
         private readonly int _id;
@@ -120,7 +135,7 @@ namespace Proto.Promises.Linq
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(bool continueOnCapturedContext)
-            => continueOnCapturedContext ? ConfigureAwait(SynchronizationContext.Current) : ConfigureAwait(SynchronizationOption.Background);
+            => continueOnCapturedContext ? ConfigureAwait(SynchronizationContext.Current) : ConfigureAwait(SynchronizationOption.Synchronous);
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
     }
 
