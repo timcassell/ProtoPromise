@@ -529,6 +529,54 @@ namespace ProtoPromiseTests.APIs
                 Assert.True(set.Contains(i));
             }
         }
+
+#if CSHARP_7_3_OR_NEWER
+        [Test]
+        public void ParallelFor_ExecutionContextFlowsToWorkerBodies(
+            [Values] bool foregroundContext)
+        {
+            Promise.Config.AsyncFlowExecutionContextEnabled = true;
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            var al = new AsyncLocal<int>();
+            al.Value = 42;
+            Promise.ParallelFor(0, 100, async (item, cancellationToken) =>
+            {
+                await Promise.SwitchToForegroundAwait(forceAsync: true);
+                Assert.AreEqual(42, al.Value);
+            })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+        }
+
+        private static IEnumerable<int> Iterate100()
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                yield return i;
+            }
+        }
+
+        [Test]
+        public void ParallelForEach_ExecutionContextFlowsToWorkerBodies(
+            [Values] bool foregroundContext)
+        {
+            Promise.Config.AsyncFlowExecutionContextEnabled = true;
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            var al = new AsyncLocal<int>();
+            al.Value = 42;
+            Promise.ParallelForEach(Iterate100(), async (item, cancellationToken) =>
+            {
+                await Promise.SwitchToForegroundAwait(forceAsync: true);
+                Assert.AreEqual(42, al.Value);
+            })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+        }
+#endif // CSHARP_7_3_OR_NEWER
     }
 #endif // !UNITY_WEBGL
 }
