@@ -420,6 +420,7 @@ namespace Proto.Promises
             CancelationToken cancelationToken = default(CancelationToken), int maxDegreeOfParallelism = -1)
         {
             ValidateArgument(source, "source", 1);
+            ValidateArgument(body, "body", 1);
 
             return ParallelForEachAsync(source, body, Promise.Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
         }
@@ -436,6 +437,7 @@ namespace Proto.Promises
             CancelationToken cancelationToken = default(CancelationToken), int maxDegreeOfParallelism = -1)
         {
             ValidateArgument(source, "source", 1);
+            ValidateArgument(body, "body", 1);
 
             return ParallelForEachAsync(source.ToAsyncEnumerable(), body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
         }
@@ -453,6 +455,7 @@ namespace Proto.Promises
             CancelationToken cancelationToken = default(CancelationToken), int maxDegreeOfParallelism = -1)
         {
             ValidateArgument(source, "source", 1);
+            ValidateArgument(body, "body", 1);
 
             return ParallelForEachAsync(source, captureValue, body, Promise.Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
         }
@@ -471,6 +474,7 @@ namespace Proto.Promises
             CancelationToken cancelationToken = default(CancelationToken), int maxDegreeOfParallelism = -1)
         {
             ValidateArgument(source, "source", 1);
+            ValidateArgument(body, "body", 1);
 
             return ParallelForEachAsync(source.ToAsyncEnumerable(), captureValue, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
         }

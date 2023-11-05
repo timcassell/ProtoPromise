@@ -72,6 +72,7 @@ namespace Proto.Promises
                 private CancelationRegistration _externalCancelationRegistration;
                 // Use the CancelationRef directly instead of CancelationSource struct to save memory.
                 private CancelationRef _cancelationRef;
+                private ExecutionContext _executionContext;
                 private SynchronizationContext _synchronizationContext;
                 private int _remainingAvailableWorkers;
                 private int _waitCounter;
@@ -109,6 +110,10 @@ namespace Proto.Promises
                     promise._cancelationRef = cancelRef;
                     cancelationToken.TryRegister(promise, out promise._externalCancelationRegistration);
                     promise._result = enumerable.GetAsyncEnumerator(new CancelationToken(cancelRef, cancelRef.TokenId));
+                    if (Promise.Config.AsyncFlowExecutionContextEnabled)
+                    {
+                        promise._executionContext = ExecutionContext.Capture();
+                    }
                     return promise;
                 }
 
@@ -117,6 +122,7 @@ namespace Proto.Promises
                     Dispose();
                     _body = default(TParallelBody);
                     _synchronizationContext = null;
+                    _executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -138,7 +144,7 @@ namespace Proto.Promises
                             // This way when the lock is exited, it will know if the next worker needs to be launched.
                             // Only 1 worker will call this at a time, so we don't have to worry about 2 workers overwriting the stored value.
                             long newLockCount = oldLockCount + 1L;
-                            long newValue = newLockCount & (newLockCount << 32);
+                            long newValue = newLockCount | (newLockCount << 32);
                             long oldValue = Interlocked.CompareExchange(ref _lockAndLaunchNext, newValue, current);
                             if (oldValue == current)
                             {
@@ -171,8 +177,8 @@ namespace Proto.Promises
                         {
                             // Another worker is waiting on the lock, schedule it on the context and jump to inside lock.
                             ScheduleContextCallback(_synchronizationContext, this,
-                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.InsideLock),
-                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.InsideLock)
+                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerInsideLock(),
+                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerInsideLock()
                             );
                         }
                         // If the new value of the higher 32 bits is 0, it's time to launch the next worker.
@@ -212,9 +218,45 @@ namespace Proto.Promises
                     // This also helps us avoid the cost of writing the current context when the lock is unavailable.
                     if (TryEnterLockAndStoreLaunchNext())
                     {
-                        ExecuteWorker(ParallelForEachAsyncContinuationType.InsideLock);
+                        ExecuteWorkerInsideLock();
                     }
                     // If the TryEnter failed, when the other worker exits the lock, it will schedule this worker to continue.
+                }
+
+                private void ExecuteWorkerStartLoop()
+                {
+                    if (_executionContext == null)
+                    {
+                        ExecuteWorker(ParallelForEachAsyncContinuationType.LoopStart);
+                    }
+                    else
+                    {
+                        ExecutionContext.Run(_executionContext, obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.LoopStart), this);
+                    }
+                }
+
+                private void ExecuteWorkerInsideLock()
+                {
+                    if (_executionContext == null)
+                    {
+                        ExecuteWorker(ParallelForEachAsyncContinuationType.InsideLock);
+                    }
+                    else
+                    {
+                        ExecutionContext.Run(_executionContext, obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.InsideLock), this);
+                    }
+                }
+
+                private void ExecuteWorkerAfterMoveNext()
+                {
+                    if (_executionContext == null)
+                    {
+                        ExecuteWorker(ParallelForEachAsyncContinuationType.AfterMoveNext);
+                    }
+                    else
+                    {
+                        ExecutionContext.Run(_executionContext, obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.AfterMoveNext), this);
+                    }
                 }
 
                 private void ExecuteWorker(ParallelForEachAsyncContinuationType continuationType)
@@ -270,6 +312,7 @@ namespace Proto.Promises
                     if (_cancelationRef._state >= CancelationRef.State.Canceled)
                     {
                         ExitLockComplete();
+                        return;
                     }
 
                     var moveNextPromise = _result.MoveNextAsync();
@@ -342,8 +385,8 @@ namespace Proto.Promises
                         {
                             // Schedule the worker body to run again on the context, but without launching another worker.
                             ScheduleContextCallback(_synchronizationContext, this,
-                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.LoopStart),
-                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.LoopStart)
+                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerStartLoop(),
+                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerStartLoop()
                             );
                             return;
                         }
@@ -354,8 +397,8 @@ namespace Proto.Promises
                         }
                         // Schedule the worker body to jump to after move next.
                         ScheduleContextCallback(_synchronizationContext, this,
-                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.AfterMoveNext),
-                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.AfterMoveNext)
+                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerAfterMoveNext(),
+                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerAfterMoveNext()
                         );
                         return;
                     }

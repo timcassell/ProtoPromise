@@ -113,6 +113,7 @@ namespace ProtoPromiseTests.APIs
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             Assert.True(canceled);
             Assert.True(completed);
+            cts.Dispose();
         }
 
         [Test]
@@ -144,7 +145,7 @@ namespace ProtoPromiseTests.APIs
             box.Value = true;
             block.Resolve();
             int maxWorkers = dop == -1 ? Environment.ProcessorCount : dop;
-            t.WaitWithTimeout(TimeSpan.FromSeconds(maxWorkers));
+            t.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(maxWorkers));
 
             blockPromise.Forget();
             Assert.LessOrEqual(activeWorkers, maxWorkers);
@@ -159,7 +160,7 @@ namespace ProtoPromiseTests.APIs
                 Interlocked.Increment(ref counter);
                 return Promise.Resolved();
             })
-                .WaitWithTimeout(TimeSpan.FromSeconds(Environment.ProcessorCount));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
             Assert.AreEqual(0, counter);
         }
@@ -185,7 +186,7 @@ namespace ProtoPromiseTests.APIs
                 }
                 return Promise.Resolved();
             })
-                .WaitWithTimeout(TimeSpan.FromSeconds(Environment.ProcessorCount));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
             for (int i = Start; i < Start + Count; i++)
             {
@@ -217,7 +218,7 @@ namespace ProtoPromiseTests.APIs
                 }
                 return Promise.Resolved();
             })
-                .WaitWithTimeout(TimeSpan.FromSeconds(Environment.ProcessorCount));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
             for (int i = Start; i < Start + Count; i++)
             {
@@ -311,7 +312,7 @@ namespace ProtoPromiseTests.APIs
             Assert.AreEqual(Promise.State.Pending, state);
             cts.Cancel();
 
-            t.WaitWithTimeout(TimeSpan.FromSeconds(Environment.ProcessorCount));
+            t.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
             Assert.AreEqual(Promise.State.Canceled, state);
             cts.Dispose();
         }
@@ -330,7 +331,7 @@ namespace ProtoPromiseTests.APIs
                 Assert.AreEqual(cancelationToken, item);
                 return Promise.Resolved();
             })
-                .WaitWithTimeout(TimeSpan.FromSeconds(Environment.ProcessorCount));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
         }
 
         [Test]
@@ -346,7 +347,7 @@ namespace ProtoPromiseTests.APIs
                 }
                 return Promise.Resolved();
             })
-                .WaitWithTimeout(TimeSpan.FromSeconds(Environment.ProcessorCount));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
             Assert.AreEqual(100, cq.Count);
             Assert.AreEqual(1, cq.Distinct().Count());
@@ -380,7 +381,7 @@ namespace ProtoPromiseTests.APIs
                 }
             }, cts.Token, maxDegreeOfParallelism: 2)
                 .Catch((Exception e) => actual = e)
-                .WaitWithTimeout(TimeSpan.FromSeconds(2));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
 
             promisePreserved.Forget();
             cts.Dispose();
@@ -402,7 +403,7 @@ namespace ProtoPromiseTests.APIs
                 throw new OperationCanceledException();
             }, cts.Token)
                 .ContinueWith(resultContainer => { state = resultContainer.State; })
-                .WaitWithTimeout(TimeSpan.FromSeconds(Environment.ProcessorCount));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
             cts.Dispose();
             Assert.AreEqual(Promise.State.Canceled, state);
@@ -432,7 +433,7 @@ namespace ProtoPromiseTests.APIs
 
             Promise.ParallelForEachAsync(Iterate4ThenThrow(expected), (item, cancelationToken) => Promise.Resolved())
                 .Catch((Exception e) => actual = e)
-                .WaitWithTimeout(TimeSpan.FromSeconds(Environment.ProcessorCount));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
             Assert.IsInstanceOf<Proto.Promises.AggregateException>(actual);
             var aggregate = (Proto.Promises.AggregateException) actual;
@@ -467,7 +468,7 @@ namespace ProtoPromiseTests.APIs
                 }
             }, maxDegreeOfParallelism: barrier.ParticipantCount)
                 .Catch((Exception e) => actual = e)
-                .WaitWithTimeout(TimeSpan.FromSeconds(barrier.ParticipantCount));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(barrier.ParticipantCount));
 
             Assert.IsInstanceOf<Proto.Promises.AggregateException>(actual);
             var aggregate = (Proto.Promises.AggregateException) actual;
@@ -491,7 +492,7 @@ namespace ProtoPromiseTests.APIs
                 return Promise.Resolved();
             })
                 .Catch((Proto.Promises.AggregateException e) => aggregateException = e)
-                .WaitWithTimeout(TimeSpan.FromSeconds(Environment.ProcessorCount));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
             Assert.IsNotNull(aggregateException);
             aggregateException = null;
@@ -508,7 +509,7 @@ namespace ProtoPromiseTests.APIs
                 return deferred.Promise;
             }, maxDegreeOfParallelism: 2)
                 .Catch((Proto.Promises.AggregateException e) => aggregateException = e)
-                .WaitWithTimeout(TimeSpan.FromSeconds(2));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
 
             Assert.IsNotNull(aggregateException);
             aggregateException = null;
