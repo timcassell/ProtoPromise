@@ -230,6 +230,7 @@ namespace Proto.Promises
                 // Use the CancelationRef directly instead of CancelationSource struct to save memory.
                 private CancelationRef _cancelationRef;
                 private SynchronizationContext _synchronizationContext;
+                private ExecutionContext _executionContext;
                 private int _remainingAvailableWorkers;
                 private int _waitCounter;
                 private List<Exception> _exceptions;
@@ -257,6 +258,10 @@ namespace Proto.Promises
                     promise._completionState = Promise.State.Resolved;
                     promise._cancelationRef = CancelationRef.GetOrCreate();
                     cancelationToken.TryRegister(promise, out promise._externalCancelationRegistration);
+                    if (Promise.Config.AsyncFlowExecutionContextEnabled)
+                    {
+                        promise._executionContext = ExecutionContext.Capture();
+                    }
                     return promise;
                 }
 
@@ -265,6 +270,7 @@ namespace Proto.Promises
                     Dispose();
                     _body = default(TParallelBody);
                     _synchronizationContext = null;
+                    _executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -283,9 +289,37 @@ namespace Proto.Promises
                         InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, 1);
 
                         ScheduleContextCallback(_synchronizationContext, this,
-                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(true),
-                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(true)
+                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerAndLaunchNext(),
+                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerAndLaunchNext()
                         );
+                    }
+                }
+
+                private void ExecuteWorkerAndLaunchNext()
+                {
+                    if (_executionContext == null)
+                    {
+                        ExecuteWorker(true);
+                    }
+                    else
+                    {
+                        // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
+                        // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
+                        ExecutionContext.Run(_executionContext.CreateCopy(), obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(true), this);
+                    }
+                }
+
+                private void ExecuteWorkerWithoutLaunchNext()
+                {
+                    if (_executionContext == null)
+                    {
+                        ExecuteWorker(false);
+                    }
+                    else
+                    {
+                        // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
+                        // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
+                        ExecutionContext.Run(_executionContext.CreateCopy(), obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(false), this);
                     }
                 }
 
@@ -362,8 +396,8 @@ namespace Proto.Promises
                     {
                         // Schedule the worker body to run again on the context, but without launching another worker.
                         ScheduleContextCallback(_synchronizationContext, this,
-                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(false),
-                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(false)
+                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext(),
+                            obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext()
                         );
                     }
                     else if (state == Promise.State.Canceled)

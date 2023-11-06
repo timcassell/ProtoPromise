@@ -211,32 +211,35 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        private IEnumerable<int> IterateAndAssertContext(SynchronizationContext context)
+        private IEnumerable<int> IterateAndAssertContext(SynchronizationType expectedContext, Thread mainThread)
         {
-            Assert.AreEqual(context, SynchronizationContext.Current);
+            TestHelper.AssertCallbackContext(expectedContext, expectedContext, mainThread);
             for (int i = 1; i <= 100; i++)
             {
                 yield return i;
-                Assert.AreEqual(context, SynchronizationContext.Current);
+                TestHelper.AssertCallbackContext(expectedContext, expectedContext, mainThread);
             }
         }
 
         [Test]
         public void SynchronizationContext_AllCodeExecutedOnCorrectContext_Sync(
-            [Values] bool foregroundContext)
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType syncContext)
         {
-            SynchronizationContext context = foregroundContext ?
-                TestHelper._foregroundContext :
-                (SynchronizationContext) TestHelper._backgroundContext;
+            var mainThread = Thread.CurrentThread;
+            SynchronizationContext context = syncContext == SynchronizationType.Foreground
+                ? TestHelper._foregroundContext
+                : (SynchronizationContext) TestHelper._backgroundContext;
 
-            var otherContext = new PromiseSynchronizationContext();
+            var otherContext = syncContext == SynchronizationType.Foreground
+                ? (SynchronizationContext) TestHelper._backgroundContext
+                : TestHelper._foregroundContext;
 
             var cq = new Queue<int>();
             bool isComplete = false;
 
-            Promise.ParallelForEach(IterateAndAssertContext(context), (item, cancelationToken) =>
+            Promise.ParallelForEach(IterateAndAssertContext(syncContext, mainThread), (item, cancelationToken) =>
             {
-                Assert.AreEqual(context, SynchronizationContext.Current);
+                TestHelper.AssertCallbackContext(syncContext, syncContext, mainThread);
                 return Promise.SwitchToContext(context)
                     .Then(() =>
                     {
@@ -257,7 +260,6 @@ namespace ProtoPromiseTests.APIs
             if (!SpinWait.SpinUntil(() =>
             {
                 TestHelper.ExecuteForegroundCallbacks();
-                otherContext.Execute();
                 return isComplete;
             }, TimeSpan.FromSeconds(1)))
             {
@@ -529,6 +531,54 @@ namespace ProtoPromiseTests.APIs
                 Assert.True(set.Contains(i));
             }
         }
+
+#if CSHARP_7_3_OR_NEWER
+        [Test]
+        public void ParallelFor_ExecutionContextFlowsToWorkerBodies(
+            [Values] bool foregroundContext)
+        {
+            Promise.Config.AsyncFlowExecutionContextEnabled = true;
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            var al = new AsyncLocal<int>();
+            al.Value = 42;
+            Promise.ParallelFor(0, 100, async (item, cancellationToken) =>
+            {
+                await Promise.SwitchToForegroundAwait(forceAsync: true);
+                Assert.AreEqual(42, al.Value);
+            })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+        }
+
+        private static IEnumerable<int> Iterate100()
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                yield return i;
+            }
+        }
+
+        [Test]
+        public void ParallelForEach_ExecutionContextFlowsToWorkerBodies(
+            [Values] bool foregroundContext)
+        {
+            Promise.Config.AsyncFlowExecutionContextEnabled = true;
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            var al = new AsyncLocal<int>();
+            al.Value = 42;
+            Promise.ParallelForEach(Iterate100(), async (item, cancellationToken) =>
+            {
+                await Promise.SwitchToForegroundAwait(forceAsync: true);
+                Assert.AreEqual(42, al.Value);
+            })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+        }
+#endif // CSHARP_7_3_OR_NEWER
     }
 #endif // !UNITY_WEBGL
 }
