@@ -148,7 +148,7 @@ namespace Proto.Promises.Linq
 #endif
     public readonly struct AsyncEnumerator<T> : IAsyncEnumerator<T>
     {
-        private readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
+        internal readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
         private readonly int _id;
 
         [MethodImpl(Internal.InlineOption)]
