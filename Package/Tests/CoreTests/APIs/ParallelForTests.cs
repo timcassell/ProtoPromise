@@ -211,32 +211,35 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        private IEnumerable<int> IterateAndAssertContext(SynchronizationContext context)
+        private IEnumerable<int> IterateAndAssertContext(SynchronizationType expectedContext, Thread mainThread)
         {
-            Assert.AreEqual(context, SynchronizationContext.Current);
+            TestHelper.AssertCallbackContext(expectedContext, expectedContext, mainThread);
             for (int i = 1; i <= 100; i++)
             {
                 yield return i;
-                Assert.AreEqual(context, SynchronizationContext.Current);
+                TestHelper.AssertCallbackContext(expectedContext, expectedContext, mainThread);
             }
         }
 
         [Test]
         public void SynchronizationContext_AllCodeExecutedOnCorrectContext_Sync(
-            [Values] bool foregroundContext)
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType syncContext)
         {
-            SynchronizationContext context = foregroundContext ?
-                TestHelper._foregroundContext :
-                (SynchronizationContext) TestHelper._backgroundContext;
+            var mainThread = Thread.CurrentThread;
+            SynchronizationContext context = syncContext == SynchronizationType.Foreground
+                ? TestHelper._foregroundContext
+                : (SynchronizationContext) TestHelper._backgroundContext;
 
-            var otherContext = new PromiseSynchronizationContext();
+            var otherContext = syncContext == SynchronizationType.Foreground
+                ? (SynchronizationContext) TestHelper._backgroundContext
+                : TestHelper._foregroundContext;
 
             var cq = new Queue<int>();
             bool isComplete = false;
 
-            Promise.ParallelForEach(IterateAndAssertContext(context), (item, cancelationToken) =>
+            Promise.ParallelForEach(IterateAndAssertContext(syncContext, mainThread), (item, cancelationToken) =>
             {
-                Assert.AreEqual(context, SynchronizationContext.Current);
+                TestHelper.AssertCallbackContext(syncContext, syncContext, mainThread);
                 return Promise.SwitchToContext(context)
                     .Then(() =>
                     {
@@ -257,7 +260,6 @@ namespace ProtoPromiseTests.APIs
             if (!SpinWait.SpinUntil(() =>
             {
                 TestHelper.ExecuteForegroundCallbacks();
-                otherContext.Execute();
                 return isComplete;
             }, TimeSpan.FromSeconds(1)))
             {
