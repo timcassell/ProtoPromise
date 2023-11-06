@@ -427,6 +427,40 @@ namespace Proto.Promises
                     }
                 }
             }
+
+#if NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+            partial class PromiseParallelForEachAsync<TParallelBody, TSource>
+            {
+                private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
+
+                protected override void BorrowPreviousPromises(Stack<PromiseRefBase> borrower)
+                {
+                    lock (_pendingPromises)
+                    {
+                        foreach (var promiseRef in _pendingPromises)
+                        {
+                            borrower.Push(promiseRef);
+                        }
+                    }
+                }
+
+                partial void AddPending(PromiseRefBase pendingPromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Add(pendingPromise);
+                    }
+                }
+
+                partial void RemovePending(PromiseRefBase completePromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Remove(completePromise);
+                    }
+                }
+            }
+#endif // NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
         }
 #else // PROMISE_DEBUG
         internal static string GetFormattedStacktrace(int skipFrames)

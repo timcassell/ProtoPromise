@@ -53,13 +53,6 @@ namespace Proto.Promises
 
         partial class PromiseRefBase
         {
-            private enum ParallelForEachAsyncContinuationType
-            {
-                LoopStart,
-                InsideLock,
-                AfterMoveNext
-            }
-
             // Inheriting PromiseSingleAwait<AsyncEnumerator<TSource>> instead of PromiseRefBase so we can take advantage of the already implemented methods.
             // We store the enumerator in the _result field to save space, because this type is only used in `Promise`, not `Promise<T>`, so the result doesn't matter.
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -215,7 +208,7 @@ namespace Proto.Promises
                 private void ExecuteWorkerAndLaunchNext()
                 {
                     // We do the more expensive lock enter here where we know it's necessary, without adding an extra branch in the worker body.
-                    // This also helps us avoid the cost of writing the current context when the lock is unavailable.
+                    // This also helps us avoid the cost of writing the contexts when the lock is unavailable.
                     if (TryEnterLockAndStoreLaunchNext())
                     {
                         ExecuteWorkerInsideLock();
@@ -223,15 +216,13 @@ namespace Proto.Promises
                     // If the TryEnter failed, when the other worker exits the lock, it will schedule this worker to continue.
                 }
 
-                private void ExecuteWorkerStartLoop()
+                private void ExecuteWorkerWithoutLaunchNext()
                 {
-                    if (_executionContext == null)
+                    // We enter the lock here before calling the main worker body, so we can avoid adding an extra branch in the worker body,
+                    // and avoid the cost of writing the contexts when the lock is unavailable.
+                    if (TryEnterLock())
                     {
-                        ExecuteWorker(ParallelForEachAsyncContinuationType.LoopStart);
-                    }
-                    else
-                    {
-                        ExecutionContext.Run(_executionContext, obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.LoopStart), this);
+                        ExecuteWorkerInsideLock();
                     }
                 }
 
@@ -239,11 +230,13 @@ namespace Proto.Promises
                 {
                     if (_executionContext == null)
                     {
-                        ExecuteWorker(ParallelForEachAsyncContinuationType.InsideLock);
+                        ExecuteWorker(false);
                     }
                     else
                     {
-                        ExecutionContext.Run(_executionContext, obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.InsideLock), this);
+                        // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
+                        // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
+                        ExecutionContext.Run(_executionContext.CreateCopy(), obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(false), this);
                     }
                 }
 
@@ -251,15 +244,17 @@ namespace Proto.Promises
                 {
                     if (_executionContext == null)
                     {
-                        ExecuteWorker(ParallelForEachAsyncContinuationType.AfterMoveNext);
+                        ExecuteWorker(true);
                     }
                     else
                     {
-                        ExecutionContext.Run(_executionContext, obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(ParallelForEachAsyncContinuationType.AfterMoveNext), this);
+                        // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
+                        // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
+                        ExecutionContext.Run(_executionContext.CreateCopy(), obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(true), this);
                     }
                 }
 
-                private void ExecuteWorker(ParallelForEachAsyncContinuationType continuationType)
+                private void ExecuteWorker(bool fromMoveNext)
                 {
                     var currentContext = ts_currentContext;
                     ts_currentContext = _synchronizationContext;
@@ -267,7 +262,7 @@ namespace Proto.Promises
                     SetCurrentInvoker(this);
                     try
                     {
-                        WorkerBody(continuationType);
+                        WorkerBody(fromMoveNext);
                     }
                     catch (OperationCanceledException)
                     {
@@ -286,15 +281,11 @@ namespace Proto.Promises
                     ts_currentContext = currentContext;
                 }
 
-                private void WorkerBody(ParallelForEachAsyncContinuationType continuationType)
+                private void WorkerBody(bool fromMoveNext)
                 {
                     // The worker body. Each worker will execute this same body.
 
-                    if (continuationType == ParallelForEachAsyncContinuationType.InsideLock)
-                    {
-                        goto InsideLock;
-                    }
-                    else if (continuationType == ParallelForEachAsyncContinuationType.AfterMoveNext)
+                    if (fromMoveNext)
                     {
                         goto AfterMoveNext;
                     }
@@ -302,13 +293,7 @@ namespace Proto.Promises
                     // We use goto LoopStart instead of while(true) so that we can jump to the proper place before the loop starts.
                 LoopStart:
                     // Get the next element from the enumerator. This requires locking around MoveNextAsync/Current.
-                    if (!TryEnterLock())
-                    {
-                        // When the other worker exits the lock, it will schedule this worker to continue.
-                        return;
-                    }
-
-                InsideLock:
+                    // We already have acquired the lock at this point, either from the caller, or from the end of the loop.
                     if (_cancelationRef._state >= CancelationRef.State.Canceled)
                     {
                         ExitLockComplete();
@@ -366,6 +351,15 @@ namespace Proto.Promises
                     }
 
                     // The promise was already complete successfully. Rerun the loop synchronously.
+
+                    // We enter the lock at the end of the loop instead of the start so we can avoid
+                    // ExecutionContext copy in case the lock is unavailable, and so we can avoid
+                    // an extra branch at the start of the method.
+                    if (!TryEnterLock())
+                    {
+                        // When the other worker exits the lock, it will schedule this worker to continue.
+                        return;
+                    }
                     goto LoopStart;
                 }
 
@@ -385,8 +379,8 @@ namespace Proto.Promises
                         {
                             // Schedule the worker body to run again on the context, but without launching another worker.
                             ScheduleContextCallback(_synchronizationContext, this,
-                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerStartLoop(),
-                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerStartLoop()
+                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext(),
+                                obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext()
                             );
                             return;
                         }
