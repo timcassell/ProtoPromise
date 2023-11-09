@@ -141,7 +141,7 @@ namespace Proto.Promises
             return Promise<TSource>.ParallelForEach(source, captureValue, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
         }
 
-#if CSHARP_7_3_OR_NEWER
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
         /// <summary>Executes a for each operation on an <see cref="IAsyncEnumerable{T}"/> in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
         /// <typeparam name="TSource">The type of the data in the source.</typeparam>
         /// <param name="source">An enumerable data source.</param>
@@ -203,6 +203,9 @@ namespace Proto.Promises
         {
             return Promise<TSource>.ParallelForEachAsync(source, captureValue, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
         }
+
+#endif // NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if CSHARP_7_3_OR_NEWER
 
         /// <summary>Executes a for each operation on an <see cref="AsyncEnumerable{T}"/> in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
         /// <typeparam name="TSource">The type of the data in the source.</typeparam>
@@ -408,7 +411,7 @@ namespace Proto.Promises
             return Internal.ParallelForEach<TEnumerator, Internal.ParallelCaptureBody<T, TCapture>, T>(source, new Internal.ParallelCaptureBody<T, TCapture>(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
-#if CSHARP_7_3_OR_NEWER
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
         /// <summary>Executes a for each operation on an <see cref="IAsyncEnumerable{T}"/> in which iterations may run in parallel on <see cref="Promise.Config.BackgroundContext"/>.</summary>
         /// <param name="source">An enumerable data source.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
@@ -478,6 +481,9 @@ namespace Proto.Promises
 
             return ParallelForEachAsync(source.ToAsyncEnumerable(), captureValue, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
         }
+
+#endif // NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if CSHARP_7_3_OR_NEWER
 
         /// <summary>Executes a for each operation on an <see cref="AsyncEnumerable{T}"/> in which iterations may run in parallel on <see cref="Promise.Config.BackgroundContext"/>.</summary>
         /// <param name="source">An enumerable data source.</param>

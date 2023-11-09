@@ -1,4 +1,5 @@
-﻿#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+﻿// Unity 2020.2 added C#8 support.
+#if UNITY_2020_2_OR_NEWER || (CSHARP_7_3_OR_NEWER && !UNITY_5_5_OR_NEWER)
 
 using NUnit.Framework;
 using Proto.Promises;
