@@ -22,7 +22,7 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-#if NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
         internal static Promise ParallelForEachAsync<TParallelBody, TSource>(Linq.AsyncEnumerable<TSource> enumerable, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
@@ -528,5 +528,5 @@ namespace Proto.Promises
             } // class PromiseParallelForEach
         } // class PromiseRefBase
     } // class Internal
-#endif // NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#endif // CSHARP_7_3_OR_NEWER
 }

@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises.Linq
 {
-#if NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
     /// <summary>
     /// Provides extension methods for <see cref="AsyncEnumerable{T}"/>.
     /// </summary>
@@ -21,9 +21,18 @@ namespace Proto.Promises.Linq
         {
             return AsyncEnumerable<T>.Create(source, async (_source, writer, cancelationToken) =>
             {
-                await foreach (T item in System.Threading.Tasks.TaskAsyncEnumerableExtensions.WithCancellation(_source, cancelationToken.ToCancellationToken()).ConfigureAwait(false))
+                // await foreach is only available in C#8, so we have to iterate manually.
+                var asyncEnumerator = _source.GetAsyncEnumerator(cancelationToken.ToCancellationToken());
+                try
                 {
-                    await writer.YieldAsync(item);
+                    while (await asyncEnumerator.MoveNextAsync().ConfigureAwait(false))
+                    {
+                        await writer.YieldAsync(asyncEnumerator.Current);
+                    }
+                }
+                finally
+                {
+                    await asyncEnumerator.DisposeAsync().ConfigureAwait(false);
                 }
             });
         }
@@ -36,5 +45,5 @@ namespace Proto.Promises.Linq
         [MethodImpl(Internal.InlineOption)]
         public static AsyncEnumerable<T> ToAsyncEnumerable<T>(this AsyncEnumerable<T> source) => source;
     }
-#endif // NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#endif // NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
 }
