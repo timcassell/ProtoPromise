@@ -45,8 +45,12 @@ jobs:
         with:
           global-json-file: global.json
           
-      - name: Run Tests
-        run: dotnet test -c ${{ matrix.config }} -f net472 --logger "trx;logfilename=dotnet-test-results-net472-${{ matrix.config }}-${{ matrix.objectPooling.name }}.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} --results-directory "./TestResults"
+      - name: Run Analyzer Tests
+        run: dotnet test ./ProtoPromise.Analyzer/ProtoPromise.Analyzer.Test/ProtoPromise.Analyzer.Test.csproj -c ${{ matrix.config }} -f net472 --logger "Console;Verbosity=normal" --logger "trx;logfilename=dotnet-test-results-net472-${{ matrix.config }}-${{ matrix.objectPooling.name }}-analyzer.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} --results-directory "./TestResults"
+        timeout-minutes: 10
+          
+      - name: Run Core Tests
+        run: dotnet test ./ProtoPromiseTests/ProtoPromiseTests.csproj -c ${{ matrix.config }} -f net472 --logger "Console;Verbosity=normal" --logger "trx;logfilename=dotnet-test-results-net472-${{ matrix.config }}-${{ matrix.objectPooling.name }}-core.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} --results-directory "./TestResults"
         timeout-minutes: 120
 
       - uses: dorny/test-reporter@v1
