@@ -1,4 +1,5 @@
-﻿#if NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+﻿// Unity 2020.2 added C#8 support.
+#if UNITY_2020_2_OR_NEWER || (CSHARP_7_3_OR_NEWER && !UNITY_5_5_OR_NEWER)
 
 using NUnit.Framework;
 using Proto.Promises;
@@ -46,7 +47,7 @@ namespace ProtoPromiseTests.APIs
 
                 Assert.AreEqual(yieldCount, count);
             }, SynchronizationOption.Synchronous)
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
@@ -119,7 +120,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(runnerIsComplete);
 
             runner
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
             if (deferred.IsValid)
             {
@@ -160,7 +161,7 @@ namespace ProtoPromiseTests.APIs
 
                 Assert.LessOrEqual(count, 1);
             }, SynchronizationOption.Synchronous)
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
             Assert.True(didRunFinallyBlock);
         }
@@ -221,7 +222,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(runnerIsComplete);
 
             runner
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
             Assert.True(didCompleteFinallyBlock);
         }
@@ -252,7 +253,7 @@ namespace ProtoPromiseTests.APIs
             Assert.False(didIterate);
 
             runner
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
@@ -330,7 +331,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(runnerIsComplete);
 
             runner
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
             if (deferred.IsValid)
             {
@@ -411,30 +412,7 @@ namespace ProtoPromiseTests.APIs
                 runnerIsComplete = true;
             }, SynchronizationOption.Synchronous);
 
-            if (iteratorIsAsync || consumerIsAsync)
-            {
-                if (!SpinWait.SpinUntil(() =>
-                {
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return didAwaitDeferred;
-                }, TimeSpan.FromSeconds(1)))
-                {
-                    throw new TimeoutException();
-                }
-                Assert.False(runnerIsComplete);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() =>
-                {
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return runnerIsComplete;
-                }, TimeSpan.FromSeconds(1)))
-                {
-                    throw new TimeoutException();
-                }
-            }
-            int awaitCount = iteratorIsAsync && consumerIsAsync ? yieldCount * 2
+            int awaitCount = iteratorIsAsync && consumerIsAsync ? (yieldCount * 2) + 1
                 : iteratorIsAsync || consumerIsAsync ? yieldCount
                 : 0;
             for (int i = 0; i < awaitCount; i++)
@@ -448,28 +426,13 @@ namespace ProtoPromiseTests.APIs
                     throw new TimeoutException();
                 }
                 didAwaitDeferred = false;
+                Assert.False(runnerIsComplete);
                 var def = deferred;
                 deferred = Promise.NewDeferred();
                 def.Resolve();
             }
 
-            if (iteratorIsAsync)
-            {
-                if (!SpinWait.SpinUntil(() =>
-                {
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return didAwaitDeferred;
-                }, TimeSpan.FromSeconds(1)))
-                {
-                    throw new TimeoutException();
-                }
-                didAwaitDeferred = false;
-                Assert.False(runnerIsComplete);
-                var def = deferred;
-                deferred = Promise.NewDeferred();
-                def.Resolve();
-            }
-            if (consumerIsAsync)
+            if (iteratorIsAsync || consumerIsAsync)
             {
                 if (!SpinWait.SpinUntil(() =>
                 {
@@ -480,23 +443,12 @@ namespace ProtoPromiseTests.APIs
                     throw new TimeoutException();
                 }
                 Assert.False(runnerIsComplete);
-            }
-            else
-            {
-                if (!SpinWait.SpinUntil(() =>
-                {
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return runnerIsComplete;
-                }, TimeSpan.FromSeconds(1)))
-                {
-                    throw new TimeoutException();
-                }
             }
             deferred.Resolve();
-            Assert.True(runnerIsComplete);
 
             runner
-                .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            Assert.True(runnerIsComplete);
 
             if (deferred.IsValid)
             {

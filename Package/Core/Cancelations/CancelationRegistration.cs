@@ -158,7 +158,7 @@ namespace Proto.Promises
         }
     }
 
-#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP2_1_OR_GREATER || UNITY_2021_2_OR_NEWER
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
     partial struct CancelationRegistration : IAsyncDisposable
     {
         System.Threading.Tasks.ValueTask IAsyncDisposable.DisposeAsync()

@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace Proto.Promises.Linq
 {
-#if NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if CSHARP_7_3_OR_NEWER // We only expose AsyncEnumerable where custom async method builders are supported.
     /// <summary>
     /// Provides helper functions to create <see cref="AsyncEnumerable{T}"/> async streams.
     /// </summary>
@@ -41,7 +41,10 @@ namespace Proto.Promises.Linq
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly partial struct AsyncEnumerable<T> : IAsyncEnumerable<T>
+    public readonly partial struct AsyncEnumerable<T>
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+        : IAsyncEnumerable<T>
+#endif
     {
         /// <summary>
         /// Create a new <see cref="AsyncEnumerable{T}"/> async stream from the specified <paramref name="asyncIterator"/> function.
@@ -62,7 +65,7 @@ namespace Proto.Promises.Linq
         }
     }
 
-    public readonly partial struct AsyncEnumerable<T> : IAsyncEnumerable<T>
+    public readonly partial struct AsyncEnumerable<T>
     {
         private readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
         private readonly int _id;
@@ -99,7 +102,9 @@ namespace Proto.Promises.Linq
         [MethodImpl(Internal.InlineOption)]
         public AsyncEnumerator<T> GetAsyncEnumerator() => GetAsyncEnumerator(CancelationToken.None);
 
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
         IAsyncEnumerator<T> IAsyncEnumerable<T>.GetAsyncEnumerator(CancellationToken cancellationToken) => GetAsyncEnumerator(cancellationToken.ToCancelationToken());
+#endif
 
         /// <summary>
         /// Sets the <see cref="CancelationToken"/> to be passed to <see cref="AsyncEnumerable{T}.GetAsyncEnumerator(CancelationToken)"/> when iterating.
@@ -146,7 +151,10 @@ namespace Proto.Promises.Linq
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly struct AsyncEnumerator<T> : IAsyncEnumerator<T>
+    public readonly struct AsyncEnumerator<T>
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+        : IAsyncEnumerator<T>
+#endif
     {
         internal readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
         private readonly int _id;
@@ -179,8 +187,10 @@ namespace Proto.Promises.Linq
         public Promise DisposeAsync()
             => _target.DisposeAsync(_id);
 
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
         System.Threading.Tasks.ValueTask<bool> IAsyncEnumerator<T>.MoveNextAsync() => MoveNextAsync();
         System.Threading.Tasks.ValueTask IAsyncDisposable.DisposeAsync() => DisposeAsync();
+#endif
     }
 #endif
 }

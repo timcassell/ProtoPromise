@@ -54,9 +54,14 @@ jobs:
         with:
           global-json-file: global.json
           
-      - name: Run Tests
+      - name: Run Analyzer Tests
         run: |
-          dotnet test -c ${{ matrix.config }} -f net6.0 --logger "trx;logfilename=dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} -p:DeveloperMode=${{ matrix.devMode.value }} --results-directory "./TestResults"
+          dotnet test ./ProtoPromise.Analyzer/ProtoPromise.Analyzer.Test/ProtoPromise.Analyzer.Test.csproj -c ${{ matrix.config }} -f net6.0 --logger "Console;Verbosity=normal" --logger "trx;logfilename=dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}-analyzer.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} -p:DeveloperMode=${{ matrix.devMode.value }} --results-directory "./TestResults"
+        timeout-minutes: 10
+          
+      - name: Run Core Tests
+        run: |
+          dotnet test ./ProtoPromiseTests/ProtoPromiseTests.csproj -c ${{ matrix.config }} -f net6.0 --logger "Console;Verbosity=normal" --logger "trx;logfilename=dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}-core.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} -p:DeveloperMode=${{ matrix.devMode.value }} --results-directory "./TestResults"
         timeout-minutes: 120
 
       - uses: dorny/test-reporter@v1

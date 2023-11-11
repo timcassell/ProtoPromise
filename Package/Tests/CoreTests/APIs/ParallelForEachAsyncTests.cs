@@ -1,4 +1,4 @@
-﻿#if NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+﻿#if CSHARP_7_3_OR_NEWER
 
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
@@ -47,6 +47,12 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void InvalidArguments_ThrowsException()
         {
+            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(default(AsyncEnumerable<int>), null); });
+            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(default(AsyncEnumerable<int>), null, SynchronizationContext.Current); });
+            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(default(AsyncEnumerable<int>), 1, null); });
+            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(default(AsyncEnumerable<int>), 1, null, SynchronizationContext.Current); });
+
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, (item, cancellationToken) => Promise.Resolved()); });
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, (item, cancellationToken) => Promise.Resolved(), SynchronizationContext.Current); });
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, 1, (item, num, cancellationToken) => Promise.Resolved()); });
@@ -56,6 +62,7 @@ namespace ProtoPromiseTests.APIs
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), null, SynchronizationContext.Current); });
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), 1, null); });
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), 1, null, SynchronizationContext.Current); });
+#endif // NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
         }
 #endif
 
@@ -79,12 +86,12 @@ namespace ProtoPromiseTests.APIs
             Assert.False(box.Value);
             cts.Dispose();
 
-            AsyncEnumerable<int> MarkStartAsync(StrongBox<bool> box)
+            AsyncEnumerable<int> MarkStartAsync(StrongBox<bool> b)
             {
                 return AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
                 {
-                    Assert.False(box.Value);
-                    box.Value = true;
+                    Assert.False(b.Value);
+                    b.Value = true;
                     await writer.YieldAsync(0);
                 });
             }
@@ -547,6 +554,7 @@ namespace ProtoPromiseTests.APIs
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
         }
 
+#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
         private static async IAsyncEnumerable<int> EnumerableRangeIAsync(int start, int count, bool yield = true)
         {
             for (int i = start; i < start + count; i++)
@@ -559,6 +567,7 @@ namespace ProtoPromiseTests.APIs
                 yield return i;
             }
         }
+#endif // NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
 
         private static AsyncEnumerable<int> EnumerableRangeAsync(int start, int count, bool yield = true)
         {
@@ -579,4 +588,4 @@ namespace ProtoPromiseTests.APIs
 #endif // !UNITY_WEBGL
 }
 
-#endif // NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#endif // CSHARP_7_3_OR_NEWER

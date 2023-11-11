@@ -4,7 +4,7 @@ using System;
 
 namespace Proto.Promises.Async.CompilerServices
 {
-#if NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if CSHARP_7_3_OR_NEWER
     internal sealed class AsyncEnumerableDisposedException : Exception
     {
         // We can use a singleton instance since we never care about the stack trace.

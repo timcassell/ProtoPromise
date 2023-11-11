@@ -8,7 +8,7 @@ using System.Security;
 
 namespace Proto.Promises.Async.CompilerServices
 {
-#if NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if CSHARP_7_3_OR_NEWER
     /// <summary>
     /// Type used to create an <see cref="Linq.AsyncEnumerable{T}"/> with <see cref="Linq.AsyncEnumerable.Create{T}(Func{AsyncStreamWriter{T}, CancelationToken, AsyncEnumerableMethod})"/>.
     /// </summary>

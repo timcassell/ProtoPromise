@@ -12,8 +12,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-#if UNITY_5_5_OR_NEWER && !NET_LEGACY && !UNITY_2021_2_OR_NEWER
-// ITuple interface was added in net471, which Unity 2018 and 2019 don't support.
+#if UNITY_5_5_OR_NEWER && NET_STANDARD_2_0 && !UNITY_2021_2_OR_NEWER
+// ITuple interface was added in net471, which Unity 2018 and 2019 don't support with netstandard2.0 API.
 namespace System.Runtime.CompilerServices
 {
     public interface ITuple

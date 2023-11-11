@@ -428,7 +428,7 @@ namespace Proto.Promises
                 }
             }
 
-#if NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if CSHARP_7_3_OR_NEWER
             partial class PromiseParallelForEachAsync<TParallelBody, TSource>
             {
                 private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
@@ -460,7 +460,7 @@ namespace Proto.Promises
                     }
                 }
             }
-#endif // NET47_OR_GREATER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#endif // CSHARP_7_3_OR_NEWER
         }
 #else // PROMISE_DEBUG
         internal static string GetFormattedStacktrace(int skipFrames)
