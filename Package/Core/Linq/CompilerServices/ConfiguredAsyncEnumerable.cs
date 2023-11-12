@@ -50,7 +50,7 @@ namespace Proto.Promises.Async.CompilerServices
         /// <summary>
         /// Configures how awaits on the promises returned from an async iteration will be performed.
         /// </summary>
-        /// <param name="synchronizationContext">The context on which the continuations will be executed.</param>
+        /// <param name="synchronizationContext">The context on which the continuations will be executed. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the continuations to be invoked asynchronously.</param>
         /// <returns>The configured enumerable.</returns>
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(SynchronizationContext synchronizationContext, bool forceAsync = false)

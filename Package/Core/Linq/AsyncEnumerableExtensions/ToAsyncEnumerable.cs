@@ -1,24 +1,19 @@
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises.Linq
 {
 #if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
-    /// <summary>
-    /// Provides extension methods for <see cref="AsyncEnumerable{T}"/>.
-    /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    public static class AsyncEnumerableExtensions
+    public static partial class AsyncEnumerableExtensions
     {
         /// <summary>
         /// Convert the <see cref="IAsyncEnumerable{T}"/> <paramref name="source"/> to an <see cref="AsyncEnumerable{T}"/>.
         /// </summary>
         public static AsyncEnumerable<T> ToAsyncEnumerable<T>(this IAsyncEnumerable<T> source)
         {
+            ValidateArgument(source, nameof(source), 1);
+
             return AsyncEnumerable<T>.Create(source, async (_source, writer, cancelationToken) =>
             {
                 // await foreach is only available in C#8, so we have to iterate manually.
