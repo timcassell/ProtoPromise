@@ -10,7 +10,7 @@ using System.Threading;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromiseTests.APIs.Linq
 {
     public class AsyncEnumerableExtensionsTests
     {

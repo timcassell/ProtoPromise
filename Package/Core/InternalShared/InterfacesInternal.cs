@@ -51,5 +51,15 @@ namespace Proto.Promises
         {
             TResult Invoke(TArg arg);
         }
+
+        internal interface IAction<TArg1, TArg2>
+        {
+            void Invoke(TArg1 arg1, TArg2 arg2);
+        }
+
+        internal interface IFunc<TArg1, TArg2, TResult>
+        {
+            TResult Invoke(TArg1 arg1, TArg2 arg2);
+        }
     }
 }

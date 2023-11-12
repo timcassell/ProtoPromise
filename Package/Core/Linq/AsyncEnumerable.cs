@@ -1,3 +1,9 @@
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
 using Proto.Promises.Async.CompilerServices;
 using System;
 using System.Collections.Generic;
@@ -51,6 +57,8 @@ namespace Proto.Promises.Linq
         /// </summary>
         public static AsyncEnumerable<T> Create(Func<AsyncStreamWriter<T>, CancelationToken, AsyncEnumerableMethod> asyncIterator)
         {
+            ValidateArgument(asyncIterator, nameof(asyncIterator), 1);
+
             var enumerable = Internal.AsyncEnumerableImpl<T, Internal.AsyncIterator<T>>.GetOrCreate(new Internal.AsyncIterator<T>(asyncIterator));
             return new AsyncEnumerable<T>(enumerable);
         }
@@ -60,6 +68,8 @@ namespace Proto.Promises.Linq
         /// </summary>
         public static AsyncEnumerable<T> Create<TCapture>(TCapture captureValue, Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncEnumerableMethod> asyncIterator)
         {
+            ValidateArgument(asyncIterator, nameof(asyncIterator), 1);
+
             var enumerable = Internal.AsyncEnumerableImpl<T, Internal.AsyncIterator<T, TCapture>>.GetOrCreate(new Internal.AsyncIterator<T, TCapture>(captureValue, asyncIterator));
             return new AsyncEnumerable<T>(enumerable);
         }
@@ -126,7 +136,7 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Configures how awaits on the promises returned from an async iteration will be performed.
         /// </summary>
-        /// <param name="synchronizationContext">The context on which the continuations will be executed.</param>
+        /// <param name="synchronizationContext">The context on which the continuations will be executed. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the continuations to be invoked asynchronously.</param>
         /// <returns>The configured enumerable.</returns>
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(SynchronizationContext synchronizationContext, bool forceAsync = false)
@@ -192,5 +202,18 @@ namespace Proto.Promises.Linq
         System.Threading.Tasks.ValueTask IAsyncDisposable.DisposeAsync() => DisposeAsync();
 #endif
     }
+
+    partial struct AsyncEnumerable<T>
+    {
+        // Calls to this get compiled away in RELEASE mode
+        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+
+#if PROMISE_DEBUG
+        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+        {
+            Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        }
 #endif
+    }
+#endif // CSHARP_7_3_OR_NEWER
 }

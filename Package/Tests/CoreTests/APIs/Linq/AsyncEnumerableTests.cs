@@ -7,7 +7,7 @@ using Proto.Promises.Linq;
 using System;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromiseTests.APIs.Linq
 {
     public class AsyncEnumerableTests
     {
