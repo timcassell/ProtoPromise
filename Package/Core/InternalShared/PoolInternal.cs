@@ -8,7 +8,6 @@
 #pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE1005 // Delegate invocation can be simplified.
-#pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
 
 using System;
 using System.Diagnostics;
@@ -137,12 +136,12 @@ namespace Proto.Promises
                     Type<T>.Repool(obj);
                 }
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                else
+                else if (obj is IFinalizable)
                 {
                     // Finalizers are only used to validate that objects were used and released properly.
                     // If the object is being repooled, it means it was released properly. If pooling is disabled, we don't need the finalizer anymore.
                     // SuppressFinalize reduces pressure on the system when the GC runs.
-                    GC.SuppressFinalize(obj);
+                    SuppressAndUntrackFinalizable(obj.UnsafeAs<IFinalizable>());
                 }
 #endif
             }

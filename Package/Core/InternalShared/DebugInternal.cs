@@ -9,7 +9,6 @@
 #endif
 
 #pragma warning disable IDE0031 // Use null propagation
-#pragma warning disable IDE0054 // Use compound assignment
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
@@ -477,20 +476,6 @@ namespace Proto.Promises
         }
 #endif // PROMISE_DEBUG
 
-        internal static void Discard(IFinalizable waste)
-        {
-            GC.SuppressFinalize(waste);
-#if PROTO_PROMISE_DEVELOPER_MODE
-            lock (s_pooledObjects)
-            {
-                s_inUseObjects.Remove(waste);
-            }
-#endif
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            UntrackFinalizable(waste);
-#endif
-        }
-
         static partial void ThrowIfInPool(object obj);
         static partial void MaybeThrowIfInPool(object obj, bool shouldCheck);
 #if PROTO_PROMISE_DEVELOPER_MODE
@@ -599,8 +584,9 @@ namespace Proto.Promises
             TrackFinalizable(finalizable);
         }
 
-        // Calls to this will be compiled away if the mode is not DEBUG or DEVELOPER.
+        // Calls to these will be compiled away if the mode is not DEBUG or DEVELOPER.
         static partial void TrackFinalizable(IFinalizable finalizable);
+        static partial void Discard(IFinalizable waste);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
         partial interface IFinalizable
         {
@@ -608,9 +594,20 @@ namespace Proto.Promises
         }
 
         // Linked-list of weak references.
-        // This is only used in DEBUG or DEVELOPER mode, so we don't need to optimize this to be branch-less.
-        private static WeakNode s_trackers;
+        // Using sentinel object for branchless algorithm.
+        private static readonly WeakNode s_trackers = WeakNode.CreateSentinel();
         private static SpinLocker s_trackersLock;
+
+        static partial void Discard(IFinalizable waste)
+        {
+            SuppressAndUntrackFinalizable(waste);
+#if PROTO_PROMISE_DEVELOPER_MODE
+            lock (s_pooledObjects)
+            {
+                s_inUseObjects.Remove(waste);
+            }
+#endif
+        }
 
         static partial void TrackFinalizable(IFinalizable finalizable)
         {
@@ -619,45 +616,38 @@ namespace Proto.Promises
                 throw new System.InvalidOperationException("Cannot track same object more than once. " + finalizable);
             }
 
-            var newNode = new WeakNode(finalizable);
+            var newNode = WeakNode.GetOrCreate(finalizable);
             finalizable.Tracker = newNode;
             s_trackersLock.Enter();
-            if (s_trackers != null)
-            {
-                s_trackers._previous = newNode;
-                newNode._next = s_trackers;
-            }
-            s_trackers = newNode;
+            newNode.AddToList(s_trackers);
             s_trackersLock.Exit();
+        }
+
+        internal static void SuppressAndUntrackFinalizable(IFinalizable finalizable)
+        {
+            GC.SuppressFinalize(finalizable);
+            UntrackFinalizable(finalizable);
         }
 
         internal static void UntrackFinalizable(IFinalizable finalizable)
         {
             s_trackersLock.Enter();
             var node = finalizable.Tracker;
-            if (node._next != null)
-            {
-                node._next._previous = node._previous;
-            }
-            if (node._previous != null)
-            {
-                node._previous._next = node._next;
-                node._previous = null;
-            }
-            if (s_trackers == node)
-            {
-                s_trackers = node._next;
-            }
-            node._next = null;
+            finalizable.Tracker = null;
+            node.RemoveFromList();
             s_trackersLock.Exit();
+
+            node.Target = null;
+            WeakNode.Repool(node);
         }
 
         internal static void SuppressAllFinalizables()
         {
             s_trackersLock.Enter();
-            var node = s_trackers;
+            var node = s_trackers._next;
+            s_trackers.PointToSelf();
             s_trackersLock.Exit();
-            while (node != null)
+            while (node != s_trackers)
             {
                 var target = node.Target;
                 if (target != null)
@@ -673,10 +663,64 @@ namespace Proto.Promises
 #endif
         internal sealed class WeakNode : WeakReference
         {
-            internal WeakNode _previous;
+            // Creating WeakReferences is expensive, so we pool them.
+            private static readonly WeakNode s_pooledNodes = CreateSentinel();
+            private static SpinLocker s_pooledNodesLock;
+
+            internal static WeakNode CreateSentinel()
+            {
+                var node = new WeakNode(null);
+                node.PointToSelf();
+                return node;
+            }
+
+            private WeakNode _previous;
             internal WeakNode _next;
 
-            internal WeakNode(object target) : base(target) { }
+            private WeakNode(object target) : base(target) { }
+
+            internal static WeakNode GetOrCreate(IFinalizable target)
+            {
+                s_pooledNodesLock.Enter();
+                var newNode = s_pooledNodes._next;
+                if (newNode == s_pooledNodes)
+                {
+                    s_pooledNodesLock.Exit();
+                    return new WeakNode(target);
+                }
+
+                newNode.RemoveFromList();
+                s_pooledNodesLock.Exit();
+                newNode.Target = target;
+                return newNode;
+            }
+
+            internal static void Repool(WeakNode node)
+            {
+                s_pooledNodesLock.Enter();
+                node.AddToList(s_pooledNodes);
+                s_pooledNodesLock.Exit();
+            }
+
+            internal void PointToSelf()
+            {
+                _next = this;
+                _previous = this;
+            }
+
+            internal void RemoveFromList()
+            {
+                _previous._next = _next;
+                _next._previous = _previous;
+            }
+
+            internal void AddToList(WeakNode head)
+            {
+                _next = head;
+                _previous = head._previous;
+                _previous._next = this;
+                head._previous = this;
+            }
         }
 #endif // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
     } // class Internal

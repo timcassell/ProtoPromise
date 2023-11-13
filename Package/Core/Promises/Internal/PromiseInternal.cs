@@ -479,18 +479,26 @@ namespace Proto.Promises
                 HookupNewWaiter(promiseId, newPromise);
             }
 
+            [MethodImpl(InlineOption)]
             private void HookupNewWaiter(short promiseId, HandleablePromiseBase waiter)
             {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 try
                 {
                     HookupExistingWaiter(promiseId, waiter);
                 }
                 catch (InvalidOperationException)
                 {
-                    // We're already throwing InvalidOperationException here, so we don't want the waiter object to also add exceptions from its finalizer.
-                    Discard((IFinalizable) waiter);
+                    if (waiter is IFinalizable)
+                    {
+                        // We're already throwing InvalidOperationException here, so we don't want the waiter object to also add exceptions from its finalizer.
+                        Discard(waiter.UnsafeAs<IFinalizable>());
+                    }
                     throw;
                 }
+#else
+                HookupExistingWaiter(promiseId, waiter);
+#endif
             }
 
             internal void HookupExistingWaiter(short promiseId, HandleablePromiseBase waiter)
