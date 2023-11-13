@@ -644,18 +644,36 @@ namespace Proto.Promises
         internal static void SuppressAllFinalizables()
         {
             s_trackersLock.Enter();
-            var node = s_trackers._next;
+            var first = s_trackers._next;
+            var last = s_trackers._previous;
             s_trackers.PointToSelf();
             s_trackersLock.Exit();
-            while (node != s_trackers)
+
+            if (first == s_trackers)
+            {
+                return;
+            }
+
+            var node = first;
+            do
             {
                 var target = node.Target;
                 if (target != null)
                 {
                     GC.SuppressFinalize(target);
                 }
+                node.Target = null;
                 node = node._next;
+            } while (node != s_trackers);
+
+            WeakNode.Repool(first, last);
+
+#if PROTO_PROMISE_DEVELOPER_MODE
+            lock (s_pooledObjects)
+            {
+                s_inUseObjects.Clear();
             }
+#endif
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -674,7 +692,7 @@ namespace Proto.Promises
                 return node;
             }
 
-            private WeakNode _previous;
+            internal WeakNode _previous;
             internal WeakNode _next;
 
             private WeakNode(object target) : base(target) { }
@@ -702,6 +720,16 @@ namespace Proto.Promises
                 s_pooledNodesLock.Exit();
             }
 
+            internal static void Repool(WeakNode first, WeakNode last)
+            {
+                s_pooledNodesLock.Enter();
+                last._next = s_pooledNodes;
+                first._previous = s_pooledNodes._previous;
+                s_pooledNodes._previous._next = first;
+                s_pooledNodes._previous = last;
+                s_pooledNodesLock.Exit();
+            }
+
             internal void PointToSelf()
             {
                 _next = this;
@@ -723,9 +751,9 @@ namespace Proto.Promises
             }
         }
 #endif // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-    } // class Internal
+        } // class Internal
 
-    partial struct Promise
+        partial struct Promise
     {
         // Calls to these get compiled away in RELEASE mode
         partial void ValidateOperation(int skipFrames);

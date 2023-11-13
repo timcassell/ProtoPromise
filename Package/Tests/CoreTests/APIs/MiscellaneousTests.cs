@@ -14,6 +14,7 @@ using Proto.Promises;
 using ProtoPromiseTests.Concurrency;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace ProtoPromiseTests.APIs
@@ -938,6 +939,23 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 #endif // CSHARP_7_3_OR_NEWER
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void CreatePromiseWithoutAwait(Promise.Deferred deferred)
+        {
+            deferred.Promise.Then(() => { });
+        }
+
+        [Test]
+        public void ResetRuntimeContext_SuppressesUnobservedPromiseException()
+        {
+            var deferred = Promise.NewDeferred();
+            CreatePromiseWithoutAwait(deferred);
+            deferred.Resolve();
+
+            Promise.Manager.ResetRuntimeContext();
+            TestHelper.GcCollectAndWaitForFinalizers();
+        }
 
         [Test]
         public void PromiseMayBeResolvedWithNullable(
