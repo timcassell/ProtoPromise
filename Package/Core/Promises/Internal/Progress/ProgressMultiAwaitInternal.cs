@@ -38,10 +38,7 @@ namespace Proto.Promises
                 // This is necessary because the _rejectContainerOrPreviousOrLink field is used to hook up the registered promises chain,
                 // and it would not be possible to do that for multiple progress listeners with a single promise object. So we have to create dummy objects to register multiple.
 
-                private IndividualPromisePassThrough()
-                {
-                    TrackFinalizable(this);
-                }
+                private IndividualPromisePassThrough() { }
 
                 [MethodImpl(InlineOption)]
                 private static IndividualPromisePassThrough<TResult> GetOrCreate()
@@ -117,11 +114,19 @@ namespace Proto.Promises
             {
                 ~IndividualPromisePassThrough()
                 {
-                    if (!_disposed)
+                    try
                     {
-                        // For debugging. This should never happen.
-                        string message = "A IndividualPromisePassThrough was garbage collected without it being released.";
-                        ReportRejection(new UnreleasedObjectException(message), _owner);
+                        if (!_disposed)
+                        {
+                            // For debugging. This should never happen.
+                            string message = "A IndividualPromisePassThrough was garbage collected without it being released.";
+                            ReportRejection(new UnreleasedObjectException(message), _owner);
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        // This should never happen.
+                        ReportRejection(e, null);
                     }
                 }
             }
@@ -435,14 +440,23 @@ namespace Proto.Promises
 
                 ~ProgressMultiAwait()
                 {
-                    if (!_disposed)
+                    try
                     {
-                        // For debugging. This should never happen.
-                        string message = "A ProgressMultiAwait was garbage collected without it being released."
-                            + ", _currentReporter: " + _progressFields._currentReporter + ", _current: " + _progressFields._current
-                            + ", _min: " + _progressFields._min + ", _max: " + _progressFields._max
-                            ;
-                        ReportRejection(new UnreleasedObjectException(message), _owner);
+                        UntrackFinalizable(this);
+                        if (!_disposed)
+                        {
+                            // For debugging. This should never happen.
+                            string message = "A ProgressMultiAwait was garbage collected without it being released."
+                                + ", _currentReporter: " + _progressFields._currentReporter + ", _current: " + _progressFields._current
+                                + ", _min: " + _progressFields._min + ", _max: " + _progressFields._max
+                                ;
+                            ReportRejection(new UnreleasedObjectException(message), _owner);
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        // This should never happen.
+                        ReportRejection(e, null);
                     }
                 }
             }

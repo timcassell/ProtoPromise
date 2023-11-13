@@ -487,21 +487,7 @@ namespace Proto.Promises
             }
 #endif
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            s_trackersLock.Enter();
-            var node = waste.Tracker;
-            if (node._next != null)
-            {
-                node._next._previous = node._previous;
-            }
-            if (node._previous != null)
-            {
-                node._previous._next = node._next;
-            }
-            if (s_trackers == node)
-            {
-                s_trackers = node._next;
-            }
-            s_trackersLock.Exit();
+            UntrackFinalizable(waste);
 #endif
         }
 
@@ -642,6 +628,27 @@ namespace Proto.Promises
                 newNode._next = s_trackers;
             }
             s_trackers = newNode;
+            s_trackersLock.Exit();
+        }
+
+        internal static void UntrackFinalizable(IFinalizable finalizable)
+        {
+            s_trackersLock.Enter();
+            var node = finalizable.Tracker;
+            if (node._next != null)
+            {
+                node._next._previous = node._previous;
+            }
+            if (node._previous != null)
+            {
+                node._previous._next = node._next;
+                node._previous = null;
+            }
+            if (s_trackers == node)
+            {
+                s_trackers = node._next;
+            }
+            node._next = null;
             s_trackersLock.Exit();
         }
 

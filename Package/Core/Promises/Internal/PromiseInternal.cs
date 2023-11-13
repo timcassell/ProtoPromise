@@ -367,13 +367,17 @@ namespace Proto.Promises
                 set { _wasAwaitedorForgotten = value; }
             }
 
-            protected PromiseRefBase() { }
+            protected PromiseRefBase()
+            {
+                TrackFinalizable(this);
+            }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             ~PromiseRefBase()
             {
                 try
                 {
+                    UntrackFinalizable(this);
                     if (!WasAwaitedOrForgotten)
                     {
                         // Promise was not awaited or forgotten.
@@ -750,10 +754,7 @@ namespace Proto.Promises
 #endif
             internal sealed partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>, IFinalizable
             {
-                private PromiseMultiAwait()
-                {
-                    TrackFinalizable(this);
-                }
+                private PromiseMultiAwait() { }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 ~PromiseMultiAwait()
@@ -2104,6 +2105,7 @@ namespace Proto.Promises
                 {
                     try
                     {
+                        UntrackFinalizable(this);
                         if (!_disposed)
                         {
                             // For debugging. This should never happen.

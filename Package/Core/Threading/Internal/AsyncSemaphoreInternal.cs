@@ -271,22 +271,31 @@ namespace Proto.Promises
 
             ~AsyncSemaphoreInternal()
             {
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
+                try
                 {
-                    waiters = _waiters.MoveElementsToStack();
-                }
-                if (waiters.IsEmpty)
-                {
-                    return;
-                }
+                    UntrackFinalizable(this);
+                    ValueLinkedStack<AsyncEventPromiseBase> waiters;
+                    lock (this)
+                    {
+                        waiters = _waiters.MoveElementsToStack();
+                    }
+                    if (waiters.IsEmpty)
+                    {
+                        return;
+                    }
 
-                var rejectContainer = CreateRejectContainer(new Threading.AbandonedSemaphoreException("An AsyncSemaphore was collected with waiters still pending."), int.MinValue, null, this);
-                do
+                    var rejectContainer = CreateRejectContainer(new Threading.AbandonedSemaphoreException("An AsyncSemaphore was collected with waiters still pending."), int.MinValue, null, this);
+                    do
+                    {
+                        waiters.Pop().Reject(rejectContainer);
+                    } while (waiters.IsNotEmpty);
+                    rejectContainer.ReportUnhandled();
+                }
+                catch (Exception e)
                 {
-                    waiters.Pop().Reject(rejectContainer);
-                } while (waiters.IsNotEmpty);
-                rejectContainer.ReportUnhandled();
+                    // This should never happen.
+                    ReportRejection(e, this);
+                }
             }
         } // class AsyncSemaphoreInternal
 #endif // PROMISE_DEBUG

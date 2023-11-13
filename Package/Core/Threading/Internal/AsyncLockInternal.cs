@@ -761,7 +761,16 @@ namespace Proto.Promises
 
                     ~DisposedChecker()
                     {
-                        _owner.NotifyAbandoned("An AsyncLock.Key was never disposed.", this);
+                        try
+                        {
+                            Internal.UntrackFinalizable(this);
+                            _owner.NotifyAbandoned("An AsyncLock.Key was never disposed.", this);
+                        }
+                        catch (Exception e)
+                        {
+                            // This should never happen.
+                            Internal.ReportRejection(e, this);
+                        }
                     }
 
                     internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, long key, CancelationToken cancelationToken, SynchronizationContext callerContext)

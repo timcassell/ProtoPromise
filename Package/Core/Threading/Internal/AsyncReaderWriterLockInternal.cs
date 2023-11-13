@@ -1883,7 +1883,16 @@ namespace Proto.Promises
 
                 ~DisposedChecker()
                 {
-                    _owner.NotifyAbandoned("An " + AsyncReaderWriterLockInternal.GetKeyTypeString(_keyType) + " was never disposed.", this);
+                    try
+                    {
+                        Internal.UntrackFinalizable(this);
+                        _owner.NotifyAbandoned("An " + AsyncReaderWriterLockInternal.GetKeyTypeString(_keyType) + " was never disposed.", this);
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never happen.
+                        Internal.ReportRejection(e, this);
+                    }
                 }
 
                 internal void ValidateNotDisposed()

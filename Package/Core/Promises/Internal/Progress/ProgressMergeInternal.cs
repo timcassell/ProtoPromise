@@ -287,6 +287,7 @@ namespace Proto.Promises
                 {
                     try
                     {
+                        UntrackFinalizable(this);
                         if (!_disposed)
                         {
                             // For debugging. This should never happen.
@@ -536,6 +537,7 @@ namespace Proto.Promises
                 {
                     try
                     {
+                        UntrackFinalizable(this);
                         if (!_disposed)
                         {
                             // For debugging. This should never happen.

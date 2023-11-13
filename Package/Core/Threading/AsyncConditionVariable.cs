@@ -143,30 +143,39 @@ namespace Proto.Promises.Threading
         ~AsyncConditionVariable()
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
         {
-            var locker = _lock;
-            if (locker == null)
+            try
             {
-                return;
+                Internal.UntrackFinalizable(this);
+                var locker = _lock;
+                if (locker == null)
+                {
+                    return;
+                }
+                // If the associated lock was abandoned, report it. Otherwise report this abandoned.
+                var rejectContainer = locker._abandonedRejection;
+                bool lockWasAbandoned = rejectContainer != null;
+                if (!lockWasAbandoned)
+                {
+                    rejectContainer = Internal.CreateRejectContainer(new AbandonedConditionVariableException("An AsyncConditionVariable was collected with waiters still pending."), int.MinValue, null, this);
+                }
+                Internal.ValueLinkedStack<Internal.IAsyncLockPromise> queue;
+                lock (locker)
+                {
+                    queue = _queue.MoveElementsToStack();
+                }
+                while (queue.IsNotEmpty)
+                {
+                    queue.Pop().Reject(rejectContainer);
+                }
+                if (!lockWasAbandoned)
+                {
+                    rejectContainer.ReportUnhandled();
+                }
             }
-            // If the associated lock was abandoned, report it. Otherwise report this abandoned.
-            var rejectContainer = locker._abandonedRejection;
-            bool lockWasAbandoned = rejectContainer != null;
-            if (!lockWasAbandoned)
+            catch (Exception e)
             {
-                rejectContainer = Internal.CreateRejectContainer(new AbandonedConditionVariableException("An AsyncConditionVariable was collected with waiters still pending."), int.MinValue, null, this);
-            }
-            Internal.ValueLinkedStack<Internal.IAsyncLockPromise> queue;
-            lock (locker)
-            {
-                queue = _queue.MoveElementsToStack();
-            }
-            while (queue.IsNotEmpty)
-            {
-                queue.Pop().Reject(rejectContainer);
-            }
-            if (!lockWasAbandoned)
-            {
-                rejectContainer.ReportUnhandled();
+                // This should never happen.
+                Internal.ReportRejection(e, this);
             }
         }
     }
