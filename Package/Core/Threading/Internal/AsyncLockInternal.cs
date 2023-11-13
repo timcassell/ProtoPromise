@@ -13,6 +13,7 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using Proto.Promises.Threading;
@@ -735,9 +736,10 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
-                private sealed class DisposedChecker : IDisposable, Internal.ITraceable
+                private sealed class DisposedChecker : IDisposable, Internal.ITraceable, Internal.IFinalizable
                 {
                     public Internal.CausalityTrace Trace { get; set; }
+                    Internal.WeakNode Internal.IFinalizable.Tracker { get; set; }
 
                     internal readonly Internal.AsyncLockInternal _owner;
                     private int _isDisposedFlag;
@@ -754,6 +756,7 @@ namespace Proto.Promises
                         {
                             Trace = traceable.Trace;
                         }
+                        Internal.TrackFinalizableInternal(this);
                     }
 
                     ~DisposedChecker()

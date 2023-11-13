@@ -9,6 +9,7 @@ namespace Proto.Promises
     internal static partial class Internal
     {
         internal partial interface ITraceable { }
+        internal partial interface IFinalizable { }
 
         internal interface ILinked<T> where T : class, ILinked<T>
         {

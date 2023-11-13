@@ -86,7 +86,7 @@ namespace ProtoPromiseTests
         {
             if (_foregroundContext == null)
             {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                 Internal.TrackObjectsForRelease();
 #endif
 
@@ -167,7 +167,7 @@ namespace ProtoPromiseTests
 #endif
             }
 
-#if PROMISE_DEBUG
+#if PROTO_PROMISE_DEVELOPER_MODE
             Internal.AssertAllObjectsReleased();
 #endif
 

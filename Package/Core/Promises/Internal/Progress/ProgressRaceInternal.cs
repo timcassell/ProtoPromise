@@ -66,29 +66,12 @@ namespace Proto.Promises
 #endif
             private sealed partial class ProgressRacer : ProgressPassThrough
             {
-                private ProgressRacer() { }
-
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ~ProgressRacer()
+                private ProgressRacer()
                 {
-                    try
-                    {
-                        if (!_disposed)
-                        {
-                            // For debugging. This should never happen.
-                            string message = "A RaceProgressPassThrough was garbage collected without it being released."
-                                + " _targetRacePromise: " + _targetRacePromise + ", _currentProgress: " + _currentProgress
-                                ;
-                            ReportRejection(new UnreleasedObjectException(message), _targetRacePromise);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // This should never happen.
-                        ReportRejection(e, _targetRacePromise);
-                    }
+                    Track();
                 }
-#endif
+
+                partial void Track();
 
                 [MethodImpl(InlineOption)]
                 private static ProgressRacer GetOrCreate()
@@ -107,7 +90,7 @@ namespace Proto.Promises
                     racer._passThroughs = passThroughs;
                     racer._currentProgress = 0f;
                     racer._retainCounter = 1; // We have 1 retain during hookup in case of promise completions on other threads.
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     racer._disposed = false;
 #endif
                     return racer;
@@ -115,7 +98,7 @@ namespace Proto.Promises
 
                 private void Dispose()
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
 #endif
                     // Don't nullify target, if it is accessed after this is disposed, the checks on it will ensure nothing happens.
@@ -207,15 +190,17 @@ namespace Proto.Promises
                 }
             } // ProgressRacer
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class RaceProgressPassThrough : ProgressPassThrough
+#if PROTO_PROMISE_DEVELOPER_MODE
+            partial class ProgressRacer : ProgressPassThrough, IFinalizable
             {
-                private RaceProgressPassThrough() { }
+                WeakNode IFinalizable.Tracker { get; set; }
 
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ~RaceProgressPassThrough()
+                partial void Track()
+                {
+                    TrackFinalizable(this);
+                }
+
+                ~ProgressRacer()
                 {
                     try
                     {
@@ -223,20 +208,31 @@ namespace Proto.Promises
                         {
                             // For debugging. This should never happen.
                             string message = "A RaceProgressPassThrough was garbage collected without it being released."
-                                + ", _target: " + _target + ", _index: " + _index
-                                + ", _currentReporter: " + _progressFields._currentReporter + ", _current: " + _progressFields._current
-                                + ", _min: " + _progressFields._min + ", _max: " + _progressFields._max
+                                + " _targetRacePromise: " + _targetRacePromise + ", _currentProgress: " + _currentProgress
                                 ;
-                            ReportRejection(new UnreleasedObjectException(message), null);
+                            ReportRejection(new UnreleasedObjectException(message), _targetRacePromise);
                         }
                     }
                     catch (Exception e)
                     {
                         // This should never happen.
-                        ReportRejection(e, null);
+                        ReportRejection(e, _targetRacePromise);
                     }
                 }
+            }
 #endif
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class RaceProgressPassThrough : ProgressPassThrough
+            {
+                private RaceProgressPassThrough()
+                {
+                    Track();
+                }
+
+                partial void Track();
 
                 [MethodImpl(InlineOption)]
                 private static RaceProgressPassThrough GetOrCreate()
@@ -253,7 +249,7 @@ namespace Proto.Promises
                     passThrough._next = null;
                     passThrough._target = target;
                     passThrough._index = index;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     passThrough._disposed = false;
 #endif
                     return passThrough;
@@ -261,7 +257,7 @@ namespace Proto.Promises
 
                 internal void Dispose()
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
 #endif
                     _target = null;
@@ -442,6 +438,40 @@ namespace Proto.Promises
                     racer.Handle(handler, rejectContainer, state, _index);
                 }
             } // RaceProgressPassThrough
+
+#if PROTO_PROMISE_DEVELOPER_MODE
+            partial class RaceProgressPassThrough : ProgressPassThrough, IFinalizable
+            {
+                WeakNode IFinalizable.Tracker { get; set; }
+
+                partial void Track()
+                {
+                    TrackFinalizable(this);
+                }
+
+                ~RaceProgressPassThrough()
+                {
+                    try
+                    {
+                        if (!_disposed)
+                        {
+                            // For debugging. This should never happen.
+                            string message = "A RaceProgressPassThrough was garbage collected without it being released."
+                                + ", _target: " + _target + ", _index: " + _index
+                                + ", _currentReporter: " + _progressFields._currentReporter + ", _current: " + _progressFields._current
+                                + ", _min: " + _progressFields._min + ", _max: " + _progressFields._max
+                                ;
+                            ReportRejection(new UnreleasedObjectException(message), null);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never happen.
+                        ReportRejection(e, null);
+                    }
+                }
+            }
+#endif
         } // PromiseRefBase
     } // Internal
 }

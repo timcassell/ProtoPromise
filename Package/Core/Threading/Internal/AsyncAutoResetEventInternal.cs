@@ -14,6 +14,7 @@
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
@@ -77,7 +78,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncAutoResetEventInternal : ITraceable
+        internal sealed partial class AsyncAutoResetEventInternal : ITraceable
         {
             // This must not be readonly.
             private ValueLinkedQueue<AsyncEventPromiseBase> _waiterQueue = new ValueLinkedQueue<AsyncEventPromiseBase>();
@@ -86,32 +87,10 @@ namespace Proto.Promises
             internal AsyncAutoResetEventInternal(bool initialState)
             {
                 _isSet = initialState;
-                SetCreatedStacktrace(this, 2);
+                Track();
             }
 
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-
-            ~AsyncAutoResetEventInternal()
-            {
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
-                {
-                    waiters = _waiterQueue.MoveElementsToStack();
-                }
-                if (waiters.IsEmpty)
-                {
-                    return;
-                }
-
-                var rejectContainer = CreateRejectContainer(new Threading.AbandonedResetEventException("An AsyncAutoResetEvent was collected with waiters still pending."), int.MinValue, null, this);
-                do
-                {
-                    waiters.Pop().Reject(rejectContainer);
-                } while (waiters.IsNotEmpty);
-                rejectContainer.ReportUnhandled();
-            }
-#endif // PROMISE_DEBUG
+            partial void Track();
 
             internal Promise WaitAsync()
             {
@@ -239,5 +218,39 @@ namespace Proto.Promises
                 }
             }
         } // class AsyncAutoResetEventInternal
+
+#if PROMISE_DEBUG
+        partial class AsyncAutoResetEventInternal : ITraceable, IFinalizable
+        {
+            CausalityTrace ITraceable.Trace { get; set; }
+            WeakNode IFinalizable.Tracker { get; set; }
+
+            partial void Track()
+            {
+                SetCreatedStacktrace(this, 3);
+                TrackFinalizable(this);
+            }
+
+            ~AsyncAutoResetEventInternal()
+            {
+                ValueLinkedStack<AsyncEventPromiseBase> waiters;
+                lock (this)
+                {
+                    waiters = _waiterQueue.MoveElementsToStack();
+                }
+                if (waiters.IsEmpty)
+                {
+                    return;
+                }
+
+                var rejectContainer = CreateRejectContainer(new Threading.AbandonedResetEventException("An AsyncAutoResetEvent was collected with waiters still pending."), int.MinValue, null, this);
+                do
+                {
+                    waiters.Pop().Reject(rejectContainer);
+                } while (waiters.IsNotEmpty);
+                rejectContainer.ReportUnhandled();
+            }
+        } // class AsyncAutoResetEventInternal
+#endif // PROMISE_DEBUG
     } // class Internal
 } // namespace Proto.Promises

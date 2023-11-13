@@ -279,7 +279,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract partial class PromiseRefBase : HandleablePromiseBase, ITraceable
+        internal abstract partial class PromiseRefBase : HandleablePromiseBase, ITraceable, IFinalizable
         {
             internal void HandleSelfWithoutResult(PromiseRefBase handler, object rejectContainer, Promise.State state)
             {
@@ -369,6 +369,7 @@ namespace Proto.Promises
 
             protected PromiseRefBase() { }
 
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             ~PromiseRefBase()
             {
                 try
@@ -391,6 +392,7 @@ namespace Proto.Promises
                     ReportRejection(e, this);
                 }
             }
+#endif
 
             [MethodImpl(InlineOption)]
             protected void ResetWithoutStacktrace()
@@ -482,7 +484,7 @@ namespace Proto.Promises
                 catch (InvalidOperationException)
                 {
                     // We're already throwing InvalidOperationException here, so we don't want the waiter object to also add exceptions from its finalizer.
-                    Discard(waiter);
+                    Discard((IFinalizable) waiter);
                     throw;
                 }
             }
@@ -746,10 +748,14 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
+            internal sealed partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>, IFinalizable
             {
-                private PromiseMultiAwait() { }
+                private PromiseMultiAwait()
+                {
+                    TrackFinalizable(this);
+                }
 
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 ~PromiseMultiAwait()
                 {
                     try
@@ -772,6 +778,7 @@ namespace Proto.Promises
                         ReportRejection(e, this);
                     }
                 }
+#endif
 
                 [MethodImpl(InlineOption)]
                 new private void Reset(ushort depth)
@@ -2026,29 +2033,12 @@ namespace Proto.Promises
                     }
                 }
 
-                private PromisePassThrough() { }
-
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ~PromisePassThrough()
+                private PromisePassThrough()
                 {
-                    try
-                    {
-                        if (!_disposed)
-                        {
-                            // For debugging. This should never happen.
-                            string message = "A PromisePassThrough was garbage collected without it being released."
-                                + " _id: " + _id + ", _index: " + _index + ", Owner: " + Owner + ", _depth: " + _depth
-                                ;
-                            ReportRejection(new UnreleasedObjectException(message), Owner);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // This should never happen.
-                        ReportRejection(e, Owner);
-                    }
+                    Track();
                 }
-#endif
+
+                partial void Track();
 
                 [MethodImpl(InlineOption)]
                 private static PromisePassThrough GetOrCreate()
@@ -2067,7 +2057,7 @@ namespace Proto.Promises
                     passThrough._id = owner._id;
                     passThrough._index = index;
                     passThrough._depth = owner.Depth;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     passThrough._disposed = false;
 #endif
                     return passThrough;
@@ -2091,7 +2081,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
 
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
 #endif
                     _owner = null;
@@ -2099,6 +2089,38 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
             } // PromisePassThrough
+
+#if PROTO_PROMISE_DEVELOPER_MODE
+            partial class PromisePassThrough : IFinalizable
+            {
+                WeakNode IFinalizable.Tracker { get; set; }
+
+                partial void Track()
+                {
+                    TrackFinalizable(this);
+                }
+
+                ~PromisePassThrough()
+                {
+                    try
+                    {
+                        if (!_disposed)
+                        {
+                            // For debugging. This should never happen.
+                            string message = "A PromisePassThrough was garbage collected without it being released."
+                                + " _id: " + _id + ", _index: " + _index + ", Owner: " + Owner + ", _depth: " + _depth
+                                ;
+                            ReportRejection(new UnreleasedObjectException(message), Owner);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never happen.
+                        ReportRejection(e, Owner);
+                    }
+                }
+            }
+#endif
 
             internal static void MaybeMarkAwaitedAndDispose(PromiseRefBase promise, short id, bool suppressRejection)
             {

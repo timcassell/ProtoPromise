@@ -31,7 +31,7 @@ namespace Proto.Promises.Threading
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public sealed class AsyncConditionVariable : Internal.ITraceable
+    public sealed partial class AsyncConditionVariable : Internal.ITraceable
     {
         // These must not be readonly.
         internal Internal.ValueLinkedQueue<Internal.IAsyncLockPromise> _queue = new Internal.ValueLinkedQueue<Internal.IAsyncLockPromise>();
@@ -40,47 +40,12 @@ namespace Proto.Promises.Threading
         /// <summary>
         /// Creates a new async-compatible condition variable.
         /// </summary>
-#if PROMISE_DEBUG
         public AsyncConditionVariable()
         {
-            Internal.SetCreatedStacktraceInternal(this, 1);
+            Track();
         }
 
-        Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
-
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-        ~AsyncConditionVariable()
-#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
-        {
-            var locker = _lock;
-            if (locker == null)
-            {
-                return;
-            }
-            // If the associated lock was abandoned, report it. Otherwise report this abandoned.
-            var rejectContainer = locker._abandonedRejection;
-            bool lockWasAbandoned = rejectContainer != null;
-            if (!lockWasAbandoned)
-            {
-                rejectContainer = Internal.CreateRejectContainer(new AbandonedConditionVariableException("An AsyncConditionVariable was collected with waiters still pending."), int.MinValue, null, this);
-            }
-            Internal.ValueLinkedStack<Internal.IAsyncLockPromise> queue;
-            lock (locker)
-            {
-                queue = _queue.MoveElementsToStack();
-            }
-            while (queue.IsNotEmpty)
-            {
-                queue.Pop().Reject(rejectContainer);
-            }
-            if (!lockWasAbandoned)
-            {
-                rejectContainer.ReportUnhandled();
-            }
-        }
-#else // PROMISE_DEBUG
-        public AsyncConditionVariable() { }
-#endif
+        partial void Track();
 
         /// <summary>
         /// Release the lock and asynchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
@@ -160,6 +125,52 @@ namespace Proto.Promises.Threading
             asyncLockKey.PulseAll(this);
         }
     } // class AsyncConditionVariable
+
+#if PROMISE_DEBUG
+    partial class AsyncConditionVariable : Internal.IFinalizable
+    {
+        Internal.WeakNode Internal.IFinalizable.Tracker { get; set; }
+
+        partial void Track()
+        {
+            Internal.SetCreatedStacktraceInternal(this, 1);
+            Internal.TrackFinalizableInternal(this);
+        }
+
+        Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+        ~AsyncConditionVariable()
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
+        {
+            var locker = _lock;
+            if (locker == null)
+            {
+                return;
+            }
+            // If the associated lock was abandoned, report it. Otherwise report this abandoned.
+            var rejectContainer = locker._abandonedRejection;
+            bool lockWasAbandoned = rejectContainer != null;
+            if (!lockWasAbandoned)
+            {
+                rejectContainer = Internal.CreateRejectContainer(new AbandonedConditionVariableException("An AsyncConditionVariable was collected with waiters still pending."), int.MinValue, null, this);
+            }
+            Internal.ValueLinkedStack<Internal.IAsyncLockPromise> queue;
+            lock (locker)
+            {
+                queue = _queue.MoveElementsToStack();
+            }
+            while (queue.IsNotEmpty)
+            {
+                queue.Pop().Reject(rejectContainer);
+            }
+            if (!lockWasAbandoned)
+            {
+                rejectContainer.ReportUnhandled();
+            }
+        }
+    }
+#endif // PROMISE_DEBUG
 
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 } // namespace Proto.Promises.Threading

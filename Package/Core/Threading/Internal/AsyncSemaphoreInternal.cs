@@ -14,6 +14,7 @@
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
@@ -77,7 +78,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncSemaphoreInternal : ITraceable
+        internal sealed partial class AsyncSemaphoreInternal : ITraceable
         {
             // This must not be readonly.
             private ValueLinkedQueue<AsyncEventPromiseBase> _waiters = new ValueLinkedQueue<AsyncEventPromiseBase>();
@@ -88,32 +89,10 @@ namespace Proto.Promises
             {
                 _currentCount = initialCount;
                 _maxCount = maxCount;
-                SetCreatedStacktrace(this, 2);
+                Track();
             }
 
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-
-            ~AsyncSemaphoreInternal()
-            {
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
-                {
-                    waiters = _waiters.MoveElementsToStack();
-                }
-                if (waiters.IsEmpty)
-                {
-                    return;
-                }
-
-                var rejectContainer = CreateRejectContainer(new Threading.AbandonedSemaphoreException("An AsyncSemaphore was collected with waiters still pending."), int.MinValue, null, this);
-                do
-                {
-                    waiters.Pop().Reject(rejectContainer);
-                } while (waiters.IsNotEmpty);
-                rejectContainer.ReportUnhandled();
-            }
-#endif // PROMISE_DEBUG
+            partial void Track();
 
             internal Promise WaitAsync()
             {
@@ -277,5 +256,39 @@ namespace Proto.Promises
                 }
             }
         } // class AsyncSemaphoreInternal
+
+#if PROMISE_DEBUG
+        partial class AsyncSemaphoreInternal : ITraceable, IFinalizable
+        {
+            CausalityTrace ITraceable.Trace { get; set; }
+            WeakNode IFinalizable.Tracker { get; set; }
+
+            partial void Track()
+            {
+                SetCreatedStacktrace(this, 3);
+                TrackFinalizable(this);
+            }
+
+            ~AsyncSemaphoreInternal()
+            {
+                ValueLinkedStack<AsyncEventPromiseBase> waiters;
+                lock (this)
+                {
+                    waiters = _waiters.MoveElementsToStack();
+                }
+                if (waiters.IsEmpty)
+                {
+                    return;
+                }
+
+                var rejectContainer = CreateRejectContainer(new Threading.AbandonedSemaphoreException("An AsyncSemaphore was collected with waiters still pending."), int.MinValue, null, this);
+                do
+                {
+                    waiters.Pop().Reject(rejectContainer);
+                } while (waiters.IsNotEmpty);
+                rejectContainer.ReportUnhandled();
+            }
+        } // class AsyncSemaphoreInternal
+#endif // PROMISE_DEBUG
     } // class Internal
 } // namespace Proto.Promises

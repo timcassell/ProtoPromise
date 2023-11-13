@@ -87,7 +87,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed partial class CancelationRef : CancelationLinkedListNode, ITraceable
+        internal sealed partial class CancelationRef : CancelationLinkedListNode, ITraceable, IFinalizable
         {
             internal static readonly CancelationRef s_canceledSentinel;
 
@@ -110,8 +110,11 @@ namespace Proto.Promises
             private CancelationRef(byte userRetainIncrementor)
             {
                 _userRetainIncrementor = userRetainIncrementor;
+                TrackFinalizable(this);
             }
 
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            WeakNode IFinalizable.Tracker { get; set; }
             ~CancelationRef()
             {
                 try
@@ -135,6 +138,7 @@ namespace Proto.Promises
                     ReportRejection(e, this);
                 }
             }
+#endif
 
             internal enum State : byte
             {
@@ -657,7 +661,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class CallbackNodeImpl<TCancelable> : CancelationCallbackNode, ITraceable
+            private sealed class CallbackNodeImpl<TCancelable> : CancelationCallbackNode, ITraceable, IFinalizable
                 where TCancelable : ICancelable
             {
 #if PROMISE_DEBUG
@@ -666,9 +670,14 @@ namespace Proto.Promises
 
                 private TCancelable _cancelable;
 
-                private CallbackNodeImpl() { }
+                private CallbackNodeImpl()
+                {
+                    TrackFinalizable(this);
+                }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                WeakNode IFinalizable.Tracker { get; set; }
+
                 volatile private bool _disposed;
 
                 ~CallbackNodeImpl()
@@ -751,16 +760,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class LinkedCancelationNode : CancelationCallbackNodeBase, ILinked<LinkedCancelationNode>
+            private sealed class LinkedCancelationNode : CancelationCallbackNodeBase, ILinked<LinkedCancelationNode>, IFinalizable
             {
                 LinkedCancelationNode ILinked<LinkedCancelationNode>.Next { get; set; }
 
                 private CancelationRef _target;
                 volatile private CancelationRef _parent;
 
-                private LinkedCancelationNode() { }
+                private LinkedCancelationNode()
+                {
+                    TrackFinalizable(this);
+                }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                WeakNode IFinalizable.Tracker { get; set; }
+
                 volatile private bool _disposed;
 
                 ~LinkedCancelationNode()

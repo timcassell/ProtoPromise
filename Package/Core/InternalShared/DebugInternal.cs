@@ -9,7 +9,10 @@
 #endif
 
 #pragma warning disable IDE0031 // Use null propagation
+#pragma warning disable IDE0054 // Use compound assignment
 #pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
 
 using System;
 using System.Collections.Generic;
@@ -246,7 +249,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal class CausalityTrace
+        internal sealed class CausalityTrace
         {
             private readonly StackTrace _stackTrace;
             private readonly CausalityTrace _next;
@@ -473,6 +476,202 @@ namespace Proto.Promises
             return null;
         }
 #endif // PROMISE_DEBUG
+
+        internal static void Discard(IFinalizable waste)
+        {
+            GC.SuppressFinalize(waste);
+#if PROTO_PROMISE_DEVELOPER_MODE
+            lock (s_pooledObjects)
+            {
+                s_inUseObjects.Remove(waste);
+            }
+#endif
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            s_trackersLock.Enter();
+            var node = waste.Tracker;
+            if (node._next != null)
+            {
+                node._next._previous = node._previous;
+            }
+            if (node._previous != null)
+            {
+                node._previous._next = node._next;
+            }
+            if (s_trackers == node)
+            {
+                s_trackers = node._next;
+            }
+            s_trackersLock.Exit();
+#endif
+        }
+
+        static partial void ThrowIfInPool(object obj);
+        static partial void MaybeThrowIfInPool(object obj, bool shouldCheck);
+#if PROTO_PROMISE_DEVELOPER_MODE
+        internal static bool s_trackObjectsForRelease = false;
+        private static readonly HashSet<object> s_pooledObjects = new HashSet<object>();
+        private static readonly HashSet<object> s_inUseObjects = new HashSet<object>();
+
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+        static unsafe Internal() { AddClearPoolListener(&ClearObjectTracking); }
+#else
+        static Internal() { AddClearPoolListener(ClearObjectTracking); }
+#endif
+
+        private static void ClearObjectTracking()
+        {
+            lock (s_pooledObjects)
+            {
+                s_pooledObjects.Clear();
+            }
+        }
+
+        internal static void MarkInPool(object obj)
+        {
+            lock (s_pooledObjects)
+            {
+                if (Promise.Config.ObjectPoolingEnabled && !s_pooledObjects.Add(obj))
+                {
+                    throw new Exception("Same object was added to the pool twice: " + obj);
+                }
+                s_inUseObjects.Remove(obj);
+            }
+        }
+
+        internal static void MarkNotInPool(object obj)
+        {
+            if (obj == null || obj == PromiseRefBase.InvalidAwaitSentinel.s_instance)
+            {
+                return;
+            }
+            lock (s_pooledObjects)
+            {
+                s_pooledObjects.Remove(obj);
+                if (s_trackObjectsForRelease && !s_inUseObjects.Add(obj))
+                {
+                    throw new Exception("Same object was taken from the pool twice: " + obj);
+                }
+            }
+        }
+
+        static partial void ThrowIfInPool(object obj)
+        {
+            lock (s_pooledObjects)
+            {
+                if (s_pooledObjects.Contains(obj))
+                {
+                    throw new Exception("Object is in pool: " + obj);
+                }
+            }
+        }
+
+        static partial void MaybeThrowIfInPool(object obj, bool shouldCheck)
+        {
+            if (shouldCheck)
+            {
+                ThrowIfInPool(obj);
+            }
+        }
+
+        // This is used in unit testing, because finalizers are not guaranteed to run, even when calling `GC.WaitForPendingFinalizers()`.
+        internal static void TrackObjectsForRelease()
+        {
+            s_trackObjectsForRelease = true;
+        }
+
+        internal static void AssertAllObjectsReleased()
+        {
+            lock (s_pooledObjects)
+            {
+                if (s_inUseObjects.Count > 0)
+                {
+                    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                    sb.AppendLine(s_inUseObjects.Count + " objects not released:");
+                    sb.AppendLine();
+                    ITraceable traceable = null;
+                    int counter = 0;
+                    foreach (var obj in s_inUseObjects)
+                    {
+                        // Only capture up to 100 objects to prevent overloading the test error output.
+                        if (++counter <= 100)
+                        {
+                            traceable = traceable ?? obj as ITraceable;
+                            sb.AppendLine(obj.ToString());
+                        }
+                        GC.SuppressFinalize(obj); // SuppressFinalize to not spoil the results of subsequent unit tests.
+                    }
+                    s_inUseObjects.Clear();
+                    throw new UnreleasedObjectException(sb.ToString(), GetFormattedStacktrace(traceable));
+                }
+            }
+        }
+#endif // PROTO_PROMISE_DEVELOPER_MODE
+
+        [MethodImpl(InlineOption)]
+        internal static void TrackFinalizableInternal(IFinalizable finalizable)
+        {
+            TrackFinalizable(finalizable);
+        }
+
+        // Calls to this will be compiled away if the mode is not DEBUG or DEVELOPER.
+        static partial void TrackFinalizable(IFinalizable finalizable);
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+        partial interface IFinalizable
+        {
+            WeakNode Tracker { get; set; }
+        }
+
+        // Linked-list of weak references.
+        // This is only used in DEBUG or DEVELOPER mode, so we don't need to optimize this to be branch-less.
+        private static WeakNode s_trackers;
+        private static SpinLocker s_trackersLock;
+
+        static partial void TrackFinalizable(IFinalizable finalizable)
+        {
+            if (finalizable.Tracker != null)
+            {
+                throw new System.InvalidOperationException("Cannot track same object more than once. " + finalizable);
+            }
+
+            var newNode = new WeakNode(finalizable);
+            finalizable.Tracker = newNode;
+            s_trackersLock.Enter();
+            if (s_trackers != null)
+            {
+                s_trackers._previous = newNode;
+                newNode._next = s_trackers;
+            }
+            s_trackers = newNode;
+            s_trackersLock.Exit();
+        }
+
+        internal static void SuppressAllFinalizables()
+        {
+            s_trackersLock.Enter();
+            var node = s_trackers;
+            s_trackersLock.Exit();
+            while (node != null)
+            {
+                var target = node.Target;
+                if (target != null)
+                {
+                    GC.SuppressFinalize(target);
+                }
+                node = node._next;
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal sealed class WeakNode : WeakReference
+        {
+            internal WeakNode _previous;
+            internal WeakNode _next;
+
+            internal WeakNode(object target) : base(target) { }
+        }
+#endif // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
     } // class Internal
 
     partial struct Promise

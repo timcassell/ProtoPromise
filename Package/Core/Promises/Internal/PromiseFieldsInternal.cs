@@ -184,6 +184,9 @@ namespace Proto.Promises
             CausalityTrace ITraceable.Trace { get; set; }
             volatile internal PromiseRefBase _previous; // Used to detect circular awaits.
 #endif
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            WeakNode IFinalizable.Tracker { get; set; }
+#endif
             // This is either a reference to the previous promise for progress to iterate over the promise chain,
             // or it is a reference to its old waiter as part of the registered progress promises linked-list,
             // or it is the reject container if the promise was rejected (null if it was resolved).
@@ -466,7 +469,7 @@ namespace Proto.Promises
                 private int _index;
                 private short _id;
                 private ushort _depth;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                 private bool _disposed;
 #endif
             }
@@ -523,7 +526,7 @@ namespace Proto.Promises
             partial class IndividualPromisePassThrough<TResult> : PromiseRef<TResult>
             {
                 private PromiseMultiAwait<TResult> _owner;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                 private bool _disposed;
 #endif
             }
@@ -534,7 +537,7 @@ namespace Proto.Promises
                 private ValueList<HandleablePromiseBase> _progressListeners = new ValueList<HandleablePromiseBase>(8);
                 private ProgressListenerFields _progressFields;
                 private bool _hookingUp;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                 private bool _disposed;
 #endif
             }
@@ -549,7 +552,7 @@ namespace Proto.Promises
                 private bool _reportUnresolved;
                 // The passthroughs are only stored during the hookup.
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                 private bool _disposed;
 #endif
             }
@@ -561,7 +564,7 @@ namespace Proto.Promises
                 private float _currentProgress;
                 private int _index;
                 private bool _hookingUp;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                 private bool _disposed;
 #endif
             }
@@ -573,7 +576,7 @@ namespace Proto.Promises
                 private int _retainCounter;
                 // The passthroughs are only stored during the hookup.
                 private ValueLinkedStack<PromisePassThrough> _passThroughs;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                 private bool _disposed;
 #endif
             }
@@ -584,7 +587,7 @@ namespace Proto.Promises
                 private ProgressListenerFields _progressFields;
                 private int _index;
                 private bool _hookingUp;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                 private bool _disposed;
 #endif
             }

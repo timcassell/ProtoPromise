@@ -34,6 +34,7 @@ namespace Proto.Promises
         internal static void ResetStaticState()
         {
             PromiseBehaviour.ResetStaticState();
+            Promise.Manager.ResetRuntimeContext();
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -165,7 +166,6 @@ namespace Proto.Promises
                 _isApplicationQuitting = true;
                 if (Application.isEditor & s_instance == this)
                 {
-                    ResetConfig();
                     // Destroy this to prevent a memory leak.
                     Destroy(this);
                 }
@@ -199,6 +199,7 @@ namespace Proto.Promises
                 if (!ReferenceEquals(s_instance, null))
                 {
                     s_instance.ResetProcessors();
+                    s_instance.ResetConfig();
                     s_instance = null;
                 }
             }

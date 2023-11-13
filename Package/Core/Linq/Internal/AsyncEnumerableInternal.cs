@@ -74,7 +74,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract class AsyncEnumerableBase<T> : PromiseSingleAwait<bool>
+            internal abstract class AsyncEnumerableBase<T> : PromiseSingleAwait<bool>, IFinalizable
             {
                 // This is used as the backing reference to 3 different awaiters. MoveNextAsync (Promise<bool>), DisposeAsync (Promise), and YieldAsync (AsyncStreamYielder<T>).
                 // We use `Interlocked.CompareExchange(ref _enumerableId` to enforce only 1 awaiter uses it at a time, in the correct order.
@@ -93,6 +93,7 @@ namespace Proto.Promises
                     get { return _enumerableId; }
                 }
 
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 ~AsyncEnumerableBase()
                 {
                     try
@@ -109,6 +110,7 @@ namespace Proto.Promises
                         ReportRejection(e, this);
                     }
                 }
+#endif
 
                 internal Linq.AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
                 {

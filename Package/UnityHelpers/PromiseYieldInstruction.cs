@@ -326,7 +326,7 @@ namespace Proto.Promises
             internal static T TryTakeOrNull<T>() where T : class, Internal.ILinked<T>
             {
                 var obj = Type<T>.TryTakeOrNull();
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                 if (Internal.s_trackObjectsForRelease & obj == null)
                 {
                     // Create here via reflection so that the object can be tracked.
@@ -345,18 +345,11 @@ namespace Proto.Promises
                 {
                     Type<T>.Repool(obj);
                 }
-                else
-                {
-                    // Finalizers are only used to validate that objects were used and released properly.
-                    // If the object is being repooled, it means it was released properly. If pooling is disabled, we don't need the finalizer anymore.
-                    // SuppressFinalize reduces pressure on the system when the GC runs.
-                    GC.SuppressFinalize(obj);
-                }
             }
 
             static partial void MarkInPool(object obj);
             static partial void MarkNotInPool(object obj);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
             static partial void MarkInPool(object obj)
             {
                 Internal.MarkInPool(obj);

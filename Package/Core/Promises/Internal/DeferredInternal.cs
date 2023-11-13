@@ -77,7 +77,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract partial class DeferredPromiseBase<TResult> : PromiseSingleAwait<TResult>, IDeferredPromise
+            internal abstract partial class DeferredPromiseBase<TResult> : PromiseSingleAwait<TResult>, IDeferredPromise, IFinalizable
             {
                 public int DeferredId
                 {
@@ -87,6 +87,7 @@ namespace Proto.Promises
 
                 protected DeferredPromiseBase() { }
 
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 ~DeferredPromiseBase()
                 {
                     try
@@ -103,6 +104,7 @@ namespace Proto.Promises
                         ReportRejection(e, this);
                     }
                 }
+#endif
 
 
                 [MethodImpl(InlineOption)]

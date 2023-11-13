@@ -38,6 +38,11 @@ namespace Proto.Promises
                 // This is necessary because the _rejectContainerOrPreviousOrLink field is used to hook up the registered promises chain,
                 // and it would not be possible to do that for multiple progress listeners with a single promise object. So we have to create dummy objects to register multiple.
 
+                private IndividualPromisePassThrough()
+                {
+                    TrackFinalizable(this);
+                }
+
                 [MethodImpl(InlineOption)]
                 private static IndividualPromisePassThrough<TResult> GetOrCreate()
                 {
@@ -52,28 +57,16 @@ namespace Proto.Promises
                     var passthrough = GetOrCreate();
                     passthrough._owner = owner;
                     passthrough._next = progressHookupValues.ProgressListener;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     passthrough._disposed = false;
 #endif
                     progressHookupValues.RegisterHandler(passthrough);
                     return passthrough;
                 }
 
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ~IndividualPromisePassThrough()
-                {
-                    if (!_disposed)
-                    {
-                        // For debugging. This should never happen.
-                        string message = "A IndividualPromisePassThrough was garbage collected without it being released.";
-                        ReportRejection(new UnreleasedObjectException(message), _owner);
-                    }
-                }
-#endif
-
                 internal override void MaybeDispose()
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
 #endif
                     Dispose();
@@ -119,11 +112,33 @@ namespace Proto.Promises
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId) { throw new System.InvalidOperationException(); }
             }
 
+#if PROTO_PROMISE_DEVELOPER_MODE
+            partial class IndividualPromisePassThrough<TResult> : IFinalizable
+            {
+                ~IndividualPromisePassThrough()
+                {
+                    if (!_disposed)
+                    {
+                        // For debugging. This should never happen.
+                        string message = "A IndividualPromisePassThrough was garbage collected without it being released.";
+                        ReportRejection(new UnreleasedObjectException(message), _owner);
+                    }
+                }
+            }
+#endif
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
             private sealed partial class ProgressMultiAwait<TResult> : ProgressPassThrough
             {
+                private ProgressMultiAwait()
+                {
+                    Track();
+                }
+
+                partial void Track();
+
                 [MethodImpl(InlineOption)]
                 private static ProgressMultiAwait<TResult> GetOrCreate()
                 {
@@ -140,30 +155,15 @@ namespace Proto.Promises
                     passthrough._owner = owner;
                     // Retain the owner so we can continue to lock on it until this is disposed.
                     owner.Retain();
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     passthrough._disposed = false;
 #endif
                     return passthrough;
                 }
 
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ~ProgressMultiAwait()
-                {
-                    if (!_disposed)
-                    {
-                        // For debugging. This should never happen.
-                        string message = "A ProgressMultiAwait was garbage collected without it being released."
-                            + ", _currentReporter: " + _progressFields._currentReporter + ", _current: " + _progressFields._current
-                            + ", _min: " + _progressFields._min + ", _max: " + _progressFields._max
-                            ;
-                        ReportRejection(new UnreleasedObjectException(message), _owner);
-                    }
-                }
-#endif
-
                 private void Dispose()
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
 #endif
                     _owner.MaybeDispose();
@@ -422,6 +422,31 @@ namespace Proto.Promises
                     ExitLock();
                 }
             }
+
+#if PROTO_PROMISE_DEVELOPER_MODE
+            partial class ProgressMultiAwait<TResult> : IFinalizable
+            {
+                WeakNode IFinalizable.Tracker { get; set; }
+
+                partial void Track()
+                {
+                    TrackFinalizable(this);
+                }
+
+                ~ProgressMultiAwait()
+                {
+                    if (!_disposed)
+                    {
+                        // For debugging. This should never happen.
+                        string message = "A ProgressMultiAwait was garbage collected without it being released."
+                            + ", _currentReporter: " + _progressFields._currentReporter + ", _current: " + _progressFields._current
+                            + ", _min: " + _progressFields._min + ", _max: " + _progressFields._max
+                            ;
+                        ReportRejection(new UnreleasedObjectException(message), _owner);
+                    }
+                }
+            }
+#endif
 
             partial class PromiseMultiAwait<TResult>
             {

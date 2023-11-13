@@ -106,29 +106,12 @@ namespace Proto.Promises
 #endif
             private sealed partial class ProgressMerger : ProgressPassThrough
             {
-                private ProgressMerger() { }
-
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ~ProgressMerger()
+                private ProgressMerger()
                 {
-                    try
-                    {
-                        if (!_disposed)
-                        {
-                            // For debugging. This should never happen.
-                            string message = "A MergeProgressPassThrough was garbage collected without it being released."
-                                + " _targetMergePromise: " + _targetMergePromise + ", _currentProgress: " + _currentProgress + ", _divisorReciprocal: " + _divisorReciprocal
-                                ;
-                            ReportRejection(new UnreleasedObjectException(message), _targetMergePromise);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // This should never happen.
-                        ReportRejection(e, _targetMergePromise);
-                    }
+                    Track();
                 }
-#endif
+
+                partial void Track();
 
                 [MethodImpl(InlineOption)]
                 private static ProgressMerger GetOrCreate()
@@ -148,7 +131,7 @@ namespace Proto.Promises
                     merger._currentProgress = completedProgress;
                     merger._divisorReciprocal = 1d / expectedProgress;
                     merger._reportUnresolved = reportUnresolved;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     merger._disposed = false;
 #endif
                     return merger;
@@ -156,7 +139,7 @@ namespace Proto.Promises
 
                 private void Dispose()
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
 #endif
                     // Don't nullify target, if it is accessed after this is disposed, the checks on it will ensure nothing happens.
@@ -290,15 +273,17 @@ namespace Proto.Promises
                 }
             } // ProgressMerger
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class MergeProgressPassThrough : ProgressPassThrough
+#if PROTO_PROMISE_DEVELOPER_MODE
+            partial class ProgressMerger : IFinalizable
             {
-                private MergeProgressPassThrough() { }
+                WeakNode IFinalizable.Tracker { get; set; }
 
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ~MergeProgressPassThrough()
+                partial void Track()
+                {
+                    TrackFinalizable(this);
+                }
+
+                ~ProgressMerger()
                 {
                     try
                     {
@@ -306,20 +291,31 @@ namespace Proto.Promises
                         {
                             // For debugging. This should never happen.
                             string message = "A MergeProgressPassThrough was garbage collected without it being released."
-                                + ", _target: " + _target
-                                + ", _currentReporter: " + _progressFields._currentReporter + ", _current: " + _progressFields._current
-                                + ", _min: " + _progressFields._min + ", _max: " + _progressFields._max
+                                + " _targetMergePromise: " + _targetMergePromise + ", _currentProgress: " + _currentProgress + ", _divisorReciprocal: " + _divisorReciprocal
                                 ;
-                            ReportRejection(new UnreleasedObjectException(message), null);
+                            ReportRejection(new UnreleasedObjectException(message), _targetMergePromise);
                         }
                     }
                     catch (Exception e)
                     {
                         // This should never happen.
-                        ReportRejection(e, null);
+                        ReportRejection(e, _targetMergePromise);
                     }
                 }
+            }
 #endif
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class MergeProgressPassThrough : ProgressPassThrough
+            {
+                private MergeProgressPassThrough()
+                {
+                    Track();
+                }
+
+                partial void Track();
 
                 [MethodImpl(InlineOption)]
                 private static MergeProgressPassThrough GetOrCreate()
@@ -337,7 +333,7 @@ namespace Proto.Promises
                     passThrough._target = target;
                     passThrough._currentProgress = 0f;
                     passThrough._index = index;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     passThrough._disposed = false;
 #endif
                     return passThrough;
@@ -345,7 +341,7 @@ namespace Proto.Promises
 
                 internal void Dispose()
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
 #endif
                     _target = null;
@@ -525,6 +521,40 @@ namespace Proto.Promises
                     MaybeDispose(negativeDetachedCount);
                 }
             } // MergeProgressPassThrough
+
+#if PROTO_PROMISE_DEVELOPER_MODE
+            partial class MergeProgressPassThrough : ProgressPassThrough, IFinalizable
+            {
+                WeakNode IFinalizable.Tracker { get; set; }
+
+                partial void Track()
+                {
+                    TrackFinalizable(this);
+                }
+
+                ~MergeProgressPassThrough()
+                {
+                    try
+                    {
+                        if (!_disposed)
+                        {
+                            // For debugging. This should never happen.
+                            string message = "A MergeProgressPassThrough was garbage collected without it being released."
+                                + ", _target: " + _target
+                                + ", _currentReporter: " + _progressFields._currentReporter + ", _current: " + _progressFields._current
+                                + ", _min: " + _progressFields._min + ", _max: " + _progressFields._max
+                                ;
+                            ReportRejection(new UnreleasedObjectException(message), null);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // This should never happen.
+                        ReportRejection(e, null);
+                    }
+                }
+            }
+#endif
 
             partial class PromisePassThrough
             {

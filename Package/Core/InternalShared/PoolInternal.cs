@@ -5,14 +5,12 @@
 #endif
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
-#pragma warning disable IDE0031 // Use null propagation
-#pragma warning disable IDE0054 // Use compound assignment
+#pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE1005 // Delegate invocation can be simplified.
 #pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -22,13 +20,8 @@ namespace Proto.Promises
     {
         // If C#9 is available, we use function pointers instead of delegates to clear the pool.
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-        // Pointers cannot be used as array types, so we have to wrap it in a struct.
-        private unsafe struct Ptr
-        {
-            internal delegate*<void> _ptr;
-        }
-
-        private static Ptr[] s_clearPoolPointers = new Ptr[64];
+        // Raw pointers cannot be used as array types, so we have to cast to IntPtr.
+        private static IntPtr[] s_clearPoolPointers = new IntPtr[64];
         private static int s_clearPoolCount;
         // Must not be readonly.
         private static SpinLocker s_clearPoolLock = new SpinLocker();
@@ -39,7 +32,7 @@ namespace Proto.Promises
             var temp = s_clearPoolPointers;
             for (int i = 0, max = s_clearPoolCount; i < max; ++i)
             {
-                temp[i]._ptr();
+                ((delegate*<void>) temp[i])();
             }
         }
 
@@ -51,7 +44,7 @@ namespace Proto.Promises
             {
                 Array.Resize(ref s_clearPoolPointers, count * 2);
             }
-            s_clearPoolPointers[count]._ptr = action;
+            s_clearPoolPointers[count] = (IntPtr) action;
             // Volatile write the new count so when ClearPool is called it doesn't need to lock.
             // This prevents the count write from being moved before the pointer write.
             System.Threading.Volatile.Write(ref s_clearPoolCount, count + 1);
@@ -124,7 +117,7 @@ namespace Proto.Promises
             internal static HandleablePromiseBase TryTakeOrInvalid<T>() where T : HandleablePromiseBase
             {
                 var obj = Type<T>.TryTakeOrInvalid();
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
                 if (s_trackObjectsForRelease & obj == PromiseRefBase.InvalidAwaitSentinel.s_instance)
                 {
                     // Create here via reflection so that the object can be tracked.
@@ -143,6 +136,7 @@ namespace Proto.Promises
                 {
                     Type<T>.Repool(obj);
                 }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 else
                 {
                     // Finalizers are only used to validate that objects were used and released properly.
@@ -150,11 +144,12 @@ namespace Proto.Promises
                     // SuppressFinalize reduces pressure on the system when the GC runs.
                     GC.SuppressFinalize(obj);
                 }
+#endif
             }
 
             static partial void MarkInPoolPrivate(object obj);
             static partial void MarkNotInPoolPrivate(object obj);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
             static partial void MarkInPoolPrivate(object obj)
             {
                 MarkInPool(obj);
@@ -166,118 +161,5 @@ namespace Proto.Promises
             }
 #endif
         } // class ObjectPool
-
-        internal static void Discard(object waste)
-        {
-            GC.SuppressFinalize(waste);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            lock (s_pooledObjects)
-            {
-                s_inUseObjects.Remove(waste);
-            }
-#endif
-        }
-
-        static partial void ThrowIfInPool(object obj);
-        static partial void MaybeThrowIfInPool(object obj, bool shouldCheck);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-        internal static bool s_trackObjectsForRelease = false;
-        private static readonly HashSet<object> s_pooledObjects = new HashSet<object>();
-        private static readonly HashSet<object> s_inUseObjects = new HashSet<object>();
-
-#if NETCOREAPP || UNITY_2021_2_OR_NEWER
-        static unsafe Internal() { AddClearPoolListener(&ClearObjectTracking); }
-#else
-        static Internal() { AddClearPoolListener(ClearObjectTracking); }
-#endif
-
-        private static void ClearObjectTracking()
-        {
-            lock (s_pooledObjects)
-            {
-                s_pooledObjects.Clear();
-            }
-        }
-
-        internal static void MarkInPool(object obj)
-        {
-            lock (s_pooledObjects)
-            {
-                if (Promise.Config.ObjectPoolingEnabled && !s_pooledObjects.Add(obj))
-                {
-                    throw new Exception("Same object was added to the pool twice: " + obj);
-                }
-                s_inUseObjects.Remove(obj);
-            }
-        }
-
-        internal static void MarkNotInPool(object obj)
-        {
-            if (obj == null || obj == PromiseRefBase.InvalidAwaitSentinel.s_instance)
-            {
-                return;
-            }
-            lock (s_pooledObjects)
-            {
-                s_pooledObjects.Remove(obj);
-                if (s_trackObjectsForRelease && !s_inUseObjects.Add(obj))
-                {
-                    throw new Exception("Same object was taken from the pool twice: " + obj);
-                }
-            }
-        }
-
-        static partial void ThrowIfInPool(object obj)
-        {
-            lock (s_pooledObjects)
-            {
-                if (s_pooledObjects.Contains(obj))
-                {
-                    throw new Exception("Object is in pool: " + obj);
-                }
-            }
-        }
-
-        static partial void MaybeThrowIfInPool(object obj, bool shouldCheck)
-        {
-            if (shouldCheck)
-            {
-                ThrowIfInPool(obj);
-            }
-        }
-
-        // This is used in unit testing, because finalizers are not guaranteed to run, even when calling `GC.WaitForPendingFinalizers()`.
-        internal static void TrackObjectsForRelease()
-        {
-            s_trackObjectsForRelease = true;
-        }
-
-        internal static void AssertAllObjectsReleased()
-        {
-            lock (s_pooledObjects)
-            {
-                if (s_inUseObjects.Count > 0)
-                {
-                    System.Text.StringBuilder sb = new System.Text.StringBuilder();
-                    sb.AppendLine(s_inUseObjects.Count + " objects not released:");
-                    sb.AppendLine();
-                    ITraceable traceable = null;
-                    int counter = 0;
-                    foreach (var obj in s_inUseObjects)
-                    {
-                        // Only capture up to 100 objects to prevent overloading the test error output.
-                        if (++counter <= 100)
-                        {
-                            traceable = traceable ?? obj as ITraceable;
-                            sb.AppendLine(obj.ToString());
-                        }
-                        GC.SuppressFinalize(obj); // SuppressFinalize to not spoil the results of subsequent unit tests.
-                    }
-                    s_inUseObjects.Clear();
-                    throw new UnreleasedObjectException(sb.ToString(), GetFormattedStacktrace(traceable));
-                }
-            }
-        }
-#endif
     } // class Internal
 } // namespace Proto.Promises

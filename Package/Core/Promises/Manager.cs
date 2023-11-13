@@ -1,4 +1,10 @@
-﻿#pragma warning disable IDE0031 // Use null propagation
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
+#endif
+
+#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE1005 // Delegate invocation can be simplified.
 #pragma warning disable CA1041 // Provide ObsoleteAttribute message
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
@@ -45,6 +51,20 @@ namespace Proto.Promises
             public static void ClearObjectPool()
             {
                 Internal.ClearPool();
+            }
+
+            /// <summary>
+            /// Resets the runtime context so that any unreleased objects will not throw exceptions.
+            /// </summary>
+            /// <remarks>
+            /// This should be called if you are stopping and restarting code without resetting the assembly (AssemblyLoadContext in Core, or AppDomain in Framework).
+            /// For example, exiting and re-entering play mode in Unity Editor with reload AppDomain disabled.
+            /// </remarks>
+            public static void ResetRuntimeContext()
+            {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                Internal.SuppressAllFinalizables();
+#endif
             }
 
             /// <summary>

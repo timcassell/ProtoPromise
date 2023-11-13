@@ -13,6 +13,7 @@
 #undef PROMISE_PROGRESS
 #endif
 
+#pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0180 // Use tuple to swap values
 
@@ -1856,9 +1857,10 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class DisposedChecker : IDisposable, ITraceable
+            private sealed class DisposedChecker : IDisposable, ITraceable, IFinalizable
             {
                 public CausalityTrace Trace { get; set; }
+                WeakNode IFinalizable.Tracker { get; set; }
 
                 internal readonly AsyncReaderWriterLockInternal _owner;
                 private int _isDisposedFlag;
@@ -1876,6 +1878,7 @@ namespace Proto.Promises
                     {
                         Trace = traceable.Trace;
                     }
+                    TrackFinalizable(this);
                 }
 
                 ~DisposedChecker()

@@ -14,6 +14,7 @@
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
@@ -77,7 +78,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncManualResetEventInternal : ITraceable
+        internal sealed partial class AsyncManualResetEventInternal : ITraceable
         {
             // This must not be readonly.
             private ValueLinkedQueue<AsyncEventPromiseBase> _waiters = new ValueLinkedQueue<AsyncEventPromiseBase>();
@@ -86,32 +87,10 @@ namespace Proto.Promises
             internal AsyncManualResetEventInternal(bool initialState)
             {
                 _isSet = initialState;
-                SetCreatedStacktrace(this, 2);
+                Track();
             }
 
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-
-            ~AsyncManualResetEventInternal()
-            {
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
-                {
-                    waiters = _waiters.MoveElementsToStack();
-                }
-                if (waiters.IsEmpty)
-                {
-                    return;
-                }
-
-                var rejectContainer = CreateRejectContainer(new Threading.AbandonedResetEventException("An AsyncManualResetEvent was collected with waiters still pending."), int.MinValue, null, this);
-                do
-                {
-                    waiters.Pop().Reject(rejectContainer);
-                } while (waiters.IsNotEmpty);
-                rejectContainer.ReportUnhandled();
-            }
-#endif // PROMISE_DEBUG
+            partial void Track();
 
             internal Promise WaitAsync()
             {
@@ -257,5 +236,39 @@ namespace Proto.Promises
                 }
             }
         } // class AsyncManualResetEventInternal
+
+#if PROMISE_DEBUG
+        partial class AsyncManualResetEventInternal : ITraceable, IFinalizable
+        {
+            CausalityTrace ITraceable.Trace { get; set; }
+            WeakNode IFinalizable.Tracker { get; set; }
+
+            partial void Track()
+            {
+                SetCreatedStacktrace(this, 3);
+                TrackFinalizable(this);
+            }
+
+            ~AsyncManualResetEventInternal()
+            {
+                ValueLinkedStack<AsyncEventPromiseBase> waiters;
+                lock (this)
+                {
+                    waiters = _waiters.MoveElementsToStack();
+                }
+                if (waiters.IsEmpty)
+                {
+                    return;
+                }
+
+                var rejectContainer = CreateRejectContainer(new Threading.AbandonedResetEventException("An AsyncManualResetEvent was collected with waiters still pending."), int.MinValue, null, this);
+                do
+                {
+                    waiters.Pop().Reject(rejectContainer);
+                } while (waiters.IsNotEmpty);
+                rejectContainer.ReportUnhandled();
+            }
+        } // class AsyncManualResetEventInternal
+#endif // PROMISE_DEBUG
     } // class Internal
 } // namespace Proto.Promises
