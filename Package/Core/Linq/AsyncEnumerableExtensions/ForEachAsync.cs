@@ -23,94 +23,58 @@ namespace Proto.Promises.Linq
     {
         /// <summary>
         /// Invokes an <see cref="Action{T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeOption">Configures the context on which the <paramref name="action"/> will be invoked.</param>
-        /// <param name="forceAsync">If true, forces the <paramref name="action"/> to be invoked asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T> action,
-            CancelationToken cancelationToken = default, SynchronizationOption invokeOption = SynchronizationOption.Synchronous, bool forceAsync = false)
-        {
-            ValidateArgument(action, nameof(action), 1);
-
-            return ForEachCoreSync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeOption, forceAsync).GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(action)
-            );
-        }
+        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T> action)
+            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(action);
 
         /// <summary>
-        /// Invokes an <see cref="Action{T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Invokes an <see cref="Action{T}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
-        /// <param name="source">Source sequence.</param>
-        /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeContext">The context on which the <paramref name="action"/> will be invoked. If null, </param>
-        /// <param name="forceAsync">If true, forces the <paramref name="action"/> to be invoked asynchronously.</param>
+        /// <param name="configuredSource">Configured source sequence.</param>
+        /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T> action, SynchronizationContext invokeContext,
-            CancelationToken cancelationToken = default, bool forceAsync = false)
+        public static Promise ForEachAsync<T>(this ConfiguredAsyncEnumerable<T> configuredSource, Action<T> action)
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachCoreSync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeContext, forceAsync).GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(action)
-            );
+            return ForEachCoreSync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(action));
         }
 
         /// <summary>
         /// Invokes an <see cref="Action{TCapture, T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeOption">Configures the context on which the <paramref name="action"/> will be invoked.</param>
-        /// <param name="forceAsync">If true, forces the <paramref name="action"/> to be invoked asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T> action,
-            CancelationToken cancelationToken = default, SynchronizationOption invokeOption = SynchronizationOption.Synchronous, bool forceAsync = false)
-        {
-            ValidateArgument(action, nameof(action), 1);
-
-            return ForEachCoreSync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeOption, forceAsync).GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action)
-            );
-        }
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T> action)
+            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(captureValue, action);
 
         /// <summary>
-        /// Invokes an <see cref="Action{TCapture, T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Invokes an <see cref="Action{TCapture, T}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value.</typeparam>
-        /// <param name="source">Source sequence.</param>
+        /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
-        /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeContext">The context on which the <paramref name="action"/> will be invoked. If null, </param>
-        /// <param name="forceAsync">If true, forces the <paramref name="action"/> to be invoked asynchronously.</param>
+        /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T> action, SynchronizationContext invokeContext,
-            CancelationToken cancelationToken = default, bool forceAsync = false)
+        public static Promise ForEachAsync<T, TCapture>(this ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Action<TCapture, T> action)
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachCoreSync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeContext, forceAsync).GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action)
-            );
+            return ForEachCoreSync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action));
         }
 
         private static async Promise ForEachCoreSync<T, TAction>(ConfiguredAsyncEnumerable<T>.Enumerator asyncEnumerator, TAction action)
@@ -165,95 +129,59 @@ namespace Proto.Promises.Linq
 
         /// <summary>
         /// Invokes an <see cref="Action{T, T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, incorporating the element's index.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeOption">Configures the context on which the <paramref name="action"/> will be invoked.</param>
-        /// <param name="forceAsync">If true, forces the <paramref name="action"/> to be invoked asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T, int> action,
-            CancelationToken cancelationToken = default, SynchronizationOption invokeOption = SynchronizationOption.Synchronous, bool forceAsync = false)
-        {
-            ValidateArgument(action, nameof(action), 1);
-
-            return ForEachWithIndexCoreSync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeOption, forceAsync).GetAsyncEnumerator(),
-                new ActionElementIndex<T>(action)
-            );
-        }
+        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T, int> action)
+            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(action);
 
         /// <summary>
-        /// Invokes an <see cref="Action{T, T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, incorporating the element's index.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Invokes an <see cref="Action{T, T}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, incorporating the element's index.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
-        /// <param name="source">Source sequence.</param>
-        /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeContext">The context on which the <paramref name="action"/> will be invoked. If null, </param>
-        /// <param name="forceAsync">If true, forces the <paramref name="action"/> to be invoked asynchronously.</param>
+        /// <param name="configuredSource">Configured source sequence.</param>
+        /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T, int> action, SynchronizationContext invokeContext,
-            CancelationToken cancelationToken = default, bool forceAsync = false)
+        public static Promise ForEachAsync<T>(this ConfiguredAsyncEnumerable<T> configuredSource, Action<T, int> action)
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachWithIndexCoreSync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeContext, forceAsync).GetAsyncEnumerator(),
-                new ActionElementIndex<T>(action)
-            );
+            return ForEachWithIndexCoreSync(configuredSource.GetAsyncEnumerator(), new ActionElementIndex<T>(action));
         }
 
         /// <summary>
         /// Invokes an <see cref="Action{TCapture, T, T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeOption">Configures the context on which the <paramref name="action"/> will be invoked.</param>
-        /// <param name="forceAsync">If true, forces the <paramref name="action"/> to be invoked asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T, int> action,
-            CancelationToken cancelationToken = default, SynchronizationOption invokeOption = SynchronizationOption.Synchronous, bool forceAsync = false)
-        {
-            ValidateArgument(action, nameof(action), 1);
-
-            return ForEachWithIndexCoreSync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeOption, forceAsync).GetAsyncEnumerator(),
-                new ActionElementIndexCapture<T, TCapture>(captureValue, action)
-            );
-        }
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T, int> action)
+            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(captureValue, action);
 
         /// <summary>
-        /// Invokes an <see cref="Action{TCapture, T, T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
+        /// Invokes an <see cref="Action{TCapture, T, T}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
         /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="action"/> is resolved.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value.</typeparam>
-        /// <param name="source">Source sequence.</param>
+        /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
-        /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeContext">The context on which the <paramref name="action"/> will be invoked. If null, </param>
-        /// <param name="forceAsync">If true, forces the <paramref name="action"/> to be invoked asynchronously.</param>
+        /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T, int> action, SynchronizationContext invokeContext,
-            CancelationToken cancelationToken = default, bool forceAsync = false)
+        public static Promise ForEachAsync<T, TCapture>(this ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Action<TCapture, T, int> action)
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachWithIndexCoreSync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeContext, forceAsync).GetAsyncEnumerator(),
-                new ActionElementIndexCapture<T, TCapture>(captureValue, action)
-            );
+            return ForEachWithIndexCoreSync(configuredSource.GetAsyncEnumerator(), new ActionElementIndexCapture<T, TCapture>(captureValue, action));
         }
 
         private static async Promise ForEachWithIndexCoreSync<T, TAction>(ConfiguredAsyncEnumerable<T>.Enumerator asyncEnumerator, TAction action)
@@ -276,97 +204,61 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Invokes an <see cref="Func{T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence.
         /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeOption">Configures the context on which the <paramref name="asyncAction"/> will be invoked.</param>
-        /// <param name="forceAsync">If true, forces the <paramref name="asyncAction"/> to be invoked asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, Promise> asyncAction,
-            CancelationToken cancelationToken = default, SynchronizationOption invokeOption = SynchronizationOption.Synchronous, bool forceAsync = false)
-        {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
-
-            return ForEachCoreAsync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeOption, forceAsync).GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(asyncAction)
-            );
-        }
+        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, Promise> asyncAction)
+            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(asyncAction);
 
         /// <summary>
-        /// Invokes an <see cref="Func{T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence.
+        /// Invokes an <see cref="Func{T, TResult}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.
         /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
-        /// <param name="source">Source sequence.</param>
-        /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeContext">The context on which the <paramref name="asyncAction"/> will be invoked. If null, </param>
-        /// <param name="forceAsync">If true, forces the <paramref name="asyncAction"/> to be invoked asynchronously.</param>
+        /// <param name="configuredSource">Configured source sequence.</param>
+        /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, Promise> asyncAction, SynchronizationContext invokeContext,
-            CancelationToken cancelationToken = default, bool forceAsync = false)
+        public static Promise ForEachAsync<T>(this ConfiguredAsyncEnumerable<T> configuredSource, Func<T, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachCoreAsync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeContext, forceAsync).GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(asyncAction)
-            );
+            return ForEachCoreAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(asyncAction));
         }
 
         /// <summary>
         /// Invokes an <see cref="Func{TCapture, T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
         /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeOption">Configures the context on which the <paramref name="asyncAction"/> will be invoked.</param>
-        /// <param name="forceAsync">If true, forces the <paramref name="asyncAction"/> to be invoked asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, Promise> asyncAction,
-            CancelationToken cancelationToken = default, SynchronizationOption invokeOption = SynchronizationOption.Synchronous, bool forceAsync = false)
-        {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
-
-            return ForEachCoreAsync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeOption, forceAsync).GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAction)
-            );
-        }
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, Promise> asyncAction)
+            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(captureValue, asyncAction);
 
         /// <summary>
-        /// Invokes an <see cref="Func{TCapture, T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
+        /// Invokes an <see cref="Func{TCapture, T, TResult}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
         /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value.</typeparam>
-        /// <param name="source">Source sequence.</param>
+        /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
-        /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeContext">The context on which the <paramref name="asyncAction"/> will be invoked. If null, </param>
-        /// <param name="forceAsync">If true, forces the <paramref name="asyncAction"/> to be invoked asynchronously.</param>
+        /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, Promise> asyncAction, SynchronizationContext invokeContext,
-            CancelationToken cancelationToken = default, bool forceAsync = false)
+        public static Promise ForEachAsync<T, TCapture>(this ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Func<TCapture, T, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachCoreAsync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeContext, forceAsync).GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAction)
-            );
+            return ForEachCoreAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAction));
         }
 
         private static async Promise ForEachCoreAsync<T, TAction>(ConfiguredAsyncEnumerable<T>.Enumerator asyncEnumerator, TAction action)
@@ -422,97 +314,61 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Invokes an <see cref="Func{T, T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, incorporating the element's index.
         /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeOption">Configures the context on which the <paramref name="asyncAction"/> will be invoked.</param>
-        /// <param name="forceAsync">If true, forces the <paramref name="asyncAction"/> to be invoked asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, int, Promise> asyncAction,
-            CancelationToken cancelationToken = default, SynchronizationOption invokeOption = SynchronizationOption.Synchronous, bool forceAsync = false)
-        {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
-
-            return ForEachWithIndexCoreAsync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeOption, forceAsync).GetAsyncEnumerator(),
-                new AsyncActionElementIndex<T>(asyncAction)
-            );
-        }
+        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, int, Promise> asyncAction)
+            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(asyncAction);
 
         /// <summary>
-        /// Invokes an <see cref="Func{T, T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, incorporating the element's index.
+        /// Invokes an <see cref="Func{T, T, TResult}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, incorporating the element's index.
         /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
-        /// <param name="source">Source sequence.</param>
-        /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeContext">The context on which the <paramref name="asyncAction"/> will be invoked. If null, </param>
-        /// <param name="forceAsync">If true, forces the <paramref name="asyncAction"/> to be invoked asynchronously.</param>
+        /// <param name="configuredSource">Configured source sequence.</param>
+        /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, int, Promise> asyncAction, SynchronizationContext invokeContext,
-            CancelationToken cancelationToken = default, bool forceAsync = false)
+        public static Promise ForEachAsync<T>(this ConfiguredAsyncEnumerable<T> configuredSource, Func<T, int, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeContext, forceAsync).GetAsyncEnumerator(),
-                new AsyncActionElementIndex<T>(asyncAction)
-            );
+            return ForEachWithIndexCoreAsync(configuredSource.GetAsyncEnumerator(), new AsyncActionElementIndex<T>(asyncAction));
         }
 
         /// <summary>
         /// Invokes an <see cref="Func{TCapture, T, T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
         /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeOption">Configures the context on which the <paramref name="asyncAction"/> will be invoked.</param>
-        /// <param name="forceAsync">If true, forces the <paramref name="asyncAction"/> to be invoked asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction,
-            CancelationToken cancelationToken = default, SynchronizationOption invokeOption = SynchronizationOption.Synchronous, bool forceAsync = false)
-        {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
-
-            return ForEachWithIndexCoreAsync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeOption, forceAsync).GetAsyncEnumerator(),
-                new AsyncActionElementIndexCapture<T, TCapture>(captureValue, asyncAction)
-            );
-        }
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction)
+            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(captureValue, asyncAction);
 
         /// <summary>
-        /// Invokes an <see cref="Func{TCapture, T, T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
+        /// Invokes an <see cref="Func{TCapture, T, T, TResult}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
         /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
-        /// Returns a `<see cref="Promise"/> that represents the entire operation.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
         /// </summary>
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value.</typeparam>
-        /// <param name="source">Source sequence.</param>
+        /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
-        /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <param name="cancelationToken">The optional cancellation token to be used for cancelling the sequence at any time.</param>
-        /// <param name="invokeContext">The context on which the <paramref name="asyncAction"/> will be invoked. If null, </param>
-        /// <param name="forceAsync">If true, forces the <paramref name="asyncAction"/> to be invoked asynchronously.</param>
+        /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction, SynchronizationContext invokeContext,
-            CancelationToken cancelationToken = default, bool forceAsync = false)
+        public static Promise ForEachAsync<T, TCapture>(this ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(
-                source.WithCancelation(cancelationToken).ConfigureAwait(invokeContext, forceAsync).GetAsyncEnumerator(),
-                new AsyncActionElementIndexCapture<T, TCapture>(captureValue, asyncAction)
-            );
+            return ForEachWithIndexCoreAsync(configuredSource.GetAsyncEnumerator(), new AsyncActionElementIndexCapture<T, TCapture>(captureValue, asyncAction));
         }
 
         private static async Promise ForEachWithIndexCoreAsync<T, TAction>(ConfiguredAsyncEnumerable<T>.Enumerator asyncEnumerator, TAction action)
