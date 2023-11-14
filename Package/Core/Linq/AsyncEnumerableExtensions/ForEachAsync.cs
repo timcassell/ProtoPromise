@@ -40,7 +40,7 @@ namespace Proto.Promises.Linq
         /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this ConfiguredAsyncEnumerable<T> configuredSource, Action<T> action)
+        public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Action<T> action)
         {
             ValidateArgument(action, nameof(action), 1);
 
@@ -70,7 +70,7 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Action<TCapture, T> action)
+        public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Action<TCapture, T> action)
         {
             ValidateArgument(action, nameof(action), 1);
 
@@ -146,7 +146,7 @@ namespace Proto.Promises.Linq
         /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this ConfiguredAsyncEnumerable<T> configuredSource, Action<T, int> action)
+        public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Action<T, int> action)
         {
             ValidateArgument(action, nameof(action), 1);
 
@@ -177,7 +177,7 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Action<TCapture, T, int> action)
+        public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Action<TCapture, T, int> action)
         {
             ValidateArgument(action, nameof(action), 1);
 
@@ -222,7 +222,7 @@ namespace Proto.Promises.Linq
         /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this ConfiguredAsyncEnumerable<T> configuredSource, Func<T, Promise> asyncAction)
+        public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Func<T, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
@@ -254,7 +254,7 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Func<TCapture, T, Promise> asyncAction)
+        public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Func<TCapture, T, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
@@ -332,7 +332,7 @@ namespace Proto.Promises.Linq
         /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this ConfiguredAsyncEnumerable<T> configuredSource, Func<T, int, Promise> asyncAction)
+        public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Func<T, int, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
@@ -364,7 +364,7 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction)
+        public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
