@@ -648,26 +648,33 @@ namespace Proto.Promises
             var first = s_trackers._next;
             var last = s_trackers._previous;
             s_trackers.PointToSelf();
-            s_trackersLock.Exit();
 
             if (first == s_trackers)
             {
+                s_trackersLock.Exit();
                 return;
             }
 
             // Make the chain circular so we can pick out already-GC'd items.
             first._previous = last;
             last._next = first;
+            s_trackersLock.Exit();
 
             var node = first;
             do
             {
                 var thisNode = node;
+                // We have to lock around getting the next because a node could be removed from the list on another thread.
+                s_trackersLock.Enter();
                 node = node._next;
+                s_trackersLock.Exit();
+
                 var target = thisNode.Target;
                 if (target == null)
                 {
+                    s_trackersLock.Enter();
                     thisNode.RemoveFromList();
+                    s_trackersLock.Exit();
                 }
                 else
                 {
