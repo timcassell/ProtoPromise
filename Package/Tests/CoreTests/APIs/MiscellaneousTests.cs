@@ -11,6 +11,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using Proto.Promises.Threading;
 using ProtoPromiseTests.Concurrency;
 using System.Collections.Generic;
 using System.Linq;
@@ -940,22 +941,56 @@ namespace ProtoPromiseTests.APIs
         }
 #endif // CSHARP_7_3_OR_NEWER
 
+#pragma warning disable CS0219 // The variable is assigned but its value is never used.
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private void CreatePromiseWithoutAwait(Promise.Deferred deferred)
+        private void CreatePromiseWithoutAwaitAndResetRuntimeContext()
         {
-            deferred.Promise.Then(() => { });
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Then(() => { });
+            deferred.Resolve();
+            Promise.Manager.ResetRuntimeContext();
         }
 
         [Test]
         public void ResetRuntimeContext_SuppressesUnobservedPromiseException()
         {
-            var deferred = Promise.NewDeferred();
-            CreatePromiseWithoutAwait(deferred);
-            deferred.Resolve();
+            CreatePromiseWithoutAwaitAndResetRuntimeContext();
 
-            Promise.Manager.ResetRuntimeContext();
             TestHelper.GcCollectAndWaitForFinalizers();
         }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void CreateAndDontHandleMultipleObjectsAndResetRuntimeContext()
+        {
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise;
+            promise.Then(() => { });
+            try
+            {
+                promise.Then(() => { });
+            }
+            catch (System.InvalidOperationException)
+            {
+            }
+
+            var cancelationSource = CancelationSource.New();
+
+#if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            var asyncLock = new AsyncLock();
+            var key = asyncLock.Lock();
+            var keyPromise = asyncLock.LockAsync();
+#endif
+
+            Promise.Manager.ResetRuntimeContext();
+        }
+
+        [Test]
+        public void ResetRuntimeContext_SuppressesMultipleUnhandledExceptions()
+        {
+            CreateAndDontHandleMultipleObjectsAndResetRuntimeContext();
+            TestHelper.GcCollectAndWaitForFinalizers();
+        }
+#pragma warning restore CS0219 // The variable is assigned but its value is never used.
 
         [Test]
         public void PromiseMayBeResolvedWithNullable(

@@ -8,6 +8,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0019 // Use pattern matching
 #pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
@@ -594,9 +595,8 @@ namespace Proto.Promises
         }
 
         // Linked-list of weak references.
-        // Using sentinel object for branchless algorithm.
+        // Using sentinel object for branchless algorithm and lock.
         private static readonly WeakNode s_trackers = WeakNode.CreateSentinel();
-        private static SpinLocker s_trackersLock;
 
         static partial void Discard(IFinalizable waste)
         {
@@ -618,72 +618,73 @@ namespace Proto.Promises
 
             var newNode = WeakNode.GetOrCreate(finalizable);
             finalizable.Tracker = newNode;
-            s_trackersLock.Enter();
-            newNode.AddToList(s_trackers);
-            s_trackersLock.Exit();
+            lock (s_trackers)
+            {
+                newNode.AddToList(s_trackers);
+            }
         }
 
         internal static void SuppressAndUntrackFinalizable(IFinalizable finalizable)
         {
             GC.SuppressFinalize(finalizable);
-            var node = UntrackFinalizable(finalizable);
-            finalizable.Tracker = null;
-            node.Target = null;
-            WeakNode.Repool(node);
+            lock (s_trackers)
+            {
+                var node = finalizable.Tracker;
+                if (node == null)
+                {
+                    return;
+                }
+                finalizable.Tracker = null;
+                node.RemoveFromList();
+                node.Target = null;
+                WeakNode.Repool(node);
+            }
         }
 
         internal static WeakNode UntrackFinalizable(IFinalizable finalizable)
         {
             // This is called from finalizers, so we don't touch the WeakReference, as it can cause a crash. (See comments in https://github.com/timcassell/ProtoPromise/pull/303)
-            var node = finalizable.Tracker;
-            s_trackersLock.Enter();
-            node.RemoveFromList();
-            s_trackersLock.Exit();
-            return node;
+            lock (s_trackers)
+            {
+                var node = finalizable.Tracker;
+                if (node != null)
+                {
+                    finalizable.Tracker = null;
+                    node.RemoveFromList();
+                }
+                return node;
+            }
         }
 
         internal static void SuppressAllFinalizables()
         {
-            s_trackersLock.Enter();
-            var first = s_trackers._next;
-            var last = s_trackers._previous;
-            s_trackers.PointToSelf();
-
-            if (first == s_trackers)
+            var nodes = new List<WeakNode>();
+            lock (s_trackers)
             {
-                s_trackersLock.Exit();
-                return;
+                var first = s_trackers._next;
+                var last = s_trackers._previous;
+
+                // Copy all to a new list to be processed.
+                for (var node = first; node != s_trackers; node = node._next)
+                {
+                    nodes.Add(node);
+                }
+
+                // Remove all from the current trackers list, and
+                // make the chain circular so each item can be processed the same as usual.
+                s_trackers.PointToSelf();
+                first._previous = last;
+                last._next = first;
             }
 
-            // Make the chain circular so we can pick out already-GC'd items.
-            first._previous = last;
-            last._next = first;
-            s_trackersLock.Exit();
-
-            var node = first;
-            do
+            foreach (var node in nodes)
             {
-                var thisNode = node;
-                // We have to lock around getting the next because a node could be removed from the list on another thread.
-                s_trackersLock.Enter();
-                node = node._next;
-                s_trackersLock.Exit();
-
-                var target = thisNode.Target;
-                if (target == null)
+                var target = node.Target as IFinalizable;
+                if (target != null)
                 {
-                    s_trackersLock.Enter();
-                    thisNode.RemoveFromList();
-                    s_trackersLock.Exit();
+                    SuppressAndUntrackFinalizable(target);
                 }
-                else
-                {
-                    thisNode.Target = null;
-                    GC.SuppressFinalize(target);
-                }
-            } while (node != first);
-
-            WeakNode.Repool(first, last);
+            }
 
 #if PROTO_PROMISE_DEVELOPER_MODE
             lock (s_pooledObjects)
@@ -737,16 +738,6 @@ namespace Proto.Promises
                 s_pooledNodesLock.Exit();
             }
 
-            internal static void Repool(WeakNode first, WeakNode last)
-            {
-                s_pooledNodesLock.Enter();
-                last._next = s_pooledNodes;
-                first._previous = s_pooledNodes._previous;
-                s_pooledNodes._previous._next = first;
-                s_pooledNodes._previous = last;
-                s_pooledNodesLock.Exit();
-            }
-
             internal void PointToSelf()
             {
                 _next = this;
@@ -757,6 +748,7 @@ namespace Proto.Promises
             {
                 _previous._next = _next;
                 _next._previous = _previous;
+                PointToSelf();
             }
 
             internal void AddToList(WeakNode head)
