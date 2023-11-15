@@ -626,19 +626,20 @@ namespace Proto.Promises
         internal static void SuppressAndUntrackFinalizable(IFinalizable finalizable)
         {
             GC.SuppressFinalize(finalizable);
-            UntrackFinalizable(finalizable);
-        }
-
-        internal static void UntrackFinalizable(IFinalizable finalizable)
-        {
-            s_trackersLock.Enter();
-            var node = finalizable.Tracker;
+            var node = UntrackFinalizable(finalizable);
             finalizable.Tracker = null;
-            node.RemoveFromList();
-            s_trackersLock.Exit();
-
             node.Target = null;
             WeakNode.Repool(node);
+        }
+
+        internal static WeakNode UntrackFinalizable(IFinalizable finalizable)
+        {
+            // This is called from finalizers, so we don't touch the WeakReference, as it can cause a crash. (See comments in https://github.com/timcassell/ProtoPromise/pull/303)
+            var node = finalizable.Tracker;
+            s_trackersLock.Enter();
+            node.RemoveFromList();
+            s_trackersLock.Exit();
+            return node;
         }
 
         internal static void SuppressAllFinalizables()
@@ -654,17 +655,26 @@ namespace Proto.Promises
                 return;
             }
 
+            // Make the chain circular so we can pick out already-GC'd items.
+            first._previous = last;
+            last._next = first;
+
             var node = first;
             do
             {
-                var target = node.Target;
-                if (target != null)
+                var thisNode = node;
+                node = node._next;
+                var target = thisNode.Target;
+                if (target == null)
                 {
+                    thisNode.RemoveFromList();
+                }
+                else
+                {
+                    thisNode.Target = null;
                     GC.SuppressFinalize(target);
                 }
-                node.Target = null;
-                node = node._next;
-            } while (node != s_trackers);
+            } while (node != first);
 
             WeakNode.Repool(first, last);
 
