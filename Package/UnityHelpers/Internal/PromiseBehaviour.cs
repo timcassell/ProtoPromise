@@ -1,4 +1,5 @@
-﻿#pragma warning disable IDE0051 // Remove unused private members
+﻿#pragma warning disable IDE0041 // Use 'is null' check
+#pragma warning disable IDE0051 // Remove unused private members
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0180 // Use tuple to swap values

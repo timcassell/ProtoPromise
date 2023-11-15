@@ -627,18 +627,19 @@ namespace Proto.Promises
         internal static void SuppressAndUntrackFinalizable(IFinalizable finalizable)
         {
             GC.SuppressFinalize(finalizable);
+            WeakNode node;
             lock (s_trackers)
             {
-                var node = finalizable.Tracker;
+                node = finalizable.Tracker;
                 if (node == null)
                 {
                     return;
                 }
                 finalizable.Tracker = null;
-                node.RemoveFromList();
                 node.Target = null;
-                WeakNode.Repool(node);
+                node.RemoveFromList();
             }
+            WeakNode.Repool(node);
         }
 
         internal static WeakNode UntrackFinalizable(IFinalizable finalizable)
