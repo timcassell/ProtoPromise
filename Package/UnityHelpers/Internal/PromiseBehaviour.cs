@@ -191,7 +191,6 @@ namespace Proto.Promises
                 {
                     SynchronizationContext.SetSynchronizationContext(_oldContext);
                 }
-                _syncContext.Execute(); // Clear out any pending callbacks.
             }
 
             internal static void ResetStaticState()
