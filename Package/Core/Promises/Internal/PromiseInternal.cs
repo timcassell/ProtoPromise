@@ -489,11 +489,8 @@ namespace Proto.Promises
                 }
                 catch (InvalidOperationException)
                 {
-                    if (waiter is IFinalizable)
-                    {
-                        // We're already throwing InvalidOperationException here, so we don't want the waiter object to also add exceptions from its finalizer.
-                        Discard(waiter.UnsafeAs<IFinalizable>());
-                    }
+                    // We're already throwing InvalidOperationException here, so we don't want the waiter object to also add exceptions from its finalizer.
+                    Discard(waiter);
                     throw;
                 }
 #else

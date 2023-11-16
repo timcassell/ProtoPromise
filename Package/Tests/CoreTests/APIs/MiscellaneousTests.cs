@@ -993,6 +993,30 @@ namespace ProtoPromiseTests.APIs
 #pragma warning restore CS0219 // The variable is assigned but its value is never used.
 
         [Test]
+        public void ClearObjectPool_NoThrow()
+        {
+            var deferred = Promise.NewDeferred();
+            deferred.Promise.Then(() => { }).Forget();
+            deferred.Resolve();
+
+            var cancelationSource = CancelationSource.New();
+            cancelationSource.Token.Register(() => { });
+            cancelationSource.Cancel();
+            cancelationSource.Dispose();
+
+#if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            var asyncLock = new AsyncLock();
+            var key = asyncLock.Lock();
+            var keyPromise = asyncLock.LockAsync();
+            key.Dispose();
+            keyPromise.Then(k => k.Dispose()).Forget();
+#endif
+
+            Promise.Manager.ClearObjectPool();
+            TestHelper.GcCollectAndWaitForFinalizers();
+        }
+
+        [Test]
         public void PromiseMayBeResolvedWithNullable(
             [Values(10, 0, null)] int? expected)
         {

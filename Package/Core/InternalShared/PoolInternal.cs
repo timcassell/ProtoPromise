@@ -102,10 +102,7 @@ namespace Proto.Promises
                     for (var instance = instances.Pop(); instance != PromiseRefBase.InvalidAwaitSentinel.s_instance; instance = instances.Pop())
                     {
                         MarkNotInPoolPrivate(instance);
-                        if (instance is IFinalizable)
-                        {
-                            Discard(instance.UnsafeAs<IFinalizable>());
-                        }
+                        Discard(instance);
                     }
 #else
                     s_pool.ClearUnsafe();

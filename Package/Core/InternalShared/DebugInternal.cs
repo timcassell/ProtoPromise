@@ -587,7 +587,7 @@ namespace Proto.Promises
 
         // Calls to these will be compiled away if the mode is not DEBUG or DEVELOPER.
         static partial void TrackFinalizable(IFinalizable finalizable);
-        static partial void Discard(IFinalizable waste);
+        static partial void Discard(object waste);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
         partial interface IFinalizable
         {
@@ -598,9 +598,12 @@ namespace Proto.Promises
         // Using sentinel object for branchless algorithm and lock.
         private static readonly WeakNode s_trackers = WeakNode.CreateSentinel();
 
-        static partial void Discard(IFinalizable waste)
+        static partial void Discard(object waste)
         {
-            SuppressAndUntrackFinalizable(waste);
+            if (waste is IFinalizable)
+            {
+                SuppressAndUntrackFinalizable(waste.UnsafeAs<IFinalizable>());
+            }
 #if PROTO_PROMISE_DEVELOPER_MODE
             lock (s_pooledObjects)
             {
