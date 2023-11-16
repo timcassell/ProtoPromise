@@ -309,12 +309,13 @@ namespace Proto.Promises
             }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            internal ValueLinkedStack<HandleablePromiseBase> MoveElementsToStack()
+            internal ValueLinkedStack<HandleablePromiseBase> MoveElementsToStack(out HandleablePromiseBase head)
             {
                 _locker.Enter();
-                var stack = new ValueLinkedStack<HandleablePromiseBase>(_head);
+                head = _head;
                 ClearUnsafe();
                 _locker.Exit();
+                var stack = new ValueLinkedStack<HandleablePromiseBase>(head);
                 return stack;
             }
 #endif

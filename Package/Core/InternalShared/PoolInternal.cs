@@ -97,10 +97,16 @@ namespace Proto.Promises
                 private static void Clear()
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    var instances = s_pool.MoveElementsToStack();
+#pragma warning disable IDE0018 // Inline variable declaration
+                    HandleablePromiseBase head;
+#pragma warning restore IDE0018 // Inline variable declaration
+                    var instances = s_pool.MoveElementsToStack(out head);
                     // The pooled stack ends with InvalidAwaitSentinel instead of null.
-                    for (var instance = instances.Pop(); instance != PromiseRefBase.InvalidAwaitSentinel.s_instance; instance = instances.Pop())
+                    while (head != PromiseRefBase.InvalidAwaitSentinel.s_instance)
                     {
+                        var instance = head;
+                        head = instance._next;
+                        instances.Pop();
                         MarkNotInPoolPrivate(instance);
                         Discard(instance);
                     }
