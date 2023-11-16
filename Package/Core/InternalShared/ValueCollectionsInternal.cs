@@ -308,6 +308,17 @@ namespace Proto.Promises
                 _head = PromiseRefBase.InvalidAwaitSentinel.s_instance;
             }
 
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            internal ValueLinkedStack<HandleablePromiseBase> MoveElementsToStack()
+            {
+                _locker.Enter();
+                var stack = new ValueLinkedStack<HandleablePromiseBase>(_head);
+                ClearUnsafe();
+                _locker.Exit();
+                return stack;
+            }
+#endif
+
             [MethodImpl(InlineOption)]
             internal void Push(HandleablePromiseBase item)
             {

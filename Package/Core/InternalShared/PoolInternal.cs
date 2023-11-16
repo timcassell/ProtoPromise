@@ -96,7 +96,20 @@ namespace Proto.Promises
 
                 private static void Clear()
                 {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    var instances = s_pool.MoveElementsToStack();
+                    // The pooled stack ends with InvalidAwaitSentinel instead of null.
+                    for (var instance = instances.Pop(); instance != PromiseRefBase.InvalidAwaitSentinel.s_instance; instance = instances.Pop())
+                    {
+                        MarkNotInPoolPrivate(instance);
+                        if (instance is IFinalizable)
+                        {
+                            Discard(instance.UnsafeAs<IFinalizable>());
+                        }
+                    }
+#else
                     s_pool.ClearUnsafe();
+#endif
                 }
 
                 [MethodImpl(InlineOption)]
