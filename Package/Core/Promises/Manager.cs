@@ -62,6 +62,7 @@ namespace Proto.Promises
             /// </remarks>
             public static void ResetRuntimeContext()
             {
+                Internal.ClearPool();
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 Internal.SuppressAllFinalizables();
 #endif
