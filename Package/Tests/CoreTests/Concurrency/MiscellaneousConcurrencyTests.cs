@@ -39,7 +39,7 @@ namespace ProtoPromiseTests.Concurrency
                 //setup:
                 () => { },
                 //teardown:
-                () => Promise.Manager.ResetRuntimeContext(),
+                () => { },
                 // actions:
 #if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
                 () =>
@@ -48,12 +48,16 @@ namespace ProtoPromiseTests.Concurrency
                     var key = asyncLock.Lock();
                     var keyPromise = asyncLock.LockAsync();
                     Promise.Manager.ResetRuntimeContext();
+                    TestHelper.Blackhole(asyncLock);
+                    TestHelper.Blackhole(key);
+                    TestHelper.Blackhole(keyPromise);
                 },
 #endif
                 () =>
                 {
                     var cancelationSource = CancelationSource.New();
                     Promise.Manager.ResetRuntimeContext();
+                    TestHelper.Blackhole(cancelationSource);
                 },
                 () => CancelationSource.New().Dispose(),
                 () =>
@@ -75,6 +79,8 @@ namespace ProtoPromiseTests.Concurrency
                     var deferred = Promise.NewDeferred();
                     var promise = deferred.Promise.Then(() => { });
                     Promise.Manager.ResetRuntimeContext();
+                    TestHelper.Blackhole(deferred);
+                    TestHelper.Blackhole(promise);
                 },
                 () => Promise.Manager.ResetRuntimeContext()
             );

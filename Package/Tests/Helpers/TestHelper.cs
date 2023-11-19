@@ -194,6 +194,10 @@ namespace ProtoPromiseTests
             GC.Collect();
         }
 
+        // Prevents objects from being GC'd before this is called.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void Blackhole<T>(T item) { }
+
         public static void ExecuteForegroundCallbacks()
         {
             _foregroundContext.Execute();

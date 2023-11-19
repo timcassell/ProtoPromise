@@ -949,6 +949,7 @@ namespace ProtoPromiseTests.APIs
             var promise = deferred.Promise.Then(() => { });
             deferred.Resolve();
             Promise.Manager.ResetRuntimeContext();
+            TestHelper.Blackhole(promise);
         }
 
         [Test]
@@ -963,25 +964,24 @@ namespace ProtoPromiseTests.APIs
         private void CreateAndDontHandleMultipleObjectsAndResetRuntimeContext()
         {
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise;
-            promise.Then(() => { });
-            try
-            {
-                promise.Then(() => { });
-            }
-            catch (System.InvalidOperationException)
-            {
-            }
-
+            var promise = deferred.Promise.Then(() => { });
             var cancelationSource = CancelationSource.New();
+
+            Promise.Manager.ResetRuntimeContext();
+            TestHelper.Blackhole(deferred);
+            TestHelper.Blackhole(promise);
+            TestHelper.Blackhole(cancelationSource);
 
 #if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
             var asyncLock = new AsyncLock();
             var key = asyncLock.Lock();
             var keyPromise = asyncLock.LockAsync();
-#endif
 
             Promise.Manager.ResetRuntimeContext();
+            TestHelper.Blackhole(asyncLock);
+            TestHelper.Blackhole(key);
+            TestHelper.Blackhole(keyPromise);
+#endif
         }
 
         [Test]
