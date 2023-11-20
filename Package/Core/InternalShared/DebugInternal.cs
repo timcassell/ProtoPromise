@@ -209,7 +209,7 @@ namespace Proto.Promises
                         var methodType = frame?.GetMethod();
                         return methodType != null
                             && !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false)
-                            && !IsNonUserCode(methodType.DeclaringType);
+                            && !IsNonUserCode(methodType);
                     })
                     // Create a new StackTrace to get proper formatting.
                     .Select(frame => new StackTrace(frame).ToString())
