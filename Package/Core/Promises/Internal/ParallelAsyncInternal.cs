@@ -506,12 +506,14 @@ namespace Proto.Promises
                     // Adding a 3rd direct hookup for DisposeAsync which is only called once would add extra overhead to the others that are called multiple times.
                     // Instead, we use a more traditional ContinueWith. But we use it directly with IDelegateContinue to avoid creating a delegate.
                     var continuePromise = PromiseContinue<VoidResult, IDelegateContinue>.GetOrCreate(this, disposePromise.Depth);
+                    AddPending(continuePromise);
                     disposePromise._ref.HookupNewPromise(disposePromise._id, continuePromise);
                     continuePromise.Forget(continuePromise.Id);
                 }
 
                 void IDelegateContinue.Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, PromiseRefBase owner)
                 {
+                    RemovePending(handler);
                     handler.MaybeDispose();
                     owner.HandleNextInternal(null, Promise.State.Resolved);
                     if (state == Promise.State.Rejected)
