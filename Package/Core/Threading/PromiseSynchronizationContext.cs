@@ -260,11 +260,7 @@ namespace Proto.Promises.Threading
                         }
                         catch (Exception e)
                         {
-                            if (exceptions == null)
-                            {
-                                exceptions = new List<Exception>();
-                            }
-                            exceptions.Add(e);
+                            Internal.RecordException(e, ref exceptions);
                         }
                     }
 

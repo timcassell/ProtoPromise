@@ -10,6 +10,7 @@
 
 #pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
 using System.Collections.Generic;
@@ -64,6 +65,15 @@ namespace Proto.Promises
         internal static void SetCreatedStacktraceInternal(ITraceable traceable, int skipFrames)
         {
             SetCreatedStacktrace(traceable, skipFrames);
+        }
+
+        internal static void RecordException(Exception e, ref List<Exception> exceptions)
+        {
+            if (exceptions == null)
+            {
+                exceptions = new List<Exception>();
+            }
+            exceptions.Add(e);
         }
 
 #if PROMISE_DEBUG

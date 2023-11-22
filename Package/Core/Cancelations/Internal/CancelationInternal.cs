@@ -474,11 +474,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        if (exceptions == null)
-                        {
-                            exceptions = new List<Exception>();
-                        }
-                        exceptions.Add(e);
+                        RecordException(e, ref exceptions);
                     }
                     _smallFields._locker.Enter();
                 }
