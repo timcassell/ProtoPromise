@@ -84,9 +84,8 @@ namespace ProtoPromiseTests.APIs.Linq
             int twoCount = 0;
             int threeCount = 0;
 
-            var runPromise = Promise.Run(async () =>
-            {
-                await foreach (var num in AsyncEnumerable.Merge(enumerablesAsync))
+            var runPromise = AsyncEnumerable.Merge(enumerablesAsync)
+                .ForEachAsync(num =>
                 {
                     ++totalCount;
                     if (totalCount <= 4)
@@ -109,8 +108,7 @@ namespace ProtoPromiseTests.APIs.Linq
                         Assert.AreEqual(3, num);
                         ++threeCount;
                     }
-                }
-            }, SynchronizationOption.Synchronous);
+                });
 
             Assert.AreEqual(4, totalCount);
             deferred.Resolve();
@@ -162,9 +160,8 @@ namespace ProtoPromiseTests.APIs.Linq
             int twoCount = 0;
             int threeCount = 0;
 
-            var runPromise = Promise.Run(async () =>
-            {
-                await foreach (var num in AsyncEnumerable.Merge(enumerables))
+            var runPromise = AsyncEnumerable.Merge(enumerables)
+                .ForEachAsync(num =>
                 {
                     ++totalCount;
                     if (totalCount <= 4)
@@ -187,8 +184,7 @@ namespace ProtoPromiseTests.APIs.Linq
                         Assert.AreEqual(3, num);
                         ++threeCount;
                     }
-                }
-            }, SynchronizationOption.Synchronous);
+                });
 
             Assert.AreEqual(4, totalCount);
             deferred.Resolve();
@@ -268,9 +264,8 @@ namespace ProtoPromiseTests.APIs.Linq
 
             bool canceled = false;
 
-            var runPromise = Promise.Run(async () =>
-            {
-                await foreach (var num in AsyncEnumerable.Merge(enumerables))
+            var runPromise = AsyncEnumerable.Merge(enumerables)
+                .ForEachAsync(num =>
                 {
                     ++totalCount;
                     if (totalCount <= 4)
@@ -293,8 +288,7 @@ namespace ProtoPromiseTests.APIs.Linq
                         Assert.AreEqual(3, num);
                         ++threeCount;
                     }
-                }
-            }, SynchronizationOption.Synchronous)
+                })
                 .CatchCancelation(() => canceled = true);
 
             Assert.AreEqual(4, totalCount);
@@ -379,9 +373,8 @@ namespace ProtoPromiseTests.APIs.Linq
 
             bool rejected = false;
 
-            var runPromise = Promise.Run(async () =>
-            {
-                await foreach (var num in AsyncEnumerable.Merge(enumerables))
+            var runPromise = AsyncEnumerable.Merge(enumerables)
+                .ForEachAsync(num =>
                 {
                     ++totalCount;
                     if (totalCount <= 4)
@@ -404,8 +397,7 @@ namespace ProtoPromiseTests.APIs.Linq
                         Assert.AreEqual(3, num);
                         ++threeCount;
                     }
-                }
-            }, SynchronizationOption.Synchronous)
+                })
                 .Catch((System.AggregateException e) =>
                 {
                     Assert.AreEqual(1, e.InnerExceptions.Count);
