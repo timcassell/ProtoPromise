@@ -204,7 +204,7 @@ namespace Proto.Promises
                         await _continueEvent.WaitAsync();
 
                         // Read the count via Interlocked without changing it.
-                        if (Interlocked.CompareExchange(ref _enumeratorCount, 0, 0) != 0)
+                        if (Interlocked.CompareExchange(ref _enumeratorCount, 0, 0) == 0)
                         {
                             break;
                         }
@@ -398,7 +398,9 @@ namespace Proto.Promises
             {
                 try
                 {
-                    MergeSources();
+                    // If any rejections or exceptions occurred, we capture them all and throw them in an AggregateException.
+                    List<Exception> exceptions = null;
+                    MergeSources(ref exceptions);
 
                     while (true)
                     {
@@ -406,7 +408,7 @@ namespace Proto.Promises
                         await _continueEvent.WaitAsync();
 
                         // Read the count via Interlocked without changing it.
-                        if (Interlocked.CompareExchange(ref _enumeratorCount, 0, 0) != 0)
+                        if (Interlocked.CompareExchange(ref _enumeratorCount, 0, 0) == 0)
                         {
                             break;
                         }
@@ -432,8 +434,6 @@ namespace Proto.Promises
                     }
 
                     // All enumerators are complete, the only thing left to do is wait for DisposeAsyncs.
-                    // If any rejections occurred, we capture them all and throw them in an AggregateException.
-                    List<Exception> exceptions = null;
                     for (int i = 0, max = _disposePromises.Count; i < max; ++i)
                     {
                         var (rejectContainer, disposePromise) = _disposePromises[i];
@@ -480,35 +480,42 @@ namespace Proto.Promises
                 }
             }
 
-            private void MergeSources()
+            private void MergeSources(ref List<Exception> exceptions)
             {
-                _enumeratorCount = 1;
-                int index = 0;
-                using (var sources = _sourcesEnumerator)
+                try
                 {
-                    _sourcesEnumerator = default;
-                    try
+                    _enumeratorCount = 1;
+                    int index = 0;
+                    using (var sources = _sourcesEnumerator)
                     {
-                        while (sources.MoveNext())
+                        _sourcesEnumerator = default;
+                        try
                         {
-                            int i = index;
-                            checked
+                            while (sources.MoveNext())
                             {
-                                ++index;
+                                int i = index;
+                                checked
+                                {
+                                    ++index;
+                                }
+                                Interlocked.Increment(ref _enumeratorCount);
+                                var enumerator = sources.Current.GetAsyncEnumerator(_cancelationToken);
+                                _enumerators.Add(enumerator);
+                                ContinueMerge(enumerator, i);
                             }
-                            Interlocked.Increment(ref _enumeratorCount);
-                            var enumerator = sources.Current.GetAsyncEnumerator(_cancelationToken);
-                            _enumerators.Add(enumerator);
-                            ContinueMerge(enumerator, i);
                         }
-                    }
-                    finally
-                    {
-                        if (Interlocked.Decrement(ref _enumeratorCount) == 0)
+                        finally
                         {
-                            _continueEvent.Set();
+                            if (Interlocked.Decrement(ref _enumeratorCount) == 0)
+                            {
+                                _continueEvent.Set();
+                            }
                         }
                     }
+                }
+                catch (Exception e)
+                {
+                    RecordException(e, ref exceptions);
                 }
             }
         }
