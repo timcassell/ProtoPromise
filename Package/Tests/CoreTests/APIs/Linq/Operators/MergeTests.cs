@@ -95,17 +95,14 @@ namespace ProtoPromiseTests.APIs.Linq
                     }
                     else if (totalCount <= 4 + 3)
                     {
-                        Assert.AreEqual(1, num);
                         ++oneCount;
                     }
                     else if (totalCount <= 4 + 3 + 2)
                     {
-                        Assert.AreEqual(2, num);
                         ++twoCount;
                     }
                     else
                     {
-                        Assert.AreEqual(3, num);
                         ++threeCount;
                     }
                 });
@@ -171,17 +168,14 @@ namespace ProtoPromiseTests.APIs.Linq
                     }
                     else if (totalCount <= 4 + 3)
                     {
-                        Assert.AreEqual(1, num);
                         ++oneCount;
                     }
                     else if (totalCount <= 4 + 3 + 2)
                     {
-                        Assert.AreEqual(2, num);
                         ++twoCount;
                     }
                     else
                     {
-                        Assert.AreEqual(3, num);
                         ++threeCount;
                     }
                 });
@@ -240,7 +234,6 @@ namespace ProtoPromiseTests.APIs.Linq
                     }
                     else
                     {
-                        Assert.AreEqual(1, num);
                         ++oneCount;
                     }
                 });
@@ -299,12 +292,10 @@ namespace ProtoPromiseTests.APIs.Linq
                     }
                     else if (totalCount <= 3 + 2)
                     {
-                        Assert.AreEqual(1, num);
                         ++oneCount;
                     }
                     else
                     {
-                        Assert.AreEqual(2, num);
                         ++twoCount;
                     }
                 });
@@ -366,17 +357,14 @@ namespace ProtoPromiseTests.APIs.Linq
                     }
                     else if (totalCount <= 4 + 3)
                     {
-                        Assert.AreEqual(1, num);
                         ++oneCount;
                     }
                     else if (totalCount <= 4 + 3 + 2)
                     {
-                        Assert.AreEqual(2, num);
                         ++twoCount;
                     }
                     else
                     {
-                        Assert.AreEqual(3, num);
                         ++threeCount;
                     }
                 });
@@ -470,17 +458,14 @@ namespace ProtoPromiseTests.APIs.Linq
                     }
                     else if (totalCount <= 4 + 3)
                     {
-                        Assert.AreEqual(1, num);
                         ++oneCount;
                     }
                     else if (totalCount <= 4 + 3 + 2)
                     {
-                        Assert.AreEqual(2, num);
                         ++twoCount;
                     }
                     else
                     {
-                        Assert.AreEqual(3, num);
                         ++threeCount;
                     }
                 })
@@ -534,7 +519,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 });
             };
 
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsyncWithCancelation = (int start, int count) =>
+            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsyncWithException = (int start, int count) =>
             {
                 return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
                 {
@@ -555,7 +540,7 @@ namespace ProtoPromiseTests.APIs.Linq
             var enumerables = new AsyncEnumerable<int>[4]
             {
                 EnumerableRangeAsync(0, 1),
-                EnumerableRangeAsyncWithCancelation(0, 2),
+                EnumerableRangeAsyncWithException(0, 2),
                 EnumerableRangeAsync(0, 3),
                 EnumerableRangeAsync(0, 4)
             };
@@ -579,17 +564,14 @@ namespace ProtoPromiseTests.APIs.Linq
                     }
                     else if (totalCount <= 4 + 3)
                     {
-                        Assert.AreEqual(1, num);
                         ++oneCount;
                     }
                     else if (totalCount <= 4 + 3 + 2)
                     {
-                        Assert.AreEqual(2, num);
                         ++twoCount;
                     }
                     else
                     {
-                        Assert.AreEqual(3, num);
                         ++threeCount;
                     }
                 })

@@ -27,13 +27,10 @@ namespace Proto.Promises
         {
             // TODO: optimize these collections.
             protected readonly List<AsyncEnumerator<TValue>> _enumerators = new List<AsyncEnumerator<TValue>>();
-            // We queue the successful MoveNextAsync results instead of using Promise.RaceWithIndex, to avoid having to preserve each promise.
-            protected readonly Queue<int> _readyQueue = new Queue<int>();
             protected readonly List<(object rejectContainer, Promise disposePromise)> _disposePromises = new List<(object rejectContainer, Promise disposePromise)>();
-            // Used to pause the iterator function until a value is retrieved.
-            // TODO: use a more optimized event with synchronous continuation.
-            protected readonly AsyncAutoResetEventInternal _continueEvent = new AsyncAutoResetEventInternal(false);
-            protected int _enumeratorCount;
+            // We queue the successful MoveNextAsync results instead of using Promise.RaceWithIndex, to avoid having to preserve each promise.
+            // This must not be readonly.
+            protected SingleConsumerAsyncQueueInternal<int> _readyQueue = new SingleConsumerAsyncQueueInternal<int>(0);
             protected int _streamWriterId;
 
             protected void ContinueMerge(AsyncEnumerator<TValue> enumerator, int index)
@@ -64,19 +61,11 @@ namespace Proto.Promises
 
                 if (hasValue)
                 {
-                    lock (_readyQueue)
-                    {
-                        _readyQueue.Enqueue(index);
-                    }
-                    _continueEvent.Set();
+                    _readyQueue.Enqueue(index);
                 }
                 else
                 {
                     DisposeEnumerator(enumerator, null);
-                    if (Interlocked.Decrement(ref _enumeratorCount) == 0)
-                    {
-                        _continueEvent.Set();
-                    }
                 }
             }
 
@@ -85,11 +74,7 @@ namespace Proto.Promises
                 bool hasValue = resultContainer.Value & resultContainer.State == Promise.State.Resolved;
                 if (hasValue)
                 {
-                    lock (_readyQueue)
-                    {
-                        _readyQueue.Enqueue(index);
-                    }
-                    _continueEvent.Set();
+                    _readyQueue.Enqueue(index);
                 }
                 else
                 {
@@ -99,10 +84,6 @@ namespace Proto.Promises
                         _cancelationToken._ref.Cancel();
                     }
                     DisposeEnumerator(_enumerators[index], resultContainer._rejectContainer);
-                    if (Interlocked.Decrement(ref _enumeratorCount) == 0)
-                    {
-                        _continueEvent.Set();
-                    }
                 }
             }
 
@@ -113,6 +94,7 @@ namespace Proto.Promises
                 {
                     _disposePromises.Add(tuple);
                 }
+                _readyQueue.RemoveProducer();
             }
         } // class AsyncEnumerableMerger<TValue>
 
@@ -161,21 +143,12 @@ namespace Proto.Promises
 
             protected override void Start(int enumerableId)
             {
-                if (_sourcesEnumerator._target == null)
-                {
-                    MoveNext();
-                    return;
-                }
-
-                var sourcesEnumerator = _sourcesEnumerator;
-                _sourcesEnumerator = default;
                 // We got the enumerator without a token when this was created, now we need to hook it up before we start moving next.
                 // However, before we do so, we need to hook up our own cancelation source to notify all enumerators when 1 of them has been aborted.
                 // We don't store the source directly, to reduce memory, we just store it in the _cancelationToken field and use the _ref directly.
-                sourcesEnumerator._target._cancelationToken = _cancelationToken = CancelationSource.New(_cancelationToken).Token;
+                _sourcesEnumerator._target._cancelationToken = _cancelationToken = CancelationSource.New(_cancelationToken).Token;
                 _streamWriterId = enumerableId;
-                _continueEvent.Reset();
-                var iteratorPromise = Iterate(sourcesEnumerator)._promise;
+                var iteratorPromise = Iterate()._promise;
                 if (iteratorPromise._ref == null)
                 {
                     // Already complete.
@@ -192,41 +165,21 @@ namespace Proto.Promises
                 iteratorPromise._ref.HookupExistingWaiter(iteratorPromise._id, this);
             }
 
-            private async AsyncEnumerableMethod Iterate(AsyncEnumerator<AsyncEnumerable<TValue>> sourcesEnumerator)
+            private async AsyncEnumerableMethod Iterate()
             {
                 try
                 {
-                    MergeSources(sourcesEnumerator).Forget();
+                    MergeSources().Forget();
 
-                    while (true)
+                    while (await _readyQueue.GetHasValueAsync())
                     {
-                        // Wait until a value is available, or all enumerators have completed.
-                        await _continueEvent.WaitAsync();
+                        int index = _readyQueue.Dequeue();
 
-                        // Read the count via Interlocked without changing it.
-                        if (Interlocked.CompareExchange(ref _enumeratorCount, 0, 0) == 0)
-                        {
-                            break;
-                        }
+                        // Yield the value to the consumer.
+                        // Only store the index past the `await` to keep the async state machine as small as possible.
+                        await YieldAsync(_enumerators[index].Current, _streamWriterId);
 
-                        while (true)
-                        {
-                            int index;
-                            lock (_readyQueue)
-                            {
-                                if (_readyQueue.Count == 0)
-                                {
-                                    break;
-                                }
-                                index = _readyQueue.Dequeue();
-                            }
-
-                            // Yield the value to the consumer.
-                            // Only store the index past the `await` to keep the async state machine as small as possible.
-                            await YieldAsync(_enumerators[index].Current, _streamWriterId);
-
-                            ContinueMerge(_enumerators[index], index);
-                        }
+                        ContinueMerge(_enumerators[index], index);
                     }
 
                     // All enumerators are complete, the only thing left to do is wait for DisposeAsyncs.
@@ -278,22 +231,24 @@ namespace Proto.Promises
                 }
             }
 
-            private async Promise MergeSources(AsyncEnumerator<AsyncEnumerable<TValue>> sourcesEnumerator)
+            private async Promise MergeSources()
             {
-                _enumeratorCount = 1;
+                _readyQueue.AddProducer();
                 int index = 0;
                 object rejectContainer = null;
+                var sources = _sourcesEnumerator;
+                _sourcesEnumerator = default;
                 try
                 {
-                    while (await sourcesEnumerator.MoveNextAsync())
+                    while (await sources.MoveNextAsync())
                     {
                         int i = index;
                         checked
                         {
                             ++index;
                         }
-                        Interlocked.Increment(ref _enumeratorCount);
-                        var enumerator = sourcesEnumerator.Current.GetAsyncEnumerator(_cancelationToken);
+                        _readyQueue.AddProducer();
+                        var enumerator = sources.Current.GetAsyncEnumerator(_cancelationToken);
                         _enumerators.Add(enumerator);
                         ContinueMerge(enumerator, i);
                     }
@@ -311,17 +266,13 @@ namespace Proto.Promises
                 }
                 finally
                 {
-
-                    var tuple = (rejectContainer, sourcesEnumerator.DisposeAsync());
+                    var tuple = (rejectContainer, sources.DisposeAsync());
                     // Add to the list so it can be awaited the same as all the other dispose promises.
                     lock (_disposePromises)
                     {
                         _disposePromises.Add(tuple);
                     }
-                    if (Interlocked.Decrement(ref _enumeratorCount) == 0)
-                    {
-                        _continueEvent.Set();
-                    }
+                    _readyQueue.RemoveProducer();
                 }
             }
         }
@@ -376,7 +327,6 @@ namespace Proto.Promises
                 // We don't store the source directly, to reduce memory, we just store it in the _cancelationToken field and use the _ref directly.
                 _cancelationToken = CancelationSource.New(_cancelationToken).Token;
                 _streamWriterId = enumerableId;
-                _continueEvent.Reset();
                 var iteratorPromise = Iterate()._promise;
                 if (iteratorPromise._ref == null)
                 {
@@ -402,35 +352,15 @@ namespace Proto.Promises
                     List<Exception> exceptions = null;
                     MergeSources(ref exceptions);
 
-                    while (true)
+                    while (await _readyQueue.GetHasValueAsync())
                     {
-                        // Wait until a value is available, or all enumerators have completed.
-                        await _continueEvent.WaitAsync();
+                        int index = _readyQueue.Dequeue();
 
-                        // Read the count via Interlocked without changing it.
-                        if (Interlocked.CompareExchange(ref _enumeratorCount, 0, 0) == 0)
-                        {
-                            break;
-                        }
+                        // Yield the value to the consumer.
+                        // Only store the index past the `await` to keep the async state machine as small as possible.
+                        await YieldAsync(_enumerators[index].Current, _streamWriterId);
 
-                        while (true)
-                        {
-                            int index;
-                            lock (_readyQueue)
-                            {
-                                if (_readyQueue.Count == 0)
-                                {
-                                    break;
-                                }
-                                index = _readyQueue.Dequeue();
-                            }
-
-                            // Yield the value to the consumer.
-                            // Only store the index past the `await` to keep the async state machine as small as possible.
-                            await YieldAsync(_enumerators[index].Current, _streamWriterId);
-
-                            ContinueMerge(_enumerators[index], index);
-                        }
+                        ContinueMerge(_enumerators[index], index);
                     }
 
                     // All enumerators are complete, the only thing left to do is wait for DisposeAsyncs.
@@ -484,38 +414,32 @@ namespace Proto.Promises
             {
                 try
                 {
-                    _enumeratorCount = 1;
+                    _readyQueue.AddProducer();
                     int index = 0;
                     using (var sources = _sourcesEnumerator)
                     {
                         _sourcesEnumerator = default;
-                        try
+                        while (sources.MoveNext())
                         {
-                            while (sources.MoveNext())
+                            int i = index;
+                            checked
                             {
-                                int i = index;
-                                checked
-                                {
-                                    ++index;
-                                }
-                                Interlocked.Increment(ref _enumeratorCount);
-                                var enumerator = sources.Current.GetAsyncEnumerator(_cancelationToken);
-                                _enumerators.Add(enumerator);
-                                ContinueMerge(enumerator, i);
+                                ++index;
                             }
-                        }
-                        finally
-                        {
-                            if (Interlocked.Decrement(ref _enumeratorCount) == 0)
-                            {
-                                _continueEvent.Set();
-                            }
+                            _readyQueue.AddProducer();
+                            var enumerator = sources.Current.GetAsyncEnumerator(_cancelationToken);
+                            _enumerators.Add(enumerator);
+                            ContinueMerge(enumerator, i);
                         }
                     }
                 }
                 catch (Exception e)
                 {
                     RecordException(e, ref exceptions);
+                }
+                finally
+                {
+                    _readyQueue.RemoveProducer();
                 }
             }
         }
