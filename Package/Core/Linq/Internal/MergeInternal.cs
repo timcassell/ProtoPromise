@@ -171,9 +171,13 @@ namespace Proto.Promises
                 {
                     MergeSources().Forget();
 
-                    while (await _readyQueue.GetHasValueAsync())
+                    while (true)
                     {
-                        int index = _readyQueue.Dequeue();
+                        var (hasValue, index) = await _readyQueue.TryDequeueAsync();
+                        if (!hasValue)
+                        {
+                            break;
+                        }
 
                         // Yield the value to the consumer.
                         // Only store the index past the `await` to keep the async state machine as small as possible.
@@ -352,9 +356,13 @@ namespace Proto.Promises
                     List<Exception> exceptions = null;
                     MergeSources(ref exceptions);
 
-                    while (await _readyQueue.GetHasValueAsync())
+                    while (true)
                     {
-                        int index = _readyQueue.Dequeue();
+                        var (hasValue, index) = await _readyQueue.TryDequeueAsync();
+                        if (!hasValue)
+                        {
+                            break;
+                        }
 
                         // Yield the value to the consumer.
                         // Only store the index past the `await` to keep the async state machine as small as possible.

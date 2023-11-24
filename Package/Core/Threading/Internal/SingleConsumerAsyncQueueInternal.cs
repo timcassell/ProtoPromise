@@ -1,10 +1,9 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 
-#pragma warning disable IDE0251 // Make member 'readonly'
-
 namespace Proto.Promises
 {
+#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -14,7 +13,7 @@ namespace Proto.Promises
         {
             // TODO: optimize this queue.
             private readonly Queue<T> _queue;
-            private PromiseRefBase.DeferredPromise<bool> _waiter;
+            private PromiseRefBase.DeferredPromise<(bool, T)> _waiter;
             private int _producerCount;
 
             internal SingleConsumerAsyncQueueInternal(int capacity)
@@ -24,53 +23,47 @@ namespace Proto.Promises
                 _producerCount = 0;
             }
 
-            // Promise<(bool, T)> TryGetValueAsync would be more efficient, but old IL2CPP compiler crashes.
-            internal Promise<bool> GetHasValueAsync()
+            internal Promise<(bool hasValue, T value)> TryDequeueAsync()
             {
-                bool value;
-                PromiseRefBase.DeferredPromise<bool> promise;
+                bool hasValue;
+                T value = default;
+                PromiseRefBase.DeferredPromise<(bool, T)> promise;
                 lock (_queue)
                 {
                     if (_producerCount == 0)
                     {
-                        value = false;
+                        hasValue = false;
                         goto ReturnImmediate;
                     }
                     if (_queue.Count > 0)
                     {
-                        value = true;
+                        hasValue = true;
+                        value = _queue.Dequeue();
                         goto ReturnImmediate;
                     }
-                    _waiter = promise = PromiseRefBase.DeferredPromise<bool>.GetOrCreate();
+                    _waiter = promise = PromiseRefBase.DeferredPromise<(bool, T)>.GetOrCreate();
                 }
-                return new Promise<bool>(promise, promise.Id, 0);
+                return new Promise<(bool, T)>(promise, promise.Id, 0);
 
             ReturnImmediate:
-                return Promise.Resolved(value);
-            }
-
-            internal T Dequeue()
-            {
-                lock (_queue)
-                {
-                    return _queue.Dequeue();
-                }
+                return Promise.Resolved((hasValue, value));
             }
 
             internal void Enqueue(T value)
             {
-                PromiseRefBase.DeferredPromise<bool> promise;
+                PromiseRefBase.DeferredPromise<(bool, T)> promise;
                 lock (_queue)
                 {
-                    _queue.Enqueue(value);
                     promise = _waiter;
+                    if (promise == null)
+                    {
+                        _queue.Enqueue(value);
+                        return;
+                    }
                     _waiter = null;
                 }
-                if (promise != null)
-                {
-                    promise.TryIncrementDeferredIdAndUnregisterCancelation(promise.DeferredId);
-                    promise.ResolveDirect(true);
-                }
+                promise.TryIncrementDeferredIdAndUnregisterCancelation(promise.DeferredId);
+                promise.ResolveDirect((true, value));
             }
 
             internal void AddProducer()
@@ -83,7 +76,7 @@ namespace Proto.Promises
 
             internal void RemoveProducer()
             {
-                PromiseRefBase.DeferredPromise<bool> promise;
+                PromiseRefBase.DeferredPromise<(bool, T)> promise;
                 lock (_queue)
                 {
                     if ((--_producerCount > 0) | (_queue.Count > 0))
@@ -96,9 +89,10 @@ namespace Proto.Promises
                 if (promise != null)
                 {
                     promise.TryIncrementDeferredIdAndUnregisterCancelation(promise.DeferredId);
-                    promise.ResolveDirect(false);
+                    promise.ResolveDirect((false, default));
                 }
             }
         } // class AsyncQueueInternal<T>
     } // class Internal
+#endif // CSHARP_7_3_OR_NEWER
 } // namespace Proto.Promises
