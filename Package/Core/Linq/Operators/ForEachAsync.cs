@@ -13,13 +13,7 @@ using System.Threading;
 namespace Proto.Promises.Linq
 {
 #if CSHARP_7_3_OR_NEWER
-    /// <summary>
-    /// Provides extension methods for <see cref="AsyncEnumerable{T}"/>.
-    /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    public static partial class AsyncEnumerableExtensions
+    partial class AsyncEnumerable
     {
         /// <summary>
         /// Invokes an <see cref="Action{T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence.
@@ -389,7 +383,7 @@ namespace Proto.Promises.Linq
         }
     }
 
-    partial class AsyncEnumerableExtensions
+    partial class AsyncEnumerable
     {
         // Calls to this get compiled away in RELEASE mode
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);

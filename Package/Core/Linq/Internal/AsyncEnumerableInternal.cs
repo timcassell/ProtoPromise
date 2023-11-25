@@ -85,12 +85,21 @@ namespace Proto.Promises
                 private int _iteratorCompleteId;
                 protected int _enumerableId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
                 protected bool _disposed;
-                protected CancelationToken _cancelationToken;
+                private bool _isStarted;
+                internal CancelationToken _cancelationToken;
 
                 internal int EnumerableId
                 {
                     [MethodImpl(InlineOption)]
                     get { return _enumerableId; }
+                }
+
+                [MethodImpl(InlineOption)]
+                new protected void Reset()
+                {
+                    base.Reset();
+                    _disposed = false;
+                    _isStarted = false;
                 }
 
                 ~AsyncEnumerableBase()
@@ -153,7 +162,15 @@ namespace Proto.Promises
                     _iteratorCompleteExpectedId = newId;
                     _iteratorCompleteId = iteratorCompleteId;
                     _result = false;
-                    StartOrMoveNext(newId);
+                    if (_isStarted)
+                    {
+                        MoveNext();
+                    }
+                    else
+                    {
+                        _isStarted = true;
+                        Start(newId);
+                    }
                     return new Promise<bool>(this, Id, 0);
                 }
 
@@ -292,7 +309,17 @@ namespace Proto.Promises
                     HandleNextInternal(null, Promise.State.Resolved);
                 }
 
-                protected abstract void StartOrMoveNext(int enumerableId);
+                protected void MoveNext()
+                {
+                    // Invalidate the previous awaiter.
+                    IncrementPromiseIdAndClearPrevious();
+                    // Reset for the next awaiter.
+                    ResetWithoutStacktrace();
+                    // Handle iterator promise to move the async state machine forward.
+                    InterlockedExchange(ref _iteratorPromiseRef, null).Handle(this, null, Promise.State.Resolved);
+                }
+
+                protected abstract void Start(int enumerableId);
 
                 protected abstract void DisposeAndReturnToPool();
             } // class AsyncEnumerableBase<T>
@@ -323,7 +350,6 @@ namespace Proto.Promises
                 var enumerable = GetOrCreate();
                 enumerable.Reset();
                 enumerable._iterator = iterator;
-                enumerable._disposed = false;
                 return enumerable;
             }
 
@@ -343,22 +369,10 @@ namespace Proto.Promises
                 }
             }
 
-            protected override void StartOrMoveNext(int enumerableId)
+            protected override void Start(int enumerableId)
             {
-                if (_iterator.IsNull)
-                {
-                    // Invalidate the previous awaiter.
-                    IncrementPromiseIdAndClearPrevious();
-                    // Reset for the next awaiter.
-                    ResetWithoutStacktrace();
-                    // Handle iterator promise to move the async state machine forward.
-                    InterlockedExchange(ref _iteratorPromiseRef, null).Handle(this, null, Promise.State.Resolved);
-                    return;
-                }
-
-                var iterator = _iterator;
+                var iteratorPromise = _iterator.Start(new AsyncStreamWriter<TValue>(this, enumerableId), _cancelationToken)._promise;
                 _iterator = default;
-                var iteratorPromise = iterator.Start(new AsyncStreamWriter<TValue>(this, enumerableId), _cancelationToken)._promise;
                 if (iteratorPromise._ref == null)
                 {
                     // Already complete. This can happen if no awaits occurred in the async iterator function.

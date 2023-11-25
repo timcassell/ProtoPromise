@@ -841,7 +841,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<int, T>> RaceWithIndex<T>(params Promise<T>[] promises)
 #endif
         {
-            return RaceWithIndex<T, ArrayExtensions.Enumerator<Promise<T>>>(promises.GetGenericEnumerator());
+            return RaceWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
         }
 
         /// <summary>
@@ -1056,7 +1056,7 @@ namespace Proto.Promises
         public static Promise<ValueTuple<int, T>> FirstWithIndex<T>(params Promise<T>[] promises)
 #endif
         {
-            return FirstWithIndex<T, ArrayExtensions.Enumerator<Promise<T>>>(promises.GetGenericEnumerator());
+            return FirstWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
         }
 
         /// <summary>

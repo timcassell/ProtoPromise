@@ -18,12 +18,12 @@ namespace Proto.Promises.Linq
 {
 #if CSHARP_7_3_OR_NEWER // We only expose AsyncEnumerable where custom async method builders are supported.
     /// <summary>
-    /// Provides helper functions to create <see cref="AsyncEnumerable{T}"/> async streams.
+    /// Provides helper functions to create and operate on <see cref="AsyncEnumerable{T}"/> async streams.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public static class AsyncEnumerable
+    public static partial class AsyncEnumerable
     {
         // We use AsyncEnumerableMethod instead of Promise so it can specially handle early-exits (`break` keyword).
 

@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 namespace Proto.Promises.Linq
 {
 #if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
-    public static partial class AsyncEnumerableExtensions
+    partial class AsyncEnumerable
     {
         /// <summary>
         /// Convert the <see cref="IAsyncEnumerable{T}"/> <paramref name="source"/> to an <see cref="AsyncEnumerable{T}"/>.

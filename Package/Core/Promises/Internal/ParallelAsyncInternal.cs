@@ -429,11 +429,7 @@ namespace Proto.Promises
                 {
                     lock (this)
                     {
-                        if (_exceptions == null)
-                        {
-                            _exceptions = new List<Exception>();
-                        }
-                        _exceptions.Add(e);
+                        Internal.RecordException(e, ref _exceptions);
                     }
                 }
 
@@ -505,6 +501,8 @@ namespace Proto.Promises
                     // We're already hooking this up directly to the MoveNextAsync promise and the loop body promise,
                     // Adding a 3rd direct hookup for DisposeAsync which is only called once would add extra overhead to the others that are called multiple times.
                     // Instead, we use a more traditional ContinueWith. But we use it directly with IDelegateContinue to avoid creating a delegate.
+
+                    // TODO: We could use a PromisePassThrough instead of PromiseContinue to reduce memory.
                     var continuePromise = PromiseContinue<VoidResult, IDelegateContinue>.GetOrCreate(this, disposePromise.Depth);
                     AddPending(continuePromise);
                     disposePromise._ref.HookupNewPromise(disposePromise._id, continuePromise);

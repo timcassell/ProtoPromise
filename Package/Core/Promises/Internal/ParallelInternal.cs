@@ -421,11 +421,7 @@ namespace Proto.Promises
                 {
                     lock (this)
                     {
-                        if (_exceptions == null)
-                        {
-                            _exceptions = new List<Exception>();
-                        }
-                        _exceptions.Add(e);
+                        Internal.RecordException(e, ref _exceptions);
                     }
                 }
 
