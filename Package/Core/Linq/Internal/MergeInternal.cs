@@ -129,6 +129,7 @@ namespace Proto.Promises
             {
                 Dispose();
                 _cancelationToken = default;
+                _sourcesEnumerator = default;
                 ObjectPool.MaybeRepool(this);
             }
 
@@ -238,23 +239,15 @@ namespace Proto.Promises
             private async Promise MergeSources()
             {
                 _readyQueue.AddProducer();
-                int index = 0;
-                object rejectContainer = null;
-                var sources = _sourcesEnumerator;
-                _sourcesEnumerator = default;
                 try
                 {
-                    while (await sources.MoveNextAsync())
+                    while (await _sourcesEnumerator.MoveNextAsync())
                     {
-                        int i = index;
-                        checked
-                        {
-                            ++index;
-                        }
+                        int index = _enumerators.Count;
                         _readyQueue.AddProducer();
-                        var enumerator = sources.Current.GetAsyncEnumerator(_cancelationToken);
+                        var enumerator = _sourcesEnumerator.Current.GetAsyncEnumerator(_cancelationToken);
                         _enumerators.Add(enumerator);
-                        ContinueMerge(enumerator, i);
+                        ContinueMerge(enumerator, index);
                     }
                 }
                 catch (Exception e)
@@ -265,19 +258,24 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        rejectContainer = CreateRejectContainer(e, int.MinValue, null, null);
+                        DisposeSourcesEnumerator(CreateRejectContainer(e, int.MinValue, null, null));
+                        return;
                     }
                 }
-                finally
+                // This would be in a finally block, but we don't want to store an extra
+                // unnecessary object field in the async state machine for the rejectContainer.
+                DisposeSourcesEnumerator(null);
+            }
+
+            private void DisposeSourcesEnumerator(object rejectContainer)
+            {
+                var tuple = (rejectContainer, _sourcesEnumerator.DisposeAsync());
+                // Add to the list so it can be awaited the same as all the other dispose promises.
+                lock (_disposePromises)
                 {
-                    var tuple = (rejectContainer, sources.DisposeAsync());
-                    // Add to the list so it can be awaited the same as all the other dispose promises.
-                    lock (_disposePromises)
-                    {
-                        _disposePromises.Add(tuple);
-                    }
-                    _readyQueue.RemoveProducer();
+                    _disposePromises.Add(tuple);
                 }
+                _readyQueue.RemoveProducer();
             }
         }
 
@@ -313,6 +311,7 @@ namespace Proto.Promises
             {
                 Dispose();
                 _cancelationToken = default;
+                _sourcesEnumerator = default;
                 ObjectPool.MaybeRepool(this);
             }
 
@@ -423,21 +422,15 @@ namespace Proto.Promises
                 try
                 {
                     _readyQueue.AddProducer();
-                    int index = 0;
-                    using (var sources = _sourcesEnumerator)
+                    using (_sourcesEnumerator)
                     {
-                        _sourcesEnumerator = default;
-                        while (sources.MoveNext())
+                        while (_sourcesEnumerator.MoveNext())
                         {
-                            int i = index;
-                            checked
-                            {
-                                ++index;
-                            }
+                            int index = _enumerators.Count;
                             _readyQueue.AddProducer();
-                            var enumerator = sources.Current.GetAsyncEnumerator(_cancelationToken);
+                            var enumerator = _sourcesEnumerator.Current.GetAsyncEnumerator(_cancelationToken);
                             _enumerators.Add(enumerator);
-                            ContinueMerge(enumerator, i);
+                            ContinueMerge(enumerator, index);
                         }
                     }
                 }
