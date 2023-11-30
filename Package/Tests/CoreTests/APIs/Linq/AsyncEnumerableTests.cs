@@ -455,6 +455,17 @@ namespace ProtoPromiseTests.APIs.Linq
                 deferred.Promise.Forget();
             }
         }
+
+        [Test]
+        public void AsyncEnumerableEmpty_NoValues()
+        {
+            int count = 0;
+            AsyncEnumerable.Empty<int>()
+                .ForEachAsync(num => ++count)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.AreEqual(0, count);
+        }
     }
 }
 

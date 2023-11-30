@@ -12,7 +12,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-#pragma warning disable IDE0063 // Use simple 'using' statement
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 namespace Proto.Promises

@@ -119,7 +119,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal Linq.AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
+                internal virtual Linq.AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
                 {
                     int newId = id + 1;
                     if (Interlocked.CompareExchange(ref _enumerableId, newId, id) != id)
@@ -141,7 +141,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal Promise<bool> MoveNextAsync(int id)
+                internal virtual Promise<bool> MoveNextAsync(int id)
                 {
                     // We increment by 1 when MoveNextAsync, then decrement by 1 when YieldAsync.
                     int newId = id + 1;
@@ -190,8 +190,7 @@ namespace Proto.Promises
                     return new AsyncStreamYielder<T>(this, newId);
                 }
 
-                [MethodImpl(InlineOption)]
-                internal Promise DisposeAsync(int id)
+                internal virtual Promise DisposeAsync(int id)
                 {
                     int newId = id + 3;
                     // When the async iterator function completes before DisposeAsync is called, it's set to id + 2.
