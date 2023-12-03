@@ -104,6 +104,9 @@ namespace Proto.Promises
                 if (Interlocked.CompareExchange(ref _enumerableId, id + 1, id) == id)
                 {
                     // This was not already disposed.
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    SetCompletionState(null, Promise.State.Resolved);
+#endif
                     DisposeAndReturnToPool();
                 }
                 // IAsyncDisposable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
