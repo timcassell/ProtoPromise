@@ -80,7 +80,7 @@ namespace Proto.Promises
                 // We use `Interlocked.CompareExchange(ref _enumerableId` to enforce only 1 awaiter uses it at a time, in the correct order.
                 // We use a separate field for AsyncStreamYielder continuation, because using _next for 2 separate async functions (the iterator and the consumer) proves problematic.
                 protected PromiseRefBase _iteratorPromiseRef;
-                private T _current;
+                protected T _current;
                 private int _iteratorCompleteExpectedId;
                 private int _iteratorCompleteId;
                 protected int _enumerableId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
@@ -100,6 +100,13 @@ namespace Proto.Promises
                     base.Reset();
                     _disposed = false;
                     _isStarted = false;
+                }
+
+                [MethodImpl(InlineOption)]
+                new protected void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationToken = default;
                 }
 
                 ~AsyncEnumerableBase()
@@ -133,10 +140,12 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal T GetCurrent(int id)
                 {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (_enumerableId != id)
                     {
                         throw new InvalidOperationException("AsyncEnumerable.GetCurrent: instance is not valid, or the MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
                     }
+#endif
                     return _current;
                 }
 
@@ -355,7 +364,6 @@ namespace Proto.Promises
             protected override void DisposeAndReturnToPool()
             {
                 Dispose();
-                _cancelationToken = default;
                 ObjectPool.MaybeRepool(this);
             }
 

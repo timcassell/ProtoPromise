@@ -74,5 +74,5 @@ namespace Proto.Promises
             internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
+#endif // CSHARP_7_3_OR_NEWER && !PROMISE_DEBUG
 }
