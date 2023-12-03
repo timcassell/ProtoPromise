@@ -26,7 +26,7 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-    internal static partial class Internal
+    partial class Internal
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]

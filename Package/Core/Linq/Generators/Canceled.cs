@@ -12,7 +12,7 @@ using System.Threading;
 namespace Proto.Promises.Linq
 {
 #if CSHARP_7_3_OR_NEWER // We only expose AsyncEnumerable where custom async method builders are supported.
-    public static partial class AsyncEnumerable
+    partial class AsyncEnumerable
     {
         /// <summary>
         /// Generates an async-enumerable sequence that will be immediately canceled when iterated.
@@ -72,8 +72,6 @@ namespace Proto.Promises
                 // Do nothing, just return a resolved promise.
                 => Promise.Resolved();
 
-            protected override void Start(int enumerableId) { throw new System.InvalidOperationException(); }
-            protected override void DisposeAndReturnToPool() { throw new System.InvalidOperationException(); }
             internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
         }
     }

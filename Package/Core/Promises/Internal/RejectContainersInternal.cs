@@ -22,7 +22,7 @@ using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises
 {
-    internal static partial class Internal
+    partial class Internal
     {
         // Extension method instead of including on the interface, since old IL2CPP compiler does not support virtual generics with structs.
         internal static bool TryGetValue<TValue>(this IRejectContainer rejectContainer, out TValue converted)

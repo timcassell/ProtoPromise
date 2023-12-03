@@ -12,7 +12,7 @@ using System.Threading;
 namespace Proto.Promises.Linq
 {
 #if CSHARP_7_3_OR_NEWER // We only expose AsyncEnumerable where custom async method builders are supported.
-    public static partial class AsyncEnumerable
+    partial class AsyncEnumerable
     {
         /// <summary>
         /// Generates an async-enumerable sequence that will be immediately rejected with the provided reason when iterated.

@@ -76,17 +76,11 @@ namespace Proto.Promises
 #endif
             internal abstract class AsyncEnumerableBase<T> : PromiseSingleAwait<bool>
             {
-                // This is used as the backing reference to 3 different awaiters. MoveNextAsync (Promise<bool>), DisposeAsync (Promise), and YieldAsync (AsyncStreamYielder<T>).
-                // We use `Interlocked.CompareExchange(ref _enumerableId` to enforce only 1 awaiter uses it at a time, in the correct order.
-                // We use a separate field for AsyncStreamYielder continuation, because using _next for 2 separate async functions (the iterator and the consumer) proves problematic.
-                protected PromiseRefBase _iteratorPromiseRef;
+                internal CancelationToken _cancelationToken;
                 protected T _current;
-                private int _iteratorCompleteExpectedId;
-                private int _iteratorCompleteId;
                 protected int _enumerableId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
                 protected bool _disposed;
                 protected bool _isStarted;
-                internal CancelationToken _cancelationToken;
 
                 internal int EnumerableId
                 {
@@ -149,8 +143,23 @@ namespace Proto.Promises
                     return _current;
                 }
 
-                [MethodImpl(InlineOption)]
-                internal virtual Promise<bool> MoveNextAsync(int id)
+                internal abstract Promise<bool> MoveNextAsync(int id);
+                internal abstract Promise DisposeAsync(int id);
+            } // class AsyncEnumerableBase<T>
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal abstract class AsyncEnumerableWithIterator<T> : AsyncEnumerableBase<T>
+            {
+                // This is used as the backing reference to 3 different awaiters. MoveNextAsync (Promise<bool>), DisposeAsync (Promise), and YieldAsync (AsyncStreamYielder<T>).
+                // We use `Interlocked.CompareExchange(ref _enumerableId` to enforce only 1 awaiter uses it at a time, in the correct order.
+                // We use a separate field for AsyncStreamYielder continuation, because using _next for 2 separate async functions (the iterator and the consumer) proves problematic.
+                protected PromiseRefBase _iteratorPromiseRef;
+                private int _iteratorCompleteExpectedId;
+                private int _iteratorCompleteId;
+
+                internal override Promise<bool> MoveNextAsync(int id)
                 {
                     // We increment by 1 when MoveNextAsync, then decrement by 1 when YieldAsync.
                     int newId = id + 1;
@@ -183,6 +192,16 @@ namespace Proto.Promises
                     return new Promise<bool>(this, Id, 0);
                 }
 
+                private void MoveNext()
+                {
+                    // Invalidate the previous awaiter.
+                    IncrementPromiseIdAndClearPrevious();
+                    // Reset for the next awaiter.
+                    ResetWithoutStacktrace();
+                    // Handle iterator promise to move the async state machine forward.
+                    InterlockedExchange(ref _iteratorPromiseRef, null).Handle(this, null, Promise.State.Resolved);
+                }
+
                 [MethodImpl(InlineOption)]
                 internal AsyncStreamYielder<T> YieldAsync(in T value, int id)
                 {
@@ -199,7 +218,7 @@ namespace Proto.Promises
                     return new AsyncStreamYielder<T>(this, newId);
                 }
 
-                internal virtual Promise DisposeAsync(int id)
+                internal override Promise DisposeAsync(int id)
                 {
                     int newId = id + 3;
                     // When the async iterator function completes before DisposeAsync is called, it's set to id + 2.
@@ -317,43 +336,32 @@ namespace Proto.Promises
                     HandleNextInternal(null, Promise.State.Resolved);
                 }
 
-                protected void MoveNext()
-                {
-                    // Invalidate the previous awaiter.
-                    IncrementPromiseIdAndClearPrevious();
-                    // Reset for the next awaiter.
-                    ResetWithoutStacktrace();
-                    // Handle iterator promise to move the async state machine forward.
-                    InterlockedExchange(ref _iteratorPromiseRef, null).Handle(this, null, Promise.State.Resolved);
-                }
-
                 protected abstract void Start(int enumerableId);
-
                 protected abstract void DisposeAndReturnToPool();
-            } // class AsyncEnumerableBase<T>
+            } // class AsyncEnumerableWithIterator<TValue>
         } // class PromiseRefBase
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncEnumerableImpl<TValue, TIterator> : PromiseRefBase.AsyncEnumerableBase<TValue>
+        internal sealed class AsyncEnumerableCreate<TValue, TIterator> : PromiseRefBase.AsyncEnumerableWithIterator<TValue>
             where TIterator : IAsyncIterator<TValue>
         {
             private TIterator _iterator;
 
-            private AsyncEnumerableImpl() { }
+            private AsyncEnumerableCreate() { }
 
             [MethodImpl(InlineOption)]
-            private static AsyncEnumerableImpl<TValue, TIterator> GetOrCreate()
+            private static AsyncEnumerableCreate<TValue, TIterator> GetOrCreate()
             {
-                var obj = ObjectPool.TryTakeOrInvalid<AsyncEnumerableImpl<TValue, TIterator>>();
+                var obj = ObjectPool.TryTakeOrInvalid<AsyncEnumerableCreate<TValue, TIterator>>();
                 return obj == InvalidAwaitSentinel.s_instance
-                    ? new AsyncEnumerableImpl<TValue, TIterator>()
-                    : obj.UnsafeAs<AsyncEnumerableImpl<TValue, TIterator>>();
+                    ? new AsyncEnumerableCreate<TValue, TIterator>()
+                    : obj.UnsafeAs<AsyncEnumerableCreate<TValue, TIterator>>();
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncEnumerableImpl<TValue, TIterator> GetOrCreate(in TIterator iterator)
+            internal static AsyncEnumerableCreate<TValue, TIterator> GetOrCreate(in TIterator iterator)
             {
                 var enumerable = GetOrCreate();
                 enumerable.Reset();

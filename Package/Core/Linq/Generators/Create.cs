@@ -43,7 +43,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncIterator, nameof(asyncIterator), 1);
 
-            var enumerable = Internal.AsyncEnumerableImpl<T, Internal.AsyncIterator<T>>.GetOrCreate(new Internal.AsyncIterator<T>(asyncIterator));
+            var enumerable = Internal.AsyncEnumerableCreate<T, Internal.AsyncIterator<T>>.GetOrCreate(new Internal.AsyncIterator<T>(asyncIterator));
             return new AsyncEnumerable<T>(enumerable);
         }
 
@@ -54,7 +54,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncIterator, nameof(asyncIterator), 1);
 
-            var enumerable = Internal.AsyncEnumerableImpl<T, Internal.AsyncIterator<T, TCapture>>.GetOrCreate(new Internal.AsyncIterator<T, TCapture>(captureValue, asyncIterator));
+            var enumerable = Internal.AsyncEnumerableCreate<T, Internal.AsyncIterator<T, TCapture>>.GetOrCreate(new Internal.AsyncIterator<T, TCapture>(captureValue, asyncIterator));
             return new AsyncEnumerable<T>(enumerable);
         }
     }
