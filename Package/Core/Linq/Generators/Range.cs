@@ -7,6 +7,7 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises.Linq
 {
@@ -100,8 +101,13 @@ namespace Proto.Promises
 
             internal override Promise DisposeAsync(int id)
             {
-                DisposeAndReturnToPool();
-                return base.DisposeAsync(id);
+                if (Interlocked.CompareExchange(ref _enumerableId, id + 1, id) == id)
+                {
+                    // This was not already disposed.
+                    DisposeAndReturnToPool();
+                }
+                // IAsyncDisposable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
+                return Promise.Resolved();
             }
 
             protected override void DisposeAndReturnToPool()
