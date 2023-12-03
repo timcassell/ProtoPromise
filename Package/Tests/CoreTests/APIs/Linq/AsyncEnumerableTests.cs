@@ -516,6 +516,38 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.AreEqual(0, count);
         }
+
+        [Test]
+        public void AsyncEnumerableRepeat_BadArgs()
+        {
+            Assert.Catch<System.ArgumentOutOfRangeException>(() => AsyncEnumerable.Repeat(0, -1));
+        }
+
+        [Test]
+        public void AsyncEnumerableRepeat_Empty()
+        {
+            int count = 0;
+            AsyncEnumerable.Repeat(2, 0)
+                .ForEachAsync(num => ++count)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.AreEqual(0, count);
+        }
+
+        [Test]
+        public void AsyncEnumerableRepeat_Count()
+        {
+            int count = 0;
+            AsyncEnumerable.Repeat(2, 5)
+                .ForEachAsync(num =>
+                {
+                    Assert.AreEqual(2, num);
+                    ++count;
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.AreEqual(5, count);
+        }
     }
 }
 
