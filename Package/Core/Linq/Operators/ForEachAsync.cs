@@ -8,7 +8,6 @@ using Proto.Promises.Async.CompilerServices;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace Proto.Promises.Linq
 {
@@ -24,7 +23,44 @@ namespace Proto.Promises.Linq
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T> action)
-            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(action);
+        {
+            ValidateArgument(action, nameof(action), 1);
+
+            return ForEachCoreSync(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(action));
+        }
+
+        /// <summary>
+        /// Invokes an <see cref="Action{TCapture, T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
+        /// </summary>
+        /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TCapture">The type of the captured value.</typeparam>
+        /// <param name="source">Source sequence.</param>
+        /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
+        /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T> action)
+        {
+            ValidateArgument(action, nameof(action), 1);
+
+            return ForEachCoreSync(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action));
+        }
+
+        private static async Promise ForEachCoreSync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
+            where TAction : Internal.IAction<T>
+        {
+            try
+            {
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    action.Invoke(asyncEnumerator.Current);
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
 
         /// <summary>
         /// Invokes an <see cref="Action{T}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.
@@ -40,19 +76,6 @@ namespace Proto.Promises.Linq
 
             return ForEachCoreSync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(action));
         }
-
-        /// <summary>
-        /// Invokes an <see cref="Action{TCapture, T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
-        /// Returns a <see cref="Promise"/> that represents the entire operation.
-        /// </summary>
-        /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TCapture">The type of the captured value.</typeparam>
-        /// <param name="source">Source sequence.</param>
-        /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
-        /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T> action)
-            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(captureValue, action);
 
         /// <summary>
         /// Invokes an <see cref="Action{TCapture, T}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
@@ -130,7 +153,45 @@ namespace Proto.Promises.Linq
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T, int> action)
-            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(action);
+        {
+            ValidateArgument(action, nameof(action), 1);
+
+            return ForEachWithIndexCoreSync(source.GetAsyncEnumerator(), new ActionElementIndex<T>(action));
+        }
+
+        /// <summary>
+        /// Invokes an <see cref="Action{TCapture, T, T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
+        /// </summary>
+        /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TCapture">The type of the captured value.</typeparam>
+        /// <param name="source">Source sequence.</param>
+        /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
+        /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T, int> action)
+        {
+            ValidateArgument(action, nameof(action), 1);
+
+            return ForEachWithIndexCoreSync(source.GetAsyncEnumerator(), new ActionElementIndexCapture<T, TCapture>(captureValue, action));
+        }
+
+        private static async Promise ForEachWithIndexCoreSync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
+            where TAction : Internal.IAction<T, int>
+        {
+            try
+            {
+                int index = 0;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    action.Invoke(asyncEnumerator.Current, checked(index++));
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
 
         /// <summary>
         /// Invokes an <see cref="Action{T, T}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, incorporating the element's index.
@@ -146,19 +207,6 @@ namespace Proto.Promises.Linq
 
             return ForEachWithIndexCoreSync(configuredSource.GetAsyncEnumerator(), new ActionElementIndex<T>(action));
         }
-
-        /// <summary>
-        /// Invokes an <see cref="Action{TCapture, T, T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
-        /// Returns a <see cref="Promise"/> that represents the entire operation.
-        /// </summary>
-        /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TCapture">The type of the captured value.</typeparam>
-        /// <param name="source">Source sequence.</param>
-        /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
-        /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T, int> action)
-            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(captureValue, action);
 
         /// <summary>
         /// Invokes an <see cref="Action{TCapture, T, T}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
@@ -183,10 +231,10 @@ namespace Proto.Promises.Linq
         {
             try
             {
-                int index = -1;
+                int index = 0;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
-                    action.Invoke(asyncEnumerator.Current, checked(++index));
+                    action.Invoke(asyncEnumerator.Current, checked(index++));
                 }
             }
             finally
@@ -205,7 +253,45 @@ namespace Proto.Promises.Linq
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, Promise> asyncAction)
-            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(asyncAction);
+        {
+            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+
+            return ForEachCoreAsync(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(asyncAction));
+        }
+
+        /// <summary>
+        /// Invokes an <see cref="Func{TCapture, T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
+        /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
+        /// </summary>
+        /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TCapture">The type of the captured value.</typeparam>
+        /// <param name="source">Source sequence.</param>
+        /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
+        /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, Promise> asyncAction)
+        {
+            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+
+            return ForEachCoreAsync(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAction));
+        }
+
+        private static async Promise ForEachCoreAsync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
+            where TAction : Internal.IFunc<T, Promise>
+        {
+            try
+            {
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    await action.Invoke(asyncEnumerator.Current);
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
 
         /// <summary>
         /// Invokes an <see cref="Func{T, TResult}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.
@@ -222,20 +308,6 @@ namespace Proto.Promises.Linq
 
             return ForEachCoreAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(asyncAction));
         }
-
-        /// <summary>
-        /// Invokes an <see cref="Func{TCapture, T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
-        /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
-        /// Returns a <see cref="Promise"/> that represents the entire operation.
-        /// </summary>
-        /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TCapture">The type of the captured value.</typeparam>
-        /// <param name="source">Source sequence.</param>
-        /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
-        /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, Promise> asyncAction)
-            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(captureValue, asyncAction);
 
         /// <summary>
         /// Invokes an <see cref="Func{TCapture, T, TResult}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>.
@@ -315,7 +387,46 @@ namespace Proto.Promises.Linq
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, int, Promise> asyncAction)
-            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(asyncAction);
+        {
+            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+
+            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(), new AsyncActionElementIndex<T>(asyncAction));
+        }
+
+        /// <summary>
+        /// Invokes an <see cref="Func{TCapture, T, T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
+        /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
+        /// Returns a <see cref="Promise"/> that represents the entire operation.
+        /// </summary>
+        /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TCapture">The type of the captured value.</typeparam>
+        /// <param name="source">Source sequence.</param>
+        /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
+        /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction)
+        {
+            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+
+            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(), new AsyncActionElementIndexCapture<T, TCapture>(captureValue, asyncAction));
+        }
+
+        private static async Promise ForEachWithIndexCoreAsync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
+            where TAction : Internal.IFunc<T, int, Promise>
+        {
+            try
+            {
+                int index = 0;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    await action.Invoke(asyncEnumerator.Current, checked(index++));
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
 
         /// <summary>
         /// Invokes an <see cref="Func{T, T, TResult}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, incorporating the element's index.
@@ -332,20 +443,6 @@ namespace Proto.Promises.Linq
 
             return ForEachWithIndexCoreAsync(configuredSource.GetAsyncEnumerator(), new AsyncActionElementIndex<T>(asyncAction));
         }
-
-        /// <summary>
-        /// Invokes an <see cref="Func{TCapture, T, T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
-        /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
-        /// Returns a <see cref="Promise"/> that represents the entire operation.
-        /// </summary>
-        /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TCapture">The type of the captured value.</typeparam>
-        /// <param name="source">Source sequence.</param>
-        /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
-        /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
-        /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction)
-            => source.ConfigureAwait(SynchronizationOption.Synchronous).ForEachAsync(captureValue, asyncAction);
 
         /// <summary>
         /// Invokes an <see cref="Func{TCapture, T, T, TResult}"/> for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence, and the <paramref name="captureValue"/>, incorporating the element's index.
@@ -370,10 +467,10 @@ namespace Proto.Promises.Linq
         {
             try
             {
-                int index = -1;
+                int index = 0;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
-                    await action.Invoke(asyncEnumerator.Current, checked(++index));
+                    await action.Invoke(asyncEnumerator.Current, checked(index++));
                 }
             }
             finally
