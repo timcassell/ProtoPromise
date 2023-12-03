@@ -439,6 +439,9 @@ namespace Proto.Promises
                 }
                 finally
                 {
+                    // Even though the enumerator is cleared in DisposeAndReturnToPool, we also do it here
+                    // to allow GC to clean it up if it's eligible before the merge is complete.
+                    _sourcesEnumerator = default;
                     _readyQueue.RemoveProducer();
                 }
             }

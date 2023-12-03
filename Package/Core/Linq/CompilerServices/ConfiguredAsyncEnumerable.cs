@@ -2,6 +2,9 @@ using Proto.Promises.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
+#pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 namespace Proto.Promises.Async.CompilerServices
 {
 #if CSHARP_7_3_OR_NEWER
@@ -95,14 +98,110 @@ namespace Proto.Promises.Async.CompilerServices
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public Promise<bool> MoveNextAsync()
-                => Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(_enumerator.MoveNextAsync(), _synchronizationOption, _synchronizationContext, _forceAsync, CancelationToken.None);
+            {
+                // Implementation is similar to promise.WaitAsync, but we aren't using the cancelation token and we don't need to get a Duplicate if the option is synchronous.
+                var moveNextPromise = _enumerator.MoveNextAsync();
+                var synchronizationContext = _synchronizationContext;
+                switch (_synchronizationOption)
+                {
+                    case Internal.SynchronizationOption.Synchronous:
+                    {
+                        return moveNextPromise;
+                    }
+                    case Internal.SynchronizationOption.Foreground:
+                    {
+                        synchronizationContext = Promise.Config.ForegroundContext;
+                        if (synchronizationContext == null)
+                        {
+                            throw new InvalidOperationException(
+                                "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
+                                "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
+                                Internal.GetFormattedStacktrace(2));
+                        }
+                        break;
+                    }
+                    case Internal.SynchronizationOption.Background:
+                    {
+                        synchronizationContext = Promise.Config.BackgroundContext;
+                        goto default;
+                    }
+                    default: // SynchronizationOption.Explicit
+                    {
+                        if (synchronizationContext == null)
+                        {
+                            synchronizationContext = Internal.BackgroundSynchronizationContextSentinel.s_instance;
+                        }
+                        break;
+                    }
+                }
+
+                Internal.PromiseRefBase.PromiseConfigured<bool> promise;
+                if (moveNextPromise._ref == null)
+                {
+                    promise = Internal.PromiseRefBase.PromiseConfigured<bool>.GetOrCreateFromResolved(synchronizationContext, moveNextPromise._result, moveNextPromise.Depth, _forceAsync);
+                }
+                else
+                {
+                    promise = Internal.PromiseRefBase.PromiseConfigured<bool>.GetOrCreate(synchronizationContext, moveNextPromise.Depth, _forceAsync);
+                    moveNextPromise._ref.HookupNewPromise(moveNextPromise._id, promise);
+                }
+                return new Promise<bool>(promise, promise.Id, moveNextPromise.Depth, moveNextPromise._result);
+            }
 
             /// <summary>
             /// Asynchronously releases resources used by the <see cref="AsyncEnumerator{T}"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public Promise DisposeAsync()
-                => Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(_enumerator.DisposeAsync(), _synchronizationOption, _synchronizationContext, _forceAsync, CancelationToken.None);
+            {
+                // Implementation is similar to promise.WaitAsync, but we aren't using the cancelation token and we don't need to get a Duplicate if the option is synchronous.
+                var moveNextPromise = _enumerator.DisposeAsync();
+                var synchronizationContext = _synchronizationContext;
+                switch (_synchronizationOption)
+                {
+                    case Internal.SynchronizationOption.Synchronous:
+                    {
+                        return moveNextPromise;
+                    }
+                    case Internal.SynchronizationOption.Foreground:
+                    {
+                        synchronizationContext = Promise.Config.ForegroundContext;
+                        if (synchronizationContext == null)
+                        {
+                            throw new InvalidOperationException(
+                                "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
+                                "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
+                                Internal.GetFormattedStacktrace(2));
+                        }
+                        break;
+                    }
+                    case Internal.SynchronizationOption.Background:
+                    {
+                        synchronizationContext = Promise.Config.BackgroundContext;
+                        goto default;
+                    }
+                    default: // SynchronizationOption.Explicit
+                    {
+                        if (synchronizationContext == null)
+                        {
+                            synchronizationContext = Internal.BackgroundSynchronizationContextSentinel.s_instance;
+                        }
+                        break;
+                    }
+                }
+
+                Internal.PromiseRefBase.PromiseConfigured<Internal.VoidResult> promise;
+                if (moveNextPromise._ref == null)
+                {
+                    promise = Internal.PromiseRefBase.PromiseConfigured<Internal.VoidResult>.GetOrCreateFromResolved(synchronizationContext, default, moveNextPromise.Depth, _forceAsync);
+                }
+                else
+                {
+                    promise = Internal.PromiseRefBase.PromiseConfigured<Internal.VoidResult>.GetOrCreate(synchronizationContext, moveNextPromise.Depth, _forceAsync);
+                    moveNextPromise._ref.HookupNewPromise(moveNextPromise._id, promise);
+                }
+                return new Promise(promise, promise.Id, moveNextPromise.Depth);
+            }
         }
     }
 #endif
