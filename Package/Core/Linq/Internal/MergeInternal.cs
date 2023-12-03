@@ -127,7 +127,6 @@ namespace Proto.Promises
             protected override void DisposeAndReturnToPool()
             {
                 Dispose();
-                _cancelationToken = default;
                 _sourcesEnumerator = default;
                 ObjectPool.MaybeRepool(this);
             }
@@ -309,7 +308,6 @@ namespace Proto.Promises
             protected override void DisposeAndReturnToPool()
             {
                 Dispose();
-                _cancelationToken = default;
                 _sourcesEnumerator = default;
                 ObjectPool.MaybeRepool(this);
             }

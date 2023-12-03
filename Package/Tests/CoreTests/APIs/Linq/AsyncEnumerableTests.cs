@@ -466,6 +466,56 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.AreEqual(0, count);
         }
+
+        [Test]
+        public void AsyncEnumerableRange_BadArgs()
+        {
+            Assert.Catch<System.ArgumentOutOfRangeException>(() => AsyncEnumerable.Range(0, -1));
+            Assert.Catch<System.ArgumentOutOfRangeException>(() => AsyncEnumerable.Range(1024, int.MaxValue - 1022));
+        }
+
+        [Test]
+        public void AsyncEnumerableRange_Simple()
+        {
+            int count = 0;
+            Promise.Run(async () =>
+            {
+                await using (var enumerator = AsyncEnumerable.Range(2, 5).GetAsyncEnumerator())
+                {
+                    Assert.True(await enumerator.MoveNextAsync());
+                    ++count;
+                    Assert.AreEqual(2, enumerator.Current);
+                    Assert.True(await enumerator.MoveNextAsync());
+                    ++count;
+                    Assert.AreEqual(3, enumerator.Current);
+                    Assert.True(await enumerator.MoveNextAsync());
+                    ++count;
+                    Assert.AreEqual(4, enumerator.Current);
+                    Assert.True(await enumerator.MoveNextAsync());
+                    ++count;
+                    Assert.AreEqual(5, enumerator.Current);
+                    Assert.True(await enumerator.MoveNextAsync());
+                    ++count;
+                    Assert.AreEqual(6, enumerator.Current);
+
+                    Assert.False(await enumerator.MoveNextAsync());
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.AreEqual(5, count);
+        }
+
+        [Test]
+        public void AsyncEnumerableRange_Empty()
+        {
+            int count = 0;
+            AsyncEnumerable.Range(2, 0)
+                .ForEachAsync(num => ++count)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.AreEqual(0, count);
+        }
     }
 }
 
