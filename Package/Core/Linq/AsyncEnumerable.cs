@@ -21,6 +21,7 @@ namespace Proto.Promises.Linq
     /// Exposes an enumerator that provides asynchronous iteration over values of a specified type.
     /// An instance of this type may only be consumed once.
     /// </summary>
+    /// <typeparam name="T">The type of the elements in the async-enumerable sequence.</typeparam>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -110,6 +111,7 @@ namespace Proto.Promises.Linq
     /// Supports a simple asynchronous iteration over a generic collection.
     /// An instance of this type may only be consumed once.
     /// </summary>
+    /// <typeparam name="T">The type of the elements in the async-enumerator sequence.</typeparam>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif

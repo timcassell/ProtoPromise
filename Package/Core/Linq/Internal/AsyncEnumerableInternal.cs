@@ -85,7 +85,7 @@ namespace Proto.Promises
                 private int _iteratorCompleteId;
                 protected int _enumerableId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
                 protected bool _disposed;
-                private bool _isStarted;
+                protected bool _isStarted;
                 internal CancelationToken _cancelationToken;
 
                 internal int EnumerableId

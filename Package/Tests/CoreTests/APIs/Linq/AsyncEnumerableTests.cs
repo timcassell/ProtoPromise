@@ -548,6 +548,60 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.AreEqual(5, count);
         }
+
+        [Test]
+        public void AsyncEnumerableReturn_Single()
+        {
+            int count = 0;
+            AsyncEnumerable.Return(42)
+                .ForEachAsync(num =>
+                {
+                    Assert.AreEqual(42, num);
+                    ++count;
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.AreEqual(1, count);
+        }
+
+        [Test]
+        public void AsyncEnumerableCanceled_IsCanceled()
+        {
+            int count = 0;
+            bool canceled = false;
+            AsyncEnumerable<int>.Canceled()
+                .ForEachAsync(num =>
+                {
+                    ++count;
+                })
+                .CatchCancelation(() => canceled = true)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.AreEqual(0, count);
+            Assert.True(canceled);
+        }
+
+        [Test]
+        public void AsyncEnumerableRejected_IsRejectedWithTheReason()
+        {
+            int count = 0;
+            bool rejected = false;
+            const string reason = "Reject";
+            AsyncEnumerable<int>.Rejected(reason)
+                .ForEachAsync(num =>
+                {
+                    ++count;
+                })
+                .Catch((string r) =>
+                {
+                    Assert.AreEqual(reason, r);
+                    rejected = true;
+                })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.AreEqual(0, count);
+            Assert.True(rejected);
+        }
     }
 }
 
