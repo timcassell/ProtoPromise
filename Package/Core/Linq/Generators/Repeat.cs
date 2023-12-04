@@ -15,42 +15,49 @@ namespace Proto.Promises.Linq
     public static partial class AsyncEnumerable
     {
         /// <summary>
-        /// Generates an async-enumerable sequence of integral numbers within a specified range.
+        /// Generates an async-enumerable sequence that contains one repeated value.
         /// </summary>
-        /// <param name="start">The value of the first integer in the sequence.</param>
-        /// <param name="count">The number of sequential integers to generate.</param>
-        /// <returns>An async-enumerable sequence that contains a range of sequential integral numbers.</returns>
-        /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is less than zero. -or- <paramref name="start"/> + <paramref name="count"/> - 1 is larger than <see cref="int.MaxValue"/>.</exception>
-        public static AsyncEnumerable<int> Range(int start, int count)
+        /// <typeparam name="T">The type of the value to be repeated in the result async-enumerable sequence.</typeparam>
+        /// <param name="element">The value to be repeated.</param>
+        /// <param name="count">Number of times to repeat the element.</param>
+        /// <returns>An async-enumerable sequence that repeats the given element the specified number of times.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is less than zero.</exception>
+        public static AsyncEnumerable<T> Repeat<T>(T element, int count)
+            => AsyncEnumerable<T>.Repeat(element, count);
+    }
+
+    partial struct AsyncEnumerable<T>
+    {
+        /// <summary>
+        /// Generates an async-enumerable sequence that contains one repeated value.
+        /// </summary>
+        /// <param name="element">The value to be repeated.</param>
+        /// <param name="count">Number of times to repeat the element.</param>
+        /// <returns>An async-enumerable sequence that repeats the given element the specified number of times.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is less than zero.</exception>
+        public static AsyncEnumerable<T> Repeat(T element, int count)
         {
             if (count < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(count), "count is less than zero", Internal.GetFormattedStacktrace(1));
             }
 
-            var end = (long) start + count - 1L;
-            if (end > int.MaxValue)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), "start + count - 1 is larger than int.MaxValue", Internal.GetFormattedStacktrace(1));
-            }
-
             return count == 0
-                ? Empty<int>()
+                ? Empty()
 #if PROMISE_DEBUG
                 // In DEBUG mode we use the Create function so its proper use will be verified.
-                : AsyncEnumerable<int>.Create((start, start + count), async (cv, writer, cancelationToken) =>
+                : Create((element, count), async (cv, writer, cancelationToken) =>
                 {
-                    while (cv.start != cv.Item2)
+                    unchecked
                     {
-                        await writer.YieldAsync(cv.start);
-                        unchecked
+                        while (--cv.count >= 0)
                         {
-                            ++cv.start;
+                            await writer.YieldAsync(cv.element);
                         }
                     }
                 });
 #else
-                : new AsyncEnumerable<int>(Internal.AsyncEnumerableRange.GetOrCreate(start, start + count));
+                : new AsyncEnumerable<T>(Internal.AsyncEnumerableRepeat<T>.GetOrCreate(element, count));
 #endif
         }
     }
@@ -62,32 +69,28 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER && !PROMISE_DEBUG
     partial class Internal
     {
-        internal sealed class AsyncEnumerableRange : PromiseRefBase.AsyncEnumerableBase<int>
+        internal sealed class AsyncEnumerableRepeat<T> : PromiseRefBase.AsyncEnumerableBase<T>
         {
-            private int _end;
+            private int _count;
 
-            private AsyncEnumerableRange() { }
+            private AsyncEnumerableRepeat() { }
 
             [MethodImpl(InlineOption)]
-            private static AsyncEnumerableRange GetOrCreate()
+            private static AsyncEnumerableRepeat<T> GetOrCreate()
             {
-                var obj = ObjectPool.TryTakeOrInvalid<AsyncEnumerableRange>();
+                var obj = ObjectPool.TryTakeOrInvalid<AsyncEnumerableRepeat<T>>();
                 return obj == InvalidAwaitSentinel.s_instance
-                    ? new AsyncEnumerableRange()
-                    : obj.UnsafeAs<AsyncEnumerableRange>();
+                    ? new AsyncEnumerableRepeat<T>()
+                    : obj.UnsafeAs<AsyncEnumerableRepeat<T>>();
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncEnumerableRange GetOrCreate(int start, int end)
+            internal static AsyncEnumerableRepeat<T> GetOrCreate(T element, int count)
             {
                 var enumerable = GetOrCreate();
                 enumerable.Reset();
-                enumerable._end = end;
-                unchecked
-                {
-                    // Subtract 1 so that we can implement MoveNextAsync branchlessly.
-                    enumerable._current = start - 1;
-                }
+                enumerable._count = count;
+                enumerable._current = element;
                 return enumerable;
             }
 
@@ -95,7 +98,7 @@ namespace Proto.Promises
             {
                 unchecked
                 {
-                    return Promise.Resolved(++_current != _end);
+                    return Promise.Resolved(--_count >= 0);
                 }
             }
 
@@ -116,6 +119,7 @@ namespace Proto.Promises
             protected override void DisposeAndReturnToPool()
             {
                 Dispose();
+                _current = default;
                 _disposed = true;
                 ObjectPool.MaybeRepool(this);
             }
