@@ -18,7 +18,7 @@ using System.Diagnostics;
 
 namespace Proto.Promises
 {
-    internal static partial class Internal
+    partial class Internal
     {
         // Idea from https://www.meziantou.net/how-to-measure-elapsed-time-without-allocating-a-stopwatch.htm
 #pragma warning disable IDE0250 // Make struct 'readonly'

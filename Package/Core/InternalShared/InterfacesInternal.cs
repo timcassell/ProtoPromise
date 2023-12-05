@@ -6,7 +6,7 @@ using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises
 {
-    internal static partial class Internal
+    partial class Internal
     {
         internal partial interface ITraceable { }
 

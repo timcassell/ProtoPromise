@@ -12,7 +12,7 @@ using System.Threading;
 namespace Proto.Promises.Linq
 {
 #if CSHARP_7_3_OR_NEWER // We only expose AsyncEnumerable where custom async method builders are supported.
-    public static partial class AsyncEnumerable
+    partial class AsyncEnumerable
     {
         /// <summary>
         /// Generates an async-enumerable sequence of integral numbers within a specified range.
@@ -104,23 +104,22 @@ namespace Proto.Promises
                 if (Interlocked.CompareExchange(ref _enumerableId, id + 1, id) == id)
                 {
                     // This was not already disposed.
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    SetCompletionState(null, Promise.State.Resolved);
-#endif
-                    DisposeAndReturnToPool();
+                    Dispose();
                 }
                 // IAsyncDisposable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
                 return Promise.Resolved();
             }
 
-            protected override void DisposeAndReturnToPool()
+            new private void Dispose()
             {
-                Dispose();
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                SetCompletionState(null, Promise.State.Resolved);
+#endif
+                base.Dispose();
                 _disposed = true;
                 ObjectPool.MaybeRepool(this);
             }
 
-            protected override void Start(int enumerableId) { throw new System.InvalidOperationException(); }
             internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
         }
     }
