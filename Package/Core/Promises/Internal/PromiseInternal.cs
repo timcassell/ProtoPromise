@@ -359,7 +359,7 @@ namespace Proto.Promises
                 set { _suppressRejection = value; }
             }
 
-            private bool WasAwaitedOrForgotten
+            protected bool WasAwaitedOrForgotten
             {
                 [MethodImpl(InlineOption)]
                 get { return _wasAwaitedorForgotten; }

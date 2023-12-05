@@ -68,6 +68,8 @@ namespace Proto.Promises
                 var enumerable = GetOrCreate();
                 enumerable.Reset();
                 enumerable._current = value;
+                // We don't actually use this type as a backing reference for Promises, so we need to suppress the UnobservedPromiseException from the base finalizer.
+                enumerable.WasAwaitedOrForgotten = true;
                 return enumerable;
             }
 

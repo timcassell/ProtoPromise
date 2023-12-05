@@ -88,6 +88,8 @@ namespace Proto.Promises
                     // Subtract 1 so that we can implement MoveNextAsync branchlessly.
                     enumerable._current = start - 1;
                 }
+                // We don't actually use this type as a backing reference for Promises, so we need to suppress the UnobservedPromiseException from the base finalizer.
+                enumerable.WasAwaitedOrForgotten = true;
                 return enumerable;
             }
 
