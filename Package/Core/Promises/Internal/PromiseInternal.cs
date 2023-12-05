@@ -376,7 +376,7 @@ namespace Proto.Promises
                     if (!WasAwaitedOrForgotten)
                     {
                         // Promise was not awaited or forgotten.
-                        string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise.";
+                        string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise. " + this;
                         ReportRejection(new UnobservedPromiseException(message), this);
                     }
                     if (_rejectContainerOrPreviousOrLink is IRejectContainer & State == Promise.State.Rejected & !SuppressRejection)
