@@ -254,6 +254,8 @@ namespace Proto.Promises
                         // DisposeAsync was called before MoveNextAsync, the async iterator function never started.
                         // Dispose this and return a resolved promise.
                         State = Promise.State.Resolved;
+                        // This is never used as a backing reference for Promises, so we need to suppress the UnobservedPromiseException from the base finalizer.
+                        WasAwaitedOrForgotten = true;
                         DisposeAndReturnToPool();
                         return Promise.Resolved();
                     }

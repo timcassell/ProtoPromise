@@ -38,6 +38,12 @@ namespace Proto.Promises
                 // This is necessary because the _rejectContainerOrPreviousOrLink field is used to hook up the registered promises chain,
                 // and it would not be possible to do that for multiple progress listeners with a single promise object. So we have to create dummy objects to register multiple.
 
+                private IndividualPromisePassThrough()
+                {
+                    // Don't let the base finalizer report an error.
+                    WasAwaitedOrForgotten = true;
+                }
+
                 [MethodImpl(InlineOption)]
                 private static IndividualPromisePassThrough<TResult> GetOrCreate()
                 {

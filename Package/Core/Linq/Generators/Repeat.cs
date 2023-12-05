@@ -91,6 +91,8 @@ namespace Proto.Promises
                 enumerable.Reset();
                 enumerable._count = count;
                 enumerable._current = element;
+                // We don't actually use this type as a backing reference for Promises, so we need to suppress the UnobservedPromiseException from the base finalizer.
+                enumerable.WasAwaitedOrForgotten = true;
                 return enumerable;
             }
 
