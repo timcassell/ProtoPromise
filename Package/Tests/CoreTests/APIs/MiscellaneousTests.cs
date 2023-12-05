@@ -1445,5 +1445,24 @@ namespace ProtoPromiseTests.APIs
             }
         }
 #endif // !UNITY_WEBGL
+
+        [Test]
+        public void ClearObjectPool_NoErrors()
+        {
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise.Preserve();
+
+#pragma warning disable CS0618 // Type or member is obsolete
+            promise
+                .Progress(v => { }, SynchronizationOption.Synchronous)
+                .Then(() => { })
+                .Forget();
+#pragma warning restore CS0618 // Type or member is obsolete
+
+            deferred.Resolve();
+            promise.Forget();
+
+            Promise.Manager.ClearObjectPool();
+        }
     }
 }
