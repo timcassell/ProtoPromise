@@ -36,7 +36,7 @@ namespace Proto.Promises
         /// <summary>Gets an awaiter for this <see cref="Promise"/> that suppresses throws and returns a <see cref="ResultContainer"/> instead.</summary>
         /// <returns>The awaiter.</returns>
         /// <remarks> Use as `var resultContainer = await promise.AwaitNoThrow();`</remarks>
-        [MethodImpl(Internal.InlineOption), EditorBrowsable(EditorBrowsableState.Never)]
+        [MethodImpl(Internal.InlineOption)]
         public PromiseNoThrowAwaiterVoid AwaitNoThrow()
         {
             ValidateOperation(1);
@@ -121,7 +121,7 @@ namespace Proto.Promises
         /// <summary>Gets an awaiter for this <see cref="Promise{T}"/> that suppresses throws and returns a <see cref="ResultContainer"/> instead.</summary>
         /// <returns>The awaiter.</returns>
         /// <remarks>Use as `var resultContainer = await promise.AwaitNoThrow();`</remarks>
-        [MethodImpl(Internal.InlineOption), EditorBrowsable(EditorBrowsableState.Never)]
+        [MethodImpl(Internal.InlineOption)]
         public PromiseNoThrowAwaiter<T> AwaitNoThrow()
         {
             ValidateOperation(1);
