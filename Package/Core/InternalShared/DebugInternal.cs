@@ -45,12 +45,12 @@ namespace Proto.Promises
         internal const MethodImplOptions InlineOption = (MethodImplOptions) 256; // AggressiveInlining
 #endif
 
-        internal static void ValidateProgressValue(float value, string argName, int skipFrames)
+        internal static void ValidateProgressValue(double value, string argName, int skipFrames)
         {
             bool isBetween01 = value >= 0f && value <= 1f;
             if (!isBetween01)
             {
-                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1.", GetFormattedStacktrace(skipFrames + 1));
+                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1. Actual: " + value, GetFormattedStacktrace(skipFrames + 1));
             }
         }
 

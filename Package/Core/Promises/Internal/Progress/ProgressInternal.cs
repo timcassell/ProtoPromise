@@ -288,12 +288,6 @@ namespace Proto.Promises
             }
         }
 
-        [MethodImpl(InlineOption)]
-        private static double Lerp(double a, double b, double t)
-        {
-            return a + (b - a) * t;
-        }
-
         partial class PromiseRefBase
         {
             internal virtual PromiseRefBase AddProgressWaiter(short promiseId, out HandleablePromiseBase previousWaiter, ref ProgressHookupValues progressHookupValues) { throw new System.InvalidOperationException(); }
