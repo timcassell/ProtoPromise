@@ -62,7 +62,6 @@ namespace Proto.Promises
                     }
                     _waiter = null;
                 }
-                promise.TryIncrementDeferredIdAndUnregisterCancelation(promise.DeferredId);
                 promise.ResolveDirect((true, value));
             }
 
@@ -86,11 +85,7 @@ namespace Proto.Promises
                     promise = _waiter;
                     _waiter = null;
                 }
-                if (promise != null)
-                {
-                    promise.TryIncrementDeferredIdAndUnregisterCancelation(promise.DeferredId);
-                    promise.ResolveDirect((false, default));
-                }
+                promise?.ResolveDirect((false, default));
             }
         } // class AsyncQueueInternal<T>
     } // class Internal
