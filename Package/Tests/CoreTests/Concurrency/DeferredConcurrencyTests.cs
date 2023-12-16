@@ -56,7 +56,7 @@ namespace ProtoPromiseTests.Concurrency
                 {
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
-                    float progress1 = progressHelper.GetCurrentProgress(true, true);
+                    var progress1 = progressHelper.GetCurrentProgress(true, true);
                     progressHelper.MaybeExitLock();
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
                     Assert.LessOrEqual(progress1, 0.4f);
@@ -99,7 +99,7 @@ namespace ProtoPromiseTests.Concurrency
                 {
                     // Each progress is reported concurrently, so we can't know which stuck.
                     // Just check to make sure any of them stuck, so it should be >= min and <= max.
-                    float progress1 = progressHelper.GetCurrentProgress(true, true);
+                    var progress1 = progressHelper.GetCurrentProgress(true, true);
                     progressHelper.MaybeExitLock();
                     Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
                     Assert.LessOrEqual(progress1, 0.4f);
@@ -277,7 +277,7 @@ namespace ProtoPromiseTests.Concurrency
                 // Teardown
                 () =>
                 {
-                    float progress = progressHelper.GetCurrentProgress(true, true);
+                    var progress = progressHelper.GetCurrentProgress(true, true);
                     progressHelper.MaybeExitLock();
                     // Race condition could report 0 instead of expected from background threads.
                     if (progress < expected * 0.5f)
@@ -320,7 +320,7 @@ namespace ProtoPromiseTests.Concurrency
                 // Teardown
                 () =>
                 {
-                    float progress = progressHelper.GetCurrentProgress(true, true);
+                    var progress = progressHelper.GetCurrentProgress(true, true);
                     progressHelper.MaybeExitLock();
                     // Race condition could report 0 instead of expected from background threads.
                     if (progress < expected * 0.5f)

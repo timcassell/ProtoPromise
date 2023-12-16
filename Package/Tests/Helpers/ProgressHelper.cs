@@ -14,7 +14,7 @@ namespace ProtoPromiseTests
         Interface
     }
 
-    public class ProgressHelper : IProgress<float>
+    public class ProgressHelper : IProgress<float>, IProgress<double>
     {
         private readonly float _delta;
         private readonly object _locker = new object();
@@ -23,7 +23,7 @@ namespace ProtoPromiseTests
         private readonly bool _forceAsync;
         private readonly Action<float> _onProgress;
         volatile private bool _wasInvoked;
-        volatile private float _currentProgress = float.NaN;
+        private double _currentProgress = double.NaN;
 
         public ProgressHelper(ProgressType progressType, SynchronizationType synchronizationType, Action<float> onProgress = null, float delta = float.NaN, bool forceAsync = false)
         {
@@ -57,9 +57,19 @@ namespace ProtoPromiseTests
 
         public void Report(float value)
         {
+            ReportNew(value);
+        }
+
+        void IProgress<double>.Report(double value)
+        {
+            ReportNew(value);
+        }
+
+        public void ReportNew(double value)
+        {
             if (_onProgress != null)
             {
-                _onProgress.Invoke(value);
+                _onProgress.Invoke((float) value);
             }
             lock (_locker)
             {
@@ -95,17 +105,17 @@ namespace ProtoPromiseTests
             }
         }
 
-        private bool AreEqual(float expected, float actual)
+        private bool AreEqual(double expected, double actual)
         {
-            if (float.IsNaN(expected))
+            if (double.IsNaN(expected))
             {
-                return float.IsNaN(actual);
+                return double.IsNaN(actual);
             }
-            float dif = Math.Abs(expected - actual);
+            double dif = Math.Abs(expected - actual);
             return dif <= _delta;
         }
 
-        public void AssertCurrentProgress(float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
+        public void AssertCurrentProgress(double expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
             if (!waitForInvoke)
             {
@@ -128,11 +138,11 @@ namespace ProtoPromiseTests
             }
         }
 
-        private bool GetCurrentProgressEqualsExpected(float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
+        private bool GetCurrentProgressEqualsExpected(double expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
             try
             {
-                float currentProgress = GetCurrentProgress(waitForInvoke, executeForeground, timeout);
+                double currentProgress = GetCurrentProgress(waitForInvoke, executeForeground, timeout);
                 return AreEqual(expectedProgress, currentProgress);
             }
             catch (TimeoutException e)
@@ -141,7 +151,7 @@ namespace ProtoPromiseTests
             }
         }
 
-        private void WaitForExpectedProgress(float expectedProgress, bool executeForeground, TimeSpan timeout = default(TimeSpan))
+        private void WaitForExpectedProgress(double expectedProgress, bool executeForeground, TimeSpan timeout = default(TimeSpan))
         {
             if (executeForeground)
             {
@@ -152,14 +162,14 @@ namespace ProtoPromiseTests
             {
                 timeout = TimeSpan.FromSeconds(2);
             }
-            float current = float.NaN;
+            double current = double.NaN;
             if (!SpinWait.SpinUntil(() => { current = _currentProgress; return AreEqual(expectedProgress, current); }, timeout))
             {
                 throw new TimeoutException("Progress was not invoked with expected progress " + expectedProgress + " after " + timeout + ", _currentProgress: " + _currentProgress + ", current thread is background: " + Thread.CurrentThread.IsBackground);
             }
         }
 
-        public float GetCurrentProgress(bool waitForInvoke, bool executeForeground, TimeSpan timeout = default(TimeSpan))
+        public double GetCurrentProgress(bool waitForInvoke, bool executeForeground, TimeSpan timeout = default(TimeSpan))
         {
             lock (_locker)
             {
@@ -354,6 +364,37 @@ namespace ProtoPromiseTests
             }
         }
 
+        public void ReportProgressAndAssertResult(ProgressToken progressToken, double reportValue, double expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
+        {
+            if (!waitForInvoke)
+            {
+                // If waitForInvoke is false, it means the value is expected to be unchanged.
+                lock (_locker)
+                {
+                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                    progressToken.Report(reportValue);
+                }
+                if (executeForeground)
+                {
+                    TestHelper.ExecuteForegroundCallbacks();
+                }
+                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
+                return;
+            }
+
+            bool areEqual;
+            lock (_locker)
+            {
+                PrepareForInvoke();
+                progressToken.Report(reportValue);
+                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
+            }
+            if (!areEqual)
+            {
+                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
+            }
+        }
+
         public Promise SubscribeAndAssertCurrentProgress(Promise promise, float expectedProgress, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
         {
             bool areEqual;
@@ -438,6 +479,34 @@ namespace ProtoPromiseTests
                         return promise.Progress(this, (helper, v) => helper.Report(v), (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
                     default:
                         return promise.Progress(this, (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
+                }
+            }
+        }
+
+        public Progress ToProgress(CancelationToken cancelationToken = default(CancelationToken))
+        {
+            if (_synchronizationType == SynchronizationType.Explicit)
+            {
+                switch (_progressType)
+                {
+                    case ProgressType.Callback:
+                        return Progress.New(ReportNew, TestHelper._foregroundContext, _forceAsync, cancelationToken);
+                    case ProgressType.CallbackWithCapture:
+                        return Progress.New(this, (helper, v) => helper.ReportNew(v), TestHelper._foregroundContext, _forceAsync, cancelationToken);
+                    default:
+                        return Progress.New(this, TestHelper._foregroundContext, _forceAsync, cancelationToken);
+                }
+            }
+            else
+            {
+                switch (_progressType)
+                {
+                    case ProgressType.Callback:
+                        return Progress.New(ReportNew, (SynchronizationOption) _synchronizationType, _forceAsync, cancelationToken);
+                    case ProgressType.CallbackWithCapture:
+                        return Progress.New(this, (helper, v) => helper.ReportNew(v), (SynchronizationOption) _synchronizationType, _forceAsync, cancelationToken);
+                    default:
+                        return Progress.New(this, (SynchronizationOption) _synchronizationType, _forceAsync, cancelationToken);
                 }
             }
         }

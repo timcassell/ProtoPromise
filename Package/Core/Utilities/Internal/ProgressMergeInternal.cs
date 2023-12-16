@@ -65,7 +65,7 @@ namespace Proto.Promises
                 // Enter this lock before exiting previous lock.
                 // This prevents a race condition where another report on a separate thread could get ahead of this report.
                 _smallFields._locker.Enter();
-                reportValues._reporter._smallFields._locker.Exit();
+                reportValues._reporter.ExitLock();
                 if (reportValues._id != _smallFields._id)
                 {
                     _smallFields._locker.Exit();
@@ -82,7 +82,7 @@ namespace Proto.Promises
                 reportValues._id = _targetId;
             }
 
-            internal override void Dispose(int id)
+            internal void Dispose(int id)
             {
                 _smallFields._locker.Enter();
                 if (id != _smallFields._id)
@@ -108,7 +108,7 @@ namespace Proto.Promises
                 {
                     var temp = tokenHead;
                     tokenHead = temp._next.UnsafeAs<MergeToken>();
-                    temp.Dispose(0);
+                    temp.Dispose();
                 }
             }
 
@@ -154,7 +154,6 @@ namespace Proto.Promises
 
             // MergeToken only calls the other Report overload.
             internal override void Report(double value, int id) { throw new System.InvalidOperationException(); }
-            internal override Promise DisposeAsync(int id) { throw new System.InvalidOperationException(); }
 
             private sealed class MergeToken : ProgressBase
             {
@@ -218,15 +217,14 @@ namespace Proto.Promises
                     var reportValues = new NewProgressReportValues(this, _target, diff, _targetId);
                     // Call the target directly since we have the concrete sealed type.
                     _target.Report(ref reportValues);
-                    while (reportValues._reporter != null)
+                    while (reportValues._next != null)
                     {
                         reportValues._next.Report(ref reportValues);
                     }
                 }
 
-                internal override void Dispose(int id)
+                internal void Dispose()
                 {
-                    // We don't need to check the id because this is called directly from the merger. 
                     ThrowIfInPool(this);
 
                     _smallFields._locker.Enter();
@@ -240,7 +238,6 @@ namespace Proto.Promises
                 }
 
                 internal override void Report(ref NewProgressReportValues reportValues) { throw new System.InvalidOperationException(); }
-                internal override Promise DisposeAsync(int id) { throw new System.InvalidOperationException(); }
             }
         }
 

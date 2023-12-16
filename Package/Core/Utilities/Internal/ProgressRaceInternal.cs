@@ -68,7 +68,7 @@ namespace Proto.Promises
                 do
                 {
                     reportValues._next.Report(ref reportValues);
-                } while (reportValues._reporter != null);
+                } while (reportValues._next != null);
             }
 
             internal override void Report(ref NewProgressReportValues reportValues)
@@ -76,7 +76,7 @@ namespace Proto.Promises
                 // Enter this lock before exiting previous lock.
                 // This prevents a race condition where another report on a separate thread could get ahead of this report.
                 _smallFields._locker.Enter();
-                reportValues._reporter._smallFields._locker.Exit();
+                reportValues._reporter.ExitLock();
                 // Only report values that are larger than the current.
                 if (reportValues._id != _smallFields._id | _current >= reportValues._value)
                 {
@@ -94,7 +94,7 @@ namespace Proto.Promises
                 reportValues._id = _targetId;
             }
 
-            internal override void Dispose(int id)
+            internal void Dispose(int id)
             {
                 _smallFields._locker.Enter();
                 if (id != _smallFields._id)
@@ -123,10 +123,9 @@ namespace Proto.Promises
                     throw new ObjectDisposedException("Progress.RaceBuilder");
                 }
                 id = _smallFields._id;
+                _smallFields._locker.Exit();
                 return new ProgressToken(this, id, 0d, 1d);
             }
-
-            internal override Promise DisposeAsync(int id) { throw new System.InvalidOperationException(); }
         }
     } // class Internal
 } // namespace Proto.Promises

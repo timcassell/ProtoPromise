@@ -71,30 +71,6 @@ namespace Proto.Promises
             }
         }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal abstract class ProgressBase : HandleablePromiseBase, ITraceable
-        {
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-#endif
-
-            // Start with Id 1 instead of 0 to reduce risk of false positives.
-            internal ProgressSmallFields _smallFields = new ProgressSmallFields(1);
-
-            internal int Id
-            {
-                [MethodImpl(InlineOption)]
-                get { return _smallFields._id; }
-            }
-
-            internal abstract void Report(double value, int id);
-            internal abstract void Report(ref NewProgressReportValues reportValues);
-            internal abstract void Dispose(int id);
-            internal abstract Promise DisposeAsync(int id);
-        }
-
         internal
 #if CSHARP_7_3_OR_NEWER
             ref // Don't allow on the heap.
@@ -131,9 +107,45 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal abstract class ProgressBase : HandleablePromiseBase, ITraceable
+        {
+#if PROMISE_DEBUG
+            CausalityTrace ITraceable.Trace { get; set; }
+#endif
+
+            // Start with Id 1 instead of 0 to reduce risk of false positives.
+            // Must not be readonly.
+            internal ProgressSmallFields _smallFields = new ProgressSmallFields(1);
+
+            internal int Id
+            {
+                [MethodImpl(InlineOption)]
+                get { return _smallFields._id; }
+            }
+
+            internal virtual void ExitLock()
+            {
+                _smallFields._locker.Exit();
+            }
+
+            internal abstract void Report(double value, int id);
+            internal abstract void Report(ref NewProgressReportValues reportValues);
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal abstract class ProgressListener : ProgressBase
+        {
+            internal abstract Promise DisposeAsync(int id);
+        }
+
         // Helper method to avoid typing out the TProgress.
         [MethodImpl(InlineOption)]
-        internal static ProgressBase GetOrCreateProgress<TProgress>(TProgress progress, SynchronizationContext invokeContext, bool forceAsync, CancelationToken cancelationToken)
+        internal static ProgressListener GetOrCreateProgress<TProgress>(TProgress progress, SynchronizationContext invokeContext, bool forceAsync, CancelationToken cancelationToken)
             where TProgress : IProgress<double>
         {
             return Progress<TProgress>.GetOrCreate(progress, invokeContext, forceAsync, cancelationToken);
@@ -142,7 +154,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class Progress<TProgress> : ProgressBase, ICancelable
+        internal sealed class Progress<TProgress> : ProgressListener, ICancelable
             where TProgress : IProgress<double>
         {
             private TProgress _progress;
@@ -230,7 +242,7 @@ namespace Proto.Promises
                 // Enter this lock before exiting previous lock.
                 // This prevents a race condition where another report on a separate thread could get ahead of this report.
                 _smallFields._locker.Enter();
-                reportValues._reporter._smallFields._locker.Exit();
+                reportValues._reporter.ExitLock();
                 ReportCore(reportValues._value, reportValues._id);
                 // Set the next to null to notify the end of the caller loop.
                 reportValues._next = null;
@@ -375,8 +387,6 @@ namespace Proto.Promises
                     return new Promise(deferredPromise, deferredPromise.Id, 0);
                 }
             }
-
-            internal override void Dispose(int id) { throw new System.InvalidOperationException(); }
         }
     } // class Internal
 } // namespace Proto.Promises

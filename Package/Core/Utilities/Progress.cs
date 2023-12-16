@@ -22,11 +22,11 @@ namespace Proto.Promises
 # endif
         partial struct Progress
     {
-        private readonly Internal.ProgressBase _impl;
+        private readonly Internal.ProgressListener _impl;
         private readonly int _id;
 
         [MethodImpl(Internal.InlineOption)]
-        private Progress(Internal.ProgressBase impl)
+        private Progress(Internal.ProgressListener impl)
         {
             _impl = impl;
             _id = impl.Id;
@@ -272,6 +272,18 @@ namespace Proto.Promises
         }
 
         /// <summary>
+        /// Create a new progress handler that can report to multiple progress tokens.
+        /// </summary>
+        /// <remarks>
+        /// This can be useful when combined with <see cref="Promise.Preserve"/> for reporting progress to multiple consumers from a single async operation.
+        /// </remarks>
+        /// <returns>A new progress multi handler.</returns>
+        public static MultiHandler NewMultiHandler()
+        {
+            return MultiHandler.New();
+        }
+
+        /// <summary>
         /// Progress builder that produces progress tokens that will race to report their progress, with only the largest progress being reported.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -390,6 +402,77 @@ namespace Proto.Promises
 
             /// <summary>
             /// Stop generating new progress tokens, and release this instance.
+            /// </summary>
+            /// <exception cref="ObjectDisposedException">This instance was already disposed.</exception>
+            public void Dispose()
+            {
+                var impl = _impl;
+                if (impl != null)
+                {
+                    impl.Dispose(_id);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Progress handler that can report to multiple progress tokens.
+        /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        public
+#if CSHARP_7_3_OR_NEWER
+            readonly
+#endif
+            struct MultiHandler : IDisposable
+        {
+            private readonly Internal.ProgressMultiHandler _impl;
+            private readonly int _id;
+
+            [MethodImpl(Internal.InlineOption)]
+            private MultiHandler(Internal.ProgressMultiHandler impl)
+            {
+                _impl = impl;
+                _id = impl.Id;
+            }
+
+            /// <summary>
+            /// Create a new progress handler that can report to multiple progress tokens.
+            /// </summary>
+            /// <remarks>
+            /// This can be useful when combined with <see cref="Promise.Preserve"/> for reporting progress to multiple consumers from a single async operation.
+            /// </remarks>
+            /// <returns>A new progress multi handler.</returns>
+            [MethodImpl(Internal.InlineOption)]
+            public static MultiHandler New()
+            {
+                return new MultiHandler(Internal.ProgressMultiHandler.GetOrCreate());
+            }
+
+            /// <summary>
+            /// Get the <see cref="ProgressToken"/> that is used to report progress to the attached progress tokens.
+            /// </summary>
+            public ProgressToken Token
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get { return new ProgressToken(_impl, _id, 0d, 1d); }
+            }
+
+            /// <summary>
+            /// Add a progress token that will have its progress reported when this instance's <see cref="Token"/> is reported.
+            /// </summary>
+            /// <exception cref="ObjectDisposedException">This instance was already disposed.</exception>
+            public void Add(ProgressToken progressToken)
+            {
+                var impl = _impl;
+                if (impl != null)
+                {
+                    impl.Add(progressToken, _id);
+                }
+            }
+
+            /// <summary>
+            /// Release this instance.
             /// </summary>
             /// <exception cref="ObjectDisposedException">This instance was already disposed.</exception>
             public void Dispose()
