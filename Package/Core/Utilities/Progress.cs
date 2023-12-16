@@ -430,6 +430,15 @@ namespace Proto.Promises
         internal readonly double _minValue;
         internal readonly double _maxValue;
 
+        /// <summary>
+        /// Returns an empty <see cref="ProgressToken"/> with no listener.
+        /// </summary>
+        public static ProgressToken None
+        {
+            [MethodImpl(Internal.InlineOption)]
+            get { return default(ProgressToken); }
+        }
+
         internal ProgressToken(Internal.ProgressBase impl, int id, double minValue, double maxValue)
         {
             _impl = impl;
@@ -439,9 +448,27 @@ namespace Proto.Promises
         }
 
         /// <summary>
+        /// Gets whether this progress token has an associated progress listener.
+        /// </summary>
+        /// <remarks>
+        /// If this does not have a listener, calls to <see cref="Report(double)"/> do nothing.
+        /// </remarks>
+        public bool HasListener
+        {
+            get
+            {
+                var impl = _impl;
+                return impl != null && impl.Id == _id;
+            }
+        }
+
+        /// <summary>
         /// Report a progress update between 0 and 1 inclusive.
         /// </summary>
         /// <param name="value">The value of the updated progress.</param>
+        /// <remarks>
+        /// If this does not have a listener, calling this does nothing.
+        /// </remarks>
         /// <exception cref="ArgumentOutOfRangeException">The <paramref name="value"/> is not between 0 and 1 inclusive.</exception>
         public void Report(double value)
         {
