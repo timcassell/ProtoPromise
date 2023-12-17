@@ -11,7 +11,7 @@ using Proto.Promises;
 using System;
 using System.Threading;
 
-namespace ProtoPromiseTests.Concurrency
+namespace ProtoPromiseTests.Concurrency.Utilities
 {
     public class AsyncLazyConcurrencyTests
     {
