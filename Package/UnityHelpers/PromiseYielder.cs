@@ -71,6 +71,16 @@ namespace Proto.Promises
         }
 
         /// <summary>
+        /// Returns a <see cref="Instructions.WaitFramesWithProgressInstruction"/> that will complete after the specified number of frames have passed, while reporting progress.
+        /// </summary>
+        /// <param name="frames">How many frames to wait for.</param>
+        /// <param name="progressToken">The progress token that will have progress reported to it.</param>
+        public static Instructions.WaitFramesWithProgressInstruction WaitForFrames(uint frames, ProgressToken progressToken)
+        {
+            return new Instructions.WaitFramesWithProgressInstruction(frames, progressToken);
+        }
+
+        /// <summary>
         /// Returns a <see cref="Instructions.WaitTimeInstruction"/> that will complete after the specified timespan has passed, using scaled time.
         /// </summary>
         /// <param name="time">How much time to wait for.</param>
@@ -80,12 +90,32 @@ namespace Proto.Promises
         }
 
         /// <summary>
+        /// Returns a <see cref="Instructions.WaitTimeWithProgressInstruction"/> that will complete after the specified timespan has passed, using scaled time, while reporting progress.
+        /// </summary>
+        /// <param name="time">How much time to wait for.</param>
+        /// <param name="progressToken">The progress token that will have progress reported to it.</param>
+        public static Instructions.WaitTimeWithProgressInstruction WaitForTime(TimeSpan time, ProgressToken progressToken)
+        {
+            return new Instructions.WaitTimeWithProgressInstruction(time, progressToken);
+        }
+
+        /// <summary>
         /// Returns a <see cref="Instructions.WaitRealTimeInstruction"/> that will complete after the specified timespan has passed, using unscaled, real time.
         /// </summary>
         /// <param name="time">How much time to wait for.</param>
         public static Instructions.WaitRealTimeInstruction WaitForRealTime(TimeSpan time)
         {
             return new Instructions.WaitRealTimeInstruction(time);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Instructions.WaitRealTimeWithProgressInstruction"/> that will complete after the specified timespan has passed, using unscaled, real time, while reporting progress.
+        /// </summary>
+        /// <param name="time">How much time to wait for.</param>
+        /// <param name="progressToken">The progress token that will have progress reported to it.</param>
+        public static Instructions.WaitRealTimeWithProgressInstruction WaitForRealTime(TimeSpan time, ProgressToken progressToken)
+        {
+            return new Instructions.WaitRealTimeWithProgressInstruction(time, progressToken);
         }
 
         /// <summary>
@@ -131,9 +161,20 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Instructions.WaitAsyncOperationInstruction"/> that will complete when the <paramref name="asyncOperation"/> is complete.
         /// </summary>
+        /// <param name="asyncOperation">The async operation to wait for.</param>
         public static Instructions.WaitAsyncOperationInstruction WaitForAsyncOperation(UnityEngine.AsyncOperation asyncOperation)
         {
             return new Instructions.WaitAsyncOperationInstruction(asyncOperation);
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Instructions.WaitAsyncOperationWithProgressInstruction"/> that will complete when the <paramref name="asyncOperation"/> is complete, while reporting progress.
+        /// </summary>
+        /// <param name="asyncOperation">The async operation to wait for.</param>
+        /// <param name="progressToken">The progress token that will have progress reported to it.</param>
+        public static Instructions.WaitAsyncOperationWithProgressInstruction WaitForAsyncOperation(UnityEngine.AsyncOperation asyncOperation, ProgressToken progressToken)
+        {
+            return new Instructions.WaitAsyncOperationWithProgressInstruction(asyncOperation, progressToken);
         }
 
         /// <summary>
@@ -279,6 +320,56 @@ namespace Proto.Promises
             }
 
             /// <summary>
+            /// Await instruction used to wait a number of frames, while reporting progress.
+            /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            public struct WaitFramesWithProgressInstruction : IAwaitInstruction
+            {
+                private readonly ProgressToken _progressToken;
+                private readonly uint _target;
+                private uint _current;
+
+                /// <summary>
+                /// Gets a new <see cref="WaitFramesWithProgressInstruction"/>.
+                /// </summary>
+                public WaitFramesWithProgressInstruction(uint frames, ProgressToken progressToken)
+                {
+                    _progressToken = progressToken;
+                    _target = frames;
+                    _current = 0;
+                }
+
+                [MethodImpl(Internal.InlineOption)]
+                bool IAwaitInstruction.IsCompleted()
+                {
+                    unchecked
+                    {
+                        // _target could be zero, which would result in NaN progress if we divided it, so we have to check for it first.
+                        if (_current == _target)
+                        {
+                            _progressToken.Report(1d);
+                            return true;
+                        }
+                        _progressToken.Report((double) _current / _target);
+                        ++_current;
+                        return false;
+                    }
+                }
+
+                /// <summary>
+                /// Converts this to a <see cref="Promise"/>.
+                /// </summary>
+                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
+                {
+                    return _progressToken.HasListener
+                        ? PromiseYieldExtensions.ToPromise(this, cancelationToken)
+                        : PromiseYieldWithProgressExtensions.ToPromise(new WaitFramesInstruction(_target), cancelationToken);
+                }
+            }
+
+            /// <summary>
             /// Await instruction used to wait an amount of time, scaled to the game clock.
             /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -329,6 +420,62 @@ namespace Proto.Promises
             }
 
             /// <summary>
+            /// Await instruction used to wait an amount of time, scaled to the game clock, while reporting progress.
+            /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            public struct WaitTimeWithProgressInstruction : IAwaitInstruction
+            {
+                private readonly ProgressToken _progressToken;
+                private readonly double _target;
+                private double _current;
+                private float _multiplier;
+
+                /// <summary>
+                /// Gets a new <see cref="WaitTimeWithProgressInstruction"/>.
+                /// </summary>
+                public WaitTimeWithProgressInstruction(TimeSpan time, ProgressToken progressToken)
+                {
+                    _progressToken = progressToken;
+                    _target = time.TotalSeconds;
+                    _current = 0d;
+                    // Set the initial multiplier to 0, so when this is invoked immediately, it won't increment the time.
+                    _multiplier = 0f;
+                }
+
+                [MethodImpl(Internal.InlineOption)]
+                bool IAwaitInstruction.IsCompleted()
+                {
+                    unchecked
+                    {
+                        // Multiplier is 0 on the first call, 1 on all future calls.
+                        _current += InternalHelper.PromiseBehaviour.Instance._deltaTime * _multiplier;
+                        // _target could be <= zero, which would result in NaN or +/-Infinity progress if we divided it, so we have to check for it first.
+                        if (_current >= _target)
+                        {
+                            _progressToken.Report(1d);
+                            return true;
+                        }
+                        _multiplier = 1f;
+                        _progressToken.Report(_current / _target);
+                        return false;
+                    }
+                }
+
+                /// <summary>
+                /// Converts this to a <see cref="Promise"/>.
+                /// </summary>
+                [MethodImpl(Internal.InlineOption)]
+                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
+                {
+                    return _progressToken.HasListener
+                        ? PromiseYieldExtensions.ToPromise(this, cancelationToken)
+                        : PromiseYieldWithProgressExtensions.ToPromise(new WaitTimeInstruction(TimeSpan.FromSeconds(_target)), cancelationToken);
+                }
+            }
+
+            /// <summary>
             /// Await instruction used to wait an amount of time, using unscaled, real time.
             /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -371,6 +518,57 @@ namespace Proto.Promises
                     return PromiseYieldWithProgressExtensions.ToPromise(this, cancelationToken);
                 }
 #endif
+            }
+
+            /// <summary>
+            /// Await instruction used to wait an amount of time, using unscaled, real time.
+            /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            public struct WaitRealTimeWithProgressInstruction : IAwaitInstruction
+            {
+                private readonly ProgressToken _progressToken;
+                private readonly TimeSpan _target;
+                private readonly Internal.ValueStopwatch _stopwatch;
+
+                /// <summary>
+                /// Gets a new <see cref="WaitRealTimeInstruction"/>.
+                /// </summary>
+                public WaitRealTimeWithProgressInstruction(TimeSpan time, ProgressToken progressToken)
+                {
+                    _progressToken = progressToken;
+                    _target = time;
+                    _stopwatch = Internal.ValueStopwatch.StartNew();
+                }
+
+                [MethodImpl(Internal.InlineOption)]
+                bool IAwaitInstruction.IsCompleted()
+                {
+                    unchecked
+                    {
+                        var current = _stopwatch.GetElapsedTime();
+                        // _target could be <= zero, which would result in NaN or +/-Infinity progress if we divided it, so we have to check for it first.
+                        if (current >= _target)
+                        {
+                            _progressToken.Report(1d);
+                            return true;
+                        }
+                        _progressToken.Report((double) current.Ticks / _target.Ticks);
+                        return false;
+                    }
+                }
+
+                /// <summary>
+                /// Converts this to a <see cref="Promise"/>.
+                /// </summary>
+                [MethodImpl(Internal.InlineOption)]
+                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
+                {
+                    return _progressToken.HasListener
+                        ? PromiseYieldExtensions.ToPromise(this, cancelationToken)
+                        : PromiseYieldWithProgressExtensions.ToPromise(new WaitRealTimeInstruction(_target), cancelationToken);
+                }
             }
 
             /// <summary>
@@ -565,6 +763,45 @@ namespace Proto.Promises
                     return PromiseYieldWithProgressExtensions.ToPromise(this, cancelationToken);
                 }
 #endif
+            }
+
+            /// <summary>
+            /// Await instruction used to wait for an <see cref="UnityEngine.AsyncOperation"/>.
+            /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            public struct WaitAsyncOperationWithProgressInstruction : IAwaitInstruction
+            {
+                private readonly ProgressToken _progressToken;
+                private readonly UnityEngine.AsyncOperation _asyncOperation;
+
+                /// <summary>
+                /// Gets a new <see cref="WaitAsyncOperationInstruction"/>.
+                /// </summary>
+                public WaitAsyncOperationWithProgressInstruction(UnityEngine.AsyncOperation asyncOperation, ProgressToken progressToken)
+                {
+                    _progressToken = progressToken;
+                    _asyncOperation = asyncOperation;
+                }
+
+                [MethodImpl(Internal.InlineOption)]
+                bool IAwaitInstruction.IsCompleted()
+                {
+                    _progressToken.Report(_asyncOperation.progress);
+                    return _asyncOperation.isDone;
+                }
+
+                /// <summary>
+                /// Converts this to a <see cref="Promise"/>.
+                /// </summary>
+                [MethodImpl(Internal.InlineOption)]
+                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
+                {
+                    return _progressToken.HasListener
+                        ? PromiseYieldExtensions.ToPromise(this, cancelationToken)
+                        : PromiseYieldWithProgressExtensions.ToPromise(new WaitAsyncOperationInstruction(_asyncOperation), cancelationToken);
+                }
             }
 
             /// <summary>
