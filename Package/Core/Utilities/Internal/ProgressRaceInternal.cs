@@ -43,6 +43,7 @@ namespace Proto.Promises
                 instance._next = target._impl;
                 instance._minValue = target._minValue;
                 instance._maxValue = target._maxValue;
+                instance._current = 0d;
                 instance._targetId = target._id;
                 instance._disposed = false;
 
