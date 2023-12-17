@@ -22,7 +22,7 @@ namespace Proto.Promises
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         public static Async.CompilerServices.PromiseAwaiter<T> GetAwaiter<T>(this IAsyncLazy<T> lazy)
         {
-            return lazy.GetResultAsync(ProgressToken.None).GetAwaiter();
+            return lazy.GetResultAsync().GetAwaiter();
         }
     }
 }

@@ -14,7 +14,6 @@
 #endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0034 // Simplify 'default' expression
 
 using System;
 using System.Diagnostics;
@@ -69,7 +68,7 @@ namespace Proto.Promises
         {
             private AsyncLazyWithProgress<T> _owner;
             internal PromiseMultiAwait<T> _preservedPromise;
-            internal Progress.MultiHandler _progressHandler;
+            internal Internal.ProgressMultiHandler _progressHandler;
 
             [MethodImpl(Internal.InlineOption)]
             private static LazyWithProgressPromise GetOrCreate()
@@ -111,27 +110,33 @@ namespace Proto.Promises
                 {
                     if (lazyFields.IsComplete)
                     {
-                        return Promise<T>.Resolved(owner._result);
+                        // Exit lock before reporting progress.
+                        goto Complete;
                     }
 
                     if (lazyFields.IsStarted)
                     {
-                        lazyFields._lazyPromise._progressHandler.Add(progressToken);
+                        lazyFields._lazyPromise._progressHandler.Add(progressToken, lazyFields._lazyPromise._progressHandler.Id);
                         return GetDuplicate(lazyFields._lazyPromise._preservedPromise);
                     }
 
                     lazyPromise = GetOrCreate(owner);
                     lazyFields._lazyPromise = lazyPromise;
-                    lazyPromise._progressHandler = Progress.NewMultiHandler();
+                    // Same thing as Progress.NewMultiHandler(), but more direct.
+                    lazyPromise._progressHandler = Internal.ProgressMultiHandler.GetOrCreate();
                     // Same thing as Promise.Preserve(), but more direct.
                     lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreate(0);
                     lazyPromise.HookupNewPromise(lazyPromise.Id, preservedPromise);
                     // Exit the lock before invoking the factory.
                 }
                 var promise = GetDuplicate(preservedPromise);
-                lazyPromise._progressHandler.Add(progressToken);
-                lazyPromise.Start(lazyFields._factory, lazyPromise._progressHandler.Token);
+                lazyPromise._progressHandler.Add(progressToken, lazyPromise._progressHandler.Id);
+                lazyPromise.Start(lazyFields._factory, new ProgressToken(lazyPromise._progressHandler, lazyPromise._progressHandler.Id, 0d, 1d));
                 return promise;
+
+            Complete:
+                progressToken.Report(1d);
+                return Promise<T>.Resolved(owner._result);
             }
 
             internal override void Handle(Internal.PromiseRefBase handler, object rejectContainer, Promise.State state)
@@ -146,7 +151,7 @@ namespace Proto.Promises
             {
                 var lazyFields = _owner._lazyFields;
                 PromiseMultiAwait<T> preservedPromise;
-                Progress.MultiHandler progressHandler;
+                Internal.ProgressMultiHandler progressHandler;
                 if (state != Promise.State.Resolved)
                 {
                     lock (lazyFields)
@@ -155,11 +160,11 @@ namespace Proto.Promises
                         preservedPromise = _preservedPromise;
                         _preservedPromise = null;
                         progressHandler = _progressHandler;
-                        _progressHandler = default(Progress.MultiHandler);
+                        _progressHandler = null;
                         lazyFields._lazyPromise = null;
                     }
 
-                    progressHandler.Dispose();
+                    progressHandler.Dispose(progressHandler.Id);
                     preservedPromise.Forget(preservedPromise.Id);
                     HandleNextInternal(rejectContainer, state);
                     return;
@@ -175,12 +180,12 @@ namespace Proto.Promises
                     preservedPromise = _preservedPromise;
                     _preservedPromise = null;
                     progressHandler = _progressHandler;
-                    _progressHandler = default(Progress.MultiHandler);
+                    _progressHandler = null;
                     lazyFields._factory = null;
                 }
 
-                progressHandler.Token.Report(1d);
-                progressHandler.Dispose();
+                progressHandler.Report(1d, progressHandler.Id);
+                progressHandler.Dispose(progressHandler.Id);
                 preservedPromise.Forget(preservedPromise.Id);
                 HandleNextInternal(rejectContainer, state);
             }
