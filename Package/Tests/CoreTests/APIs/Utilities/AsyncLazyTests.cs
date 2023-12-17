@@ -22,7 +22,7 @@ using System.Threading;
 using System.Threading.Tasks;
 #endif
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromiseTests.APIs.Utilities
 {
     public class AsyncLazyTests
     {

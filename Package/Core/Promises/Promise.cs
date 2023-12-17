@@ -262,7 +262,7 @@ namespace Proto.Promises
         [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
         [MethodImpl(Internal.InlineOption)]
-#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.0. Make it internal instead of public so the unit tests can still use it.
+#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.5. Make it internal instead of public so the unit tests can still use it.
         internal
 #else
         public
@@ -296,7 +296,7 @@ namespace Proto.Promises
         [Obsolete(Internal.ProgressDisabledMessage, false)]
 #endif
         [MethodImpl(Internal.InlineOption)]
-#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.0. Make it internal instead of public so the unit tests can still use it.
+#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.5. Make it internal instead of public so the unit tests can still use it.
         internal
 #else
         public
