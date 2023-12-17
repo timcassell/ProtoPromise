@@ -835,6 +835,88 @@ namespace ProtoPromiseTests.Unity
         }
 #endif // PROMISE_PROGRESS
 
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForFramesWithProgress_ReportsProgress()
+        {
+            const int waitFramesCount = 10;
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            var progress = progressHelper.ToProgress();
+
+            PromiseYielder.WaitForFrames(waitFramesCount, progress.Token).ToPromise()
+                .Then(progress.DisposeAsync)
+                .Forget();
+
+            for (int currentFrame = 0; currentFrame < waitFramesCount; ++currentFrame)
+            {
+                progressHelper.AssertCurrentProgress((float) currentFrame / waitFramesCount, false);
+                yield return null;
+            }
+            progressHelper.AssertCurrentProgress(1f, false);
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForTimeWithProgress_ReportsProgress([Values(0.5f, 1f, 2f)] float timeScale)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            const float waitSeconds = 2f;
+
+            // Timing can be off a bit, so give it a large delta.
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: 1f / 10f);
+            var progress = progressHelper.ToProgress();
+
+            var promise = PromiseYielder.WaitForTime(TimeSpan.FromSeconds(waitSeconds), progress.Token).ToPromise()
+                .Then(progress.DisposeAsync);
+
+            for (float currentTime = 0f; currentTime < waitSeconds; currentTime += Time.deltaTime)
+            {
+                progressHelper.AssertCurrentProgress(currentTime / waitSeconds, false);
+                yield return null;
+            }
+            // Timing can be off a bit, so we explicitly wait for the promise to complete.
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                yieldInstruction.GetResult();
+            }
+            progressHelper.AssertCurrentProgress(1f, false);
+
+            Time.timeScale = oldTimeScale;
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForRealTimeWithProgress_ReportsProgress([Values(0.5f, 1f, 2f)] float timeScale)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            const float waitSeconds = 2f;
+
+            // Timing can be off a bit, so give it a large delta.
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: 1f / 10f);
+            var progress = progressHelper.ToProgress();
+
+            var promise = PromiseYielder.WaitForRealTime(TimeSpan.FromSeconds(waitSeconds), progress.Token).ToPromise()
+                .Then(progress.DisposeAsync);
+
+            for (float currentTime = 0f; currentTime < waitSeconds; currentTime += Time.unscaledDeltaTime)
+            {
+                progressHelper.AssertCurrentProgress(currentTime / waitSeconds, false);
+                yield return null;
+            }
+            // Timing can be off a bit, so we explicitly wait for the promise to complete.
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                yieldInstruction.GetResult();
+            }
+            progressHelper.AssertCurrentProgress(1f, false);
+
+            Time.timeScale = oldTimeScale;
+        }
+
 #if CSHARP_7_3_OR_NEWER
 
         [UnityTest]
@@ -1486,6 +1568,101 @@ namespace ProtoPromiseTests.Unity
         }
 #endif // PROMISE_PROGRESS
 
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForFramesWithProgress_ReportsProgress_Async()
+        {
+            const int waitFramesCount = 10;
+
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
+            var progress = progressHelper.ToProgress();
+
+            async Promise Func()
+            {
+                await PromiseYielder.WaitForFrames(waitFramesCount, progress.Token);
+                await progress.DisposeAsync();
+            }
+
+            Func().Forget();
+
+            for (int currentFrame = 0; currentFrame < waitFramesCount; ++currentFrame)
+            {
+                progressHelper.AssertCurrentProgress((float) currentFrame / waitFramesCount, false);
+                yield return null;
+            }
+            progressHelper.AssertCurrentProgress(1f, false);
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForTimeWithProgress_ReportsProgress_Async([Values(0.5f, 1f, 2f)] float timeScale)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            const float waitSeconds = 2f;
+
+            // Timing can be off a bit, so give it a large delta.
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: 1f / 10f);
+            var progress = progressHelper.ToProgress();
+
+            async Promise Func()
+            {
+                await PromiseYielder.WaitForTime(TimeSpan.FromSeconds(waitSeconds), progress.Token);
+                await progress.DisposeAsync();
+            }
+
+            var promise = Func();
+
+            for (float currentTime = 0f; currentTime < waitSeconds; currentTime += Time.deltaTime)
+            {
+                progressHelper.AssertCurrentProgress(currentTime / waitSeconds, false);
+                yield return null;
+            }
+            // Timing can be off a bit, so we explicitly wait for the promise to complete.
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                yieldInstruction.GetResult();
+            }
+            progressHelper.AssertCurrentProgress(1f, false);
+
+            Time.timeScale = oldTimeScale;
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielderWaitForRealTimeWithProgress_ReportsProgress_Async([Values(0.5f, 1f, 2f)] float timeScale)
+        {
+            float oldTimeScale = Time.timeScale;
+            Time.timeScale = timeScale;
+
+            const float waitSeconds = 2f;
+
+            // Timing can be off a bit, so give it a large delta.
+            var progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous, delta: 1f / 10f);
+            var progress = progressHelper.ToProgress();
+
+            async Promise Func()
+            {
+                await PromiseYielder.WaitForRealTime(TimeSpan.FromSeconds(waitSeconds), progress.Token);
+                await progress.DisposeAsync();
+            }
+
+            var promise = Func();
+
+            for (float currentTime = 0f; currentTime < waitSeconds; currentTime += Time.unscaledDeltaTime)
+            {
+                progressHelper.AssertCurrentProgress(currentTime / waitSeconds, false);
+                yield return null;
+            }
+            // Timing can be off a bit, so we explicitly wait for the promise to complete.
+            using (var yieldInstruction = promise.ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+                yieldInstruction.GetResult();
+            }
+            progressHelper.AssertCurrentProgress(1f, false);
+
+            Time.timeScale = oldTimeScale;
+        }
 #endif // CSHARP_7_3_OR_NEWER
     }
 }
