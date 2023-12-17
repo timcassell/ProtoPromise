@@ -15,7 +15,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public sealed partial class AsyncLazy<T>
+    public sealed partial class AsyncLazy<T> : IAsyncLazy<T>
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="AsyncLazy{T}"/> class that uses the specified initialization function.
@@ -58,6 +58,18 @@ namespace Proto.Promises
             return lazyFields == null
                 ? Promise<T>.Resolved(_result)
                 : lazyFields.GetOrStartPromise(this);
+        }
+
+        Promise<T> IAsyncLazy<T>.GetResultAsync(ProgressToken progressToken)
+        {
+            // This is a volatile read, so we don't need a full memory barrier to prevent the result read from moving before it.
+            var lazyFields = _lazyFields;
+            if (lazyFields == null)
+            {
+                progressToken.Report(1d);
+                return Promise<T>.Resolved(_result);
+            }
+            return lazyFields.GetOrStartPromise(this);
         }
 
         /// <summary>

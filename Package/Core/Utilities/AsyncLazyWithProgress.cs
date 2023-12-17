@@ -14,7 +14,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public sealed partial class AsyncLazyWithProgress<T>
+    public sealed partial class AsyncLazyWithProgress<T> : IAsyncLazy<T>
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="AsyncLazyWithProgress{T}"/> class that uses the specified initialization function.
