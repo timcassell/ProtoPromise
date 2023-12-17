@@ -16,9 +16,6 @@ namespace Proto.Promises
         internal sealed class ProgressMultiHandler : ProgressBase
         {
             private ValueList<ProgressToken> _tokens = new ValueList<ProgressToken>(8);
-            // TODO: This could use ArrayPool instead of an extra list field.
-            // But it's not available in older runtimes.
-            private ValueList<ProgressToken> _stillValidTokens = new ValueList<ProgressToken>(8);
             private bool _disposed;
 
             private ProgressMultiHandler() { }
@@ -112,14 +109,6 @@ namespace Proto.Promises
                 for (int i = 0, max = _tokens.Count; i < max; ++i)
                 {
                     var token = _tokens[i];
-                    // If the token still has a listener, we re-add it, otherwise we drop it.
-                    // We check the id directly instead of calling HasListener, because we don't need the extra null check since we already checked it when it was added.
-                    if (token._impl.Id != token._id)
-                    {
-                        continue;
-                    }
-                    _stillValidTokens.Add(token);
-
                     // We have to hold the lock until all tokens have been reported.
                     // We enter the lock again for each listener, because each one exits the lock indiscriminately.
                     EnterLock();
@@ -132,12 +121,6 @@ namespace Proto.Promises
                         reportValues._next.Report(ref reportValues);
                     } while (reportValues._next != null);
                 }
-
-                // Clear the old tokens and swap the lists so that tokens that no longer have a listener will be dropped.
-                _tokens.Clear();
-                var temp = _stillValidTokens;
-                _stillValidTokens = _tokens;
-                _tokens = temp;
                 ExitLock();
             }
 
