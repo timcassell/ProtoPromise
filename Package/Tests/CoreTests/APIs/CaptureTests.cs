@@ -14,6 +14,8 @@ using Proto.Promises;
 using System;
 using System.Threading;
 
+#pragma warning disable 0618 // Type or member is obsolete
+
 namespace ProtoPromiseTests.APIs
 {
     public class CaptureTests

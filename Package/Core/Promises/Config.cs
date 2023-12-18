@@ -70,10 +70,7 @@ namespace Proto.Promises
             /// <summary>
             /// The distance between 1 and the largest value smaller than 1. Progress reports use full 32-bit float precision.
             /// </summary>
-#if !PROMISE_PROGRESS
-            [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-            [EditorBrowsable(EditorBrowsableState.Never)] // Not obsolete, but not really necessary to use, either.
+            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
             public static readonly float ProgressPrecision = 1f - 0.99999994f;
 
             [Obsolete("Use ObjectPoolingEnabled instead."), EditorBrowsable(EditorBrowsableState.Never)]

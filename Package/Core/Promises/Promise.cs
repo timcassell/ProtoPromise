@@ -258,10 +258,7 @@ namespace Proto.Promises
         /// <param name="invokeOption">Indicates on which context <paramref name="progressListener"/> will be reported.</param>
         /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-#if !PROMISE_PROGRESS
-        [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-        [MethodImpl(Internal.InlineOption)]
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
 #if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.5. Make it internal instead of public so the unit tests can still use it.
         internal
 #else
@@ -292,10 +289,7 @@ namespace Proto.Promises
         /// <param name="invokeContext">The context on which <paramref name="progressListener"/> will be reported. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously.</param>
         /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-#if !PROMISE_PROGRESS
-        [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-        [MethodImpl(Internal.InlineOption)]
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
 #if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.5. Make it internal instead of public so the unit tests can still use it.
         internal
 #else
@@ -326,10 +320,7 @@ namespace Proto.Promises
         /// <param name="invokeOption">Indicates on which context <paramref name="onProgress"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-#if !PROMISE_PROGRESS
-        [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-        [MethodImpl(Internal.InlineOption)]
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise Progress(Action<float> onProgress, SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken), bool forceAsync = false)
         {
             ValidateArgument(onProgress, "onProgress", 1);
@@ -348,10 +339,7 @@ namespace Proto.Promises
         /// <param name="invokeContext">The context on which <paramref name="onProgress"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously.</param>
         /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-#if !PROMISE_PROGRESS
-        [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-        [MethodImpl(Internal.InlineOption)]
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise Progress(Action<float> onProgress, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken), bool forceAsync = false)
         {
             ValidateArgument(onProgress, "onProgress", 1);
@@ -963,10 +951,7 @@ namespace Proto.Promises
         /// <param name="invokeOption">Indicates on which context <paramref name="onProgress"/> will be invoked.</param>
         /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously.</param>
         /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-#if !PROMISE_PROGRESS
-        [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-        [MethodImpl(Internal.InlineOption)]
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress,
             SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken), bool forceAsync = false)
         {
@@ -987,10 +972,7 @@ namespace Proto.Promises
         /// <param name="invokeContext">The context on which <paramref name="onProgress"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously.</param>
         /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-#if !PROMISE_PROGRESS
-        [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-        [MethodImpl(Internal.InlineOption)]
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken), bool forceAsync = false)
         {
             ValidateArgument(onProgress, "onProgress", 1);
