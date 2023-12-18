@@ -4,6 +4,9 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+
+#pragma warning disable IDE0034 // Simplify 'default' expression
 
 namespace Proto.Promises
 {
@@ -17,12 +20,21 @@ namespace Proto.Promises
     public sealed partial class AsyncLazy<T>
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="AsyncLazy{T}"/> class that uses the specified initialization function.
+        /// Initializes a new instance of the <see cref="AsyncLazy{T}"/> class that uses the specified initialization function, without supporting progress reports.
         /// </summary>
         /// <param name="asyncValueFactory">The delegate that is invoked to produce the lazily initialized value when it is needed.</param>
         public AsyncLazy(Func<Promise<T>> asyncValueFactory)
         {
-            _lazyFields = new LazyFields(asyncValueFactory);
+            _lazyFields = new LazyFieldsNoProgress(asyncValueFactory);
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AsyncLazy{T}"/> class that uses the specified initialization function, supporting progress reports.
+        /// </summary>
+        /// <param name="asyncValueFactory">The delegate that is invoked to produce the lazily initialized value when it is needed.</param>
+        public AsyncLazy(Func<ProgressToken, Promise<T>> asyncValueFactory)
+        {
+            _lazyFields = new LazyFieldsWithProgress(asyncValueFactory);
         }
 
         /// <summary>
@@ -43,14 +55,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<T> Promise
         {
-            get
+            [MethodImpl(Internal.InlineOption)]
+            get { return GetResultAsync(); }
+        }
+
+        /// <summary>
+        /// Starts the asynchronous factory method, if it has not already started, and returns the resulting <see cref="Promise{T}"/>.
+        /// </summary>
+        /// <param name="progressToken">The progress token that will be reported to if this instance was created with progress support.</param>
+        public Promise<T> GetResultAsync(ProgressToken progressToken = default(ProgressToken))
+        {
+            // This is a volatile read, so we don't need a full memory barrier to prevent the result read from moving before it.
+            var lazyFields = _lazyFields;
+            if (lazyFields == null)
             {
-                // This is a volatile read, so we don't need a full memory barrier to prevent the result read from moving before it.
-                var lazyFields = _lazyFields;
-                return lazyFields == null
-                    ? Promise<T>.Resolved(_result)
-                    : lazyFields.GetOrStartPromise(this);
+                progressToken.Report(1d);
+                return Promise<T>.Resolved(_result);
             }
+            return lazyFields.GetOrStartPromise(this, progressToken);
         }
 
         /// <summary>
