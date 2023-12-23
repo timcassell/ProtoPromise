@@ -340,6 +340,14 @@ namespace Proto.Promises
                 private TFinalizer _finalizer;
             }
 
+            partial class PromiseFinallyWait<TResult, TFinalizer> : PromiseWaitPromise<TResult>
+                where TFinalizer : IFunc<Promise>, INullable
+            {
+                private TFinalizer _finalizer;
+                private object _previousRejectContainer;
+                private Promise.State _previousState;
+            }
+
             partial class PromiseCancel<TResult, TCanceler> : PromiseSingleAwait<TResult>
                 where TCanceler : IDelegateResolveOrCancel
             {

@@ -32,6 +32,11 @@ namespace Proto.Promises
             object Value { get; }
         }
 
+        internal interface INullable
+        {
+            bool IsNull { get; }
+        }
+
         internal interface IAction
         {
             void Invoke();

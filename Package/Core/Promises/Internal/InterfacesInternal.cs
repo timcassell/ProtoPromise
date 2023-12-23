@@ -69,10 +69,9 @@ namespace Proto.Promises
                 void InvokeResolver(PromiseRefBase handler, Promise.State state, PromiseRefBase owner);
             }
 
-            internal interface IDelegateResolveOrCancelPromise
+            internal interface IDelegateResolveOrCancelPromise : INullable
             {
                 void InvokeResolver(PromiseRefBase handler, Promise.State state, PromiseRefBase owner);
-                bool IsNull { get; }
             }
 
             internal interface IDelegateReject
@@ -90,10 +89,9 @@ namespace Proto.Promises
                 void Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, PromiseRefBase owner);
             }
 
-            internal interface IDelegateContinuePromise
+            internal interface IDelegateContinuePromise : INullable
             {
                 void Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, PromiseRefBase owner);
-                bool IsNull { get; }
             }
 
             internal interface IDelegateNew<TResult>

@@ -713,7 +713,6 @@ namespace Proto.Promises
                     SetCurrentInvoker(this);
                     try
                     {
-                        // Handler is disposed deeper in the call stack, so we only dispose it here if an exception is thrown and it was not disposed before the callback.
                         Execute(handler, rejectContainer, state, ref invokingRejected);
                     }
                     catch (RethrowException e)
@@ -1874,11 +1873,89 @@ namespace Proto.Promises
                     }
                     catch
                     {
-                        // Unlike normal finally clauses, we won't swallow the previous rejection. Instead, we report it.
+                        // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
                         handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                         throw;
                     }
                     HandleSelf(handler, rejectContainer, state);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class PromiseFinallyWait<TResult, TFinalizer> : PromiseWaitPromise<TResult>
+                where TFinalizer : IFunc<Promise>, INullable
+            {
+                private PromiseFinallyWait() { }
+
+                [MethodImpl(InlineOption)]
+                private static PromiseFinallyWait<TResult, TFinalizer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseFinallyWait<TResult, TFinalizer>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseFinallyWait<TResult, TFinalizer>()
+                        : obj.UnsafeAs<PromiseFinallyWait<TResult, TFinalizer>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static PromiseFinallyWait<TResult, TFinalizer> GetOrCreate(TFinalizer finalizer, ushort depth)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset(depth);
+                    promise._finalizer = finalizer;
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    _previousRejectContainer = null;
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                protected override void Execute(PromiseRefBase handler, object rejectContainer, Promise.State state, ref bool invokingRejected)
+                {
+                    if (_finalizer.IsNull)
+                    {
+                        // The returned promise is handling this.
+                        if (state == Promise.State.Resolved)
+                        {
+                            rejectContainer = _previousRejectContainer;
+                            state = _previousState;
+                        }
+                        else if (_previousState == Promise.State.Rejected)
+                        {
+                            // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                            _previousRejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                        }
+                        HandleSelfWithoutResult(handler, rejectContainer, state);
+                        return;
+                    }
+
+                    _result = handler.GetResult<TResult>();
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+                    var callback = _finalizer;
+                    _finalizer = default(TFinalizer);
+                    Promise result;
+                    try
+                    {
+                        result = callback.Invoke();
+                    }
+                    catch
+                    {
+                        if (state == Promise.State.Rejected)
+                        {
+                            // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                            rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                        }
+                        throw;
+                    }
+                    // Store the reject container and state until the returned promise is complete.
+                    _previousRejectContainer = rejectContainer;
+                    _previousState = state;
+                    WaitFor(result, handler);
                 }
             }
 
