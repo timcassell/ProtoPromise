@@ -313,7 +313,6 @@ namespace ProtoPromiseTests.APIs
 
             int testCount = 0;
             int catchCount = 0;
-            Exception expected = new Exception();
 
             foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
             {
@@ -366,7 +365,6 @@ namespace ProtoPromiseTests.APIs
 
             int testCount = 0;
             int catchCount = 0;
-            Exception expected = new Exception();
 
             foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
             {
@@ -508,6 +506,8 @@ namespace ProtoPromiseTests.APIs
 
             preservedPromise.Forget();
             cancelationSource.TryDispose();
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test]
@@ -626,6 +626,8 @@ namespace ProtoPromiseTests.APIs
 
             preservedPromise.Forget();
             cancelationSource.TryDispose();
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
     }
 }

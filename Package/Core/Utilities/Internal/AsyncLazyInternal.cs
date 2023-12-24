@@ -401,6 +401,7 @@ namespace Proto.Promises
                     {
                         var rejectContainer = handler._rejectContainerOrPreviousOrLink;
                         var state = handler.State;
+                        _owner._result = handler.GetResult<TResult>();
                         handler.MaybeDispose();
                         _owner.OnComplete(rejectContainer, state);
                     }
