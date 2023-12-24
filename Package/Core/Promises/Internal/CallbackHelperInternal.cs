@@ -1446,6 +1446,20 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                internal static Promise AddFinallyWait<TFinalizer>(Promise _this, TFinalizer finalizer)
+                    where TFinalizer : IFunc<Promise>, INullable
+                {
+                    ushort nextDepth = GetNextDepth(_this.Depth);
+                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    {
+                        return InvokeCallbackAndAdoptDirect(finalizer, _this, nextDepth);
+                    }
+                    var promise = PromiseFinallyWait<VoidResult, TFinalizer>.GetOrCreate(finalizer, nextDepth);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id, nextDepth);
+                }
+
+                [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddFinally<TResult, TFinalizer>(Promise<TResult> _this, TFinalizer finalizer)
                     where TFinalizer : IAction
                 {
@@ -1465,6 +1479,31 @@ namespace Proto.Promises
                     var promise = PromiseFinally<TResult, TFinalizer>.GetOrCreate(finalizer, _this.Depth);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise<TResult>(promise, promise.Id, _this.Depth);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AddFinallyWait<TResult, TFinalizer>(Promise<TResult> _this, TFinalizer finalizer)
+                    where TFinalizer : IFunc<Promise>, INullable
+                {
+                    ushort nextDepth = GetNextDepth(_this.Depth);
+                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    {
+                        TResult result = GetResultFromResolved(_this);
+                        try
+                        {
+                            var finallyPromise = finalizer.Invoke();
+                            finallyPromise = new Promise(finallyPromise._ref, finallyPromise._id, nextDepth);
+                            return finallyPromise
+                                .Then(result, r => r);
+                        }
+                        catch (Exception e)
+                        {
+                            return FromException<TResult>(e, nextDepth);
+                        }
+                    }
+                    var promise = PromiseFinallyWait<TResult, TFinalizer>.GetOrCreate(finalizer, nextDepth);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id, nextDepth);
                 }
 
                 [MethodImpl(InlineOption)]

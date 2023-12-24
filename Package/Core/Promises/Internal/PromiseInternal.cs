@@ -18,6 +18,8 @@
 #pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0083 // Use pattern matching
+#pragma warning disable IDE0250 // Make struct 'readonly'
+#pragma warning disable IDE0251 // Make member 'readonly'
 #pragma warning disable CA1507 // Use nameof to express symbol names
 #pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
@@ -713,7 +715,6 @@ namespace Proto.Promises
                     SetCurrentInvoker(this);
                     try
                     {
-                        // Handler is disposed deeper in the call stack, so we only dispose it here if an exception is thrown and it was not disposed before the callback.
                         Execute(handler, rejectContainer, state, ref invokingRejected);
                     }
                     catch (RethrowException e)
@@ -1450,16 +1451,42 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseWaitPromise<TResult> : PromiseSingleAwait<TResult>
             {
+                protected interface IWaitForCompleteHandler
+                {
+                    void HandleHookup(PromiseRefBase handler);
+                    void HandleNull();
+                }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+                [DebuggerNonUserCode, StackTraceHidden]
+#endif
+                private struct DefaultCompleteHandler : IWaitForCompleteHandler
+                {
+                    private readonly PromiseWaitPromise<TResult> _owner;
+
+                    [MethodImpl(InlineOption)]
+                    internal DefaultCompleteHandler(PromiseWaitPromise<TResult> owner)
+                    {
+                        _owner = owner;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IWaitForCompleteHandler.HandleHookup(PromiseRefBase handler)
+                    {
+                        _owner.HandleSelf(handler, handler._rejectContainerOrPreviousOrLink, handler.State);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IWaitForCompleteHandler.HandleNull()
+                    {
+                        _owner.HandleNextInternal(null, Promise.State.Resolved);
+                    }
+                }
+
                 [MethodImpl(InlineOption)]
                 internal void WaitFor(PromiseRefBase other, short id, PromiseRefBase handler)
                 {
-                    if (other == null)
-                    {
-                        SetSecondPreviousAndMaybeHookupProgress(null, handler);
-                        HandleNextInternal(null, Promise.State.Resolved);
-                        return;
-                    }
-                    SetSecondPreviousAndWaitFor(other, id, handler);
+                    WaitFor(other, id, handler, new DefaultCompleteHandler(this));
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1469,30 +1496,62 @@ namespace Proto.Promises
 #endif
                     TResult maybeResult, short id, PromiseRefBase handler)
                 {
+                    WaitFor(other, maybeResult, id, handler, new DefaultCompleteHandler(this));
+                }
+
+                [MethodImpl(InlineOption)]
+                protected void WaitFor<TCompleteHandler>(PromiseRefBase other, short id, PromiseRefBase handler, TCompleteHandler completeHandler)
+                    where TCompleteHandler : IWaitForCompleteHandler
+                {
+                    if (other == null)
+                    {
+                        SetSecondPreviousAndMaybeHookupProgress(null, handler);
+                        completeHandler.HandleNull();
+                        return;
+                    }
+                    SetSecondPreviousAndWaitFor(other, id, handler, completeHandler);
+                }
+
+                [MethodImpl(InlineOption)]
+                protected void WaitFor<TCompleteHandler>(PromiseRefBase other,
+#if CSHARP_7_3_OR_NEWER
+                    in
+#endif
+                    TResult maybeResult, short id, PromiseRefBase handler, TCompleteHandler completeHandler)
+                    where TCompleteHandler : IWaitForCompleteHandler
+                {
                     if (other == null)
                     {
                         _result = maybeResult;
                         SetSecondPreviousAndMaybeHookupProgress(null, handler);
-                        HandleNextInternal(null, Promise.State.Resolved);
+                        completeHandler.HandleNull();
                         return;
                     }
-                    SetSecondPreviousAndWaitFor(other, id, handler);
+                    SetSecondPreviousAndWaitFor(other, id, handler, completeHandler);
                 }
 
+                [MethodImpl(InlineOption)]
                 internal void SetSecondPreviousAndWaitFor(PromiseRefBase secondPrevious, short id, PromiseRefBase handler)
+                {
+                    SetSecondPreviousAndWaitFor(secondPrevious, id, handler, new DefaultCompleteHandler(this));
+                }
+
+                private void SetSecondPreviousAndWaitFor<TCompleteHandler>(PromiseRefBase secondPrevious, short id, PromiseRefBase handler, TCompleteHandler completeHandler)
+                    where TCompleteHandler : IWaitForCompleteHandler
                 {
                     HandleablePromiseBase previousWaiter;
                     PromiseRefBase promiseSingleAwait = secondPrevious.AddWaiter(id, this, out previousWaiter);
                     SetSecondPreviousAndMaybeHookupProgress(secondPrevious, handler);
                     if (previousWaiter != PendingAwaitSentinel.s_instance)
                     {
-                        VerifyAndHandleSelf(secondPrevious, promiseSingleAwait);
+                        VerifyAndHandleSelf(secondPrevious, promiseSingleAwait, completeHandler);
                     }
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
                 [MethodImpl(MethodImplOptions.NoInlining)]
-                protected void VerifyAndHandleSelf(PromiseRefBase other, PromiseRefBase promiseSingleAwait)
+                private void VerifyAndHandleSelf<TCompleteHandler>(PromiseRefBase other, PromiseRefBase promiseSingleAwait, TCompleteHandler completeHandler)
+                    where TCompleteHandler : IWaitForCompleteHandler
                 {
                     if (!VerifyWaiter(promiseSingleAwait))
                     {
@@ -1500,7 +1559,7 @@ namespace Proto.Promises
                     }
 
                     other.WaitUntilStateIsNotPending();
-                    HandleSelf(other, other._rejectContainerOrPreviousOrLink, other.State);
+                    completeHandler.HandleHookup(other);
                 }
 
                 partial void SetSecondPreviousAndMaybeHookupProgress(PromiseRefBase secondPrevious, PromiseRefBase handler);
@@ -1874,11 +1933,120 @@ namespace Proto.Promises
                     }
                     catch
                     {
-                        // Unlike normal finally clauses, we won't swallow the previous rejection. Instead, we report it.
+                        // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
                         handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
                         throw;
                     }
                     HandleSelf(handler, rejectContainer, state);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class PromiseFinallyWait<TResult, TFinalizer> : PromiseWaitPromise<TResult>
+                where TFinalizer : IFunc<Promise>, INullable
+            {
+                private PromiseFinallyWait() { }
+
+                [MethodImpl(InlineOption)]
+                private static PromiseFinallyWait<TResult, TFinalizer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseFinallyWait<TResult, TFinalizer>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseFinallyWait<TResult, TFinalizer>()
+                        : obj.UnsafeAs<PromiseFinallyWait<TResult, TFinalizer>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static PromiseFinallyWait<TResult, TFinalizer> GetOrCreate(TFinalizer finalizer, ushort depth)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset(depth);
+                    promise._finalizer = finalizer;
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    _previousRejectContainer = null;
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                protected override void Execute(PromiseRefBase handler, object rejectContainer, Promise.State state, ref bool invokingRejected)
+                {
+                    if (_finalizer.IsNull)
+                    {
+                        // The returned promise is handling this.
+                        HandleFromReturnedPromise(handler, rejectContainer, state);
+                        return;
+                    }
+
+                    _result = handler.GetResult<TResult>();
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+                    var callback = _finalizer;
+                    _finalizer = default(TFinalizer);
+                    Promise result;
+                    try
+                    {
+                        result = callback.Invoke();
+                    }
+                    catch
+                    {
+                        if (state == Promise.State.Rejected)
+                        {
+                            // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                            rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                        }
+                        throw;
+                    }
+                    // Store the reject container and state until the returned promise is complete.
+                    _previousRejectContainer = rejectContainer;
+                    _previousState = state;
+                    WaitFor(result._ref, result._id, handler, new CompleteHandler(this));
+                }
+
+                private void HandleFromReturnedPromise(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                {
+                    if (state == Promise.State.Resolved)
+                    {
+                        rejectContainer = _previousRejectContainer;
+                        state = _previousState;
+                    }
+                    else if (_previousState == Promise.State.Rejected)
+                    {
+                        // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                        _previousRejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                    }
+                    HandleSelfWithoutResult(handler, rejectContainer, state);
+                }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+                [DebuggerNonUserCode, StackTraceHidden]
+#endif
+                private struct CompleteHandler : IWaitForCompleteHandler
+                {
+                    private readonly PromiseFinallyWait<TResult, TFinalizer> _owner;
+
+                    [MethodImpl(InlineOption)]
+                    internal CompleteHandler(PromiseFinallyWait<TResult, TFinalizer> owner)
+                    {
+                        _owner = owner;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IWaitForCompleteHandler.HandleHookup(PromiseRefBase handler)
+                    {
+                        _owner.HandleFromReturnedPromise(handler, handler._rejectContainerOrPreviousOrLink, handler.State);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IWaitForCompleteHandler.HandleNull()
+                    {
+                        _owner.HandleNextInternal(_owner._previousRejectContainer, _owner._previousState);
+                    }
                 }
             }
 

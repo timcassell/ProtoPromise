@@ -375,6 +375,27 @@ namespace Proto.Promises
         }
 
         /// <summary>
+        /// Add a finally callback. Returns a new <see cref="Promise"/>.
+        /// </summary>
+        /// <remarks>
+        /// When this is resolved, rejected, or canceled, <paramref name="onFinally"/> will be invoked, and the new <see cref="Promise"/> will wait for the returned <see cref="Promise"/> to settle.
+        /// <para/>
+        /// If <paramref name="onFinally"/> throws an exception, the new <see cref="Promise"/> will be rejected with that exception.
+        /// <para/>
+        /// If the <see cref="Promise"/> returned from <paramref name="onFinally"/> is rejected or canceled, the new <see cref="Promise"/> will adopt its state.
+        /// <para/>
+        /// Otherwise, the new <see cref="Promise"/> will adopt the state of this when the <see cref="Promise"/> returned from <paramref name="onFinally"/> is resolved.
+        /// </remarks>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise Finally(Func<Promise> onFinally)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onFinally, "onFinally", 1);
+
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddFinallyWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onFinally));
+        }
+
+        /// <summary>
         /// Add a cancel callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is canceled, <paramref name="onCanceled"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
@@ -1011,6 +1032,28 @@ namespace Proto.Promises
             ValidateArgument(onFinally, "onFinally", 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddFinally(this, Internal.PromiseRefBase.DelegateWrapper.Create(finallyCaptureValue, onFinally));
+        }
+
+        /// <summary>
+        /// Capture a value and add a finally callback. Returns a new <see cref="Promise"/>.
+        /// </summary>
+        /// <remarks>
+        /// When this is resolved, rejected, or canceled, <paramref name="onFinally"/> will be invoked with <paramref name="finallyCaptureValue"/>,
+        /// and the new <see cref="Promise"/> will wait for the returned <see cref="Promise"/> to settle.
+        /// <para/>
+        /// If <paramref name="onFinally"/> throws an exception, the new <see cref="Promise"/> will be rejected with that exception.
+        /// <para/>
+        /// If the <see cref="Promise"/> returned from <paramref name="onFinally"/> is rejected or canceled, the new <see cref="Promise"/> will adopt its state.
+        /// <para/>
+        /// Otherwise, the new <see cref="Promise"/> will adopt the state of this when the <see cref="Promise"/> returned from <paramref name="onFinally"/> is resolved.
+        /// </remarks>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Func<TCaptureFinally, Promise> onFinally)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onFinally, "onFinally", 1);
+
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddFinallyWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(finallyCaptureValue, onFinally));
         }
 
         /// <summary>
