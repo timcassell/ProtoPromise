@@ -13,7 +13,8 @@
 #undef PROMISE_PROGRESS
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
+#pragma warning disable IDE0250 // Make struct 'readonly'
+#pragma warning disable IDE0251 // Make member 'readonly'
 
 using System;
 using System.Diagnostics;
@@ -344,7 +345,8 @@ namespace Proto.Promises
                     SetCurrentInvoker(this);
                     try
                     {
-                        WaitFor_Lazy(factory.Invoke());
+                        var promise = factory.Invoke();
+                        WaitFor(promise._ref, promise._result, promise._id, null, new CompleteHandler(this));
                     }
                     catch (OperationCanceledException)
                     {
@@ -364,7 +366,8 @@ namespace Proto.Promises
                     SetCurrentInvoker(this);
                     try
                     {
-                        WaitFor_Lazy(factory.Invoke(progressToken));
+                        var promise = factory.Invoke(progressToken);
+                        WaitFor(promise._ref, promise._result, promise._id, null, new CompleteHandler(this));
                     }
                     catch (OperationCanceledException)
                     {
@@ -380,50 +383,33 @@ namespace Proto.Promises
 
                 protected abstract void OnComplete(object rejectContainer, Promise.State state);
 
-                // This is the same logic as the normal WaitFor, except this will call OnComplete if necessary, instead of HandleNextInternal.
-                private void WaitFor_Lazy(Promise<TResult> other)
-                {
-                    ValidateReturn(other);
-                    if (other._ref != null)
-                    {
-                        SetSecondPreviousAndWaitFor_Lazy(other._ref, other._id, null);
-                        return;
-                    }
-                    _result = other._result;
-#if PROMISE_PROGRESS
-                    SetSecondPreviousAndMaybeHookupProgress_Protected(null, null);
+#if !PROTO_PROMISE_DEVELOPER_MODE
+                [DebuggerNonUserCode, StackTraceHidden]
 #endif
-                    OnComplete(null, Promise.State.Resolved);
-                }
-
-                private void SetSecondPreviousAndWaitFor_Lazy(PromiseRefBase secondPrevious, short id, PromiseRefBase handler)
+                private struct CompleteHandler : IWaitForCompleteHandler
                 {
-                    HandleablePromiseBase previousWaiter;
-                    PromiseRefBase promiseSingleAwait = secondPrevious.AddWaiter(id, this, out previousWaiter);
-#if PROMISE_PROGRESS
-                    SetSecondPreviousAndMaybeHookupProgress_Protected(secondPrevious, handler);
-#endif
-                    if (previousWaiter != PendingAwaitSentinel.s_instance)
-                    {
-                        VerifyAndHandleSelf_Lazy(secondPrevious, promiseSingleAwait);
-                    }
-                }
+                    private readonly LazyPromise<TResult> _owner;
 
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private void VerifyAndHandleSelf_Lazy(PromiseRefBase other, PromiseRefBase promiseSingleAwait)
-                {
-                    if (!VerifyWaiter(promiseSingleAwait))
+                    [MethodImpl(InlineOption)]
+                    internal CompleteHandler(LazyPromise<TResult> owner)
                     {
-                        throw new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
+                        _owner = owner;
                     }
 
-                    other.WaitUntilStateIsNotPending();
-                    _result = other.GetResult<TResult>();
-                    var rejectContainer = other._rejectContainerOrPreviousOrLink;
-                    var state = other.State;
-                    other.MaybeDispose();
-                    OnComplete(rejectContainer, state);
+                    [MethodImpl(InlineOption)]
+                    void IWaitForCompleteHandler.HandleHookup(PromiseRefBase handler)
+                    {
+                        var rejectContainer = handler._rejectContainerOrPreviousOrLink;
+                        var state = handler.State;
+                        handler.MaybeDispose();
+                        _owner.OnComplete(rejectContainer, state);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    void IWaitForCompleteHandler.HandleNull()
+                    {
+                        _owner.OnComplete(null, Promise.State.Resolved);
+                    }
                 }
             }
         } // class PromiseRefBase
