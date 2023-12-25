@@ -363,7 +363,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 }
                 if (synchronizationType != SynchronizationType.Synchronous)
                 {
-                    await Promise.SwitchToContextAwait(synchronizationType == SynchronizationType.Background ? TestHelper._foregroundContext : TestHelper._backgroundContext);
+                    await Promise.SwitchToContextAwait(synchronizationType == SynchronizationType.Background ? (SynchronizationContext) TestHelper._foregroundContext : TestHelper._backgroundContext);
                 }
                 for (int i = 0; i < yieldCount; i++)
                 {
@@ -376,7 +376,7 @@ namespace ProtoPromiseTests.APIs.Linq
                     }
                     if (synchronizationType != SynchronizationType.Synchronous)
                     {
-                        await Promise.SwitchToContextAwait(synchronizationType == SynchronizationType.Background ? TestHelper._foregroundContext : TestHelper._backgroundContext);
+                        await Promise.SwitchToContextAwait(synchronizationType == SynchronizationType.Background ? (SynchronizationContext) TestHelper._foregroundContext : TestHelper._backgroundContext);
                     }
                 }
             });
@@ -480,7 +480,8 @@ namespace ProtoPromiseTests.APIs.Linq
             int count = 0;
             Promise.Run(async () =>
             {
-                await using (var enumerator = AsyncEnumerable.Range(2, 5).GetAsyncEnumerator())
+                var enumerator = AsyncEnumerable.Range(2, 5).GetAsyncEnumerator();
+                try
                 {
                     Assert.True(await enumerator.MoveNextAsync());
                     ++count;
@@ -499,6 +500,10 @@ namespace ProtoPromiseTests.APIs.Linq
                     Assert.AreEqual(6, enumerator.Current);
 
                     Assert.False(await enumerator.MoveNextAsync());
+                }
+                finally
+                {
+                    await enumerator.DisposeAsync();
                 }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
