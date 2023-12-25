@@ -216,10 +216,7 @@ namespace Proto.Promises
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             /// <exception cref="ArgumentOutOfRangeException"/>
-#if !PROMISE_PROGRESS
-            [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-            [MethodImpl(Internal.InlineOption)]
+            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
             public void ReportProgress(float progress)
             {
                 if (!TryReportProgress(progress))
@@ -233,10 +230,7 @@ namespace Proto.Promises
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
             /// <exception cref="ArgumentOutOfRangeException"/>
-#if !PROMISE_PROGRESS
-            [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-            [MethodImpl(Internal.InlineOption)]
+            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryReportProgress(float progress)
             {
                 return Internal.DeferredPromiseHelper.TryReportProgress(_ref, _deferredId, progress);
@@ -516,10 +510,7 @@ namespace Proto.Promises
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             /// <exception cref="ArgumentOutOfRangeException"/>
-#if !PROMISE_PROGRESS
-            [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-            [MethodImpl(Internal.InlineOption)]
+            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
             public void ReportProgress(float progress)
             {
                 if (!TryReportProgress(progress))
@@ -533,10 +524,7 @@ namespace Proto.Promises
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
             /// <exception cref="ArgumentOutOfRangeException"/>
-#if !PROMISE_PROGRESS
-            [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-            [MethodImpl(Internal.InlineOption)]
+            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryReportProgress(float progress)
             {
                 return Internal.DeferredPromiseHelper.TryReportProgress(_ref, _deferredId, progress);
@@ -836,10 +824,7 @@ namespace Proto.Promises
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
             /// <exception cref="ArgumentOutOfRangeException"/>
-#if !PROMISE_PROGRESS
-            [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-            [MethodImpl(Internal.InlineOption)]
+            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
             public void ReportProgress(float progress)
             {
                 if (!TryReportProgress(progress))
@@ -853,10 +838,7 @@ namespace Proto.Promises
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
             /// <exception cref="ArgumentOutOfRangeException"/>
-#if !PROMISE_PROGRESS
-            [Obsolete(Internal.ProgressDisabledMessage, false)]
-#endif
-            [MethodImpl(Internal.InlineOption)]
+            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryReportProgress(float progress)
             {
                 return Internal.DeferredPromiseHelper.TryReportProgress(_ref, _deferredId, progress);

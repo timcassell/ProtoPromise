@@ -15,6 +15,7 @@
 
 using Proto.Promises.Async.CompilerServices;
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
@@ -36,6 +37,7 @@ namespace Proto.Promises
     /// <summary>
     /// Interface used to await a condition with progress.
     /// </summary>
+    [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
     public interface IAwaitWithProgressInstruction
     {
         /// <summary>
@@ -665,6 +667,7 @@ namespace Proto.Promises
         /// <summary>
         /// Gets an awaiter wrapping the <paramref name="awaitInstruction"/>, with progress reported to the `async Promise` function, optionally with cancelation.
         /// </summary>
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public static PromiseProgressAwaiterVoid AwaitWithProgress<TAwaitInstruction>(this TAwaitInstruction awaitInstruction, float minProgress, float maxprogress, CancelationToken cancelationToken = default(CancelationToken))
             where TAwaitInstruction : IAwaitWithProgressInstruction
         {
@@ -674,6 +677,7 @@ namespace Proto.Promises
         /// <summary>
         /// Gets an awaiter wrapping the <paramref name="awaitInstruction"/>, with progress reported to the `async Promise` function, optionally with cancelation.
         /// </summary>
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public static PromiseProgressAwaiterVoid AwaitWithProgress<TAwaitInstruction>(this TAwaitInstruction awaitInstruction, float maxprogress, CancelationToken cancelationToken = default(CancelationToken))
             where TAwaitInstruction : IAwaitWithProgressInstruction
         {

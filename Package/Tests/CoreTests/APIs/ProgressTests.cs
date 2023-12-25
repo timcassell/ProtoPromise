@@ -16,6 +16,8 @@ using System;
 using System.Linq;
 using System.Threading;
 
+#pragma warning disable 0618 // Type or member is obsolete
+
 namespace ProtoPromiseTests.APIs
 {
     public class ProgressTests

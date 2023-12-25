@@ -11,6 +11,8 @@ using Proto.Promises;
 using System;
 using System.Collections.Generic;
 
+#pragma warning disable 0618 // Type or member is obsolete
+
 namespace ProtoPromiseTests.Concurrency
 {
     public class MergeConcurrencyTests

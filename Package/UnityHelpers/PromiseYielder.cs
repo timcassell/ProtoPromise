@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0250 // Make struct 'readonly'
+#pragma warning disable 0618 // Type or member is obsolete
 
 using Proto.Promises.Async.CompilerServices;
 using System;
