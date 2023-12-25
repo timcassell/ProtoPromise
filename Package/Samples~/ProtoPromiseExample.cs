@@ -3,8 +3,6 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
-#pragma warning disable CS0618 // Type or member is obsolete
-
 namespace Proto.Promises.Examples
 {
     public class ProtoPromiseExample : MonoBehaviour
@@ -22,7 +20,30 @@ namespace Proto.Promises.Examples
             image.preserveAspect = true;
         }
 
-#if CSHARP_7_3_OR_NEWER
+#if UNITY_2021_2_OR_NEWER // netstandard2.1 added in 2021.2, so `await using` works.
+        public void OnClick()
+        {
+            // Don't use `async void` because that uses Tasks instead of Promises.
+            _OnClick().Forget();
+
+            async Promise _OnClick()
+            {
+                cancelationSource.TryCancel(); // Cancel previous download if it's not yet completed.
+                using var cs = CancelationSource.New();
+                cancelationSource = cs;
+                cancelButton.interactable = true;
+
+                Texture2D texture;
+                await using (var progress = Progress.New(this, (_this, value) => _this.OnProgress(value)))
+                {
+                    texture = await DownloadHelper.DownloadTexture(imageUrl, progress.Token, cs.Token);
+                }
+
+                cancelButton.interactable = false;
+                image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+            }
+        }
+#elif CSHARP_7_3_OR_NEWER
         public void OnClick()
         {
             // Don't use `async void` because that uses Tasks instead of Promises.
@@ -35,12 +56,18 @@ namespace Proto.Promises.Examples
                 {
                     cancelationSource = cs;
                     cancelButton.interactable = true;
-                    Texture2D texture = await DownloadHelper.DownloadTexture(imageUrl, cs.Token)
-                        .Progress(this, (_this, progress) => // Capture `this` for a more efficient delegate.
-                        {
-                            _this.progressBar.fillAmount = progress;
-                            _this.progressText.text = (progress * 100f).ToString("0.##") + "%";
-                        });
+
+                    var progress = Progress.New(this, (_this, value) => _this.OnProgress(value));
+                    Texture2D texture;
+                    try
+                    {
+                        texture = await DownloadHelper.DownloadTexture(imageUrl, progress.Token, cs.Token);
+                    }
+                    finally
+                    {
+                        await progress.DisposeAsync();
+                    }
+
                     cancelButton.interactable = false;
                     image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
                 }
@@ -53,21 +80,25 @@ namespace Proto.Promises.Examples
             var cs = CancelationSource.New();
             cancelationSource = cs;
             cancelButton.interactable = true;
-            DownloadHelper.DownloadTexture(imageUrl, cs.Token)
-                .Progress(this, (_this, progress) => // Capture `this` for a more efficient delegate.
+            
+            var progress = Progress.New(this, (_this, value) => _this.OnProgress(value));
+            DownloadHelper.DownloadTexture(imageUrl, progress.Token, cs.Token)
+                .Finally(progress, p => p.DisposeAsync()) // Dispose the progress object.
+                .Then(this, (_this, texture) => // Capture `this` to prevent closure allocation.
                 {
-                    _this.progressBar.fillAmount = progress;
-                    _this.progressText.text = (progress * 100f).ToString("0.##") + "%";
-                })
-                .Then(texture =>
-                {
-                    cancelButton.interactable = false;
-                    image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                    _this.cancelButton.interactable = false;
+                    _this.image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
                 })
                 .Finally(cs, source => source.Dispose()) // Must dispose the source after the async operation completes.
                 .Forget();
         }
 #endif
+
+        private void OnProgress(double progress)
+        {
+            progressBar.fillAmount = (float) progress;
+            progressText.text = (progress * 100f).ToString("0.##") + "%";
+        }
 
         public void OnCancelClick()
         {
