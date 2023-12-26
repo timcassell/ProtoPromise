@@ -257,7 +257,7 @@ namespace Proto.Promises.Collections
 
         internal void ValidateAccess()
         {
-            if (_disposedChecker._isDisposed)
+            if (_disposedChecker == null || _disposedChecker._isDisposed)
             {
                 throw new InvalidOperationException("TempCollection is invalid.", Internal.GetFormattedStacktrace(2));
             }
