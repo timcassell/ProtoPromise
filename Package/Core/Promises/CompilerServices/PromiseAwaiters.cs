@@ -49,6 +49,7 @@ namespace Proto.Promises
         /// </summary>
         /// <returns>The awaiter.</returns>
         /// <remarks>Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`</remarks>
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public PromiseProgressAwaiterVoid AwaitWithProgress(float minProgress, float maxProgress)
         {
             ValidateOperation(1);
@@ -66,6 +67,7 @@ namespace Proto.Promises
         /// If the previously awaited promise did not complete successfully, minProgress will be set to the previous <paramref name="maxProgress"/> instead of current.
         /// <para/>Use as `await promise.AwaitWithProgress(maxProgress);`
         /// </remarks>
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public PromiseProgressAwaiterVoid AwaitWithProgress(float maxProgress)
         {
             ValidateOperation(1);
@@ -80,6 +82,7 @@ namespace Proto.Promises
         /// </summary>
         /// <returns>The awaiter.</returns>
         /// <remarks>Use as `var resultContainer = await promise.AwaitWithProgressNoThrow(minProgress, maxProgress);`</remarks>
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public PromiseProgressNoThrowAwaiterVoid AwaitWithProgressNoThrow(float minProgress, float maxProgress)
         {
             ValidateOperation(1);
@@ -98,6 +101,7 @@ namespace Proto.Promises
         /// If the previously awaited promise did not complete successfully, minProgress will be set to the previous <paramref name="maxProgress"/> instead of current.
         /// <para/>Use as `var resultContainer = await promise.AwaitWithProgressNoThrow(maxProgress);`
         /// </remarks>
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public PromiseProgressNoThrowAwaiterVoid AwaitWithProgressNoThrow(float maxProgress)
         {
             ValidateOperation(1);
@@ -134,6 +138,7 @@ namespace Proto.Promises
         /// </summary>
         /// <returns>The awaiter.</returns>
         /// <remarks>Use as `await promise.AwaitWithProgress(minProgress, maxProgress);`</remarks>
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public PromiseProgressAwaiter<T> AwaitWithProgress(float minProgress, float maxProgress)
         {
             ValidateOperation(1);
@@ -151,6 +156,7 @@ namespace Proto.Promises
         /// If the previously awaited promise did not complete successfully, minProgress will be set to the previous <paramref name="maxProgress"/> instead of current.
         /// <para/>Use as `await promise.AwaitWithProgress(maxProgress);`
         /// </remarks>
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public PromiseProgressAwaiter<T> AwaitWithProgress(float maxProgress)
         {
             ValidateOperation(1);
@@ -165,6 +171,7 @@ namespace Proto.Promises
         /// </summary>
         /// <returns>The awaiter.</returns>
         /// <remarks>Use as `var resultContainer = await promise.AwaitWithProgressNoThrow(minProgress, maxProgress);`</remarks>
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public PromiseProgressNoThrowAwaiter<T> AwaitWithProgressNoThrow(float minProgress, float maxProgress)
         {
             ValidateOperation(1);
@@ -183,6 +190,7 @@ namespace Proto.Promises
         /// If the previously awaited promise did not complete successfully, minProgress will be set to the previous <paramref name="maxProgress"/> instead of current.
         /// <para/>Use as `var resultContainer = await promise.AwaitWithProgressNoThrow(maxProgress);`
         /// </remarks>
+        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
         public PromiseProgressNoThrowAwaiter<T> AwaitWithProgressNoThrow(float maxProgress)
         {
             ValidateOperation(1);
