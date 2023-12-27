@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Async.CompilerServices;
 using Proto.Promises.Linq;
 using System;
 using System.Collections;
@@ -168,6 +169,120 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
             {
                 var asyncEnumerator = source.GetAsyncEnumerator(cancelationToken);
+                var lookup = new Lookup<TKey, TElement>(comparer);
+
+                try
+                {
+                    while (await asyncEnumerator.MoveNextAsync())
+                    {
+                        var item = asyncEnumerator.Current;
+                        var key = await keySelector.Invoke(item);
+                        lookup.GetOrCreateGrouping(key).Add(item);
+                    }
+                }
+                finally
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+
+                return lookup;
+            }
+
+            internal static async Promise<ILookup<TKey, TElement>> CreateAsync<TSource, TKeySelector, TElementSelector>(
+                ConfiguredAsyncEnumerable<TSource> configuredSource,
+                TKeySelector keySelector,
+                TElementSelector elementSelector,
+                IEqualityComparer<TKey> comparer)
+                where TKeySelector : IFunc<TSource, TKey>
+                where TElementSelector : IFunc<TSource, TElement>
+            {
+                var asyncEnumerator = configuredSource.GetAsyncEnumerator();
+                var lookup = new Lookup<TKey, TElement>(comparer);
+
+                try
+                {
+                    while (await asyncEnumerator.MoveNextAsync())
+                    {
+                        var item = asyncEnumerator.Current;
+                        var key = keySelector.Invoke(item);
+                        var group = lookup.GetOrCreateGrouping(key);
+
+                        var element = elementSelector.Invoke(item);
+                        group.Add(element);
+                    }
+                }
+                finally
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+
+                return lookup;
+            }
+
+            internal static async Promise<ILookup<TKey, TElement>> CreateAsync<TKeySelector>(
+                ConfiguredAsyncEnumerable<TElement> configuredSource,
+                TKeySelector keySelector,
+                IEqualityComparer<TKey> comparer)
+                where TKeySelector : IFunc<TElement, TKey>
+            {
+                var asyncEnumerator = configuredSource.GetAsyncEnumerator();
+                var lookup = new Lookup<TKey, TElement>(comparer);
+
+                try
+                {
+                    while (await asyncEnumerator.MoveNextAsync())
+                    {
+                        var item = asyncEnumerator.Current;
+                        var key = keySelector.Invoke(item);
+                        lookup.GetOrCreateGrouping(key).Add(item);
+                    }
+                }
+                finally
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+
+                return lookup;
+            }
+
+            internal static async Promise<ILookup<TKey, TElement>> CreateAwaitAsync<TSource, TKeySelector, TElementSelector>(
+                ConfiguredAsyncEnumerable<TSource> configuredSource,
+                TKeySelector keySelector,
+                TElementSelector elementSelector,
+                IEqualityComparer<TKey> comparer)
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TElementSelector : IFunc<TSource, Promise<TElement>>
+            {
+                var asyncEnumerator = configuredSource.GetAsyncEnumerator();
+                var lookup = new Lookup<TKey, TElement>(comparer);
+
+                try
+                {
+                    while (await asyncEnumerator.MoveNextAsync())
+                    {
+                        var item = asyncEnumerator.Current;
+                        var key = await keySelector.Invoke(item);
+                        var group = lookup.GetOrCreateGrouping(key);
+
+                        var element = await elementSelector.Invoke(item);
+                        group.Add(element);
+                    }
+                }
+                finally
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+
+                return lookup;
+            }
+
+            internal static async Promise<ILookup<TKey, TElement>> CreateAwaitAsync<TKeySelector>(
+                ConfiguredAsyncEnumerable<TElement> configuredSource,
+                TKeySelector keySelector,
+                IEqualityComparer<TKey> comparer)
+                where TKeySelector : IFunc<TElement, Promise<TKey>>
+            {
+                var asyncEnumerator = configuredSource.GetAsyncEnumerator();
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try

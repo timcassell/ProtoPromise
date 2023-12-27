@@ -8,6 +8,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using Proto.Promises.Async.CompilerServices;
 using Proto.Promises.Linq;
 using System;
 using System.Collections;
@@ -100,11 +101,17 @@ namespace ProtoPromiseTests.APIs.Linq
 
         // We test all the different overloads.
         private static Promise<ILookup<int, int>> ToLookupAsync(AsyncEnumerable<int> asyncEnumerable,
+            bool configured,
             bool async,
             Func<int, int> keySelector, bool captureKey,
             Func<int, int> elementSelector = null, bool captureElement = false,
             IEqualityComparer<int> equalityComparer = null)
         {
+            if (configured)
+            {
+                return ToLookupAsync(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground), async, keySelector, captureKey, elementSelector, captureElement, equalityComparer);
+            }
+
             const string keyCapture = "keyCapture";
             const string elementCapture = "elementCapture";
 
@@ -201,16 +208,119 @@ namespace ProtoPromiseTests.APIs.Linq
                 }
             }
         }
+        private static Promise<ILookup<int, int>> ToLookupAsync(ConfiguredAsyncEnumerable<int> asyncEnumerable,
+            bool async,
+            Func<int, int> keySelector, bool captureKey,
+            Func<int, int> elementSelector, bool captureElement,
+            IEqualityComparer<int> equalityComparer)
+        {
+            const string keyCapture = "keyCapture";
+            const string elementCapture = "elementCapture";
+
+            if (elementSelector == null)
+            {
+                if (!captureKey)
+                {
+                    return async
+                        ? asyncEnumerable.ToLookupAsync(async x => keySelector(x), equalityComparer)
+                        : asyncEnumerable.ToLookupAsync(keySelector, equalityComparer);
+                }
+                else
+                {
+                    return async
+                        ? asyncEnumerable.ToLookupAsync(keyCapture, async (cv, x) =>
+                        {
+                            Assert.AreEqual(keyCapture, cv);
+                            return keySelector(x);
+                        }, equalityComparer)
+                        : asyncEnumerable.ToLookupAsync(keyCapture, (cv, x) =>
+                        {
+                            Assert.AreEqual(keyCapture, cv);
+                            return keySelector(x);
+                        }, equalityComparer);
+                }
+            }
+            else
+            {
+                if (!captureKey)
+                {
+                    if (!captureElement)
+                    {
+                        return async
+                            ? asyncEnumerable.ToLookupAsync(async x => keySelector(x), async x => elementSelector(x), equalityComparer)
+                            : asyncEnumerable.ToLookupAsync(keySelector, elementSelector, equalityComparer);
+                    }
+                    else
+                    {
+                        return async
+                            ? asyncEnumerable.ToLookupAsync(async x => keySelector(x),
+                                elementCapture, async (cv, x) =>
+                                {
+                                    Assert.AreEqual(elementCapture, cv);
+                                    return elementSelector(x);
+                                }, equalityComparer)
+                            : asyncEnumerable.ToLookupAsync(x => keySelector(x),
+                                elementCapture, (cv, x) =>
+                                {
+                                    Assert.AreEqual(elementCapture, cv);
+                                    return elementSelector(x);
+                                }, equalityComparer);
+                    }
+                }
+                else
+                {
+                    if (!captureElement)
+                    {
+                        return async
+                            ? asyncEnumerable.ToLookupAsync(keyCapture, async (cv, x) =>
+                            {
+                                Assert.AreEqual(keyCapture, cv);
+                                return keySelector(x);
+                            }, async x => elementSelector(x), equalityComparer)
+                            : asyncEnumerable.ToLookupAsync(keyCapture, (cv, x) =>
+                            {
+                                Assert.AreEqual(keyCapture, cv);
+                                return keySelector(x);
+                            }, elementSelector, equalityComparer);
+                    }
+                    else
+                    {
+                        return async
+                            ? asyncEnumerable.ToLookupAsync(keyCapture, async (cv, x) =>
+                            {
+                                Assert.AreEqual(keyCapture, cv);
+                                return keySelector(x);
+                            },
+                                elementCapture, async (cv, x) =>
+                                {
+                                    Assert.AreEqual(elementCapture, cv);
+                                    return elementSelector(x);
+                                }, equalityComparer)
+                            : asyncEnumerable.ToLookupAsync(keyCapture, (cv, x) =>
+                            {
+                                Assert.AreEqual(keyCapture, cv);
+                                return keySelector(x);
+                            },
+                                elementCapture, (cv, x) =>
+                                {
+                                    Assert.AreEqual(elementCapture, cv);
+                                    return elementSelector(x);
+                                }, equalityComparer);
+                    }
+                }
+            }
+        }
 
         [Test]
         public void ToLookup1Async(
+            [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey)
         {
             Promise.Run(async () =>
             {
                 var xs = new[] { 1, 4 }.ToAsyncEnumerable();
-                var res = await ToLookupAsync(xs, async, x => x % 2, captureKey);
+                var res = await ToLookupAsync(xs, configured, async, x => x % 2, captureKey);
                 Assert.True(res.Contains(0));
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 4);
@@ -234,13 +344,14 @@ namespace ProtoPromiseTests.APIs.Linq
 
         [Test]
         public void ToLookup2Async(
+            [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey)
         {
             Promise.Run(async () =>
             {
                 var xs = new[] { 1, 4, 2 }.ToAsyncEnumerable();
-                var res = await ToLookupAsync(xs, async, x => x % 2, captureKey);
+                var res = await ToLookupAsync(xs, configured, async, x => x % 2, captureKey);
                 Assert.True(res.Contains(0));
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 4);
@@ -253,6 +364,7 @@ namespace ProtoPromiseTests.APIs.Linq
 
         [Test]
         public void ToLookup3Async(
+            [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
             [Values] bool captureElement)
@@ -260,7 +372,7 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var xs = new[] { 1, 4 }.ToAsyncEnumerable();
-                var res = await ToLookupAsync(xs, async, x => x % 2, captureKey, x => x + 1, captureElement);
+                var res = await ToLookupAsync(xs, configured, async, x => x % 2, captureKey, x => x + 1, captureElement);
                 Assert.True(res.Contains(0));
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 5);
@@ -272,6 +384,7 @@ namespace ProtoPromiseTests.APIs.Linq
 
         [Test]
         public void ToLookup4Async(
+            [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
             [Values] bool captureElement)
@@ -279,7 +392,7 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var xs = new[] { 1, 4, 2 }.ToAsyncEnumerable();
-                var res = await ToLookupAsync(xs, async, x => x % 2, captureKey, x => x + 1, captureElement);
+                var res = await ToLookupAsync(xs, configured, async, x => x % 2, captureKey, x => x + 1, captureElement);
                 Assert.True(res.Contains(0));
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 5);
@@ -292,13 +405,14 @@ namespace ProtoPromiseTests.APIs.Linq
 
         [Test]
         public void ToLookup5Async(
+            [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey)
         {
             Promise.Run(async () =>
             {
                 var xs = new[] { 1, 4 }.ToAsyncEnumerable();
-                var res = await ToLookupAsync(xs, async, x => x % 2, captureKey, equalityComparer: new Eq());
+                var res = await ToLookupAsync(xs, configured, async, x => x % 2, captureKey, equalityComparer: new Eq());
                 Assert.True(res.Contains(0));
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 4);
@@ -310,13 +424,14 @@ namespace ProtoPromiseTests.APIs.Linq
 
         [Test]
         public void ToLookup6Async(
+            [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey)
         {
             Promise.Run(async () =>
             {
                 var xs = new[] { 1, 4, 2 }.ToAsyncEnumerable();
-                var res = await ToLookupAsync(xs, async, x => x % 2, captureKey, equalityComparer: new Eq());
+                var res = await ToLookupAsync(xs, configured, async, x => x % 2, captureKey, equalityComparer: new Eq());
                 Assert.True(res.Contains(0));
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 4);
@@ -329,13 +444,14 @@ namespace ProtoPromiseTests.APIs.Linq
 
         [Test]
         public void ToLookup7Async(
+            [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey)
         {
             Promise.Run(async () =>
             {
                 var xs = new[] { 1, 4, 2 }.ToAsyncEnumerable();
-                var res = await ToLookupAsync(xs, async, x => x % 2, captureKey);
+                var res = await ToLookupAsync(xs, configured, async, x => x % 2, captureKey);
                 foreach (var g in res)
                     Assert.True(g.Key == 0 || g.Key == 1);
             }, SynchronizationOption.Synchronous)
@@ -344,13 +460,14 @@ namespace ProtoPromiseTests.APIs.Linq
 
         [Test]
         public void ToLookup8Async(
+            [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey)
         {
             Promise.Run(async () =>
             {
                 var xs = new[] { 1, 4, 2 }.ToAsyncEnumerable();
-                var res = await ToLookupAsync(xs, async, x => x % 2, captureKey);
+                var res = await ToLookupAsync(xs, configured, async, x => x % 2, captureKey);
 #pragma warning disable IDE0007 // Use implicit type
                 foreach (IGrouping<int, int> g in (IEnumerable) res)
                 {
@@ -364,6 +481,7 @@ namespace ProtoPromiseTests.APIs.Linq
 
         [Test]
         public void ToLookup9Async(
+            [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
             [Values] bool captureElement)
@@ -371,7 +489,7 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var xs = new[] { 1, 4, 2 }.ToAsyncEnumerable();
-                var res = await ToLookupAsync(xs, async, x => x % 2, captureKey, x => x, captureElement, new Eq());
+                var res = await ToLookupAsync(xs, configured, async, x => x % 2, captureKey, x => x, captureElement, new Eq());
                 Assert.True(res.Contains(0));
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 4);
