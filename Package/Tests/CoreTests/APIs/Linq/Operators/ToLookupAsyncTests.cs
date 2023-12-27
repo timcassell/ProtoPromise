@@ -35,7 +35,7 @@ namespace ProtoPromiseTests.APIs.Linq
             TestHelper.Cleanup();
         }
 
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROMISE_DEBUG
         [Test]
         public void ToLookupAsync_NullArgumentThrows()
         {
@@ -97,7 +97,7 @@ namespace ProtoPromiseTests.APIs.Linq
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
-#endif //PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#endif //PROMISE_DEBUG
 
         // We test all the different overloads.
         private static Promise<ILookup<int, int>> ToLookupAsync(AsyncEnumerable<int> asyncEnumerable,
