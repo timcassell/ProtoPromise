@@ -264,6 +264,9 @@ namespace Proto.Promises
                         var key = await keySelector.Invoke(item);
                         var group = lookup.GetOrCreateGrouping(key);
 
+                        // The keySelector could have switched contexts.
+                        // We switch back to the configured context before invoking the elementSelector.
+                        await asyncEnumerator.SwitchToContext();
                         var element = await elementSelector.Invoke(item);
                         group.Add(element);
                     }

@@ -202,6 +202,93 @@ namespace Proto.Promises.Async.CompilerServices
                 }
                 return new Promise(promise, promise.Id, moveNextPromise.Depth);
             }
+
+            internal SwitchToConfiguredContextAwaiter SwitchToContext()
+            {
+                SynchronizationContext synchronizationContext;
+                switch (_synchronizationOption)
+                {
+                    case Internal.SynchronizationOption.Synchronous:
+                    {
+                        return default;
+                    }
+                    case Internal.SynchronizationOption.Foreground:
+                    {
+                        synchronizationContext = Promise.Config.ForegroundContext;
+                        if (synchronizationContext == null)
+                        {
+                            throw new InvalidOperationException(
+                                "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
+                                "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
+                                Internal.GetFormattedStacktrace(2));
+                        }
+                        // We ignore the _forceAsync flag here.
+                        return synchronizationContext == Internal.ts_currentContext
+                            ? default
+                            : new SwitchToConfiguredContextAwaiter(synchronizationContext);
+                    }
+                    case Internal.SynchronizationOption.Background:
+                    {
+                        synchronizationContext = Promise.Config.BackgroundContext;
+                        break;
+                    }
+                    default: // SynchronizationOption.Explicit
+                    {
+                        synchronizationContext = _synchronizationContext;
+                        break;
+                    }
+                }
+
+                if (synchronizationContext == null)
+                {
+                    synchronizationContext = Internal.BackgroundSynchronizationContextSentinel.s_instance;
+                }
+                // We ignore the _forceAsync flag here.
+                return synchronizationContext == Internal.ts_currentContext
+                    ? default
+                    : new SwitchToConfiguredContextAwaiter(synchronizationContext);
+            }
+        }
+    }
+    
+    // Internal so we can guarantee it will be awaited the moment it's created.
+    internal readonly struct SwitchToConfiguredContextAwaiter : ICriticalNotifyCompletion
+    {
+        private readonly SynchronizationContext _context;
+
+        [MethodImpl(Internal.InlineOption)]
+        internal SwitchToConfiguredContextAwaiter(SynchronizationContext context)
+        {
+            _context = context;
+        }
+
+        public bool IsCompleted
+        {
+            [MethodImpl(Internal.InlineOption)]
+            get => _context == null;
+        }
+
+        [MethodImpl(Internal.InlineOption)]
+        public SwitchToConfiguredContextAwaiter GetAwaiter() => this;
+
+        [MethodImpl(Internal.InlineOption)]
+        public void GetResult() { }
+
+        [MethodImpl(Internal.InlineOption)]
+        public void OnCompleted(System.Action continuation)
+            => UnsafeOnCompleted(continuation);
+
+        [MethodImpl(Internal.InlineOption)]
+        public void UnsafeOnCompleted(System.Action continuation)
+        {
+            if (_context == Internal.BackgroundSynchronizationContextSentinel.s_instance)
+            {
+                ThreadPool.QueueUserWorkItem(state => state.UnsafeAs<System.Action>().Invoke(), continuation);
+            }
+            else
+            {
+                _context.Post(state => state.UnsafeAs<System.Action>().Invoke(), continuation);
+            }
         }
     }
 #endif
