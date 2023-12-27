@@ -21,12 +21,13 @@ namespace Proto.Promises.Linq
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T> action)
+        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T> action, CancelationToken cancelationToken = default)
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachCoreSync(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(action));
+            return ForEachCoreSync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(action));
         }
 
         /// <summary>
@@ -38,12 +39,13 @@ namespace Proto.Promises.Linq
         /// <param name="source">Source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T> action)
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T> action, CancelationToken cancelationToken = default)
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachCoreSync(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action));
+            return ForEachCoreSync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action));
         }
 
         private static async Promise ForEachCoreSync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
@@ -151,12 +153,13 @@ namespace Proto.Promises.Linq
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T, int> action)
+        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T, int> action, CancelationToken cancelationToken = default)
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachWithIndexCoreSync(source.GetAsyncEnumerator(), new ActionElementIndex<T>(action));
+            return ForEachWithIndexCoreSync(source.GetAsyncEnumerator(cancelationToken), new ActionElementIndex<T>(action));
         }
 
         /// <summary>
@@ -168,12 +171,13 @@ namespace Proto.Promises.Linq
         /// <param name="source">Source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T, int> action)
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T, int> action, CancelationToken cancelationToken = default)
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachWithIndexCoreSync(source.GetAsyncEnumerator(), new ActionElementIndexCapture<T, TCapture>(captureValue, action));
+            return ForEachWithIndexCoreSync(source.GetAsyncEnumerator(cancelationToken), new ActionElementIndexCapture<T, TCapture>(captureValue, action));
         }
 
         private static async Promise ForEachWithIndexCoreSync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
@@ -251,12 +255,13 @@ namespace Proto.Promises.Linq
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, Promise> asyncAction)
+        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachCoreAsync(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(asyncAction));
+            return ForEachCoreAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(asyncAction));
         }
 
         /// <summary>
@@ -269,12 +274,13 @@ namespace Proto.Promises.Linq
         /// <param name="source">Source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, Promise> asyncAction)
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachCoreAsync(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAction));
+            return ForEachCoreAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAction));
         }
 
         private static async Promise ForEachCoreAsync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
@@ -385,12 +391,13 @@ namespace Proto.Promises.Linq
         /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
         /// <param name="source">Source sequence.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, int, Promise> asyncAction)
+        public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, int, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(), new AsyncActionElementIndex<T>(asyncAction));
+            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(cancelationToken), new AsyncActionElementIndex<T>(asyncAction));
         }
 
         /// <summary>
@@ -403,12 +410,13 @@ namespace Proto.Promises.Linq
         /// <param name="source">Source sequence.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
-        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction)
+        public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(), new AsyncActionElementIndexCapture<T, TCapture>(captureValue, asyncAction));
+            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(cancelationToken), new AsyncActionElementIndexCapture<T, TCapture>(captureValue, asyncAction));
         }
 
         private static async Promise ForEachWithIndexCoreAsync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
