@@ -16,7 +16,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -34,7 +34,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -49,18 +49,17 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the lookup key computed for each element in the source sequence.</typeparam>
         /// <param name="source">An async-enumerable sequence to create a lookup for.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
 
             return Internal.Lookup<TKey, TSource>.CreateAsync(source, Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer, cancelationToken);
         }
@@ -74,10 +73,10 @@ namespace Proto.Promises.Linq
         /// <param name="source">An async-enumerable sequence to create a lookup for.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -85,8 +84,7 @@ namespace Proto.Promises.Linq
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
 
             return Internal.Lookup<TKey, TSource>.CreateAsync(source, Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer, cancelationToken);
         }
@@ -100,7 +98,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A Promise containing a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -118,7 +116,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A Promise containing a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -133,18 +131,17 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the lookup key computed for each element in the source sequence.</typeparam>
         /// <param name="source">An async-enumerable sequence to create a lookup for.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A Promise containing a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
 
             return Internal.Lookup<TKey, TSource>.CreateAwaitAsync(source, Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer, cancelationToken);
         }
@@ -158,10 +155,10 @@ namespace Proto.Promises.Linq
         /// <param name="source">An async-enumerable sequence to create a lookup for.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A Promise containing a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -169,8 +166,7 @@ namespace Proto.Promises.Linq
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
 
             return Internal.Lookup<TKey, TSource>.CreateAwaitAsync(source, Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer, cancelationToken);
         }
@@ -186,7 +182,7 @@ namespace Proto.Promises.Linq
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -207,7 +203,7 @@ namespace Proto.Promises.Linq
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -229,7 +225,7 @@ namespace Proto.Promises.Linq
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -253,7 +249,7 @@ namespace Proto.Promises.Linq
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -272,10 +268,10 @@ namespace Proto.Promises.Linq
         /// <param name="source">An async-enumerable sequence to create a lookup for.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -283,10 +279,8 @@ namespace Proto.Promises.Linq
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
-            if (elementSelector == null)
-                throw new System.ArgumentNullException(nameof(elementSelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
             return Internal.Lookup<TKey, TElement>.CreateAsync(source,
                 Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
@@ -305,10 +299,10 @@ namespace Proto.Promises.Linq
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -317,10 +311,8 @@ namespace Proto.Promises.Linq
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
-            if (elementSelector == null)
-                throw new System.ArgumentNullException(nameof(elementSelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
             return Internal.Lookup<TKey, TElement>.CreateAsync(source,
                 Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -339,10 +331,10 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementCaptureValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -351,10 +343,8 @@ namespace Proto.Promises.Linq
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
-            if (elementSelector == null)
-                throw new System.ArgumentNullException(nameof(elementSelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
             return Internal.Lookup<TKey, TElement>.CreateAsync(source,
                 Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
@@ -375,10 +365,10 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementCaptureValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -388,10 +378,8 @@ namespace Proto.Promises.Linq
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
-            if (elementSelector == null)
-                throw new System.ArgumentNullException(nameof(elementSelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
             return Internal.Lookup<TKey, TElement>.CreateAsync(source,
                 Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -410,7 +398,7 @@ namespace Proto.Promises.Linq
         /// <param name="elementSelector">An asynchronous transform function to produce a result element value from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -431,7 +419,7 @@ namespace Proto.Promises.Linq
         /// <param name="elementSelector">An asynchronous transform function to produce a result element value from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -453,7 +441,7 @@ namespace Proto.Promises.Linq
         /// <param name="elementSelector">An asynchronous transform function to produce a result element value from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -477,7 +465,7 @@ namespace Proto.Promises.Linq
         /// <param name="elementSelector">An asynchronous transform function to produce a result element value from each element.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>An async-enumerable sequence containing a single element with a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -496,10 +484,10 @@ namespace Proto.Promises.Linq
         /// <param name="source">An async-enumerable sequence to create a lookup for.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="elementSelector">An asynchronous transform function to produce a result element value from each source element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A Promise containing a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -507,10 +495,8 @@ namespace Proto.Promises.Linq
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
-            if (elementSelector == null)
-                throw new System.ArgumentNullException(nameof(elementSelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
             return Internal.Lookup<TKey, TElement>.CreateAwaitAsync(source,
                 Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
@@ -529,10 +515,10 @@ namespace Proto.Promises.Linq
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="elementSelector">An asynchronous transform function to produce a result element value from each source element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A Promise containing a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -541,10 +527,8 @@ namespace Proto.Promises.Linq
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
-            if (elementSelector == null)
-                throw new System.ArgumentNullException(nameof(elementSelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
             return Internal.Lookup<TKey, TElement>.CreateAwaitAsync(source,
                 Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -563,10 +547,10 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="elementCaptureValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">An asynchronous transform function to produce a result element value from each source element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A Promise containing a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -575,10 +559,8 @@ namespace Proto.Promises.Linq
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
-            if (elementSelector == null)
-                throw new System.ArgumentNullException(nameof(elementSelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
             return Internal.Lookup<TKey, TElement>.CreateAwaitAsync(source,
                 Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
@@ -599,10 +581,10 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="elementCaptureValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">An asynchronous transform function to produce a result element value from each source element.</param>
-        /// <param name="comparer">An equality comparer to compare keys.</param>
+        /// <param name="comparer">An equality comparer to compare keys. If null, the default equality comparer will be used.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A Promise containing a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
-        /// <exception cref="System.ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
@@ -612,10 +594,8 @@ namespace Proto.Promises.Linq
             IEqualityComparer<TKey> comparer,
             CancelationToken cancelationToken = default)
         {
-            if (keySelector == null)
-                throw new System.ArgumentNullException(nameof(keySelector));
-            if (elementSelector == null)
-                throw new System.ArgumentNullException(nameof(elementSelector));
+            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
             return Internal.Lookup<TKey, TElement>.CreateAwaitAsync(source,
                 Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),

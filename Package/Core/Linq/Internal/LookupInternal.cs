@@ -78,7 +78,7 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
             {
-                var asyncEnumerator = source.WithCancelation(cancelationToken).GetAsyncEnumerator();
+                var asyncEnumerator = source.GetAsyncEnumerator(cancelationToken);
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
@@ -108,7 +108,7 @@ namespace Proto.Promises
                 CancelationToken cancelationToken)
                 where TKeySelector : IFunc<TElement, TKey>
             {
-                var asyncEnumerator = source.WithCancelation(cancelationToken).GetAsyncEnumerator();
+                var asyncEnumerator = source.GetAsyncEnumerator(cancelationToken);
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
@@ -137,7 +137,7 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
             {
-                var asyncEnumerator = source.WithCancelation(cancelationToken).GetAsyncEnumerator();
+                var asyncEnumerator = source.GetAsyncEnumerator(cancelationToken);
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
@@ -167,7 +167,7 @@ namespace Proto.Promises
                 CancelationToken cancelationToken)
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
             {
-                var asyncEnumerator = source.WithCancelation(cancelationToken).GetAsyncEnumerator();
+                var asyncEnumerator = source.GetAsyncEnumerator(cancelationToken);
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
