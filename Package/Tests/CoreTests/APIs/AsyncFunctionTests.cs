@@ -17,6 +17,7 @@
 #endif
 
 #pragma warning disable IDE0062 // Make local function 'static'
+#pragma warning disable CS0618 // Type or member is obsolete
 
 using NUnit.Framework;
 using Proto.Promises;
