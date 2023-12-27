@@ -71,15 +71,13 @@ namespace Proto.Promises
             }
 
             internal static async Promise<ILookup<TKey, TElement>> CreateAsync<TSource, TKeySelector, TElementSelector>(
-                AsyncEnumerable<TSource> source,
+                AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer,
-                CancelationToken cancelationToken)
+                IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
             {
-                var asyncEnumerator = source.GetAsyncEnumerator(cancelationToken);
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
@@ -103,13 +101,11 @@ namespace Proto.Promises
             }
 
             internal static async Promise<ILookup<TKey, TElement>> CreateAsync<TKeySelector>(
-                AsyncEnumerable<TElement> source,
+                AsyncEnumerator<TElement> asyncEnumerator,
                 TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer,
-                CancelationToken cancelationToken)
+                IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, TKey>
             {
-                var asyncEnumerator = source.GetAsyncEnumerator(cancelationToken);
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
@@ -130,15 +126,13 @@ namespace Proto.Promises
             }
 
             internal static async Promise<ILookup<TKey, TElement>> CreateAwaitAsync<TSource, TKeySelector, TElementSelector>(
-                AsyncEnumerable<TSource> source,
+                AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer,
-                CancelationToken cancelationToken)
+                IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
             {
-                var asyncEnumerator = source.GetAsyncEnumerator(cancelationToken);
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
@@ -162,13 +156,11 @@ namespace Proto.Promises
             }
 
             internal static async Promise<ILookup<TKey, TElement>> CreateAwaitAsync<TKeySelector>(
-                AsyncEnumerable<TElement> source,
+                AsyncEnumerator<TElement> asyncEnumerator,
                 TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer,
-                CancelationToken cancelationToken)
+                IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
             {
-                var asyncEnumerator = source.GetAsyncEnumerator(cancelationToken);
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
@@ -189,21 +181,20 @@ namespace Proto.Promises
             }
 
             internal static async Promise<ILookup<TKey, TElement>> CreateAsync<TSource, TKeySelector, TElementSelector>(
-                ConfiguredAsyncEnumerable<TSource> configuredSource,
+                ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
             {
-                var asyncEnumerator = configuredSource.GetAsyncEnumerator();
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
                 {
-                    while (await asyncEnumerator.MoveNextAsync())
+                    while (await configuredAsyncEnumerator.MoveNextAsync())
                     {
-                        var item = asyncEnumerator.Current;
+                        var item = configuredAsyncEnumerator.Current;
                         var key = keySelector.Invoke(item);
                         var group = lookup.GetOrCreateGrouping(key);
 
@@ -213,93 +204,90 @@ namespace Proto.Promises
                 }
                 finally
                 {
-                    await asyncEnumerator.DisposeAsync();
+                    await configuredAsyncEnumerator.DisposeAsync();
                 }
 
                 return lookup;
             }
 
             internal static async Promise<ILookup<TKey, TElement>> CreateAsync<TKeySelector>(
-                ConfiguredAsyncEnumerable<TElement> configuredSource,
+                ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, TKey>
             {
-                var asyncEnumerator = configuredSource.GetAsyncEnumerator();
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
                 {
-                    while (await asyncEnumerator.MoveNextAsync())
+                    while (await configuredAsyncEnumerator.MoveNextAsync())
                     {
-                        var item = asyncEnumerator.Current;
+                        var item = configuredAsyncEnumerator.Current;
                         var key = keySelector.Invoke(item);
                         lookup.GetOrCreateGrouping(key).Add(item);
                     }
                 }
                 finally
                 {
-                    await asyncEnumerator.DisposeAsync();
+                    await configuredAsyncEnumerator.DisposeAsync();
                 }
 
                 return lookup;
             }
 
             internal static async Promise<ILookup<TKey, TElement>> CreateAwaitAsync<TSource, TKeySelector, TElementSelector>(
-                ConfiguredAsyncEnumerable<TSource> configuredSource,
+                ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
             {
-                var asyncEnumerator = configuredSource.GetAsyncEnumerator();
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
                 {
-                    while (await asyncEnumerator.MoveNextAsync())
+                    while (await configuredAsyncEnumerator.MoveNextAsync())
                     {
-                        var item = asyncEnumerator.Current;
+                        var item = configuredAsyncEnumerator.Current;
                         var key = await keySelector.Invoke(item);
                         var group = lookup.GetOrCreateGrouping(key);
 
                         // The keySelector could have switched contexts.
                         // We switch back to the configured context before invoking the elementSelector.
-                        await asyncEnumerator.SwitchToContext();
+                        await configuredAsyncEnumerator.SwitchToContext();
                         var element = await elementSelector.Invoke(item);
                         group.Add(element);
                     }
                 }
                 finally
                 {
-                    await asyncEnumerator.DisposeAsync();
+                    await configuredAsyncEnumerator.DisposeAsync();
                 }
 
                 return lookup;
             }
 
             internal static async Promise<ILookup<TKey, TElement>> CreateAwaitAsync<TKeySelector>(
-                ConfiguredAsyncEnumerable<TElement> configuredSource,
+                ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
             {
-                var asyncEnumerator = configuredSource.GetAsyncEnumerator();
                 var lookup = new Lookup<TKey, TElement>(comparer);
 
                 try
                 {
-                    while (await asyncEnumerator.MoveNextAsync())
+                    while (await configuredAsyncEnumerator.MoveNextAsync())
                     {
-                        var item = asyncEnumerator.Current;
+                        var item = configuredAsyncEnumerator.Current;
                         var key = await keySelector.Invoke(item);
                         lookup.GetOrCreateGrouping(key).Add(item);
                     }
                 }
                 finally
                 {
-                    await asyncEnumerator.DisposeAsync();
+                    await configuredAsyncEnumerator.DisposeAsync();
                 }
 
                 return lookup;
