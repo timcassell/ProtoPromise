@@ -334,7 +334,7 @@ namespace Proto.Promises
                 return lookup;
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAsync<TSource, TKeySelector, TElementSelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TSource, TKeySelector, TElementSelector>(
                 AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
@@ -388,7 +388,7 @@ namespace Proto.Promises
                 });
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAsync<TKeySelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TKeySelector>(
                 AsyncEnumerator<TElement> asyncEnumerator,
                 TKeySelector keySelector,
                 IEqualityComparer<TKey> comparer)
@@ -435,7 +435,7 @@ namespace Proto.Promises
                 });
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwaitAsync<TSource, TKeySelector, TElementSelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TSource, TKeySelector, TElementSelector>(
                 AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
@@ -487,7 +487,7 @@ namespace Proto.Promises
                 });
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwaitAsync<TKeySelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TKeySelector>(
                 AsyncEnumerator<TElement> asyncEnumerator,
                 TKeySelector keySelector,
                 IEqualityComparer<TKey> comparer)
@@ -534,7 +534,7 @@ namespace Proto.Promises
                 });
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAsync<TSource, TKeySelector, TElementSelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TSource, TKeySelector, TElementSelector>(
                 ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
@@ -593,7 +593,7 @@ namespace Proto.Promises
                 });
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAsync<TKeySelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TKeySelector>(
                 ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 IEqualityComparer<TKey> comparer)
@@ -647,7 +647,7 @@ namespace Proto.Promises
                 });
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwaitAsync<TSource, TKeySelector, TElementSelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TSource, TKeySelector, TElementSelector>(
                 ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
@@ -709,7 +709,7 @@ namespace Proto.Promises
                 });
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwaitAsync<TKeySelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TKeySelector>(
                 ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 IEqualityComparer<TKey> comparer)
