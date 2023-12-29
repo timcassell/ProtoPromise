@@ -26,7 +26,7 @@ namespace Proto.Promises
         {
             private IEqualityComparer<TKey> _comparer;
             private Grouping<TKey, TElement> _lastGrouping;
-            // We use a TempCollectionBuilder to handle renting and returning from ArrayPool.
+            // We use a TempCollectionBuilder to handle renting from ArrayPool.
             private TempCollectionBuilder<Grouping<TKey, TElement>> _groupings;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             private bool _disposed;
@@ -56,7 +56,12 @@ namespace Proto.Promises
             {
                 var lookup = GetOrCreate();
                 lookup._comparer = comparer ?? EqualityComparer<TKey>.Default;
-                lookup._groupings = new TempCollectionBuilder<Grouping<TKey, TElement>>(0);
+                lookup._groupings = new TempCollectionBuilder<Grouping<TKey, TElement>>(7)
+                {
+                    // The actual array length could be larger than the requested size, so we make sure the
+                    // count is what we expect.
+                    _count = 7
+                };
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 // ToLookupAsync does not dispose. GroupByAsync does.
                 lookup._disposed = !willBeDisposed;
@@ -66,10 +71,6 @@ namespace Proto.Promises
                     Discard(lookup);
                 }
 #endif
-                lookup._groupings.SetCapacityNoCopy(7);
-                // The actual array length could be larger than the requested size, so we make sure the
-                // count is what we expect.
-                lookup._groupings._count = 7;
                 return lookup;
             }
 
@@ -349,7 +350,7 @@ namespace Proto.Promises
                     cv.asyncEnumerator._target._cancelationToken = cancelationToken;
 
                     // We could just do await GetOrCreateAsync(...), but it's more efficient to do it manually (especially if it's empty).
-                    Lookup<TKey, TElement> lookup;
+                    Lookup<TKey, TElement> lookup = null;
                     try
                     {
                         if (!await cv.asyncEnumerator.MoveNextAsync())
@@ -368,6 +369,11 @@ namespace Proto.Promises
                             var element = cv.elementSelector.Invoke(item);
                             group.Add(element);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
+                    }
+                    catch
+                    {
+                        lookup?.Dispose();
+                        throw;
                     }
                     finally
                     {
@@ -400,7 +406,7 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     cv.asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    Lookup<TKey, TElement> lookup;
+                    Lookup<TKey, TElement> lookup = null;
                     try
                     {
                         if (!await cv.asyncEnumerator.MoveNextAsync())
@@ -416,6 +422,11 @@ namespace Proto.Promises
                             var key = cv.keySelector.Invoke(item);
                             lookup.GetOrCreateGrouping(key, true).Add(item);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
+                    }
+                    catch
+                    {
+                        lookup?.Dispose();
+                        throw;
                     }
                     finally
                     {
@@ -449,7 +460,7 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     cv.asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    Lookup<TKey, TElement> lookup;
+                    Lookup<TKey, TElement> lookup = null;
                     try
                     {
                         if (!await cv.asyncEnumerator.MoveNextAsync())
@@ -468,6 +479,11 @@ namespace Proto.Promises
                             var element = await cv.elementSelector.Invoke(item);
                             group.Add(element);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
+                    }
+                    catch
+                    {
+                        lookup?.Dispose();
+                        throw;
                     }
                     finally
                     {
@@ -499,7 +515,7 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     cv.asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    Lookup<TKey, TElement> lookup;
+                    Lookup<TKey, TElement> lookup = null;
                     try
                     {
                         if (!await cv.asyncEnumerator.MoveNextAsync())
@@ -515,6 +531,11 @@ namespace Proto.Promises
                             var key = await cv.keySelector.Invoke(item);
                             lookup.GetOrCreateGrouping(key, true).Add(item);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
+                    }
+                    catch
+                    {
+                        lookup?.Dispose();
+                        throw;
                     }
                     finally
                     {
@@ -550,7 +571,7 @@ namespace Proto.Promises
 
                     try
                     {
-                        Lookup<TKey, TElement> lookup;
+                        Lookup<TKey, TElement> lookup = null;
                         try
                         {
                             if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
@@ -569,6 +590,11 @@ namespace Proto.Promises
                                 var element = cv.elementSelector.Invoke(item);
                                 group.Add(element);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                        }
+                        catch
+                        {
+                            lookup?.Dispose();
+                            throw;
                         }
                         finally
                         {
@@ -607,7 +633,7 @@ namespace Proto.Promises
 
                     try
                     {
-                        Lookup<TKey, TElement> lookup;
+                        Lookup<TKey, TElement> lookup = null;
                         try
                         {
                             if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
@@ -623,6 +649,11 @@ namespace Proto.Promises
                                 var key = cv.keySelector.Invoke(item);
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                        }
+                        catch
+                        {
+                            lookup?.Dispose();
+                            throw;
                         }
                         finally
                         {
@@ -663,7 +694,7 @@ namespace Proto.Promises
 
                     try
                     {
-                        Lookup<TKey, TElement> lookup;
+                        Lookup<TKey, TElement> lookup = null;
                         try
                         {
                             if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
@@ -685,6 +716,11 @@ namespace Proto.Promises
                                 var element = await cv.elementSelector.Invoke(item);
                                 group.Add(element);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                        }
+                        catch
+                        {
+                            lookup?.Dispose();
+                            throw;
                         }
                         finally
                         {
@@ -723,7 +759,7 @@ namespace Proto.Promises
 
                     try
                     {
-                        Lookup<TKey, TElement> lookup;
+                        Lookup<TKey, TElement> lookup = null;
                         try
                         {
                             if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
@@ -739,6 +775,11 @@ namespace Proto.Promises
                                 var key = await cv.keySelector.Invoke(item);
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                        }
+                        catch
+                        {
+                            lookup?.Dispose();
+                            throw;
                         }
                         finally
                         {
@@ -843,20 +884,20 @@ namespace Proto.Promises
                 _disposed = true;
 #endif
                 // Dispose each grouping.
-                var current = _lastGrouping;
-                if (current != null)
+                if (_lastGrouping != null)
                 {
-                    var next = current._nextGrouping;
-                    do
+                    var current = _lastGrouping._nextGrouping;
+                    while (current != _lastGrouping)
                     {
-                        current = next;
-                        next = current._nextGrouping;
-                        current.Dispose();
-                    } while (next != _lastGrouping);
+                        var temp = current;
+                        current = current._nextGrouping;
+                        temp.Dispose();
+                    }
+                    _lastGrouping.Dispose();
+                    _lastGrouping = null;
                 }
                 _groupings.Dispose();
                 _groupings = default;
-                _lastGrouping = null;
                 _comparer = null;
                 ObjectPool.MaybeRepool(this);
             }
