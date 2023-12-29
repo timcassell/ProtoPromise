@@ -12,7 +12,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
+
+#pragma warning disable IDE0251 // Make member 'readonly'
 
 namespace Proto.Promises
 {
@@ -22,67 +23,153 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class Lookup<TKey, TElement> : HandleablePromiseBase, ILookup<TKey, TElement>, IDisposable
+        internal sealed class Lookup<TKey, TElement> : ILookup<TKey, TElement>
         {
-            private IEqualityComparer<TKey> _comparer;
-            private Grouping<TKey, TElement> _lastGrouping;
-            // We use a TempCollectionBuilder to handle renting from ArrayPool.
-            private TempCollectionBuilder<Grouping<TKey, TElement>> _groupings;
-
-            public int Count { get; private set; }
-
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            private bool _disposed;
-
-            ~Lookup()
-            {
-                if (!_disposed)
-                {
-                    // For debugging. This should never happen.
-                    ReportRejection(new UnreleasedObjectException("A Lookup was garbage collected without it being disposed."), null);
-                }
-            }
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
 #endif
-
-            private Lookup() { }
-
-            [MethodImpl(InlineOption)]
-            private static Lookup<TKey, TElement> GetOrCreate()
+            // Implemented in a struct so that GroupBy doesn't need to allocate the Lookup class.
+            private struct Impl : IDisposable
             {
-                var obj = ObjectPool.TryTakeOrInvalid<Lookup<TKey, TElement>>();
-                return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
-                    ? new Lookup<TKey, TElement>()
-                    : obj.UnsafeAs<Lookup<TKey, TElement>>();
-            }
+                private readonly IEqualityComparer<TKey> _comparer;
+                internal Grouping<TKey, TElement> _lastGrouping;
+                // We use a TempCollectionBuilder to handle renting from ArrayPool.
+                internal TempCollectionBuilder<Grouping<TKey, TElement>> _groupings;
+                internal int _count;
 
-            private static Lookup<TKey, TElement> GetOrCreate(IEqualityComparer<TKey> comparer, bool willBeDisposed)
-            {
-                var lookup = GetOrCreate();
-                lookup.Count = 0;
-                lookup._comparer = comparer ?? EqualityComparer<TKey>.Default;
-                lookup._groupings = new TempCollectionBuilder<Grouping<TKey, TElement>>(7)
+                internal Impl(IEqualityComparer<TKey> comparer, bool willBeDisposed)
                 {
-                    // The actual array length could be larger than the requested size, so we make sure the
-                    // count is what we expect.
-                    _count = 7
-                };
+                    _comparer = comparer ?? EqualityComparer<TKey>.Default;
+                    _lastGrouping = null;
+                    // The smallest array returned from ArrayPool by default is 16, so we use 15 count to start instead of 7 that System.Linq uses.
+                    // The actual array length could be larger than the requested size, so we make sure the count is what we expect.
+                    _groupings = new TempCollectionBuilder<Grouping<TKey, TElement>>(15, 15);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                // ToLookupAsync does not dispose. GroupByAsync does.
-                lookup._disposed = !willBeDisposed;
-                if (!willBeDisposed)
+                    // ToLookupAsync does not dispose. GroupByAsync does.
+                    if (!willBeDisposed)
+                    {
+                        Discard(_groupings._disposedChecker);
+                    }
+#endif
+                    _count = 0;
+                }
+
+                internal Grouping<TKey, TElement> GetGrouping(TKey key)
                 {
-                    Discard(lookup._groupings._disposedChecker);
-                    Discard(lookup);
+                    var hashCode = InternalGetHashCode(key);
+
+                    return GetGrouping(key, hashCode);
+                }
+
+                private Grouping<TKey, TElement> GetGrouping(TKey key, int hashCode)
+                {
+                    for (var g = _groupings._items[hashCode % _groupings._count]; g != null; g = g._hashNext)
+                    {
+                        if (g._hashCode == hashCode && _comparer.Equals(g._key, key))
+                        {
+                            return g;
+                        }
+                    }
+
+                    return null;
+                }
+
+                internal Grouping<TKey, TElement> GetOrCreateGrouping(TKey key, bool willBeDisposed)
+                {
+                    var hashCode = InternalGetHashCode(key);
+
+                    var grouping = GetGrouping(key, hashCode);
+                    if (grouping != null)
+                    {
+                        return grouping;
+                    }
+
+                    if (_count == _groupings._count)
+                    {
+                        Resize();
+                    }
+
+                    var index = hashCode % _groupings._count;
+                    var g = Grouping<TKey, TElement>.GetOrCreate(key, hashCode, _groupings._items[index], willBeDisposed);
+                    _groupings._items[index] = g;
+                    if (_lastGrouping == null)
+                    {
+                        g._nextGrouping = g;
+                    }
+                    else
+                    {
+                        g._nextGrouping = _lastGrouping._nextGrouping;
+                        _lastGrouping._nextGrouping = g;
+                    }
+
+                    _lastGrouping = g;
+                    _count++;
+                    return g;
+                }
+
+                private int InternalGetHashCode(TKey key)
+                {
+                    // Handle comparer implementations that throw when passed null
+                    return (key == null) ? 0 : _comparer.GetHashCode(key) & 0x7FFFFFFF;
+                }
+
+                private void Resize()
+                {
+                    var newSize = checked((_count * 2) + 1);
+                    _groupings.SetCapacityNoCopy(newSize);
+                    _groupings._count = newSize;
+                    var g = _lastGrouping;
+                    do
+                    {
+                        g = g._nextGrouping;
+                        var index = g._hashCode % newSize;
+                        g._hashNext = _groupings._items[index];
+                        _groupings._items[index] = g;
+                    } while (g != _lastGrouping);
+                }
+
+                public void Dispose()
+                {
+                    // Dispose each grouping.
+                    if (_lastGrouping != null)
+                    {
+                        var current = _lastGrouping._nextGrouping;
+                        while (current != _lastGrouping)
+                        {
+                            var temp = current;
+                            current = current._nextGrouping;
+                            temp.Dispose();
+                        }
+                        _lastGrouping.Dispose();
+                    }
+                    _groupings.Dispose();
+                }
+                
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                internal void MaybeDispose()
+                {
+                    if (_comparer != null)
+                    {
+                        Dispose();
+                    }
                 }
 #endif
-                return lookup;
             }
+
+            private readonly Impl _impl;
+
+            private Lookup(Impl impl)
+            {
+                _impl = impl;
+            }
+
+            public int Count => _impl._count;
 
             public IEnumerable<TElement> this[TKey key]
             {
                 get
                 {
-                    var grouping = GetGrouping(key);
+                    var grouping = _impl.GetGrouping(key);
                     if (grouping != null)
                     {
                         return grouping;
@@ -91,29 +178,24 @@ namespace Proto.Promises
                 }
             }
 
-            public bool Contains(TKey key)
-            {
-                return GetGrouping(key) != null;
-            }
+            public bool Contains(TKey key) => _impl.GetGrouping(key) != null;
 
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
             public IEnumerator<IGrouping<TKey, TElement>> GetEnumerator()
             {
-                var g = _lastGrouping;
+                var g = _impl._lastGrouping;
                 if (g != null)
                 {
                     do
                     {
                         g = g._nextGrouping;
                         yield return g;
-                    } while (g != _lastGrouping);
+                    } while (g != _impl._lastGrouping);
                 }
             }
 
+            #region ToLookupAsync
             internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TSource, TKeySelector, TElementSelector>(
                 AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
@@ -122,7 +204,7 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
             {
-                var lookup = GetOrCreate(comparer, false);
+                var lookup = new Impl(comparer, false);
 
                 try
                 {
@@ -141,7 +223,7 @@ namespace Proto.Promises
                     await asyncEnumerator.DisposeAsync();
                 }
 
-                return lookup;
+                return new Lookup<TKey, TElement>(lookup);
             }
 
             internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TKeySelector>(
@@ -150,7 +232,7 @@ namespace Proto.Promises
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, TKey>
             {
-                var lookup = GetOrCreate(comparer, false);
+                var lookup = new Impl(comparer, false);
 
                 try
                 {
@@ -166,7 +248,7 @@ namespace Proto.Promises
                     await asyncEnumerator.DisposeAsync();
                 }
 
-                return lookup;
+                return new Lookup<TKey, TElement>(lookup);
             }
 
             internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TSource, TKeySelector, TElementSelector>(
@@ -177,7 +259,7 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
             {
-                var lookup = GetOrCreate(comparer, false);
+                var lookup = new Impl(comparer, false);
 
                 try
                 {
@@ -196,7 +278,7 @@ namespace Proto.Promises
                     await asyncEnumerator.DisposeAsync();
                 }
 
-                return lookup;
+                return new Lookup<TKey, TElement>(lookup);
             }
 
             internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TKeySelector>(
@@ -205,7 +287,7 @@ namespace Proto.Promises
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
             {
-                var lookup = GetOrCreate(comparer, false);
+                var lookup = new Impl(comparer, false);
 
                 try
                 {
@@ -221,7 +303,7 @@ namespace Proto.Promises
                     await asyncEnumerator.DisposeAsync();
                 }
 
-                return lookup;
+                return new Lookup<TKey, TElement>(lookup);
             }
 
             internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TSource, TKeySelector, TElementSelector>(
@@ -232,7 +314,7 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
             {
-                var lookup = GetOrCreate(comparer, false);
+                var lookup = new Impl(comparer, false);
 
                 try
                 {
@@ -251,7 +333,7 @@ namespace Proto.Promises
                     await configuredAsyncEnumerator.DisposeAsync();
                 }
 
-                return lookup;
+                return new Lookup<TKey, TElement>(lookup);
             }
 
             internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TKeySelector>(
@@ -260,7 +342,7 @@ namespace Proto.Promises
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, TKey>
             {
-                var lookup = GetOrCreate(comparer, false);
+                var lookup = new Impl(comparer, false);
 
                 try
                 {
@@ -276,7 +358,7 @@ namespace Proto.Promises
                     await configuredAsyncEnumerator.DisposeAsync();
                 }
 
-                return lookup;
+                return new Lookup<TKey, TElement>(lookup);
             }
 
             internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TSource, TKeySelector, TElementSelector>(
@@ -287,7 +369,7 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
             {
-                var lookup = GetOrCreate(comparer, false);
+                var lookup = new Impl(comparer, false);
 
                 try
                 {
@@ -309,7 +391,7 @@ namespace Proto.Promises
                     await configuredAsyncEnumerator.DisposeAsync();
                 }
 
-                return lookup;
+                return new Lookup<TKey, TElement>(lookup);
             }
 
             internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TKeySelector>(
@@ -318,7 +400,7 @@ namespace Proto.Promises
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
             {
-                var lookup = GetOrCreate(comparer, false);
+                var lookup = new Impl(comparer, false);
 
                 try
                 {
@@ -334,9 +416,11 @@ namespace Proto.Promises
                     await configuredAsyncEnumerator.DisposeAsync();
                 }
 
-                return lookup;
+                return new Lookup<TKey, TElement>(lookup);
             }
+            #endregion ToLookupAsync
 
+            #region GroupBy
             internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TSource, TKeySelector, TElementSelector>(
                 AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
@@ -351,8 +435,8 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     cv.asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We could just do await GetOrCreateAsync(...), but it's more efficient to do it manually (especially if it's empty).
-                    Lookup<TKey, TElement> lookup = null;
+                    // We could just do await GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
+                    Impl lookup = default;
                     try
                     {
                         if (!await cv.asyncEnumerator.MoveNextAsync())
@@ -361,7 +445,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = GetOrCreate(cv.comparer, true);
+                        lookup = new Impl(cv.comparer, true);
                         do
                         {
                             var item = cv.asyncEnumerator.Current;
@@ -372,11 +456,14 @@ namespace Proto.Promises
                             group.Add(element);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
                     }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     catch
                     {
-                        lookup?.Dispose();
+                        // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
+                        lookup.MaybeDispose();
                         throw;
                     }
+#endif
                     finally
                     {
                         await cv.asyncEnumerator.DisposeAsync();
@@ -408,7 +495,7 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     cv.asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    Lookup<TKey, TElement> lookup = null;
+                    Impl lookup = default;
                     try
                     {
                         if (!await cv.asyncEnumerator.MoveNextAsync())
@@ -417,7 +504,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = GetOrCreate(cv.comparer, true);
+                        lookup = new Impl(cv.comparer, true);
                         do
                         {
                             var item = cv.asyncEnumerator.Current;
@@ -425,11 +512,14 @@ namespace Proto.Promises
                             lookup.GetOrCreateGrouping(key, true).Add(item);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
                     }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     catch
                     {
-                        lookup?.Dispose();
+                        // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
+                        lookup.MaybeDispose();
                         throw;
                     }
+#endif
                     finally
                     {
                         await cv.asyncEnumerator.DisposeAsync();
@@ -462,7 +552,7 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     cv.asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    Lookup<TKey, TElement> lookup = null;
+                    Impl lookup = default;
                     try
                     {
                         if (!await cv.asyncEnumerator.MoveNextAsync())
@@ -471,7 +561,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = GetOrCreate(cv.comparer, true);
+                        lookup = new Impl(cv.comparer, true);
                         do
                         {
                             var item = cv.asyncEnumerator.Current;
@@ -482,11 +572,14 @@ namespace Proto.Promises
                             group.Add(element);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
                     }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     catch
                     {
-                        lookup?.Dispose();
+                        // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
+                        lookup.MaybeDispose();
                         throw;
                     }
+#endif
                     finally
                     {
                         await cv.asyncEnumerator.DisposeAsync();
@@ -517,7 +610,7 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     cv.asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    Lookup<TKey, TElement> lookup = null;
+                    Impl lookup = default;
                     try
                     {
                         if (!await cv.asyncEnumerator.MoveNextAsync())
@@ -526,7 +619,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = GetOrCreate(cv.comparer, true);
+                        lookup = new Impl(cv.comparer, true);
                         do
                         {
                             var item = cv.asyncEnumerator.Current;
@@ -534,11 +627,14 @@ namespace Proto.Promises
                             lookup.GetOrCreateGrouping(key, true).Add(item);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
                     }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     catch
                     {
-                        lookup?.Dispose();
+                        // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
+                        lookup.MaybeDispose();
                         throw;
                     }
+#endif
                     finally
                     {
                         await cv.asyncEnumerator.DisposeAsync();
@@ -573,7 +669,7 @@ namespace Proto.Promises
 
                     try
                     {
-                        Lookup<TKey, TElement> lookup = null;
+                        Impl lookup = default;
                         try
                         {
                             if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
@@ -582,7 +678,7 @@ namespace Proto.Promises
                                 return;
                             }
 
-                            lookup = GetOrCreate(cv.comparer, true);
+                            lookup = new Impl(cv.comparer, true);
                             do
                             {
                                 var item = cv.configuredAsyncEnumerator.Current;
@@ -593,11 +689,14 @@ namespace Proto.Promises
                                 group.Add(element);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
                         }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                         catch
                         {
-                            lookup?.Dispose();
+                            // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
+                            lookup.MaybeDispose();
                             throw;
                         }
+#endif
                         finally
                         {
                             await cv.configuredAsyncEnumerator.DisposeAsync();
@@ -635,7 +734,7 @@ namespace Proto.Promises
 
                     try
                     {
-                        Lookup<TKey, TElement> lookup = null;
+                        Impl lookup = default;
                         try
                         {
                             if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
@@ -644,7 +743,7 @@ namespace Proto.Promises
                                 return;
                             }
 
-                            lookup = GetOrCreate(cv.comparer, true);
+                            lookup = new Impl(cv.comparer, true);
                             do
                             {
                                 var item = cv.configuredAsyncEnumerator.Current;
@@ -652,11 +751,14 @@ namespace Proto.Promises
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
                         }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                         catch
                         {
-                            lookup?.Dispose();
+                            // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
+                            lookup.MaybeDispose();
                             throw;
                         }
+#endif
                         finally
                         {
                             await cv.configuredAsyncEnumerator.DisposeAsync();
@@ -696,7 +798,7 @@ namespace Proto.Promises
 
                     try
                     {
-                        Lookup<TKey, TElement> lookup = null;
+                        Impl lookup = default;
                         try
                         {
                             if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
@@ -705,7 +807,7 @@ namespace Proto.Promises
                                 return;
                             }
 
-                            lookup = GetOrCreate(cv.comparer, true);
+                            lookup = new Impl(cv.comparer, true);
                             do
                             {
                                 var item = cv.configuredAsyncEnumerator.Current;
@@ -719,11 +821,14 @@ namespace Proto.Promises
                                 group.Add(element);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
                         }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                         catch
                         {
-                            lookup?.Dispose();
+                            // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
+                            lookup.MaybeDispose();
                             throw;
                         }
+#endif
                         finally
                         {
                             await cv.configuredAsyncEnumerator.DisposeAsync();
@@ -761,7 +866,7 @@ namespace Proto.Promises
 
                     try
                     {
-                        Lookup<TKey, TElement> lookup = null;
+                        Impl lookup = default;
                         try
                         {
                             if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
@@ -770,7 +875,7 @@ namespace Proto.Promises
                                 return;
                             }
 
-                            lookup = GetOrCreate(cv.comparer, true);
+                            lookup = new Impl(cv.comparer, true);
                             do
                             {
                                 var item = cv.configuredAsyncEnumerator.Current;
@@ -778,11 +883,14 @@ namespace Proto.Promises
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
                         }
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                         catch
                         {
-                            lookup?.Dispose();
+                            // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
+                            lookup.MaybeDispose();
                             throw;
                         }
+#endif
                         finally
                         {
                             await cv.configuredAsyncEnumerator.DisposeAsync();
@@ -804,106 +912,9 @@ namespace Proto.Promises
                         joinedCancelationSource.TryDispose();
                     }
                 });
+                #endregion GroupBy
             }
-
-            internal Grouping<TKey, TElement> GetGrouping(TKey key)
-            {
-                var hashCode = InternalGetHashCode(key);
-
-                return GetGrouping(key, hashCode);
-            }
-
-            internal Grouping<TKey, TElement> GetGrouping(TKey key, int hashCode)
-            {
-                for (var g = _groupings._items[hashCode % _groupings._count]; g != null; g = g._hashNext)
-                {
-                    if (g._hashCode == hashCode && _comparer.Equals(g._key, key))
-                    {
-                        return g;
-                    }
-                }
-
-                return null;
-            }
-
-            internal Grouping<TKey, TElement> GetOrCreateGrouping(TKey key, bool willBeDisposed)
-            {
-                var hashCode = InternalGetHashCode(key);
-
-                var grouping = GetGrouping(key, hashCode);
-                if (grouping != null)
-                {
-                    return grouping;
-                }
-
-                if (Count == _groupings._count)
-                {
-                    Resize();
-                }
-
-                var index = hashCode % _groupings._count;
-                var g = Grouping<TKey, TElement>.GetOrCreate(key, hashCode, _groupings._items[index], willBeDisposed);
-                _groupings._items[index] = g;
-                if (_lastGrouping == null)
-                {
-                    g._nextGrouping = g;
-                }
-                else
-                {
-                    g._nextGrouping = _lastGrouping._nextGrouping;
-                    _lastGrouping._nextGrouping = g;
-                }
-
-                _lastGrouping = g;
-                Count++;
-                return g;
-            }
-
-            internal int InternalGetHashCode(TKey key)
-            {
-                // Handle comparer implementations that throw when passed null
-                return (key == null) ? 0 : _comparer.GetHashCode(key) & 0x7FFFFFFF;
-            }
-
-            private void Resize()
-            {
-                var newSize = checked((Count * 2) + 1);
-                _groupings.SetCapacityNoCopy(newSize);
-                _groupings._count = newSize;
-                var g = _lastGrouping;
-                do
-                {
-                    g = g._nextGrouping;
-                    var index = g._hashCode % newSize;
-                    g._hashNext = _groupings._items[index];
-                    _groupings._items[index] = g;
-                } while (g != _lastGrouping);
-            }
-
-            public void Dispose()
-            {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                _disposed = true;
-#endif
-                // Dispose each grouping.
-                if (_lastGrouping != null)
-                {
-                    var current = _lastGrouping._nextGrouping;
-                    while (current != _lastGrouping)
-                    {
-                        var temp = current;
-                        current = current._nextGrouping;
-                        temp.Dispose();
-                    }
-                    _lastGrouping.Dispose();
-                    _lastGrouping = null;
-                }
-                _groupings.Dispose();
-                _groupings = default;
-                _comparer = null;
-                ObjectPool.MaybeRepool(this);
-            }
-        }
+        } // class Lookup<TKey, TElement>
     } // class Internal
 #endif
 } // namespace Proto.Promises

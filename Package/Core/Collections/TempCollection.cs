@@ -268,10 +268,10 @@ namespace Proto.Promises.Collections
             get { return new TempCollection<T>(this); }
         }
 
-        internal TempCollectionBuilder(int capacity)
+        internal TempCollectionBuilder(int capacity, int count = 0)
         {
             _items = ArrayPool<T>.Shared.Rent(capacity);
-            _count = 0;
+            _count = count;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             _disposedChecker = new TempCollectionDisposedChecker();
 #endif
