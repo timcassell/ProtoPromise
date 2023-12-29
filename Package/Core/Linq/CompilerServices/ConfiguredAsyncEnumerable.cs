@@ -71,7 +71,7 @@ namespace Proto.Promises.Async.CompilerServices
         /// </summary>
         public readonly struct Enumerator
         {
-            private readonly AsyncEnumerator<T> _enumerator;
+            internal readonly AsyncEnumerator<T> _enumerator;
             private readonly SynchronizationContext _synchronizationContext;
             private readonly Internal.SynchronizationOption _synchronizationOption;
             private readonly bool _forceAsync;

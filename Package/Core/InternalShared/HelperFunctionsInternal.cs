@@ -15,6 +15,7 @@
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0019 // Use pattern matching
+#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0074 // Use compound assignment
 
 using System;
@@ -279,6 +280,28 @@ namespace Proto.Promises
 #endif
                 ?? Promise.Config.BackgroundContext
                 ?? BackgroundSynchronizationContextSentinel.s_instance;
+        }
+
+        internal static CancelationSource MaybeJoinCancelationTokens(CancelationToken first, CancelationToken second, out CancelationToken maybeJoinedToken)
+        {
+            if (first == second | !first.CanBeCanceled)
+            {
+                maybeJoinedToken = second;
+                return default(CancelationSource);
+            }
+            if (!second.CanBeCanceled)
+            {
+                maybeJoinedToken = first;
+                return default(CancelationSource);
+            }
+            if (first.IsCancelationRequested | second.IsCancelationRequested)
+            {
+                maybeJoinedToken = CancelationToken.Canceled();
+                return default(CancelationSource);
+            }
+            var source = CancelationSource.New(first, second);
+            maybeJoinedToken = source.Token;
+            return source;
         }
     } // class Internal
 } // namespace Proto.Promises

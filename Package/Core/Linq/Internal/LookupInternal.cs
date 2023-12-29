@@ -342,8 +342,12 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
             {
-                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((asyncEnumerator, keySelector, elementSelector, comparer), async (cv, writer, ct) =>
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((asyncEnumerator, keySelector, elementSelector, comparer), async (cv, writer, cancelationToken) =>
                 {
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    cv.asyncEnumerator._target._cancelationToken = cancelationToken;
+
                     // We could just do await GetOrCreateAsync(...), but it's more efficient to do it manually (especially if it's empty).
                     Lookup<TKey, TElement> lookup;
                     try
@@ -390,8 +394,12 @@ namespace Proto.Promises
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, TKey>
             {
-                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((asyncEnumerator, keySelector, comparer), async (cv, writer, ct) =>
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((asyncEnumerator, keySelector, comparer), async (cv, writer, cancelationToken) =>
                 {
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    cv.asyncEnumerator._target._cancelationToken = cancelationToken;
+
                     Lookup<TKey, TElement> lookup;
                     try
                     {
@@ -435,8 +443,12 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
             {
-                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((asyncEnumerator, keySelector, elementSelector, comparer), async (cv, writer, ct) =>
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((asyncEnumerator, keySelector, elementSelector, comparer), async (cv, writer, cancelationToken) =>
                 {
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    cv.asyncEnumerator._target._cancelationToken = cancelationToken;
+
                     Lookup<TKey, TElement> lookup;
                     try
                     {
@@ -481,8 +493,12 @@ namespace Proto.Promises
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
             {
-                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((asyncEnumerator, keySelector, comparer), async (cv, writer, ct) =>
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((asyncEnumerator, keySelector, comparer), async (cv, writer, cancelationToken) =>
                 {
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    cv.asyncEnumerator._target._cancelationToken = cancelationToken;
+
                     Lookup<TKey, TElement> lookup;
                     try
                     {
@@ -526,42 +542,53 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
             {
-                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((configuredAsyncEnumerator, keySelector, elementSelector, comparer), async (cv, writer, ct) =>
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((configuredAsyncEnumerator, keySelector, elementSelector, comparer), async (cv, writer, cancelationToken) =>
                 {
-                    Lookup<TKey, TElement> lookup;
+                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
+                    var enumerableRef = cv.configuredAsyncEnumerator._enumerator._target;
+                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+
                     try
                     {
-                        if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
+                        Lookup<TKey, TElement> lookup;
+                        try
                         {
-                            // No need to create the lookup if the enumerable is empty.
-                            return;
+                            if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
+                            {
+                                // No need to create the lookup if the enumerable is empty.
+                                return;
+                            }
+
+                            lookup = GetOrCreate(cv.comparer, true);
+                            do
+                            {
+                                var item = cv.configuredAsyncEnumerator.Current;
+                                var key = cv.keySelector.Invoke(item);
+                                var group = lookup.GetOrCreateGrouping(key, true);
+
+                                var element = cv.elementSelector.Invoke(item);
+                                group.Add(element);
+                            } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                        }
+                        finally
+                        {
+                            await cv.configuredAsyncEnumerator.DisposeAsync();
                         }
 
-                        lookup = GetOrCreate(cv.comparer, true);
-                        do
+                        using (lookup)
                         {
-                            var item = cv.configuredAsyncEnumerator.Current;
-                            var key = cv.keySelector.Invoke(item);
-                            var group = lookup.GetOrCreateGrouping(key, true);
-
-                            var element = cv.elementSelector.Invoke(item);
-                            group.Add(element);
-                        } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                            var g = lookup._lastGrouping;
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
                     }
                     finally
                     {
-                        await cv.configuredAsyncEnumerator.DisposeAsync();
-                    }
-
-                    using (lookup)
-                    {
-                        var g = lookup._lastGrouping;
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                        joinedCancelationSource.TryDispose();
                     }
                 });
             }
@@ -572,39 +599,50 @@ namespace Proto.Promises
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, TKey>
             {
-                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((configuredAsyncEnumerator, keySelector, comparer), async (cv, writer, ct) =>
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((configuredAsyncEnumerator, keySelector, comparer), async (cv, writer, cancelationToken) =>
                 {
-                    Lookup<TKey, TElement> lookup;
+                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
+                    var enumerableRef = cv.configuredAsyncEnumerator._enumerator._target;
+                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+
                     try
                     {
-                        if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
+                        Lookup<TKey, TElement> lookup;
+                        try
                         {
-                            // No need to create the lookup if the enumerable is empty.
-                            return;
+                            if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
+                            {
+                                // No need to create the lookup if the enumerable is empty.
+                                return;
+                            }
+
+                            lookup = GetOrCreate(cv.comparer, true);
+                            do
+                            {
+                                var item = cv.configuredAsyncEnumerator.Current;
+                                var key = cv.keySelector.Invoke(item);
+                                lookup.GetOrCreateGrouping(key, true).Add(item);
+                            } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                        }
+                        finally
+                        {
+                            await cv.configuredAsyncEnumerator.DisposeAsync();
                         }
 
-                        lookup = GetOrCreate(cv.comparer, true);
-                        do
+                        using (lookup)
                         {
-                            var item = cv.configuredAsyncEnumerator.Current;
-                            var key = cv.keySelector.Invoke(item);
-                            lookup.GetOrCreateGrouping(key, true).Add(item);
-                        } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                            var g = lookup._lastGrouping;
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
                     }
                     finally
                     {
-                        await cv.configuredAsyncEnumerator.DisposeAsync();
-                    }
-
-                    using (lookup)
-                    {
-                        var g = lookup._lastGrouping;
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                        joinedCancelationSource.TryDispose();
                     }
                 });
             }
@@ -617,45 +655,56 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
             {
-                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((configuredAsyncEnumerator, keySelector, elementSelector, comparer), async (cv, writer, ct) =>
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((configuredAsyncEnumerator, keySelector, elementSelector, comparer), async (cv, writer, cancelationToken) =>
                 {
-                    Lookup<TKey, TElement> lookup;
+                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
+                    var enumerableRef = cv.configuredAsyncEnumerator._enumerator._target;
+                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+
                     try
                     {
-                        if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
+                        Lookup<TKey, TElement> lookup;
+                        try
                         {
-                            // No need to create the lookup if the enumerable is empty.
-                            return;
+                            if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
+                            {
+                                // No need to create the lookup if the enumerable is empty.
+                                return;
+                            }
+
+                            lookup = GetOrCreate(cv.comparer, true);
+                            do
+                            {
+                                var item = cv.configuredAsyncEnumerator.Current;
+                                var key = await cv.keySelector.Invoke(item);
+                                var group = lookup.GetOrCreateGrouping(key, true);
+
+                                // The keySelector could have switched contexts.
+                                // We switch back to the configured context before invoking the elementSelector.
+                                await cv.configuredAsyncEnumerator.SwitchToContext();
+                                var element = await cv.elementSelector.Invoke(item);
+                                group.Add(element);
+                            } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                        }
+                        finally
+                        {
+                            await cv.configuredAsyncEnumerator.DisposeAsync();
                         }
 
-                        lookup = GetOrCreate(cv.comparer, true);
-                        do
+                        using (lookup)
                         {
-                            var item = cv.configuredAsyncEnumerator.Current;
-                            var key = await cv.keySelector.Invoke(item);
-                            var group = lookup.GetOrCreateGrouping(key, true);
-
-                            // The keySelector could have switched contexts.
-                            // We switch back to the configured context before invoking the elementSelector.
-                            await cv.configuredAsyncEnumerator.SwitchToContext();
-                            var element = await cv.elementSelector.Invoke(item);
-                            group.Add(element);
-                        } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                            var g = lookup._lastGrouping;
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
                     }
                     finally
                     {
-                        await cv.configuredAsyncEnumerator.DisposeAsync();
-                    }
-
-                    using (lookup)
-                    {
-                        var g = lookup._lastGrouping;
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                        joinedCancelationSource.TryDispose();
                     }
                 });
             }
@@ -666,39 +715,50 @@ namespace Proto.Promises
                 IEqualityComparer<TKey> comparer)
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
             {
-                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((configuredAsyncEnumerator, keySelector, comparer), async (cv, writer, ct) =>
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create((configuredAsyncEnumerator, keySelector, comparer), async (cv, writer, cancelationToken) =>
                 {
-                    Lookup<TKey, TElement> lookup;
+                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
+                    var enumerableRef = cv.configuredAsyncEnumerator._enumerator._target;
+                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+
                     try
                     {
-                        if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
+                        Lookup<TKey, TElement> lookup;
+                        try
                         {
-                            // No need to create the lookup if the enumerable is empty.
-                            return;
+                            if (!await cv.configuredAsyncEnumerator.MoveNextAsync())
+                            {
+                                // No need to create the lookup if the enumerable is empty.
+                                return;
+                            }
+
+                            lookup = GetOrCreate(cv.comparer, true);
+                            do
+                            {
+                                var item = cv.configuredAsyncEnumerator.Current;
+                                var key = await cv.keySelector.Invoke(item);
+                                lookup.GetOrCreateGrouping(key, true).Add(item);
+                            } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                        }
+                        finally
+                        {
+                            await cv.configuredAsyncEnumerator.DisposeAsync();
                         }
 
-                        lookup = GetOrCreate(cv.comparer, true);
-                        do
+                        using (lookup)
                         {
-                            var item = cv.configuredAsyncEnumerator.Current;
-                            var key = await cv.keySelector.Invoke(item);
-                            lookup.GetOrCreateGrouping(key, true).Add(item);
-                        } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
+                            var g = lookup._lastGrouping;
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
                     }
                     finally
                     {
-                        await cv.configuredAsyncEnumerator.DisposeAsync();
-                    }
-
-                    using (lookup)
-                    {
-                        var g = lookup._lastGrouping;
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                        joinedCancelationSource.TryDispose();
                     }
                 });
             }
