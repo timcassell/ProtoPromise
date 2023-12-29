@@ -28,6 +28,9 @@ namespace Proto.Promises
             private Grouping<TKey, TElement> _lastGrouping;
             // We use a TempCollectionBuilder to handle renting from ArrayPool.
             private TempCollectionBuilder<Grouping<TKey, TElement>> _groupings;
+
+            public int Count { get; private set; }
+
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             private bool _disposed;
 
@@ -55,6 +58,7 @@ namespace Proto.Promises
             private static Lookup<TKey, TElement> GetOrCreate(IEqualityComparer<TKey> comparer, bool willBeDisposed)
             {
                 var lookup = GetOrCreate();
+                lookup.Count = 0;
                 lookup._comparer = comparer ?? EqualityComparer<TKey>.Default;
                 lookup._groupings = new TempCollectionBuilder<Grouping<TKey, TElement>>(7)
                 {
@@ -73,8 +77,6 @@ namespace Proto.Promises
 #endif
                 return lookup;
             }
-
-            public int Count { get; private set; }
 
             public IEnumerable<TElement> this[TKey key]
             {

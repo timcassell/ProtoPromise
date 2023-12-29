@@ -379,7 +379,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 4);
                 CollectionAssert.Contains(res[1], 1);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -399,7 +399,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 CollectionAssert.Contains(res[0], 4);
                 CollectionAssert.Contains(res[0], 2);
                 CollectionAssert.Contains(res[1], 1);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -419,7 +419,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 5);
                 CollectionAssert.Contains(res[1], 2);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -440,7 +440,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 CollectionAssert.Contains(res[0], 5);
                 CollectionAssert.Contains(res[0], 3);
                 CollectionAssert.Contains(res[1], 2);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -459,7 +459,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 4);
                 CollectionAssert.Contains(res[1], 1);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -479,7 +479,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 CollectionAssert.Contains(res[0], 4);
                 CollectionAssert.Contains(res[0], 2);
                 CollectionAssert.Contains(res[1], 1);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -537,7 +537,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 CollectionAssert.Contains(res[0], 4);
                 CollectionAssert.Contains(res[0], 2);
                 CollectionAssert.Contains(res[1], 1);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
