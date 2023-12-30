@@ -22,7 +22,7 @@ namespace Proto.Promises.Linq
     /// <typeparam name="TElement">The type of the elements.</typeparam>
     /// <remarks>
     /// The temporary collection will no longer be valid when the <see cref="AsyncEnumerator{T}"/>
-    /// that produced the <see cref="Grouping{TKey, TElement}"/> is completed.
+    /// that produced the <see cref="Grouping{TKey, TElement}"/> is moved forward or disposed.
     /// Copy the elements to a new collection or call <see cref="TempCollection{T}.ToArray"/>
     /// or <see cref="TempCollection{T}.ToList"/> if you need the elements to persist.
     /// </remarks>
@@ -56,7 +56,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <remarks>
         /// The temporary collection will no longer be valid when the <see cref="AsyncEnumerator{T}"/>
-        /// that produced this <see cref="Grouping{TKey, TElement}"/> is completed.
+        /// that produced this <see cref="Grouping{TKey, TElement}"/> is moved forward or disposed.
         /// Copy the elements to a new collection or call <see cref="TempCollection{T}.ToArray"/>
         /// or <see cref="TempCollection{T}.ToList"/> if you need the elements to persist.
         /// </remarks>

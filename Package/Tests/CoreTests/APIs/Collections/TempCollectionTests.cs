@@ -154,7 +154,7 @@ namespace ProtoPromiseTests.APIs.Collections
         }
 #endif // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
 
-        private static void AssertIsInvalid<T>(TempCollection<T> tempCollection)
+        public static void AssertIsInvalid<T>(TempCollection<T> tempCollection)
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             Assert.Catch<System.InvalidOperationException>(() => { var _ = tempCollection.Count; });

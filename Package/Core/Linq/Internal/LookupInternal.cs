@@ -29,7 +29,7 @@ namespace Proto.Promises
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
             // Implemented in a struct so that GroupBy doesn't need to allocate the Lookup class.
-            private struct Impl : IDisposable
+            private struct Impl
             {
                 private readonly IEqualityComparer<TKey> _comparer;
                 internal Grouping<TKey, TElement> _lastGrouping;
@@ -128,32 +128,33 @@ namespace Proto.Promises
                     } while (g != _lastGrouping);
                 }
 
-                public void Dispose()
+                public void Dispose(Grouping<TKey, TElement> currentGroup)
                 {
-                    // Dispose each grouping.
-                    if (_lastGrouping != null)
+                    // Dispose each grouping that wasn't disposed in the iterator.
+                    while (true)
                     {
-                        var current = _lastGrouping._nextGrouping;
-                        while (current != _lastGrouping)
+                        var temp = currentGroup;
+                        currentGroup = currentGroup._nextGrouping;
+                        temp.Dispose();
+                        if (temp == _lastGrouping)
                         {
-                            var temp = current;
-                            current = current._nextGrouping;
-                            temp.Dispose();
+                            break;
                         }
-                        _lastGrouping.Dispose();
                     }
                     _groupings.Dispose();
                 }
-                
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+
                 internal void MaybeDispose()
                 {
-                    if (_comparer != null)
+                    if (_lastGrouping != null)
                     {
-                        Dispose();
+                        Dispose(_lastGrouping._nextGrouping);
+                    }
+                    else if (_comparer != null)
+                    {
+                        _groupings.Dispose();
                     }
                 }
-#endif
             }
 
             private readonly Impl _impl;
@@ -456,29 +457,39 @@ namespace Proto.Promises
                             group.Add(element);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
                     }
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     catch
                     {
-                        // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
                         lookup.MaybeDispose();
                         throw;
                     }
-#endif
                     finally
                     {
                         await cv.asyncEnumerator.DisposeAsync();
                     }
 
-                    using (lookup)
+                    // We don't need to check if _lastGrouping is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                    var currentGroup = lookup._lastGrouping._nextGrouping;
+                    try
                     {
-                        // Same as foreach on the lookup, but without allocating an iterator.
-                        var g = lookup._lastGrouping;
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        do
+                        while (true)
                         {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We dispose each grouping after the enumerator is moved forward or disposed.
+                            // This makes the TempCollection only valid during the single iteration step.
+                            // If the YieldAsync throws (because of an early AsyncEnumerator.DisposeAsync),
+                            // or it's the final group, it will be disposed in the finally block.
+                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(currentGroup));
+                            if (currentGroup == lookup._lastGrouping)
+                            {
+                                break;
+                            }
+                            var temp = currentGroup;
+                            currentGroup = currentGroup._nextGrouping;
+                            temp.Dispose();
+                        }
+                    }
+                    finally
+                    {
+                        lookup.Dispose(currentGroup);
                     }
                 });
             }
@@ -512,28 +523,39 @@ namespace Proto.Promises
                             lookup.GetOrCreateGrouping(key, true).Add(item);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
                     }
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     catch
                     {
-                        // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
                         lookup.MaybeDispose();
                         throw;
                     }
-#endif
                     finally
                     {
                         await cv.asyncEnumerator.DisposeAsync();
                     }
 
-                    using (lookup)
+                    // We don't need to check if _lastGrouping is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                    var currentGroup = lookup._lastGrouping._nextGrouping;
+                    try
                     {
-                        var g = lookup._lastGrouping;
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        do
+                        while (true)
                         {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We dispose each grouping after the enumerator is moved forward or disposed.
+                            // This makes the TempCollection only valid during the single iteration step.
+                            // If the YieldAsync throws (because of an early AsyncEnumerator.DisposeAsync),
+                            // or it's the final group, it will be disposed in the finally block.
+                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(currentGroup));
+                            if (currentGroup == lookup._lastGrouping)
+                            {
+                                break;
+                            }
+                            var temp = currentGroup;
+                            currentGroup = currentGroup._nextGrouping;
+                            temp.Dispose();
+                        }
+                    }
+                    finally
+                    {
+                        lookup.Dispose(currentGroup);
                     }
                 });
             }
@@ -572,28 +594,39 @@ namespace Proto.Promises
                             group.Add(element);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
                     }
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     catch
                     {
-                        // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
                         lookup.MaybeDispose();
                         throw;
                     }
-#endif
                     finally
                     {
                         await cv.asyncEnumerator.DisposeAsync();
                     }
 
-                    using (lookup)
+                    // We don't need to check if _lastGrouping is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                    var currentGroup = lookup._lastGrouping._nextGrouping;
+                    try
                     {
-                        var g = lookup._lastGrouping;
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        do
+                        while (true)
                         {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We dispose each grouping after the enumerator is moved forward or disposed.
+                            // This makes the TempCollection only valid during the single iteration step.
+                            // If the YieldAsync throws (because of an early AsyncEnumerator.DisposeAsync),
+                            // or it's the final group, it will be disposed in the finally block.
+                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(currentGroup));
+                            if (currentGroup == lookup._lastGrouping)
+                            {
+                                break;
+                            }
+                            var temp = currentGroup;
+                            currentGroup = currentGroup._nextGrouping;
+                            temp.Dispose();
+                        }
+                    }
+                    finally
+                    {
+                        lookup.Dispose(currentGroup);
                     }
                 });
             }
@@ -627,28 +660,39 @@ namespace Proto.Promises
                             lookup.GetOrCreateGrouping(key, true).Add(item);
                         } while (await cv.asyncEnumerator.MoveNextAsync());
                     }
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     catch
                     {
-                        // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
                         lookup.MaybeDispose();
                         throw;
                     }
-#endif
                     finally
                     {
                         await cv.asyncEnumerator.DisposeAsync();
                     }
 
-                    using (lookup)
+                    // We don't need to check if _lastGrouping is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                    var currentGroup = lookup._lastGrouping._nextGrouping;
+                    try
                     {
-                        var g = lookup._lastGrouping;
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        do
+                        while (true)
                         {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We dispose each grouping after the enumerator is moved forward or disposed.
+                            // This makes the TempCollection only valid during the single iteration step.
+                            // If the YieldAsync throws (because of an early AsyncEnumerator.DisposeAsync),
+                            // or it's the final group, it will be disposed in the finally block.
+                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(currentGroup));
+                            if (currentGroup == lookup._lastGrouping)
+                            {
+                                break;
+                            }
+                            var temp = currentGroup;
+                            currentGroup = currentGroup._nextGrouping;
+                            temp.Dispose();
+                        }
+                    }
+                    finally
+                    {
+                        lookup.Dispose(currentGroup);
                     }
                 });
             }
@@ -689,28 +733,39 @@ namespace Proto.Promises
                                 group.Add(element);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
                         }
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                         catch
                         {
-                            // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
                             lookup.MaybeDispose();
                             throw;
                         }
-#endif
                         finally
                         {
                             await cv.configuredAsyncEnumerator.DisposeAsync();
                         }
 
-                        using (lookup)
+                        // We don't need to check if _lastGrouping is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                        var currentGroup = lookup._lastGrouping._nextGrouping;
+                        try
                         {
-                            var g = lookup._lastGrouping;
-                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                            do
+                            while (true)
                             {
-                                g = g._nextGrouping;
-                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                            } while (g != lookup._lastGrouping);
+                                // We dispose each grouping after the enumerator is moved forward or disposed.
+                                // This makes the TempCollection only valid during the single iteration step.
+                                // If the YieldAsync throws (because of an early AsyncEnumerator.DisposeAsync),
+                                // or it's the final group, it will be disposed in the finally block.
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(currentGroup));
+                                if (currentGroup == lookup._lastGrouping)
+                                {
+                                    break;
+                                }
+                                var temp = currentGroup;
+                                currentGroup = currentGroup._nextGrouping;
+                                temp.Dispose();
+                            }
+                        }
+                        finally
+                        {
+                            lookup.Dispose(currentGroup);
                         }
                     }
                     finally
@@ -751,28 +806,39 @@ namespace Proto.Promises
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
                         }
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                         catch
                         {
-                            // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
                             lookup.MaybeDispose();
                             throw;
                         }
-#endif
                         finally
                         {
                             await cv.configuredAsyncEnumerator.DisposeAsync();
                         }
 
-                        using (lookup)
+                        // We don't need to check if _lastGrouping is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                        var currentGroup = lookup._lastGrouping._nextGrouping;
+                        try
                         {
-                            var g = lookup._lastGrouping;
-                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                            do
+                            while (true)
                             {
-                                g = g._nextGrouping;
-                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                            } while (g != lookup._lastGrouping);
+                                // We dispose each grouping after the enumerator is moved forward or disposed.
+                                // This makes the TempCollection only valid during the single iteration step.
+                                // If the YieldAsync throws (because of an early AsyncEnumerator.DisposeAsync),
+                                // or it's the final group, it will be disposed in the finally block.
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(currentGroup));
+                                if (currentGroup == lookup._lastGrouping)
+                                {
+                                    break;
+                                }
+                                var temp = currentGroup;
+                                currentGroup = currentGroup._nextGrouping;
+                                temp.Dispose();
+                            }
+                        }
+                        finally
+                        {
+                            lookup.Dispose(currentGroup);
                         }
                     }
                     finally
@@ -821,28 +887,39 @@ namespace Proto.Promises
                                 group.Add(element);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
                         }
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                         catch
                         {
-                            // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
                             lookup.MaybeDispose();
                             throw;
                         }
-#endif
                         finally
                         {
                             await cv.configuredAsyncEnumerator.DisposeAsync();
                         }
 
-                        using (lookup)
+                        // We don't need to check if _lastGrouping is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                        var currentGroup = lookup._lastGrouping._nextGrouping;
+                        try
                         {
-                            var g = lookup._lastGrouping;
-                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                            do
+                            while (true)
                             {
-                                g = g._nextGrouping;
-                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                            } while (g != lookup._lastGrouping);
+                                // We dispose each grouping after the enumerator is moved forward or disposed.
+                                // This makes the TempCollection only valid during the single iteration step.
+                                // If the YieldAsync throws (because of an early AsyncEnumerator.DisposeAsync),
+                                // or it's the final group, it will be disposed in the finally block.
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(currentGroup));
+                                if (currentGroup == lookup._lastGrouping)
+                                {
+                                    break;
+                                }
+                                var temp = currentGroup;
+                                currentGroup = currentGroup._nextGrouping;
+                                temp.Dispose();
+                            }
+                        }
+                        finally
+                        {
+                            lookup.Dispose(currentGroup);
                         }
                     }
                     finally
@@ -883,28 +960,39 @@ namespace Proto.Promises
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             } while (await cv.configuredAsyncEnumerator.MoveNextAsync());
                         }
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                         catch
                         {
-                            // We only need to dispose on throw if we're in DEBUG mode, as disposal is not checked in RELEASE mode.
                             lookup.MaybeDispose();
                             throw;
                         }
-#endif
                         finally
                         {
                             await cv.configuredAsyncEnumerator.DisposeAsync();
                         }
 
-                        using (lookup)
+                        // We don't need to check if _lastGrouping is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                        var currentGroup = lookup._lastGrouping._nextGrouping;
+                        try
                         {
-                            var g = lookup._lastGrouping;
-                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                            do
+                            while (true)
                             {
-                                g = g._nextGrouping;
-                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                            } while (g != lookup._lastGrouping);
+                                // We dispose each grouping after the enumerator is moved forward or disposed.
+                                // This makes the TempCollection only valid during the single iteration step.
+                                // If the YieldAsync throws (because of an early AsyncEnumerator.DisposeAsync),
+                                // or it's the final group, it will be disposed in the finally block.
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(currentGroup));
+                                if (currentGroup == lookup._lastGrouping)
+                                {
+                                    break;
+                                }
+                                var temp = currentGroup;
+                                currentGroup = currentGroup._nextGrouping;
+                                temp.Dispose();
+                            }
+                        }
+                        finally
+                        {
+                            lookup.Dispose(currentGroup);
                         }
                     }
                     finally
