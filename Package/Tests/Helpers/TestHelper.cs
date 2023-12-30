@@ -205,6 +205,23 @@ namespace ProtoPromiseTests
             _backgroundContext.WaitForAllThreadsToComplete();
         }
 
+        public static Promise AssertThrowsAsync<TException>(Func<Promise> asyncAction, TException expected = default(TException)) where TException : Exception
+        {
+            return Promise.Run(asyncAction, SynchronizationOption.Synchronous)
+                .ContinueWith(resultContainer =>
+                {
+                    Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
+                    if (expected != null)
+                    {
+                        AssertRejection(expected, resultContainer.Reason);
+                    }
+                    else
+                    {
+                        Assert.IsInstanceOf<TException>(resultContainer.Reason);
+                    }
+                });
+        }
+
         public static float Lerp(float a, float b, float t)
         {
             return a + (b - a) * t;

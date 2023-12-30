@@ -231,9 +231,7 @@ namespace Proto.Promises.Collections
         {
             if (!_isDisposed)
             {
-                // Promise was not awaited or forgotten.
-                string message = "A TempCollectionDisposedChecker was garbage collected without being disposed.";
-                Internal.ReportRejection(new UnreleasedObjectException(message), this);
+                Internal.ReportRejection(new UnreleasedObjectException("A TempCollectionDisposedChecker was garbage collected without being disposed."), this);
             }
         }
     }
@@ -244,7 +242,7 @@ namespace Proto.Promises.Collections
         internal T[] _items;
         internal int _count;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-        private readonly TempCollectionDisposedChecker _disposedChecker;
+        internal readonly TempCollectionDisposedChecker _disposedChecker;
 
         internal void ValidateIndex(int index)
         {
@@ -270,13 +268,20 @@ namespace Proto.Promises.Collections
             get { return new TempCollection<T>(this); }
         }
 
-        internal TempCollectionBuilder(int capacity)
+        internal TempCollectionBuilder(int capacity, int count = 0)
         {
             _items = ArrayPool<T>.Shared.Rent(capacity);
-            _count = 0;
+            _count = count;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             _disposedChecker = new TempCollectionDisposedChecker();
 #endif
+        }
+
+        internal void SetCapacityNoCopy(int capacity)
+        {
+            Array.Clear(_items, 0, _count);
+            ArrayPool<T>.Shared.Return(_items, false);
+            _items = ArrayPool<T>.Shared.Rent(capacity);
         }
 
         internal void EnsureCapacity(int capacity)

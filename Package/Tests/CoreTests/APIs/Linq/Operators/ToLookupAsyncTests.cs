@@ -95,6 +95,60 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable, captureValue, default(Func<string, int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0), EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable, captureValue, (cv, x) => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
 
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, int>), EqualityComparer<int>.Default));
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, int>), EqualityComparer<int>.Default));
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, int>), x => 0));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), x => 0, default(Func<int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, int>), x => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), x => 0, default(Func<int, int>), EqualityComparer<int>.Default));
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, int>), x => 0));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, (cv, x) => 0, default(Func<int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, int>), x => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, (cv, x) => 0, default(Func<int, int>), EqualityComparer<int>.Default));
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, int>), captureValue, (cv, x) => 0));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), x => 0, captureValue, default(Func<string, int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, int>), captureValue, (cv, x) => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), x => 0, captureValue, default(Func<string, int, int>), EqualityComparer<int>.Default));
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>), EqualityComparer<int>.Default));
+
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, Promise<int>>), x => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), x => Promise.Resolved(0), default(Func<int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, Promise<int>>), x => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), x => Promise.Resolved(0), default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, Promise<int>>), x => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, (cv, x) => Promise.Resolved(0), default(Func<int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, Promise<int>>), x => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, (cv, x) => Promise.Resolved(0), default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), x => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), default(Func<int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), x => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
+
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, (cv, x) => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, default(Func<string, int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => AsyncEnumerable.ToLookupAsync(enumerable.ConfigureAwait(SynchronizationOption.Synchronous), captureValue, (cv, x) => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
+
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
 #endif //PROMISE_DEBUG
@@ -325,19 +379,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 4);
                 CollectionAssert.Contains(res[1], 1);
-                Assert.True(res.Count == 2);
-            }, SynchronizationOption.Synchronous)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-
-            Promise.Run(async () =>
-            {
-                var xs = new[] { 1, 4 }.ToAsyncEnumerable();
-                var res = await xs.ToLookupAsync(async x => x % 2);
-                Assert.True(res.Contains(0));
-                Assert.True(res.Contains(1));
-                CollectionAssert.Contains(res[0], 4);
-                CollectionAssert.Contains(res[1], 1);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -357,7 +399,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 CollectionAssert.Contains(res[0], 4);
                 CollectionAssert.Contains(res[0], 2);
                 CollectionAssert.Contains(res[1], 1);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -377,7 +419,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 5);
                 CollectionAssert.Contains(res[1], 2);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -398,7 +440,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 CollectionAssert.Contains(res[0], 5);
                 CollectionAssert.Contains(res[0], 3);
                 CollectionAssert.Contains(res[1], 2);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -417,7 +459,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 Assert.True(res.Contains(1));
                 CollectionAssert.Contains(res[0], 4);
                 CollectionAssert.Contains(res[1], 1);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -437,7 +479,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 CollectionAssert.Contains(res[0], 4);
                 CollectionAssert.Contains(res[0], 2);
                 CollectionAssert.Contains(res[1], 1);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -495,7 +537,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 CollectionAssert.Contains(res[0], 4);
                 CollectionAssert.Contains(res[0], 2);
                 CollectionAssert.Contains(res[1], 1);
-                Assert.True(res.Count == 2);
+                Assert.AreEqual(2, res.Count);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
