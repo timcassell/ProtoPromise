@@ -18,7 +18,6 @@ namespace Proto.Promises
         internal interface IAsyncIterator<T>
         {
             AsyncEnumerableMethod Start(AsyncStreamWriter<T> streamWriter, CancelationToken cancelationToken);
-            bool IsNull { get; }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -327,14 +326,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void AwaitOnCompletedForAsyncStreamYielder(PromiseRefBase asyncPromiseRef, int enumerableId)
+                internal void AwaitOnCompletedForAsyncStreamYielder(PromiseRefBase asyncPromiseRef, int enumerableId, bool hasValue = true)
                 {
                     if (_enumerableId != enumerableId || Interlocked.CompareExchange(ref _iteratorPromiseRef, asyncPromiseRef, null) != null)
                     {
                         throw new InvalidOperationException("AsyncStreamYielder: invalid await. Only one await is allowed.", GetFormattedStacktrace(2));
                     }
                     // Complete the MoveNextAsync promise.
-                    _result = true;
+                    _result = hasValue;
                     HandleNextInternal(null, Promise.State.Resolved);
                 }
 
