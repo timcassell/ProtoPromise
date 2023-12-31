@@ -434,7 +434,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void GroupBy_KeySelector_Sync_Simple2_TempCollectionIsInvalidatedAfterMoveNextAsync(
+        public void GroupBy_KeySelector_Sync_Simple2_TempCollectionIsStillValidAfterMoveNextAsyncUntilDisposeAsync(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey)
@@ -457,15 +457,26 @@ namespace ProtoPromiseTests.APIs.Linq
 
                 Assert.True(await e.MoveNextAsync());
                 var g2 = e.Current;
-                TempCollectionTests.AssertIsInvalid(g1.Elements);
 
                 Assert.True(await e.MoveNextAsync());
                 var g3 = e.Current;
-                TempCollectionTests.AssertIsInvalid(g2.Elements);
 
                 Assert.True(await e.MoveNextAsync());
                 var g4 = e.Current;
-                TempCollectionTests.AssertIsInvalid(g3.Elements);
+
+                Assert.AreEqual(2, g1.Key);
+                Assert.AreEqual(xs[0], g1.Elements[0]);
+                Assert.AreEqual(xs[2], g1.Elements[1]);
+                Assert.AreEqual(xs[4], g1.Elements[2]);
+                Assert.AreEqual(xs[5], g1.Elements[3]);
+
+                Assert.AreEqual(6, g2.Key);
+                Assert.AreEqual(1, g2.Elements.Count);
+                Assert.AreEqual(xs[1], g2.Elements[0]);
+
+                Assert.AreEqual(1, g3.Key);
+                Assert.AreEqual(1, g3.Elements.Count);
+                Assert.AreEqual(xs[3], g3.Elements[0]);
 
                 Assert.AreEqual(4, g4.Key);
                 Assert.AreEqual(1, g4.Elements.Count);
@@ -473,12 +484,17 @@ namespace ProtoPromiseTests.APIs.Linq
 
                 Assert.False(await e.MoveNextAsync());
                 await e.DisposeAsync();
+
+                TempCollectionTests.AssertIsInvalid(g1.Elements);
+                TempCollectionTests.AssertIsInvalid(g2.Elements);
+                TempCollectionTests.AssertIsInvalid(g3.Elements);
+                TempCollectionTests.AssertIsInvalid(g4.Elements);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
-        public void GroupBy_KeySelector_Sync_Simple2_TempCollectionToArrayIsPersistedAfterMoveNextAsync(
+        public void GroupBy_KeySelector_Sync_Simple2_TempCollectionToArrayIsPersistedAfterMoveNextAndDisposeAsync(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey)
@@ -512,6 +528,9 @@ namespace ProtoPromiseTests.APIs.Linq
                 var g4k = e.Current.Key;
                 var g4a = e.Current.Elements.ToArray();
 
+                Assert.False(await e.MoveNextAsync());
+                await e.DisposeAsync();
+
                 Assert.AreEqual(2, g1k);
                 Assert.AreEqual(4, g1a.Length);
                 Assert.AreEqual(xs[0], g1a[0]);
@@ -530,9 +549,6 @@ namespace ProtoPromiseTests.APIs.Linq
                 Assert.AreEqual(4, g4k);
                 Assert.AreEqual(1, g4a.Length);
                 Assert.AreEqual(xs[6], g4a[0]);
-
-                Assert.False(await e.MoveNextAsync());
-                await e.DisposeAsync();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }

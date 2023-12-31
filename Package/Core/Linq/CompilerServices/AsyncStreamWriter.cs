@@ -96,6 +96,10 @@ namespace Proto.Promises.Async.CompilerServices
 
         void ICriticalNotifyCompletion.UnsafeOnCompleted(Action continuation)
             => throw new InvalidOperationException("AsyncStreamYielder must only be used in AsyncEnumerable methods.");
+
+        [MethodImpl(Internal.InlineOption)]
+        internal Internal.PromiseRefBase.AsyncStreamAwaiterForLinqExtension<T> ForLinqExtension()
+            => new Internal.PromiseRefBase.AsyncStreamAwaiterForLinqExtension<T>(_target, _enumerableId);
     }
-#endif
+#endif // CSHARP_7_3_OR_NEWER
 }
