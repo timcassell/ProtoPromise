@@ -374,6 +374,7 @@ namespace Proto.Promises
             protected override void DisposeAndReturnToPool()
             {
                 Dispose();
+                _iterator = default;
                 ObjectPool.MaybeRepool(this);
             }
 
