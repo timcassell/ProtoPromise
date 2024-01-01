@@ -221,27 +221,27 @@ namespace ProtoPromiseTests.APIs.Utilities
             var progress = Progress.New(p => { }, SynchronizationOption.Synchronous);
             var progressToken = progress.Token;
 
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(double.NaN, 0d));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(0d, double.NaN));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(double.NegativeInfinity, 0d));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(0d, double.NegativeInfinity));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(double.PositiveInfinity, 0d));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(0d, double.PositiveInfinity));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(double.MinValue, 0d));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(0d, double.MinValue));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(double.MaxValue, 0d));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(0d, double.MaxValue));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(-0.1d, 0d));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(0d, -0.1d));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(1.1d, 0d));
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Chunk(0d, 1.1d));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(double.NaN, 0d));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(0d, double.NaN));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(double.NegativeInfinity, 0d));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(0d, double.NegativeInfinity));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(double.PositiveInfinity, 0d));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(0d, double.PositiveInfinity));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(double.MinValue, 0d));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(0d, double.MinValue));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(double.MaxValue, 0d));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(0d, double.MaxValue));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(-0.1d, 0d));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(0d, -0.1d));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(1.1d, 0d));
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => progressToken.Slice(0d, 1.1d));
 
-            progressToken.Chunk(0d, 0d);
-            progressToken.Chunk(0d, 1d);
-            progressToken.Chunk(1d, 0d);
-            progressToken.Chunk(0.5d, 1d);
-            progressToken.Chunk(1d, 0.5d);
-            progressToken.Chunk(1d, 1d);
+            progressToken.Slice(0d, 0d);
+            progressToken.Slice(0d, 1d);
+            progressToken.Slice(1d, 0d);
+            progressToken.Slice(0.5d, 1d);
+            progressToken.Slice(1d, 0.5d);
+            progressToken.Slice(1d, 1d);
 
             progress.DisposeAsync()
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -258,12 +258,12 @@ namespace ProtoPromiseTests.APIs.Utilities
 
             progressHelper.AssertCurrentProgress(double.NaN, false, false);
 
-            var chunk1 = progressToken.Chunk(0d, 0.5d);
+            var chunk1 = progressToken.Slice(0d, 0.5d);
             progressHelper.ReportProgressAndAssertResult(chunk1, 0d, 0f / 2f);
             progressHelper.ReportProgressAndAssertResult(chunk1, 0.5f, 0.5f / 2f);
             progressHelper.ReportProgressAndAssertResult(chunk1, 1f, 1f / 2f);
 
-            var chunk2 = progressToken.Chunk(0.5d, 1d);
+            var chunk2 = progressToken.Slice(0.5d, 1d);
             // chunk1.Report(1) and chunk2.Report(0) report the same value
             // implementation detail - the progress listener does not get invoked with same value reported twice in a row, so we don't wait for the invoke.
             progressHelper.ReportProgressAndAssertResult(chunk2, 0d, 1f / 2f, false, false);
@@ -285,26 +285,26 @@ namespace ProtoPromiseTests.APIs.Utilities
 
             progressHelper.AssertCurrentProgress(double.NaN, false, false);
 
-            var progressHalf1 = progressToken.Chunk(0d, 0.5d);
-            var progressQuarter1 = progressHalf1.Chunk(0d, 0.5d);
+            var progressHalf1 = progressToken.Slice(0d, 0.5d);
+            var progressQuarter1 = progressHalf1.Slice(0d, 0.5d);
             progressHelper.ReportProgressAndAssertResult(progressQuarter1, 0d, 0f / 4f);
             progressHelper.ReportProgressAndAssertResult(progressQuarter1, 0.5f, 0.5f / 4f);
             progressHelper.ReportProgressAndAssertResult(progressQuarter1, 1f, 1f / 4f);
 
-            var progressQuarter2 = progressHalf1.Chunk(0.5d, 1d);
+            var progressQuarter2 = progressHalf1.Slice(0.5d, 1d);
             // progressQuarter1.Report(1) and progressQuarter2.Report(0) report the same value
             progressHelper.ReportProgressAndAssertResult(progressQuarter2, 0d, 1f / 4f, false, false);
             progressHelper.ReportProgressAndAssertResult(progressQuarter2, 0.5f, 1.5f / 4f);
             progressHelper.ReportProgressAndAssertResult(progressQuarter2, 1f, 2f / 4f);
 
-            var progressHalf2 = progressToken.Chunk(0.5d, 1d);
-            var progressQuarter3 = progressHalf2.Chunk(0d, 0.5d);
+            var progressHalf2 = progressToken.Slice(0.5d, 1d);
+            var progressQuarter3 = progressHalf2.Slice(0d, 0.5d);
             // progressQuarter2.Report(1) and progressQuarter3.Report(0) report the same value
             progressHelper.ReportProgressAndAssertResult(progressQuarter3, 0d, 2f / 4f, false, false);
             progressHelper.ReportProgressAndAssertResult(progressQuarter3, 0.5f, 2.5f / 4f);
             progressHelper.ReportProgressAndAssertResult(progressQuarter3, 1f, 3f / 4f);
 
-            var progressQuarter4 = progressHalf2.Chunk(0.5d, 1d);
+            var progressQuarter4 = progressHalf2.Slice(0.5d, 1d);
             // progressQuarter3.Report(1) and progressQuarter4.Report(0) report the same value
             progressHelper.ReportProgressAndAssertResult(progressQuarter4, 0d, 3f / 4f, false, false);
             progressHelper.ReportProgressAndAssertResult(progressQuarter4, 0.5f, 3.5f / 4f);

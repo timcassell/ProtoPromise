@@ -577,7 +577,7 @@ namespace Proto.Promises
         /// <param name="maxValue">The maximum value of the lerp.</param>
         /// <returns>A new progress token using the lerp values.</returns>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="minValue"/> or <paramref name="maxValue"/> are not between 0 and 1 inclusive.</exception>
-        public ProgressToken Chunk(double minValue, double maxValue)
+        public ProgressToken Slice(double minValue, double maxValue)
         {
             Internal.ValidateProgressValue(minValue, "minProgress", 1);
             Internal.ValidateProgressValue(maxValue, "maxProgress", 1);
