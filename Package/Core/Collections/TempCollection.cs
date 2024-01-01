@@ -130,7 +130,7 @@ namespace Proto.Promises.Collections
             return list;
         }
 
-#if NETCOREAPP || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER // We only expose Span where it's supported natively (no nuget package required).
+#if NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER
         /// <summary>
         /// Gets a readonly view of the elements.
         /// </summary>
@@ -319,7 +319,7 @@ namespace Proto.Promises.Collections
             _count = -1;
         }
 
-#if NETCOREAPP || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER
+#if NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER
         [MethodImpl(Internal.InlineOption)]
         internal void CopyTo(T[] array, int arrayIndex)
             => Span.CopyTo(array.AsSpan(arrayIndex));
