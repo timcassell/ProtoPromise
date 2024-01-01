@@ -188,14 +188,14 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                     progressHelper = new ProgressHelper(progressType, synchronizationType);
                     progress = progressHelper.ToProgress();
                     var progressToken = progress.Token;
-                    progressMerger = Progress.NewMergeBuilder(progressToken.Chunk(0d, 0.3d));
-                    progressRacer = Progress.NewRaceBuilder(progressToken.Chunk(0.3d, 0.6d));
+                    progressMerger = Progress.NewMergeBuilder(progressToken.Slice(0d, 0.3d));
+                    progressRacer = Progress.NewRaceBuilder(progressToken.Slice(0.3d, 0.6d));
                     progressMergeToken1 = progressMerger.NewToken();
                     progressMergeToken2 = progressMerger.NewToken(2d);
                     progressRaceToken1 = progressRacer.NewToken();
                     progressRaceToken2 = progressRacer.NewToken();
                     progressMultiHandler = Progress.NewMultiHandler();
-                    progressMultiHandler.Add(progressToken.Chunk(0.6d, 1d));
+                    progressMultiHandler.Add(progressToken.Slice(0.6d, 1d));
                 },
                 // Teardown
                 () =>
