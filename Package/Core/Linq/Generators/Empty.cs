@@ -57,7 +57,7 @@ namespace Proto.Promises
 
             private AsyncEnumerableEmptySentinel() { }
 
-            internal override Linq.AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
+            public override Linq.AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
                 // Don't do any validation, ignore the cancelationToken, just return the enumerator.
                 => new Linq.AsyncEnumerator<T>(this, id);
 
