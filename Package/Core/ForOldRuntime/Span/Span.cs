@@ -6,9 +6,9 @@ using System.Runtime.CompilerServices;
 
 namespace System
 {
-    // Span is part of netstandard2.1, and we use the Span nuget package in netstandard2.0,
+    // Span is part of netstandard2.1, and we use the Span nuget package in netstandard2.0 and net472,
     // but we don't use nuget packages in Unity, so we have to implement it ourselves.
-#if CSHARP_7_3_OR_NEWER && !UNITY_2021_2_OR_NEWER && !NETSTANDARD2_0
+#if CSHARP_7_3_OR_NEWER && UNITY_5_5_OR_NEWER && !UNITY_2021_2_OR_NEWER
     internal readonly ref struct Span<T>
     {
         // We only use it as a view over an array, not using pointers.
@@ -70,24 +70,15 @@ namespace System
 
         public static implicit operator Span<T>(T[] array) => new Span<T>(array);
 
-        /// <summary>
-        /// Returns an empty <see cref="Span{T}"/>
-        /// </summary>
-        public static Span<T> Empty => default;
+        internal static Span<T> Empty => default;
 
-        /// <summary>Gets an enumerator for this span.</summary>
         public Enumerator GetEnumerator() => new Enumerator(this);
 
-        /// <summary>Enumerates the elements of a <see cref="Span{T}"/>.</summary>
         public ref struct Enumerator
         {
-            /// <summary>The span being enumerated.</summary>
             private readonly Span<T> _span;
-            /// <summary>The next index to yield.</summary>
             private int _index;
 
-            /// <summary>Initialize the enumerator.</summary>
-            /// <param name="span">The span to enumerate.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal Enumerator(Span<T> span)
             {
@@ -95,7 +86,6 @@ namespace System
                 _index = -1;
             }
 
-            /// <summary>Advances the enumerator to the next element of the span.</summary>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
@@ -109,7 +99,6 @@ namespace System
                 return false;
             }
 
-            /// <summary>Gets the element at the current position of the enumerator.</summary>
             public ref T Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -133,16 +122,16 @@ namespace System
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal Span<T> Slice(int start) => new Span<T>(_array, _start + start, _length - start);
 
-        /// <summary>
-        /// Forms a slice out of the given span, beginning at 'start', of given length
-        /// </summary>
-        /// <param name="start">The index at which to begin this slice.</param>
-        /// <param name="length">The desired length for the slice (exclusive).</param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown when the specified <paramref name="start"/> or end index is not in range (&lt;0 or &gt;Length).
-        /// </exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<T> Slice(int start, int length) => new Span<T>(_array, _start + start, length);
+        internal Span<T> Slice(int start, int length) => new Span<T>(_array, _start + start, length);
+
+        internal void CopyTo(Span<T> destination)
+        {
+            for (int i = 0; i < _length; ++i)
+            {
+                destination[i] = this[i];
+            }
+        }
     }
-#endif // CSHARP_7_3_OR_NEWER && !UNITY_2021_2_OR_NEWER && !NETSTANDARD2_0
+#endif // CSHARP_7_3_OR_NEWER && UNITY_5_5_OR_NEWER && !UNITY_2021_2_OR_NEWER
 }

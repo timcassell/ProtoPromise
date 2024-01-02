@@ -12,7 +12,7 @@ using System.Runtime.CompilerServices;
 namespace Proto.Promises
 {
     // This exists natively in .Net 5+.
-    // We only use this for async Linq OrderBy extensions, so we don't need it in legacy runtimes (.Net 3.5).
+    // We only use this for async Linq OrderBy extensions, so we don't need it in legacy runtimes (.Net 4.5-).
     // TODO: Unity hasn't adopted .Net 5+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
 #if CSHARP_7_3_OR_NEWER && !NET5_0_OR_GREATER
     partial class Internal
