@@ -38,7 +38,7 @@ namespace Proto.Promises
         internal const string ProgressObsoleteMessage = "This API is obsolete and will be removed in a future version. Please use new Progress(Token) APIs.";
 #else // PROMISE_PROGRESS
 
-#if UNITY_UNITY_5_5_OR_NEWER
+#if UNITY_5_5_OR_NEWER
         internal const string ProgressObsoleteMessage = "This API is obsolete and will be removed in a future version. Please use new Progress(Token) APIs.\nProgress is disabled. Progress will not be reported. Remove PROTO_PROMISE_PROGRESS_DISABLE from your scripting compilation symbols to enable progress.";
 #else
         internal const string ProgressObsoleteMessage = "This API is obsolete and will be removed in a future version. Please use new Progress(Token) APIs.\nProgress is disabled. Progress will not be reported. Use a version of the library compiled with progress enabled for progress reports.";
