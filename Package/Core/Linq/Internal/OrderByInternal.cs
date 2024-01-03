@@ -361,9 +361,10 @@ namespace Proto.Promises
                 {
                     var source = _configuredSource;
                     _configuredSource = default;
-                    // The enumerator was retrieved without a cancelation token when the original function was called.
-                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                    source._enumerator._target._cancelationToken = cancelationToken;
+                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
+                    var enumerableRef = _configuredSource._enumerator._target;
+                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+
                     try
                     {
                         if (!await source.MoveNextAsync())
@@ -415,6 +416,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        joinedCancelationSource.TryDispose();
                         await source.DisposeAsync();
                     }
                 }
@@ -594,9 +596,10 @@ namespace Proto.Promises
                 {
                     var source = _configuredSource;
                     _configuredSource = default;
-                    // The enumerator was retrieved without a cancelation token when the original function was called.
-                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                    source._enumerator._target._cancelationToken = cancelationToken;
+                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
+                    var enumerableRef = _configuredSource._enumerator._target;
+                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+
                     try
                     {
                         if (!await source.MoveNextAsync())
@@ -645,6 +648,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        joinedCancelationSource.TryDispose();
                         await source.DisposeAsync();
                     }
                 }
