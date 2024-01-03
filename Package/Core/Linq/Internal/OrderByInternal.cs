@@ -23,6 +23,76 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
+        internal static class OrderHelper<TSource, TKey>
+        {
+            internal static OrderedAsyncEnumerable<TSource> OrderBy<TKeySelector, TComparer>(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
+                where TKeySelector : IFunc<TSource, TKey>
+                where TComparer : IComparer<TKey>
+            {
+                var enumerable = OrderedAsyncEnumerableHead<TSource>.SyncComparer<TKey, TKeySelector, TComparer>.GetOrCreate(source, keySelector, comparer);
+                // _next points to the head so the enumerator will know where to start.
+                enumerable._next = enumerable;
+                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
+            }
+
+            internal static OrderedAsyncEnumerable<TSource> OrderBy<TKeySelector, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
+                where TKeySelector : IFunc<TSource, TKey>
+                where TComparer : IComparer<TKey>
+            {
+                var enumerable = OrderedAsyncEnumerableHead<TSource>.ConfiguredSyncComparer<TKey, TKeySelector, TComparer>.GetOrCreate(configuredSource, keySelector, comparer);
+                // _next points to the head so the enumerator will know where to start.
+                enumerable._next = enumerable;
+                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
+            }
+
+            internal static OrderedAsyncEnumerable<TSource> OrderByAwait<TKeySelector, TComparer>(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TComparer : IComparer<TKey>
+            {
+                var enumerable = OrderedAsyncEnumerableHead<TSource>.AsyncComparer<TKey, TKeySelector, TComparer>.GetOrCreate(source, keySelector, comparer);
+                // _next points to the head so the enumerator will know where to start.
+                enumerable._next = enumerable;
+                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
+            }
+
+            internal static OrderedAsyncEnumerable<TSource> OrderByAwait<TKeySelector, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TComparer : IComparer<TKey>
+            {
+                var enumerable = OrderedAsyncEnumerableHead<TSource>.ConfiguredAsyncComparer<TKey, TKeySelector, TComparer>.GetOrCreate(configuredSource, keySelector, comparer);
+                // _next points to the head so the enumerator will know where to start.
+                enumerable._next = enumerable;
+                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
+            }
+
+            internal static OrderedAsyncEnumerable<TSource> ThenBy<TKeySelector, TComparer>(OrderedAsyncEnumerable<TSource> source, TKeySelector keySelector, TComparer comparer)
+                where TKeySelector : IFunc<TSource, TKey>
+                where TComparer : IComparer<TKey>
+            {
+                source._target.IncrementId(source._id);
+
+                var enumerable = OrderedAsyncEnumerableThenBy<TSource>.SyncComparer<TKey, TKeySelector, TComparer>.GetOrCreate(source._target._next, keySelector, comparer);
+                // The new enumerable is used for the OrderedAsyncEnumerable, and source is invalidated, so we point _next to it for resolving ThenBy(Descending) comparisons.
+                source._target._next = enumerable;
+                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
+            }
+
+            internal static OrderedAsyncEnumerable<TSource> ThenByAwait<TKeySelector, TComparer>(OrderedAsyncEnumerable<TSource> source, TKeySelector keySelector, TComparer comparer)
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TComparer : IComparer<TKey>
+            {
+                source._target.IncrementId(source._id);
+
+                var enumerable = OrderedAsyncEnumerableThenBy<TSource>.AsyncComparer<TKey, TKeySelector, TComparer>.GetOrCreate(source._target._next, keySelector, comparer);
+                // The new enumerable is used for the OrderedAsyncEnumerable, and source is invalidated, so we point _next to it for resolving ThenBy(Descending) comparisons.
+                source._target._next = enumerable;
+                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         // Just implementing the Internal.IAsyncEnumerable<T> interface instead of the full AsyncEnumerableBase<T> class,
         // because we can build up OrderBy(...).ThenBy(...).ThenByDescending(...) etc chains with arbitrary depth,
         // so we only create the iterator class when the OrderedAsyncEnumerable is actually iterated.
@@ -32,7 +102,7 @@ namespace Proto.Promises
 
             public bool GetIsValid(int id) => id == _id;
 
-            private void IncrementId(int id)
+            internal void IncrementId(int id)
             {
                 if (Interlocked.CompareExchange(ref _id, id + 1, id) != id)
                 {
@@ -49,36 +119,6 @@ namespace Proto.Promises
                 _next = null;
                 return head.GetAsyncEnumerator(cancelationToken);
             }
-
-            internal virtual Promise ComputeKeys(TempCollectionBuilder<TSource> elements) => throw new System.InvalidOperationException();
-            internal virtual Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter) => throw new System.InvalidOperationException();
-            internal abstract int Compare(int index1, int index2);
-            internal abstract void Dispose();
-
-            internal OrderedAsyncEnumerable<TSource> GetOrCreateComposite<TKey, TKeySelector, TComparer>(int id, TKeySelector keySelector, TComparer comparer)
-                where TKeySelector : IFunc<TSource, TKey>
-                where TComparer : IComparer<TKey>
-            {
-                IncrementId(id);
-
-                var enumerable = OrderedAsyncEnumerableThen<TSource, TKey, TComparer>.SyncComparer<TKeySelector>.GetOrCreate(_next, keySelector, comparer);
-                // The new enumerable is used for the OrderedAsyncEnumerable, and this one is invalidated, so we point _next to it for resolving ThenBy(Descending) comparisons.
-                _next = enumerable;
-                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
-            }
-
-            // TODO
-
-            //internal OrderedAsyncEnumerable<TSource> GetOrCreateCompositeAwait<TKey, TKeySelector>(int id, TKeySelector keySelector, IComparer<TKey> comparer, bool descending)
-            //    where TKeySelector : IFunc<TSource, Promise<TKey>>
-            //{
-            //    IncrementId(id);
-
-            //    if (comparer == null)
-            //    {
-            //        comparer = Comparer<TKey>.Default;
-            //    }
-            //}
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -87,63 +127,17 @@ namespace Proto.Promises
         internal abstract class OrderedAsyncEnumerableHead<TSource> : OrderedAsyncEnumerableBase<TSource>
         {
             public abstract AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken);
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal abstract class OrderedAsyncEnumerableHead<TSource, TKey> : OrderedAsyncEnumerableHead<TSource>
-        {
-            internal static OrderedAsyncEnumerable<TSource> OrderBy<TKeySelector, TComparer>(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
-                where TKeySelector : IFunc<TSource, TKey>
-                where TComparer : IComparer<TKey>
-            {
-                var enumerable = SyncComparer<TKeySelector, TComparer>.GetOrCreate(source, keySelector, comparer);
-                // _next points to the head so the enumerator will know where to start.
-                enumerable._next = enumerable;
-                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
-            }
-
-            internal static OrderedAsyncEnumerable<TSource> OrderBy<TKeySelector, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
-                where TKeySelector : IFunc<TSource, TKey>
-                where TComparer : IComparer<TKey>
-            {
-                var enumerable = ConfiguredSyncComparer<TKeySelector, TComparer>.GetOrCreate(configuredSource, keySelector, comparer);
-                // _next points to the head so the enumerator will know where to start.
-                enumerable._next = enumerable;
-                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
-            }
-
-            internal static OrderedAsyncEnumerable<TSource> OrderByAwait<TKeySelector, TComparer>(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-                where TComparer : IComparer<TKey>
-            {
-                var enumerable = AsyncComparer<TKeySelector, TComparer>.GetOrCreate(source, keySelector, comparer);
-                // _next points to the head so the enumerator will know where to start.
-                enumerable._next = enumerable;
-                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
-            }
-
-            internal static OrderedAsyncEnumerable<TSource> OrderByAwait<TKeySelector, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-                where TComparer : IComparer<TKey>
-            {
-                var enumerable = ConfiguredAsyncComparer<TKeySelector, TComparer>.GetOrCreate(configuredSource, keySelector, comparer);
-                // _next points to the head so the enumerator will know where to start.
-                enumerable._next = enumerable;
-                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
-            }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private abstract class Comparer<TComparer> : OrderedAsyncEnumerableHead<TSource>
+            internal abstract class Comparer<TKey, TComparer> : OrderedAsyncEnumerableHead<TSource>
                 where TComparer : IComparer<TKey>
             {
                 protected TempCollectionBuilder<TKey> _tempKeys;
                 protected TComparer _comparer;
 
-                internal override sealed int Compare(int index1, int index2)
+                private int Compare(int index1, int index2)
                 {
                     int result = _comparer.Compare(_tempKeys._items[index1], _tempKeys._items[index2]);
                     if (result != 0)
@@ -153,7 +147,7 @@ namespace Proto.Promises
                     // We iterate over all the nexts instead of recursively, to avoid StackOverflowException in the event of a very long chain.
                     for (var next = _next; next != null; next = next._next)
                     {
-                        result = _next.UnsafeAs<OrderedAsyncEnumerableBase<TSource>>().Compare(index1, index2);
+                        result = _next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().Compare(index1, index2);
                         if (result != 0)
                         {
                             return result;
@@ -163,7 +157,7 @@ namespace Proto.Promises
                     return index1 - index2;
                 }
 
-                internal override void Dispose()
+                protected void Dispose()
                 {
                     _tempKeys.Dispose();
                     _comparer = default;
@@ -173,15 +167,15 @@ namespace Proto.Promises
                     {
                         var temp = next;
                         next = next._next;
-                        temp.UnsafeAs<OrderedAsyncEnumerableBase<TSource>>().Dispose();
+                        temp.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().Dispose();
                     }
                 }
 
                 protected readonly struct IndexComparer : IComparer<int>
                 {
-                    private readonly Comparer<TComparer> _target;
+                    private readonly Comparer<TKey, TComparer> _target;
 
-                    internal IndexComparer(Comparer<TComparer> target)
+                    internal IndexComparer(Comparer<TKey, TComparer> target)
                         => _target = target;
 
                     [MethodImpl(InlineOption)]
@@ -193,7 +187,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class SyncComparer<TKeySelector, TComparer> : Comparer<TComparer>, IAsyncIterator<TSource>
+            internal sealed class SyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>, IAsyncIterator<TSource>
                 where TKeySelector : IFunc<TSource, TKey>
                 where TComparer : IComparer<TKey>
             {
@@ -203,16 +197,16 @@ namespace Proto.Promises
                 private SyncComparer() { }
 
                 [MethodImpl(InlineOption)]
-                private static SyncComparer<TKeySelector, TComparer> GetOrCreate()
+                private static SyncComparer<TKey, TKeySelector, TComparer> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<SyncComparer<TKeySelector, TComparer>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<SyncComparer<TKey, TKeySelector, TComparer>>();
                     return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
-                        ? new SyncComparer<TKeySelector, TComparer>()
-                        : obj.UnsafeAs<SyncComparer<TKeySelector, TComparer>>();
+                        ? new SyncComparer<TKey, TKeySelector, TComparer>()
+                        : obj.UnsafeAs<SyncComparer<TKey, TKeySelector, TComparer>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static SyncComparer<TKeySelector, TComparer> GetOrCreate(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
+                internal static SyncComparer<TKey, TKeySelector, TComparer> GetOrCreate(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
                 {
                     var instance = GetOrCreate();
                     // This is the head, _next points to the head.
@@ -234,7 +228,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Dispose()
+                new private void Dispose()
                 {
                     base.Dispose();
                     _keySelector = default;
@@ -243,7 +237,7 @@ namespace Proto.Promises
 
                 public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
                 {
-                    var enumerable = AsyncEnumerableCreate<TSource, SyncComparer<TKeySelector, TComparer>>.GetOrCreate(this);
+                    var enumerable = AsyncEnumerableCreate<TSource, SyncComparer<TKey, TKeySelector, TComparer>>.GetOrCreate(this);
                     return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
                 }
 
@@ -274,7 +268,7 @@ namespace Proto.Promises
                             var next = _next;
                             while (next != null)
                             {
-                                await next.UnsafeAs<OrderedAsyncEnumerableBase<TSource>>().ComputeKeys(elements);
+                                await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements);
                                 next = next._next;
                             }
 
@@ -304,12 +298,12 @@ namespace Proto.Promises
                         await source.DisposeAsync();
                     }
                 }
-            } // class SyncComparer<TKeySelector, TComparer>
+            } // class SyncComparer<TKey, TKeySelector, TComparer>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class ConfiguredSyncComparer<TKeySelector, TComparer> : Comparer<TComparer>, IAsyncIterator<TSource>
+            internal sealed class ConfiguredSyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>, IAsyncIterator<TSource>
                 where TKeySelector : IFunc<TSource, TKey>
                 where TComparer : IComparer<TKey>
             {
@@ -319,16 +313,16 @@ namespace Proto.Promises
                 private ConfiguredSyncComparer() { }
 
                 [MethodImpl(InlineOption)]
-                private static ConfiguredSyncComparer<TKeySelector, TComparer> GetOrCreate()
+                private static ConfiguredSyncComparer<TKey, TKeySelector, TComparer> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<ConfiguredSyncComparer<TKeySelector, TComparer>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<ConfiguredSyncComparer<TKey, TKeySelector, TComparer>>();
                     return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
-                        ? new ConfiguredSyncComparer<TKeySelector, TComparer>()
-                        : obj.UnsafeAs<ConfiguredSyncComparer<TKeySelector, TComparer>>();
+                        ? new ConfiguredSyncComparer<TKey, TKeySelector, TComparer>()
+                        : obj.UnsafeAs<ConfiguredSyncComparer<TKey, TKeySelector, TComparer>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static ConfiguredSyncComparer<TKeySelector, TComparer> GetOrCreate(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
+                internal static ConfiguredSyncComparer<TKey, TKeySelector, TComparer> GetOrCreate(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
                 {
                     var instance = GetOrCreate();
                     // This is the head, _next points to the head.
@@ -350,7 +344,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Dispose()
+                new private void Dispose()
                 {
                     base.Dispose();
                     _keySelector = default;
@@ -359,7 +353,7 @@ namespace Proto.Promises
 
                 public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
                 {
-                    var enumerable = AsyncEnumerableCreate<TSource, ConfiguredSyncComparer<TKeySelector, TComparer>>.GetOrCreate(this);
+                    var enumerable = AsyncEnumerableCreate<TSource, ConfiguredSyncComparer<TKey, TKeySelector, TComparer>>.GetOrCreate(this);
                     return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
                 }
 
@@ -393,7 +387,7 @@ namespace Proto.Promises
                                 var switchToConfiguredContextAwaiter = source.SwitchToContextReusable();
                                 do
                                 {
-                                    await next.UnsafeAs<OrderedAsyncEnumerableBase<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
+                                    await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
                                     next = next._next;
                                 } while (next != null);
                             }
@@ -424,12 +418,12 @@ namespace Proto.Promises
                         await source.DisposeAsync();
                     }
                 }
-            } // class ConfiguredSyncComparer<TKeySelector, TComparer>
+            } // class ConfiguredSyncComparer<TKey, TKeySelector, TComparer>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class AsyncComparer<TKeySelector, TComparer> : Comparer<TComparer>, IAsyncIterator<TSource>
+            internal sealed class AsyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>, IAsyncIterator<TSource>
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TComparer : IComparer<TKey>
             {
@@ -439,16 +433,16 @@ namespace Proto.Promises
                 private AsyncComparer() { }
 
                 [MethodImpl(InlineOption)]
-                private static AsyncComparer<TKeySelector, TComparer> GetOrCreate()
+                private static AsyncComparer<TKey, TKeySelector, TComparer> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<AsyncComparer<TKeySelector, TComparer>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<AsyncComparer<TKey, TKeySelector, TComparer>>();
                     return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
-                        ? new AsyncComparer<TKeySelector, TComparer>()
-                        : obj.UnsafeAs<AsyncComparer<TKeySelector, TComparer>>();
+                        ? new AsyncComparer<TKey, TKeySelector, TComparer>()
+                        : obj.UnsafeAs<AsyncComparer<TKey, TKeySelector, TComparer>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static AsyncComparer<TKeySelector, TComparer> GetOrCreate(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
+                internal static AsyncComparer<TKey, TKeySelector, TComparer> GetOrCreate(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
                 {
                     var instance = GetOrCreate();
                     // This is the head, _next points to the head.
@@ -459,7 +453,7 @@ namespace Proto.Promises
                     return instance;
                 }
 
-                internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements)
+                private async Promise ComputeKeys(TempCollectionBuilder<TSource> elements)
                 {
                     _tempKeys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
                     for (int i = 0; i < _tempKeys._count; ++i)
@@ -468,7 +462,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Dispose()
+                new private void Dispose()
                 {
                     base.Dispose();
                     _keySelector = default;
@@ -477,7 +471,7 @@ namespace Proto.Promises
 
                 public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
                 {
-                    var enumerable = AsyncEnumerableCreate<TSource, AsyncComparer<TKeySelector, TComparer>>.GetOrCreate(this);
+                    var enumerable = AsyncEnumerableCreate<TSource, AsyncComparer<TKey, TKeySelector, TComparer>>.GetOrCreate(this);
                     return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
                 }
 
@@ -508,7 +502,7 @@ namespace Proto.Promises
                             var next = _next;
                             while (next != null)
                             {
-                                await next.UnsafeAs<OrderedAsyncEnumerableBase<TSource>>().ComputeKeys(elements);
+                                await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements);
                                 next = next._next;
                             }
 
@@ -538,12 +532,12 @@ namespace Proto.Promises
                         await source.DisposeAsync();
                     }
                 }
-            } // class AsyncComparer<TKeySelector, TComparer>
+            } // class AsyncComparer<TKey, TKeySelector, TComparer>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class ConfiguredAsyncComparer<TKeySelector, TComparer> : Comparer<TComparer>, IAsyncIterator<TSource>
+            internal sealed class ConfiguredAsyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>, IAsyncIterator<TSource>
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TComparer : IComparer<TKey>
             {
@@ -553,16 +547,16 @@ namespace Proto.Promises
                 private ConfiguredAsyncComparer() { }
 
                 [MethodImpl(InlineOption)]
-                private static ConfiguredAsyncComparer<TKeySelector, TComparer> GetOrCreate()
+                private static ConfiguredAsyncComparer<TKey, TKeySelector, TComparer> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<ConfiguredAsyncComparer<TKeySelector, TComparer>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<ConfiguredAsyncComparer<TKey, TKeySelector, TComparer>>();
                     return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
-                        ? new ConfiguredAsyncComparer<TKeySelector, TComparer>()
-                        : obj.UnsafeAs<ConfiguredAsyncComparer<TKeySelector, TComparer>>();
+                        ? new ConfiguredAsyncComparer<TKey, TKeySelector, TComparer>()
+                        : obj.UnsafeAs<ConfiguredAsyncComparer<TKey, TKeySelector, TComparer>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static ConfiguredAsyncComparer<TKeySelector, TComparer> GetOrCreate(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
+                internal static ConfiguredAsyncComparer<TKey, TKeySelector, TComparer> GetOrCreate(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
                 {
                     var instance = GetOrCreate();
                     // This is the head, _next points to the head.
@@ -573,7 +567,7 @@ namespace Proto.Promises
                     return instance;
                 }
 
-                internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter)
+                private async Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter)
                 {
                     _tempKeys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
                     for (int i = 0; i < _tempKeys._count; ++i)
@@ -583,7 +577,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Dispose()
+                new private void Dispose()
                 {
                     base.Dispose();
                     _keySelector = default;
@@ -592,7 +586,7 @@ namespace Proto.Promises
 
                 public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
                 {
-                    var enumerable = AsyncEnumerableCreate<TSource, ConfiguredAsyncComparer<TKeySelector, TComparer>>.GetOrCreate(this);
+                    var enumerable = AsyncEnumerableCreate<TSource, ConfiguredAsyncComparer<TKey, TKeySelector, TComparer>>.GetOrCreate(this);
                     return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
                 }
 
@@ -624,7 +618,7 @@ namespace Proto.Promises
                             var next = _next;
                             while (next != null)
                             {
-                                await next.UnsafeAs<OrderedAsyncEnumerableBase<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
+                                await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
                                 next = next._next;
                             }
 
@@ -654,49 +648,61 @@ namespace Proto.Promises
                         await source.DisposeAsync();
                     }
                 }
-            } // class ConfiguredAsyncComparer<TKeySelector, TComparer>
+            } // class ConfiguredAsyncComparer<TKey, TKeySelector, TComparer>
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class OrderedAsyncEnumerableThen<TSource, TKey, TComparer> : OrderedAsyncEnumerableBase<TSource>
-            where TComparer : IComparer<TKey>
+        internal abstract class OrderedAsyncEnumerableThenBy<TSource> : OrderedAsyncEnumerableBase<TSource>
         {
-            private TempCollectionBuilder<TKey> _tempKeys;
-            private TComparer _comparer;
+            internal abstract Promise ComputeKeys(TempCollectionBuilder<TSource> elements);
+            internal abstract Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter);
+            internal abstract int Compare(int index1, int index2);
+            internal abstract void Dispose();
 
-            // The head ensures stability, we don't do it here.
-            internal override int Compare(int index1, int index2)
-                => _comparer.Compare(_tempKeys._items[index1], _tempKeys._items[index2]);
-
-            internal override void Dispose()
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal abstract class Comparer<TKey, TComparer> : OrderedAsyncEnumerableThenBy<TSource>
+                where TComparer : IComparer<TKey>
             {
-                _tempKeys.Dispose();
-                _comparer = default;
+                protected TempCollectionBuilder<TKey> _tempKeys;
+                protected TComparer _comparer;
+
+                // The head ensures stability, we don't do it here.
+                internal override sealed int Compare(int index1, int index2)
+                    => _comparer.Compare(_tempKeys._items[index1], _tempKeys._items[index2]);
+
+                internal override void Dispose()
+                {
+                    _tempKeys.Dispose();
+                    _comparer = default;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class SyncComparer<TKeySelector> : OrderedAsyncEnumerableThen<TSource, TKey, TComparer>
+            internal sealed class SyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>
                 where TKeySelector : IFunc<TSource, TKey>
+                where TComparer : IComparer<TKey>
             {
                 private TKeySelector _keySelector;
 
                 private SyncComparer() { }
 
                 [MethodImpl(InlineOption)]
-                private static SyncComparer<TKeySelector> GetOrCreate()
+                private static SyncComparer<TKey, TKeySelector, TComparer> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<SyncComparer<TKeySelector>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<SyncComparer<TKey, TKeySelector, TComparer>>();
                     return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
-                        ? new SyncComparer<TKeySelector>()
-                        : obj.UnsafeAs<SyncComparer<TKeySelector>>();
+                        ? new SyncComparer<TKey, TKeySelector, TComparer>()
+                        : obj.UnsafeAs<SyncComparer<TKey, TKeySelector, TComparer>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static SyncComparer<TKeySelector> GetOrCreate(HandleablePromiseBase head, TKeySelector keySelector, TComparer comparer)
+                internal static SyncComparer<TKey, TKeySelector, TComparer> GetOrCreate(HandleablePromiseBase head, TKeySelector keySelector, TComparer comparer)
                 {
                     var instance = GetOrCreate();
                     instance._next = head;
@@ -733,7 +739,63 @@ namespace Proto.Promises
                     base.Dispose();
                     ObjectPool.MaybeRepool(this);
                 }
-            }
+            } // SyncComparer<TKey, TKeySelector, TComparer>
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed class AsyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TComparer : IComparer<TKey>
+            {
+                private TKeySelector _keySelector;
+
+                private AsyncComparer() { }
+
+                [MethodImpl(InlineOption)]
+                private static AsyncComparer<TKey, TKeySelector, TComparer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<AsyncComparer<TKey, TKeySelector, TComparer>>();
+                    return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
+                        ? new AsyncComparer<TKey, TKeySelector, TComparer>()
+                        : obj.UnsafeAs<AsyncComparer<TKey, TKeySelector, TComparer>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static AsyncComparer<TKey, TKeySelector, TComparer> GetOrCreate(HandleablePromiseBase head, TKeySelector keySelector, TComparer comparer)
+                {
+                    var instance = GetOrCreate();
+                    instance._next = head;
+                    instance._keySelector = keySelector;
+                    instance._comparer = comparer;
+                    return instance;
+                }
+
+                internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements)
+                {
+                    _tempKeys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
+                    for (int i = 0; i < _tempKeys._count; ++i)
+                    {
+                        _tempKeys._items[i] = await _keySelector.Invoke(elements._items[i]);
+                    }
+                }
+
+                internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter)
+                {
+                    _tempKeys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
+                    for (int i = 0; i < _tempKeys._count; ++i)
+                    {
+                        await switchToConfiguredContextAwaiter;
+                        _tempKeys._items[i] = await _keySelector.Invoke(elements._items[i]);
+                    }
+                }
+
+                internal override void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+            } // AsyncComparer<TKey, TKeySelector, TComparer>
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

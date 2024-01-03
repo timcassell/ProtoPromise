@@ -29,8 +29,8 @@ namespace Proto.Promises.Linq
         : IAsyncEnumerable<T>
 #endif
     {
-        private readonly Internal.OrderedAsyncEnumerableBase<T> _target;
-        private readonly int _id;
+        internal readonly Internal.OrderedAsyncEnumerableBase<T> _target;
+        internal readonly int _id;
 
         /// <summary>
         /// Gets whether this instance is valid for enumeration. Once enumeration has begun, this will return false.
