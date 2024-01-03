@@ -50,7 +50,8 @@ namespace Proto.Promises
                 return head.GetAsyncEnumerator(cancelationToken);
             }
 
-            internal abstract Promise ComputeKeys(TempCollectionBuilder<TSource> elements);
+            internal virtual Promise ComputeKeys(TempCollectionBuilder<TSource> elements) => throw new System.InvalidOperationException();
+            internal virtual Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter) => throw new System.InvalidOperationException();
             internal abstract int Compare(int index1, int index2);
             internal abstract void Dispose();
 
@@ -93,11 +94,41 @@ namespace Proto.Promises
 #endif
         internal abstract class OrderedAsyncEnumerableHead<TSource, TKey> : OrderedAsyncEnumerableHead<TSource>
         {
-            internal static OrderedAsyncEnumerable<TSource> GetOrCreate<TKeySelector, TComparer>(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
+            internal static OrderedAsyncEnumerable<TSource> OrderBy<TKeySelector, TComparer>(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
                 where TKeySelector : IFunc<TSource, TKey>
                 where TComparer : IComparer<TKey>
             {
                 var enumerable = SyncComparer<TKeySelector, TComparer>.GetOrCreate(source, keySelector, comparer);
+                // _next points to the head so the enumerator will know where to start.
+                enumerable._next = enumerable;
+                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
+            }
+
+            internal static OrderedAsyncEnumerable<TSource> OrderBy<TKeySelector, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
+                where TKeySelector : IFunc<TSource, TKey>
+                where TComparer : IComparer<TKey>
+            {
+                var enumerable = ConfiguredSyncComparer<TKeySelector, TComparer>.GetOrCreate(configuredSource, keySelector, comparer);
+                // _next points to the head so the enumerator will know where to start.
+                enumerable._next = enumerable;
+                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
+            }
+
+            internal static OrderedAsyncEnumerable<TSource> OrderByAwait<TKeySelector, TComparer>(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TComparer : IComparer<TKey>
+            {
+                var enumerable = AsyncComparer<TKeySelector, TComparer>.GetOrCreate(source, keySelector, comparer);
+                // _next points to the head so the enumerator will know where to start.
+                enumerable._next = enumerable;
+                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
+            }
+
+            internal static OrderedAsyncEnumerable<TSource> OrderByAwait<TKeySelector, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TComparer : IComparer<TKey>
+            {
+                var enumerable = ConfiguredAsyncComparer<TKeySelector, TComparer>.GetOrCreate(configuredSource, keySelector, comparer);
                 // _next points to the head so the enumerator will know where to start.
                 enumerable._next = enumerable;
                 return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
@@ -136,10 +167,7 @@ namespace Proto.Promises
                 {
                     _tempKeys.Dispose();
                     _comparer = default;
-                }
-
-                protected void DisposeThens()
-                {
+                    // Dispose ThenBys
                     var next = _next;
                     while (next != null)
                     {
@@ -206,12 +234,6 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override Promise ComputeKeys(TempCollectionBuilder<TSource> elements)
-                {
-                    ComputeKeysSync(elements);
-                    return Promise.Resolved();
-                }
-
                 internal override void Dispose()
                 {
                     base.Dispose();
@@ -238,7 +260,6 @@ namespace Proto.Promises
                         {
                             // Empty source.
                             Dispose();
-                            DisposeThens();
                             return;
                         }
 
@@ -266,7 +287,6 @@ namespace Proto.Promises
                                 indices.Span.Sort(new IndexComparer(this));
 
                                 Dispose();
-                                DisposeThens();
 
                                 for (int i = 0; i < indices._count; ++i)
                                 {
@@ -276,6 +296,7 @@ namespace Proto.Promises
                             }
                         }
 
+                        // We wait for this enumerator to be disposed in case the source contains temp collections.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
@@ -283,7 +304,357 @@ namespace Proto.Promises
                         await source.DisposeAsync();
                     }
                 }
-            }
+            } // class SyncComparer<TKeySelector, TComparer>
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed class ConfiguredSyncComparer<TKeySelector, TComparer> : Comparer<TComparer>, IAsyncIterator<TSource>
+                where TKeySelector : IFunc<TSource, TKey>
+                where TComparer : IComparer<TKey>
+            {
+                private ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredSource;
+                private TKeySelector _keySelector;
+
+                private ConfiguredSyncComparer() { }
+
+                [MethodImpl(InlineOption)]
+                private static ConfiguredSyncComparer<TKeySelector, TComparer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<ConfiguredSyncComparer<TKeySelector, TComparer>>();
+                    return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
+                        ? new ConfiguredSyncComparer<TKeySelector, TComparer>()
+                        : obj.UnsafeAs<ConfiguredSyncComparer<TKeySelector, TComparer>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static ConfiguredSyncComparer<TKeySelector, TComparer> GetOrCreate(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
+                {
+                    var instance = GetOrCreate();
+                    // This is the head, _next points to the head.
+                    instance._next = instance;
+                    instance._configuredSource = configuredSource;
+                    instance._keySelector = keySelector;
+                    instance._comparer = comparer;
+                    return instance;
+                }
+
+                private void ComputeKeysSync(TempCollectionBuilder<TSource> elements)
+                {
+                    var elementsSpan = elements.ReadOnlySpan;
+                    _tempKeys = new TempCollectionBuilder<TKey>(elementsSpan.Length, elementsSpan.Length);
+                    var tempSpan = _tempKeys.Span;
+                    for (int i = 0; i < elementsSpan.Length; ++i)
+                    {
+                        tempSpan[i] = _keySelector.Invoke(elementsSpan[i]);
+                    }
+                }
+
+                internal override void Dispose()
+                {
+                    base.Dispose();
+                    _keySelector = default;
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
+                {
+                    var enumerable = AsyncEnumerableCreate<TSource, ConfiguredSyncComparer<TKeySelector, TComparer>>.GetOrCreate(this);
+                    return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
+                }
+
+                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
+                    var source = _configuredSource;
+                    _configuredSource = default;
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    source._enumerator._target._cancelationToken = cancelationToken;
+                    try
+                    {
+                        if (!await source.MoveNextAsync())
+                        {
+                            // Empty source.
+                            Dispose();
+                            return;
+                        }
+
+                        using (var elements = new TempCollectionBuilder<TSource>(1))
+                        {
+                            do
+                            {
+                                elements.Add(source.Current);
+                            } while (await source.MoveNextAsync());
+
+                            ComputeKeysSync(elements);
+                            var next = _next;
+                            if (next != null)
+                            {
+                                var switchToConfiguredContextAwaiter = source.SwitchToContextReusable();
+                                do
+                                {
+                                    await next.UnsafeAs<OrderedAsyncEnumerableBase<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
+                                    next = next._next;
+                                } while (next != null);
+                            }
+
+                            using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
+                            {
+                                for (int i = 0; i < elements._count; ++i)
+                                {
+                                    indices._items[i] = i;
+                                }
+                                indices.Span.Sort(new IndexComparer(this));
+
+                                Dispose();
+
+                                for (int i = 0; i < indices._count; ++i)
+                                {
+                                    int index = indices._items[i];
+                                    await writer.YieldAsync(elements._items[index]);
+                                }
+                            }
+                        }
+
+                        // We wait for this enumerator to be disposed in case the source contains temp collections.
+                        await writer.YieldAsync(default).ForLinqExtension();
+                    }
+                    finally
+                    {
+                        await source.DisposeAsync();
+                    }
+                }
+            } // class ConfiguredSyncComparer<TKeySelector, TComparer>
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed class AsyncComparer<TKeySelector, TComparer> : Comparer<TComparer>, IAsyncIterator<TSource>
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TComparer : IComparer<TKey>
+            {
+                private AsyncEnumerator<TSource> _source;
+                private TKeySelector _keySelector;
+
+                private AsyncComparer() { }
+
+                [MethodImpl(InlineOption)]
+                private static AsyncComparer<TKeySelector, TComparer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<AsyncComparer<TKeySelector, TComparer>>();
+                    return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
+                        ? new AsyncComparer<TKeySelector, TComparer>()
+                        : obj.UnsafeAs<AsyncComparer<TKeySelector, TComparer>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static AsyncComparer<TKeySelector, TComparer> GetOrCreate(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
+                {
+                    var instance = GetOrCreate();
+                    // This is the head, _next points to the head.
+                    instance._next = instance;
+                    instance._source = source;
+                    instance._keySelector = keySelector;
+                    instance._comparer = comparer;
+                    return instance;
+                }
+
+                internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements)
+                {
+                    _tempKeys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
+                    for (int i = 0; i < _tempKeys._count; ++i)
+                    {
+                        _tempKeys._items[i] = await _keySelector.Invoke(elements._items[i]);
+                    }
+                }
+
+                internal override void Dispose()
+                {
+                    base.Dispose();
+                    _keySelector = default;
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
+                {
+                    var enumerable = AsyncEnumerableCreate<TSource, AsyncComparer<TKeySelector, TComparer>>.GetOrCreate(this);
+                    return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
+                }
+
+                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
+                    var source = _source;
+                    _source = default;
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    source._target._cancelationToken = cancelationToken;
+                    try
+                    {
+                        if (!await source.MoveNextAsync())
+                        {
+                            // Empty source.
+                            Dispose();
+                            return;
+                        }
+
+                        using (var elements = new TempCollectionBuilder<TSource>(1))
+                        {
+                            do
+                            {
+                                elements.Add(source.Current);
+                            } while (await source.MoveNextAsync());
+
+                            await ComputeKeys(elements);
+                            var next = _next;
+                            while (next != null)
+                            {
+                                await next.UnsafeAs<OrderedAsyncEnumerableBase<TSource>>().ComputeKeys(elements);
+                                next = next._next;
+                            }
+
+                            using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
+                            {
+                                for (int i = 0; i < elements._count; ++i)
+                                {
+                                    indices._items[i] = i;
+                                }
+                                indices.Span.Sort(new IndexComparer(this));
+
+                                Dispose();
+
+                                for (int i = 0; i < indices._count; ++i)
+                                {
+                                    int index = indices._items[i];
+                                    await writer.YieldAsync(elements._items[index]);
+                                }
+                            }
+                        }
+
+                        // We wait for this enumerator to be disposed in case the source contains temp collections.
+                        await writer.YieldAsync(default).ForLinqExtension();
+                    }
+                    finally
+                    {
+                        await source.DisposeAsync();
+                    }
+                }
+            } // class AsyncComparer<TKeySelector, TComparer>
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed class ConfiguredAsyncComparer<TKeySelector, TComparer> : Comparer<TComparer>, IAsyncIterator<TSource>
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TComparer : IComparer<TKey>
+            {
+                private ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredSource;
+                private TKeySelector _keySelector;
+
+                private ConfiguredAsyncComparer() { }
+
+                [MethodImpl(InlineOption)]
+                private static ConfiguredAsyncComparer<TKeySelector, TComparer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<ConfiguredAsyncComparer<TKeySelector, TComparer>>();
+                    return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
+                        ? new ConfiguredAsyncComparer<TKeySelector, TComparer>()
+                        : obj.UnsafeAs<ConfiguredAsyncComparer<TKeySelector, TComparer>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static ConfiguredAsyncComparer<TKeySelector, TComparer> GetOrCreate(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TKeySelector keySelector, TComparer comparer)
+                {
+                    var instance = GetOrCreate();
+                    // This is the head, _next points to the head.
+                    instance._next = instance;
+                    instance._configuredSource = configuredSource;
+                    instance._keySelector = keySelector;
+                    instance._comparer = comparer;
+                    return instance;
+                }
+
+                internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter)
+                {
+                    _tempKeys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
+                    for (int i = 0; i < _tempKeys._count; ++i)
+                    {
+                        await switchToConfiguredContextAwaiter;
+                        _tempKeys._items[i] = await _keySelector.Invoke(elements._items[i]);
+                    }
+                }
+
+                internal override void Dispose()
+                {
+                    base.Dispose();
+                    _keySelector = default;
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
+                {
+                    var enumerable = AsyncEnumerableCreate<TSource, ConfiguredAsyncComparer<TKeySelector, TComparer>>.GetOrCreate(this);
+                    return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
+                }
+
+                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
+                    var source = _configuredSource;
+                    _configuredSource = default;
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    source._enumerator._target._cancelationToken = cancelationToken;
+                    try
+                    {
+                        if (!await source.MoveNextAsync())
+                        {
+                            // Empty source.
+                            Dispose();
+                            return;
+                        }
+
+                        using (var elements = new TempCollectionBuilder<TSource>(1))
+                        {
+                            do
+                            {
+                                elements.Add(source.Current);
+                            } while (await source.MoveNextAsync());
+
+                            var switchToConfiguredContextAwaiter = source.SwitchToContextReusable();
+                            await ComputeKeys(elements, switchToConfiguredContextAwaiter);
+                            var next = _next;
+                            while (next != null)
+                            {
+                                await next.UnsafeAs<OrderedAsyncEnumerableBase<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
+                                next = next._next;
+                            }
+
+                            using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
+                            {
+                                for (int i = 0; i < elements._count; ++i)
+                                {
+                                    indices._items[i] = i;
+                                }
+                                indices.Span.Sort(new IndexComparer(this));
+
+                                Dispose();
+
+                                for (int i = 0; i < indices._count; ++i)
+                                {
+                                    int index = indices._items[i];
+                                    await writer.YieldAsync(elements._items[index]);
+                                }
+                            }
+                        }
+
+                        // We wait for this enumerator to be disposed in case the source contains temp collections.
+                        await writer.YieldAsync(default).ForLinqExtension();
+                    }
+                    finally
+                    {
+                        await source.DisposeAsync();
+                    }
+                }
+            } // class ConfiguredAsyncComparer<TKeySelector, TComparer>
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -334,7 +705,7 @@ namespace Proto.Promises
                     return instance;
                 }
 
-                internal override Promise ComputeKeys(TempCollectionBuilder<TSource> elements)
+                private void ComputeKeysSync(TempCollectionBuilder<TSource> elements)
                 {
                     var elementsSpan = elements.ReadOnlySpan;
                     _tempKeys = new TempCollectionBuilder<TKey>(elementsSpan.Length, elementsSpan.Length);
@@ -343,7 +714,18 @@ namespace Proto.Promises
                     {
                         tempSpan[i] = _keySelector.Invoke(elementsSpan[i]);
                     }
+                }
+
+                internal override Promise ComputeKeys(TempCollectionBuilder<TSource> elements)
+                {
+                    ComputeKeysSync(elements);
                     return Promise.Resolved();
+                }
+
+                internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter)
+                {
+                    await switchToConfiguredContextAwaiter;
+                    ComputeKeysSync(elements);
                 }
 
                 internal override void Dispose()
