@@ -23,6 +23,30 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
+        internal static class OrderHelper<TSource>
+        {
+            internal static OrderedAsyncEnumerable<TSource> Order<TComparer>(AsyncEnumerator<TSource> source, TComparer comparer)
+                where TComparer : IComparer<TSource>
+            {
+                var enumerable = OrderedAsyncEnumerableHead<TSource>.SourceComparer<TComparer>.GetOrCreate(source, comparer);
+                // _next points to the head so the enumerator will know where to start.
+                enumerable._next = enumerable;
+                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
+            }
+
+            internal static OrderedAsyncEnumerable<TSource> Order<TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TComparer comparer)
+                where TComparer : IComparer<TSource>
+            {
+                var enumerable = OrderedAsyncEnumerableHead<TSource>.ConfiguredSourceComparer<TComparer>.GetOrCreate(configuredSource, comparer);
+                // _next points to the head so the enumerator will know where to start.
+                enumerable._next = enumerable;
+                return new OrderedAsyncEnumerable<TSource>(enumerable, enumerable._id);
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal static class OrderHelper<TSource, TKey>
         {
             internal static OrderedAsyncEnumerable<TSource> OrderBy<TKeySelector, TComparer>(AsyncEnumerator<TSource> source, TKeySelector keySelector, TComparer comparer)
@@ -127,6 +151,271 @@ namespace Proto.Promises
         internal abstract class OrderedAsyncEnumerableHead<TSource> : OrderedAsyncEnumerableBase<TSource>
         {
             public abstract AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken);
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal abstract class Comparer<TComparer> : OrderedAsyncEnumerableHead<TSource>
+                where TComparer : IComparer<TSource>
+            {
+                protected TComparer _comparer;
+
+                [MethodImpl(InlineOption)]
+                private int Compare(TSource[] elements, int index1, int index2)
+                {
+                    int result = _comparer.Compare(elements[index1], elements[index2]);
+                    if (result != 0)
+                    {
+                        return result;
+                    }
+                    // We iterate over all the nexts instead of recursively, to avoid StackOverflowException in the event of a very long chain.
+                    for (var next = _next; next != null; next = next._next)
+                    {
+                        result = _next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().Compare(index1, index2);
+                        if (result != 0)
+                        {
+                            return result;
+                        }
+                    }
+                    // Make sure order is stable.
+                    return index1 - index2;
+                }
+
+                protected void Dispose()
+                {
+                    _comparer = default;
+                    // Dispose ThenBys
+                    var next = _next;
+                    while (next != null)
+                    {
+                        var temp = next;
+                        next = next._next;
+                        temp.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().Dispose();
+                    }
+                }
+
+                protected readonly struct IndexComparer : IComparer<int>
+                {
+                    private readonly Comparer<TComparer> _target;
+                    private readonly TSource[] _elements;
+
+                    internal IndexComparer(Comparer<TComparer> target, TSource[] elements)
+                    {
+                        _target = target;
+                        _elements = elements;
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    public int Compare(int x, int y)
+                        => _target.Compare(_elements, x, y);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed class SourceComparer<TComparer> : Comparer<TComparer>, IAsyncIterator<TSource>
+                where TComparer : IComparer<TSource>
+            {
+                private AsyncEnumerator<TSource> _source;
+
+                private SourceComparer() { }
+
+                [MethodImpl(InlineOption)]
+                private static SourceComparer<TComparer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<SourceComparer<TComparer>>();
+                    return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
+                        ? new SourceComparer<TComparer>()
+                        : obj.UnsafeAs<SourceComparer<TComparer>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static SourceComparer<TComparer> GetOrCreate(AsyncEnumerator<TSource> source, TComparer comparer)
+                {
+                    var instance = GetOrCreate();
+                    // This is the head, _next points to the head.
+                    instance._next = instance;
+                    instance._source = source;
+                    instance._comparer = comparer;
+                    return instance;
+                }
+
+                new private void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
+                {
+                    var enumerable = AsyncEnumerableCreate<TSource, SourceComparer<TComparer>>.GetOrCreate(this);
+                    return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
+                }
+
+                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
+                    var source = _source;
+                    _source = default;
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    source._target._cancelationToken = cancelationToken;
+                    try
+                    {
+                        if (!await source.MoveNextAsync())
+                        {
+                            // Empty source.
+                            Dispose();
+                            return;
+                        }
+
+                        using (var elements = new TempCollectionBuilder<TSource>(1))
+                        {
+                            do
+                            {
+                                elements.Add(source.Current);
+                            } while (await source.MoveNextAsync());
+
+                            var next = _next;
+                            while (next != null)
+                            {
+                                await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements);
+                                next = next._next;
+                            }
+
+                            using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
+                            {
+                                for (int i = 0; i < elements._count; ++i)
+                                {
+                                    indices._items[i] = i;
+                                }
+                                indices.Span.Sort(new IndexComparer(this, elements._items));
+
+                                Dispose();
+
+                                for (int i = 0; i < indices._count; ++i)
+                                {
+                                    int index = indices._items[i];
+                                    await writer.YieldAsync(elements._items[index]);
+                                }
+                            }
+                        }
+
+                        // We wait for this enumerator to be disposed in case the source contains temp collections.
+                        await writer.YieldAsync(default).ForLinqExtension();
+                    }
+                    finally
+                    {
+                        await source.DisposeAsync();
+                    }
+                }
+            } // class SourceComparer<TComparer>
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed class ConfiguredSourceComparer<TComparer> : Comparer<TComparer>, IAsyncIterator<TSource>
+                where TComparer : IComparer<TSource>
+            {
+                private ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredSource;
+
+                private ConfiguredSourceComparer() { }
+
+                [MethodImpl(InlineOption)]
+                private static ConfiguredSourceComparer<TComparer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<ConfiguredSourceComparer<TComparer>>();
+                    return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
+                        ? new ConfiguredSourceComparer<TComparer>()
+                        : obj.UnsafeAs<ConfiguredSourceComparer<TComparer>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static ConfiguredSourceComparer<TComparer> GetOrCreate(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TComparer comparer)
+                {
+                    var instance = GetOrCreate();
+                    // This is the head, _next points to the head.
+                    instance._next = instance;
+                    instance._configuredSource = configuredSource;
+                    instance._comparer = comparer;
+                    return instance;
+                }
+
+                new private void Dispose()
+                {
+                    base.Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
+                {
+                    var enumerable = AsyncEnumerableCreate<TSource, ConfiguredSourceComparer<TComparer>>.GetOrCreate(this);
+                    return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
+                }
+
+                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
+                    var source = _configuredSource;
+                    _configuredSource = default;
+                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
+                    var enumerableRef = _configuredSource._enumerator._target;
+                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+
+                    try
+                    {
+                        if (!await source.MoveNextAsync())
+                        {
+                            // Empty source.
+                            Dispose();
+                            return;
+                        }
+
+                        using (var elements = new TempCollectionBuilder<TSource>(1))
+                        {
+                            do
+                            {
+                                elements.Add(source.Current);
+                            } while (await source.MoveNextAsync());
+
+                            var next = _next;
+                            if (next != null)
+                            {
+                                var switchToConfiguredContextAwaiter = source.SwitchToContextReusable();
+                                do
+                                {
+                                    await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
+                                    next = next._next;
+                                } while (next != null);
+                            }
+
+                            using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
+                            {
+                                for (int i = 0; i < elements._count; ++i)
+                                {
+                                    indices._items[i] = i;
+                                }
+                                indices.Span.Sort(new IndexComparer(this, elements._items));
+
+                                Dispose();
+
+                                for (int i = 0; i < indices._count; ++i)
+                                {
+                                    int index = indices._items[i];
+                                    await writer.YieldAsync(elements._items[index]);
+                                }
+                            }
+                        }
+
+                        // We wait for this enumerator to be disposed in case the source contains temp collections.
+                        await writer.YieldAsync(default).ForLinqExtension();
+                    }
+                    finally
+                    {
+                        joinedCancelationSource.TryDispose();
+                        await source.DisposeAsync();
+                    }
+                }
+            } // class ConfiguredSourceComparer<TComparer>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
