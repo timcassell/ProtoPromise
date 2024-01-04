@@ -141,16 +141,18 @@ namespace Proto.Promises
                 // The head is stored in _next.
                 var head = _next.UnsafeAs<OrderedAsyncEnumerableHead<TSource>>();
                 _next = null;
-                return head.GetAsyncEnumerator(cancelationToken);
+                // We use `IAsyncIterator` instead of the specific type to reduce the number of generated generic types.
+                var enumerable = AsyncEnumerableCreate<TSource, IAsyncIterator<TSource>>.GetOrCreate(head);
+                return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
             }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class OrderedAsyncEnumerableHead<TSource> : OrderedAsyncEnumerableBase<TSource>
+        internal abstract class OrderedAsyncEnumerableHead<TSource> : OrderedAsyncEnumerableBase<TSource>, IAsyncIterator<TSource>
         {
-            public abstract AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken);
+            public abstract AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> streamWriter, CancelationToken cancelationToken);
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -214,7 +216,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class SourceComparer<TComparer> : Comparer<TComparer>, IAsyncIterator<TSource>
+            internal sealed class SourceComparer<TComparer> : Comparer<TComparer>
                 where TComparer : IComparer<TSource>
             {
                 private AsyncEnumerator<TSource> _source;
@@ -247,13 +249,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
-                {
-                    var enumerable = AsyncEnumerableCreate<TSource, SourceComparer<TComparer>>.GetOrCreate(this);
-                    return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
-                }
-
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
                 {
                     var source = _source;
                     _source = default;
@@ -314,7 +310,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class ConfiguredSourceComparer<TComparer> : Comparer<TComparer>, IAsyncIterator<TSource>
+            internal sealed class ConfiguredSourceComparer<TComparer> : Comparer<TComparer>
                 where TComparer : IComparer<TSource>
             {
                 private ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredSource;
@@ -347,13 +343,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
-                {
-                    var enumerable = AsyncEnumerableCreate<TSource, ConfiguredSourceComparer<TComparer>>.GetOrCreate(this);
-                    return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
-                }
-
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
                 {
                     var source = _configuredSource;
                     _configuredSource = default;
@@ -476,7 +466,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class SyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>, IAsyncIterator<TSource>
+            internal sealed class SyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>
                 where TKeySelector : IFunc<TSource, TKey>
                 where TComparer : IComparer<TKey>
             {
@@ -524,13 +514,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
-                {
-                    var enumerable = AsyncEnumerableCreate<TSource, SyncComparer<TKey, TKeySelector, TComparer>>.GetOrCreate(this);
-                    return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
-                }
-
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
                 {
                     var source = _source;
                     _source = default;
@@ -592,7 +576,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class ConfiguredSyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>, IAsyncIterator<TSource>
+            internal sealed class ConfiguredSyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>
                 where TKeySelector : IFunc<TSource, TKey>
                 where TComparer : IComparer<TKey>
             {
@@ -640,13 +624,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
-                {
-                    var enumerable = AsyncEnumerableCreate<TSource, ConfiguredSyncComparer<TKey, TKeySelector, TComparer>>.GetOrCreate(this);
-                    return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
-                }
-
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
                 {
                     var source = _configuredSource;
                     _configuredSource = default;
@@ -714,7 +692,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class AsyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>, IAsyncIterator<TSource>
+            internal sealed class AsyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TComparer : IComparer<TKey>
             {
@@ -760,13 +738,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
-                {
-                    var enumerable = AsyncEnumerableCreate<TSource, AsyncComparer<TKey, TKeySelector, TComparer>>.GetOrCreate(this);
-                    return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
-                }
-
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
                 {
                     var source = _source;
                     _source = default;
@@ -828,7 +800,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed class ConfiguredAsyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>, IAsyncIterator<TSource>
+            internal sealed class ConfiguredAsyncComparer<TKey, TKeySelector, TComparer> : Comparer<TKey, TComparer>
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TComparer : IComparer<TKey>
             {
@@ -875,13 +847,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override AsyncEnumerator<TSource> GetAsyncEnumerator(CancelationToken cancelationToken)
-                {
-                    var enumerable = AsyncEnumerableCreate<TSource, ConfiguredAsyncComparer<TKey, TKeySelector, TComparer>>.GetOrCreate(this);
-                    return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
-                }
-
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
                 {
                     var source = _configuredSource;
                     _configuredSource = default;
