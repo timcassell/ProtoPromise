@@ -261,7 +261,6 @@ namespace Proto.Promises
                         if (!await source.MoveNextAsync())
                         {
                             // Empty source.
-                            Dispose();
                             return;
                         }
 
@@ -287,8 +286,6 @@ namespace Proto.Promises
                                 }
                                 indices.Span.Sort(new IndexComparer(this, elements._items));
 
-                                Dispose();
-
                                 for (int i = 0; i < indices._count; ++i)
                                 {
                                     int index = indices._items[i];
@@ -302,6 +299,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        Dispose();
                         await source.DisposeAsync();
                     }
                 }
@@ -348,7 +346,7 @@ namespace Proto.Promises
                     var source = _configuredSource;
                     _configuredSource = default;
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = _configuredSource._enumerator._target;
+                    var enumerableRef = source._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
@@ -356,7 +354,6 @@ namespace Proto.Promises
                         if (!await source.MoveNextAsync())
                         {
                             // Empty source.
-                            Dispose();
                             return;
                         }
 
@@ -386,8 +383,6 @@ namespace Proto.Promises
                                 }
                                 indices.Span.Sort(new IndexComparer(this, elements._items));
 
-                                Dispose();
-
                                 for (int i = 0; i < indices._count; ++i)
                                 {
                                     int index = indices._items[i];
@@ -401,6 +396,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        Dispose();
                         joinedCancelationSource.TryDispose();
                         await source.DisposeAsync();
                     }
@@ -438,7 +434,10 @@ namespace Proto.Promises
 
                 protected void Dispose()
                 {
-                    _tempKeys.Dispose();
+                    if (_tempKeys._items != null)
+                    {
+                        _tempKeys.Dispose();
+                    }
                     _comparer = default;
                     // Dispose ThenBys
                     var next = _next;
@@ -526,7 +525,6 @@ namespace Proto.Promises
                         if (!await source.MoveNextAsync())
                         {
                             // Empty source.
-                            Dispose();
                             return;
                         }
 
@@ -553,8 +551,6 @@ namespace Proto.Promises
                                 }
                                 indices.Span.Sort(new IndexComparer(this));
 
-                                Dispose();
-
                                 for (int i = 0; i < indices._count; ++i)
                                 {
                                     int index = indices._items[i];
@@ -568,6 +564,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        Dispose();
                         await source.DisposeAsync();
                     }
                 }
@@ -629,7 +626,7 @@ namespace Proto.Promises
                     var source = _configuredSource;
                     _configuredSource = default;
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = _configuredSource._enumerator._target;
+                    var enumerableRef = source._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
@@ -637,7 +634,6 @@ namespace Proto.Promises
                         if (!await source.MoveNextAsync())
                         {
                             // Empty source.
-                            Dispose();
                             return;
                         }
 
@@ -668,8 +664,6 @@ namespace Proto.Promises
                                 }
                                 indices.Span.Sort(new IndexComparer(this));
 
-                                Dispose();
-
                                 for (int i = 0; i < indices._count; ++i)
                                 {
                                     int index = indices._items[i];
@@ -683,6 +677,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        Dispose();
                         joinedCancelationSource.TryDispose();
                         await source.DisposeAsync();
                     }
@@ -750,7 +745,6 @@ namespace Proto.Promises
                         if (!await source.MoveNextAsync())
                         {
                             // Empty source.
-                            Dispose();
                             return;
                         }
 
@@ -777,8 +771,6 @@ namespace Proto.Promises
                                 }
                                 indices.Span.Sort(new IndexComparer(this));
 
-                                Dispose();
-
                                 for (int i = 0; i < indices._count; ++i)
                                 {
                                     int index = indices._items[i];
@@ -792,6 +784,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        Dispose();
                         await source.DisposeAsync();
                     }
                 }
@@ -852,7 +845,7 @@ namespace Proto.Promises
                     var source = _configuredSource;
                     _configuredSource = default;
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = _configuredSource._enumerator._target;
+                    var enumerableRef = source._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
@@ -860,7 +853,6 @@ namespace Proto.Promises
                         if (!await source.MoveNextAsync())
                         {
                             // Empty source.
-                            Dispose();
                             return;
                         }
 
@@ -888,8 +880,6 @@ namespace Proto.Promises
                                 }
                                 indices.Span.Sort(new IndexComparer(this));
 
-                                Dispose();
-
                                 for (int i = 0; i < indices._count; ++i)
                                 {
                                     int index = indices._items[i];
@@ -903,6 +893,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        Dispose();
                         joinedCancelationSource.TryDispose();
                         await source.DisposeAsync();
                     }
@@ -935,7 +926,10 @@ namespace Proto.Promises
 
                 internal override void Dispose()
                 {
-                    _tempKeys.Dispose();
+                    if (_tempKeys._items != null)
+                    {
+                        _tempKeys.Dispose();
+                    }
                     _comparer = default;
                 }
             }
