@@ -11,6 +11,7 @@
 #pragma warning disable IDE0029 // Use coalesce expression
 #pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0051 // Remove unused private members
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
@@ -45,12 +46,11 @@ namespace Proto.Promises
             }
         }
 #else
-        internal static int s_frameHolder;
         [MethodImpl(Internal.InlineOption)]
         internal static void ValidateIsOnMainThread(int skipFrames)
         {
             // We read Time.frameCount in RELEASE mode since it's a faster thread check than accessing Thread.CurrentThread.
-            s_frameHolder = Time.frameCount;
+            var _ = Time.frameCount;
         }
 #endif
 
@@ -58,33 +58,36 @@ namespace Proto.Promises
         {
             internal static Thread s_mainThread;
 
+            internal static int s_currentFrame = -1;
+            internal static float s_deltaTime = 0f;
+
             // These must not be readonly.
+
+            // Processor for WaitOneFrame. Larger initial capacity as this is expected to be frequently used.
+            internal static WaitOneFrameProcessor s_waitOneFrameProcessor = new WaitOneFrameProcessor(64);
+            internal static SingleInstructionProcessor s_updateProcessor = new SingleInstructionProcessor(16);
+            internal static SingleInstructionProcessor s_lateUpdateProcessor = new SingleInstructionProcessor(16);
+            internal static SingleInstructionProcessor s_fixedUpdateProcessor = new SingleInstructionProcessor(16);
+            // Processor for WaitForEndOfFrame. The initial capacity is small because it is expected to be used rarely (and almost never multiple simultaneously).
+            internal static SingleInstructionProcessor s_endOfFrameProcessor = new SingleInstructionProcessor(4);
 
             // Generic processor for instructions that need to be called every frame potentially multiple times.
             internal InstructionProcessorGroup _updateProcessor = new InstructionProcessorGroup(16);
 
-            // Processor optimized for WaitOneFrame instructions. Larger initial capacity as this is expected to be the most used instruction.
-            internal SingleInstructionProcessor _oneFrameProcessor = new SingleInstructionProcessor(1024);
-
-            // Processor optimized for fixed update instructions. The initial capacity is lower than the frame processor, because it is expected to be used less, but still large enough in case it is used a lot.
-            internal SingleInstructionProcessor _fixedUpdateProcessor = new SingleInstructionProcessor(256);
-
-            // Processor optimized for end of frame instructions. The initial capacity is small because it is expected to be used rarely (and almost never multiple simultaneously).
-            internal SingleInstructionProcessor _endOfFrameProcessor = new SingleInstructionProcessor(16);
-
-            internal int _currentFrame = -1;
-            internal float _deltaTime = 0f;
-
-            private void SetTimeValues()
+            private static void SetTimeValues()
             {
-                _currentFrame = Time.frameCount;
-                _deltaTime = Time.deltaTime;
+                s_currentFrame = Time.frameCount;
+                s_deltaTime = Time.deltaTime;
+            }
+
+            static partial void StaticInit()
+            {
+                s_mainThread = Thread.CurrentThread;
+                SetTimeValues();
             }
 
             partial void Init()
             {
-                s_mainThread = Thread.CurrentThread;
-                SetTimeValues();
                 StartCoroutine(UpdateRoutine());
                 StartCoroutine(FixedUpdateRoutine());
                 StartCoroutine(EndOfFrameRoutine());
@@ -92,6 +95,11 @@ namespace Proto.Promises
 
             partial void ResetProcessors()
             {
+                s_waitOneFrameProcessor.Clear();
+                s_updateProcessor.Clear();
+                s_lateUpdateProcessor.Clear();
+                s_fixedUpdateProcessor.Clear();
+                s_endOfFrameProcessor.Clear();
                 _updateProcessor.ResetProcessors();
             }
 
@@ -101,9 +109,20 @@ namespace Proto.Promises
                 {
                     yield return null;
                     SetTimeValues();
-                    _oneFrameProcessor.Process();
+                    s_waitOneFrameProcessor.Process();
                     _updateProcessor.Process();
                 }
+            }
+
+            // This is called from Update after the synchronization context is executed.
+            partial void ProcessUpdate()
+            {
+                s_updateProcessor.Process();
+            }
+
+            private void LateUpdate()
+            {
+                s_lateUpdateProcessor.Process();
             }
 
             private IEnumerator FixedUpdateRoutine()
@@ -112,7 +131,7 @@ namespace Proto.Promises
                 while (true)
                 {
                     yield return fixedUpdateInstruction;
-                    _fixedUpdateProcessor.Process();
+                    s_fixedUpdateProcessor.Process();
                 }
             }
 
@@ -122,7 +141,7 @@ namespace Proto.Promises
                 while (true)
                 {
                     yield return endOfFrameInstruction;
-                    _endOfFrameProcessor.Process();
+                    s_endOfFrameProcessor.Process();
                 }
             }
         }
@@ -130,22 +149,18 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        // InstructionProcessor optimized for instructions that never need to keep waiting.
-        internal sealed class SingleInstructionProcessor
+        // InstructionProcessor optimized for instructions that never need to keep waiting, without caring about which frame it's executed in.
+        internal struct SingleInstructionProcessor
         {
-            // We use 3 queues, 1 for the currently executing, another for the next update,
-            // and a third for the following, because WaitOneFrame needs to be able to wait for 2 updates to not be completed later in the same frame.
+            // We use 2 queues, 1 for the currently executing, another for the next update.
             private Action[] _currentQueue;
             private Action[] _nextQueue;
-            private Action[] _followingQueue;
             private int _nextCount;
-            private int _followingCount;
 
             internal SingleInstructionProcessor(int initialCapacity)
             {
                 _currentQueue = new Action[initialCapacity];
                 _nextQueue = new Action[initialCapacity];
-                _followingQueue = new Action[initialCapacity];
                 _nextCount = 0;
             }
 
@@ -162,6 +177,89 @@ namespace Proto.Promises
                     int newCapcity = capacity * 2;
                     Array.Resize(ref _currentQueue, newCapcity);
                     Array.Resize(ref _nextQueue, newCapcity);
+                }
+
+                _nextQueue[index] = continuation;
+                _nextCount = index + 1;
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal void Process()
+            {
+                // Store the next in a local for iteration, and swap queues.
+                var current = _nextQueue;
+                _nextQueue = _currentQueue;
+                _currentQueue = current;
+
+                int max = _nextCount;
+                _nextCount = 0;
+                for (int i = 0; i < max; ++i)
+                {
+                    current[i].Invoke();
+                }
+                Array.Clear(_currentQueue, 0, max);
+            }
+
+            internal void Clear()
+            {
+                Array.Clear(_currentQueue, 0, _currentQueue.Length);
+                Array.Clear(_nextQueue, 0, _nextQueue.Length);
+                _nextCount = 0;
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        // InstructionProcessor optimized for WaitOneFrame, makes sure the instruction completes in the following frame.
+        internal struct WaitOneFrameProcessor
+        {
+            // We use 3 queues, 1 for the currently executing, another for the next update,
+            // and a third for the following, because WaitOneFrame needs to be able to wait for 2 updates to not be completed later in the same frame.
+            private Action[] _currentQueue;
+            private Action[] _nextQueue;
+            private Action[] _followingQueue;
+            private int _nextCount;
+            private int _followingCount;
+
+            internal WaitOneFrameProcessor(int initialCapacity)
+            {
+                _currentQueue = new Action[initialCapacity];
+                _nextQueue = new Action[initialCapacity];
+                _followingQueue = new Action[initialCapacity];
+                _nextCount = 0;
+                _followingCount = 0;
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            internal void WaitForNext(Action continuation)
+            {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                ValidateIsOnMainThread(2);
+#endif
+                if (Time.frameCount == PromiseBehaviour.s_currentFrame)
+                {
+                    // The update queue already ran this frame, wait for the next.
+                    Next(continuation);
+                }
+                else
+                {
+                    // The update queue has not yet run this frame, so to force it to wait for the next frame
+                    // (instead of resolving later in the same frame), we wait for 2 frame updates.
+                    Following(continuation);
+                }
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            private void Next(Action continuation)
+            {
+                int index = _nextCount;
+                int capacity = _nextQueue.Length;
+                if (index >= capacity)
+                {
+                    int newCapcity = capacity * 2;
+                    Array.Resize(ref _currentQueue, newCapcity);
+                    Array.Resize(ref _nextQueue, newCapcity);
                     Array.Resize(ref _followingQueue, newCapcity);
                 }
 
@@ -170,11 +268,8 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal void WaitForFollowing(Action continuation)
+            private void Following(Action continuation)
             {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ValidateIsOnMainThread(2);
-#endif
                 int index = _followingCount;
                 int capacity = _followingQueue.Length;
                 if (index >= capacity)
@@ -207,6 +302,15 @@ namespace Proto.Promises
                     current[i].Invoke();
                 }
                 Array.Clear(_currentQueue, 0, max);
+            }
+
+            internal void Clear()
+            {
+                Array.Clear(_currentQueue, 0, _currentQueue.Length);
+                Array.Clear(_nextQueue, 0, _nextQueue.Length);
+                Array.Clear(_followingQueue, 0, _followingQueue.Length);
+                _nextCount = 0;
+                _followingCount = 0;
             }
         }
 
@@ -301,7 +405,7 @@ namespace Proto.Promises
                 internal void WaitFor(ref TYieldInstruction instruction)
                 {
                     int capacity;
-                    if (Time.frameCount != PromiseBehaviour.Instance._currentFrame)
+                    if (Time.frameCount != PromiseBehaviour.s_currentFrame)
                     {
                         // This has not yet been processed this frame, wait for the following update.
                         capacity = _followingQueue.Length;
@@ -364,11 +468,19 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 private void Evaluate(ref TYieldInstruction instruction)
                 {
-                    if (!instruction.Evaluate())
+                    // If any instruction throws, we still need to execute the remaining instructions.
+                    try
                     {
-                        // This is hottest path, so we don't do a bounds check here (see WaitFor).
-                        _nextQueue[_nextCount] = instruction;
-                        ++_nextCount;
+                        if (!instruction.Evaluate())
+                        {
+                            // This is hottest path, so we don't do a bounds check here (see WaitFor).
+                            _nextQueue[_nextCount] = instruction;
+                            ++_nextCount;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        UnityEngine.Debug.LogException(e);
                     }
                 }
 
