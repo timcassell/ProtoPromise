@@ -79,52 +79,44 @@ namespace Proto.Promises
 
             private static void IntroSort<TComparer>(Span<T> keys, int depthLimit, TComparer comparer) where TComparer : IComparer<T>
             {
-                int lo = 0;
-                int hi = keys.Length - 1;
-
-                Debug.Assert(comparer != null);
-
-                while (hi > lo)
+                int partitionSize = keys.Length;
+                while (partitionSize > 1)
                 {
-                    int partitionSize = hi - lo + 1;
                     if (partitionSize <= IntrospectiveSortUtilities.IntrosortSizeThreshold)
                     {
-                        if (partitionSize == 1)
-                        {
-                            return;
-                        }
 
                         if (partitionSize == 2)
                         {
-                            SwapIfGreater(keys, comparer, lo, hi);
+                            SwapIfGreater(keys, comparer, 0, 1);
                             return;
                         }
 
                         if (partitionSize == 3)
                         {
-                            SwapIfGreater(keys, comparer, lo, hi - 1);
-                            SwapIfGreater(keys, comparer, lo, hi);
-                            SwapIfGreater(keys, comparer, hi - 1, hi);
+                            SwapIfGreater(keys, comparer, 0, 1);
+                            SwapIfGreater(keys, comparer, 0, 2);
+                            SwapIfGreater(keys, comparer, 1, 2);
                             return;
                         }
 
-                        InsertionSort(keys.Slice(lo, hi - lo), comparer);
+                        InsertionSort(keys.Slice(0, partitionSize), comparer);
                         return;
                     }
 
                     if (depthLimit == 0)
                     {
-                        HeapSort(keys.Slice(lo, hi - lo), comparer);
+                        HeapSort(keys.Slice(0, partitionSize), comparer);
                         return;
                     }
                     depthLimit--;
 
-                    int p = PickPivotAndPartition(keys.Slice(lo, hi - lo), comparer);
+                    int p = PickPivotAndPartition(keys.Slice(0, partitionSize), comparer);
 
                     // Note we've already partitioned around the pivot and do not have to move the pivot again.
-                    var newLo = p + 1;
-                    IntroSort(keys.Slice(newLo, hi - newLo), depthLimit, comparer);
-                    hi = p - 1;
+                    // `keys[(p + 1)..partitionSize]` de-sugared to work in C# 7.
+                    int num = p + 1;
+                    IntroSort(keys.Slice(num, partitionSize - num), depthLimit, comparer);
+                    partitionSize = p;
                 }
             }
 
