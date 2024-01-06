@@ -18,7 +18,7 @@ using UnityEngine;
 namespace Proto.Promises
 {
     /// <summary>
-    /// Yielder used to wait for a yield instruction to complete in the form of a Promise, using Unity's coroutines.
+    /// Helper class containing methods for awaitable common Unity yield instructions and events.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -26,13 +26,14 @@ namespace Proto.Promises
     public static partial class PromiseYielder
     {
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve after the <paramref name="yieldInstruction"/> has completed.
+        /// Runs a <see cref="Coroutine"/> that yields the <paramref name="yieldInstruction"/>, and
+        /// returns a <see cref="Promise"/> that will resolve after the <paramref name="yieldInstruction"/> has completed.
         /// </summary>
         /// <param name="yieldInstruction">The yield instruction to wait for.</param>
-        /// <param name="runner">The <see cref="MonoBehaviour"/> instance on which the <paramref name="yieldInstruction"/> will be ran.</param>
-        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to stop the internal wait and cancel the promise.</param>
+        /// <param name="runner">The <see cref="MonoBehaviour"/> instance on which the <see cref="Coroutine"/> will be ran.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to stop the <see cref="Coroutine"/> and cancel the promise.</param>
         /// <remarks>
-        /// If <paramref name="runner"/> is provided, the coroutine will be ran on it, otherwise it will be ran on the singleton PromiseYielder instance.
+        /// If <paramref name="runner"/> is provided, the <see cref="Coroutine"/> will be ran on it, otherwise it will be ran on singleton instance.
         /// </remarks>
         public static Promise WaitFor(object yieldInstruction, MonoBehaviour runner = null, CancelationToken cancelationToken = default(CancelationToken))
         {
