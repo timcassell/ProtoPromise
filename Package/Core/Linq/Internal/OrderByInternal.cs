@@ -157,23 +157,32 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract class Comparer<TComparer> : OrderedAsyncEnumerableHead<TSource>
-                where TComparer : IComparer<TSource>
+            protected readonly struct IndexComparer<TElement, TComparer> : IComparer<int>
+                where TComparer : IComparer<TElement>
             {
-                protected TComparer _comparer;
+                private readonly OrderedAsyncEnumerableHead<TSource> _head;
+                private readonly TElement[] _elements;
+                private readonly TComparer _comparer;
+
+                internal IndexComparer(OrderedAsyncEnumerableHead<TSource> head, TElement[] elements, TComparer comparer)
+                {
+                    _head = head;
+                    _elements = elements;
+                    _comparer = comparer;
+                }
 
                 [MethodImpl(InlineOption)]
-                private int Compare(TSource[] elements, int index1, int index2)
+                public int Compare(int index1, int index2)
                 {
-                    int result = _comparer.Compare(elements[index1], elements[index2]);
+                    int result = _comparer.Compare(_elements[index1], _elements[index2]);
                     if (result != 0)
                     {
                         return result;
                     }
                     // We iterate over all the nexts instead of recursively, to avoid StackOverflowException in the event of a very long chain.
-                    for (var next = _next; next != null; next = next._next)
+                    for (var next = _head._next; next != null; next = next._next)
                     {
-                        result = _next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().Compare(index1, index2);
+                        result = next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().Compare(index1, index2);
                         if (result != 0)
                         {
                             return result;
@@ -182,34 +191,28 @@ namespace Proto.Promises
                     // Make sure order is stable.
                     return index1 - index2;
                 }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal abstract class Comparer<TComparer> : OrderedAsyncEnumerableHead<TSource>
+                where TComparer : IComparer<TSource>
+            {
+                protected TComparer _comparer;
 
                 protected void Dispose()
                 {
                     _comparer = default;
                     // Dispose ThenBys
                     var next = _next;
+                    _next = null;
                     while (next != null)
                     {
                         var temp = next;
                         next = next._next;
                         temp.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().Dispose();
                     }
-                }
-
-                protected readonly struct IndexComparer : IComparer<int>
-                {
-                    private readonly Comparer<TComparer> _target;
-                    private readonly TSource[] _elements;
-
-                    internal IndexComparer(Comparer<TComparer> target, TSource[] elements)
-                    {
-                        _target = target;
-                        _elements = elements;
-                    }
-
-                    [MethodImpl(InlineOption)]
-                    public int Compare(int x, int y)
-                        => _target.Compare(_elements, x, y);
                 }
             }
 
@@ -284,7 +287,10 @@ namespace Proto.Promises
                                 {
                                     indices._items[i] = i;
                                 }
-                                indices.Span.Sort(new IndexComparer(this, elements._items));
+                                indices.Span.Sort(new IndexComparer<TSource, TComparer>(this, elements._items, _comparer));
+
+                                // Dispose all the keys before yielding back the ordered results.
+                                base.Dispose();
 
                                 for (int i = 0; i < indices._count; ++i)
                                 {
@@ -381,7 +387,10 @@ namespace Proto.Promises
                                 {
                                     indices._items[i] = i;
                                 }
-                                indices.Span.Sort(new IndexComparer(this, elements._items));
+                                indices.Span.Sort(new IndexComparer<TSource, TComparer>(this, elements._items, _comparer));
+
+                                // Dispose all the keys before yielding back the ordered results.
+                                base.Dispose();
 
                                 for (int i = 0; i < indices._count; ++i)
                                 {
@@ -409,56 +418,20 @@ namespace Proto.Promises
             internal abstract class Comparer<TKey, TComparer> : OrderedAsyncEnumerableHead<TSource>
                 where TComparer : IComparer<TKey>
             {
-                protected TempCollectionBuilder<TKey> _tempKeys;
                 protected TComparer _comparer;
-
-                private int Compare(int index1, int index2)
-                {
-                    int result = _comparer.Compare(_tempKeys._items[index1], _tempKeys._items[index2]);
-                    if (result != 0)
-                    {
-                        return result;
-                    }
-                    // We iterate over all the nexts instead of recursively, to avoid StackOverflowException in the event of a very long chain.
-                    for (var next = _next; next != null; next = next._next)
-                    {
-                        result = _next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().Compare(index1, index2);
-                        if (result != 0)
-                        {
-                            return result;
-                        }
-                    }
-                    // Make sure order is stable.
-                    return index1 - index2;
-                }
 
                 protected void Dispose()
                 {
-                    if (_tempKeys._items != null)
-                    {
-                        _tempKeys.Dispose();
-                    }
                     _comparer = default;
                     // Dispose ThenBys
                     var next = _next;
+                    _next = null;
                     while (next != null)
                     {
                         var temp = next;
                         next = next._next;
                         temp.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().Dispose();
                     }
-                }
-
-                protected readonly struct IndexComparer : IComparer<int>
-                {
-                    private readonly Comparer<TKey, TComparer> _target;
-
-                    internal IndexComparer(Comparer<TKey, TComparer> target)
-                        => _target = target;
-
-                    [MethodImpl(InlineOption)]
-                    public int Compare(int x, int y)
-                        => _target.Compare(x, y);
                 }
             }
 
@@ -495,14 +468,12 @@ namespace Proto.Promises
                     return instance;
                 }
 
-                private void ComputeKeysSync(TempCollectionBuilder<TSource> elements)
+                private void ComputeKeys(ReadOnlySpan<TSource> elements, TempCollectionBuilder<TKey> keys)
                 {
-                    var elementsSpan = elements.ReadOnlySpan;
-                    _tempKeys = new TempCollectionBuilder<TKey>(elementsSpan.Length, elementsSpan.Length);
-                    var tempSpan = _tempKeys.Span;
-                    for (int i = 0; i < elementsSpan.Length; ++i)
+                    var keysSpan = keys.Span;
+                    for (int i = 0; i < elements.Length; ++i)
                     {
-                        tempSpan[i] = _keySelector.Invoke(elementsSpan[i]);
+                        keysSpan[i] = _keySelector.Invoke(elements[i]);
                     }
                 }
 
@@ -535,21 +506,26 @@ namespace Proto.Promises
                                 elements.Add(source.Current);
                             } while (await source.MoveNextAsync());
 
-                            ComputeKeysSync(elements);
-                            var next = _next;
-                            while (next != null)
-                            {
-                                await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements);
-                                next = next._next;
-                            }
-
                             using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
                             {
                                 for (int i = 0; i < elements._count; ++i)
                                 {
                                     indices._items[i] = i;
                                 }
-                                indices.Span.Sort(new IndexComparer(this));
+                                using (var keys = new TempCollectionBuilder<TKey>(elements._count, elements._count))
+                                {
+                                    ComputeKeys(elements.ReadOnlySpan, keys);
+                                    var next = _next;
+                                    while (next != null)
+                                    {
+                                        await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements);
+                                        next = next._next;
+                                    }
+                                    indices.Span.Sort(new IndexComparer<TKey, TComparer>(this, keys._items, _comparer));
+                                }
+
+                                // Dispose all the keys before yielding back the ordered results.
+                                base.Dispose();
 
                                 for (int i = 0; i < indices._count; ++i)
                                 {
@@ -603,14 +579,12 @@ namespace Proto.Promises
                     return instance;
                 }
 
-                private void ComputeKeysSync(TempCollectionBuilder<TSource> elements)
+                private void ComputeKeys(ReadOnlySpan<TSource> elements, TempCollectionBuilder<TKey> keys)
                 {
-                    var elementsSpan = elements.ReadOnlySpan;
-                    _tempKeys = new TempCollectionBuilder<TKey>(elementsSpan.Length, elementsSpan.Length);
-                    var tempSpan = _tempKeys.Span;
-                    for (int i = 0; i < elementsSpan.Length; ++i)
+                    var keysSpan = keys.Span;
+                    for (int i = 0; i < elements.Length; ++i)
                     {
-                        tempSpan[i] = _keySelector.Invoke(elementsSpan[i]);
+                        keysSpan[i] = _keySelector.Invoke(elements[i]);
                     }
                 }
 
@@ -644,25 +618,30 @@ namespace Proto.Promises
                                 elements.Add(source.Current);
                             } while (await source.MoveNextAsync());
 
-                            ComputeKeysSync(elements);
-                            var next = _next;
-                            if (next != null)
-                            {
-                                var switchToConfiguredContextAwaiter = source.SwitchToContextReusable();
-                                do
-                                {
-                                    await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
-                                    next = next._next;
-                                } while (next != null);
-                            }
-
                             using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
                             {
                                 for (int i = 0; i < elements._count; ++i)
                                 {
                                     indices._items[i] = i;
                                 }
-                                indices.Span.Sort(new IndexComparer(this));
+                                using (var keys = new TempCollectionBuilder<TKey>(elements._count, elements._count))
+                                {
+                                    ComputeKeys(elements.ReadOnlySpan, keys);
+                                    var next = _next;
+                                    if (next != null)
+                                    {
+                                        var switchToConfiguredContextAwaiter = source.SwitchToContextReusable();
+                                        do
+                                        {
+                                            await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
+                                            next = next._next;
+                                        } while (next != null);
+                                    }
+                                    indices.Span.Sort(new IndexComparer<TKey, TComparer>(this, keys._items, _comparer));
+                                }
+
+                                // Dispose all the keys before yielding back the ordered results.
+                                base.Dispose();
 
                                 for (int i = 0; i < indices._count; ++i)
                                 {
@@ -717,15 +696,6 @@ namespace Proto.Promises
                     return instance;
                 }
 
-                private async Promise ComputeKeys(TempCollectionBuilder<TSource> elements)
-                {
-                    _tempKeys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
-                    for (int i = 0; i < _tempKeys._count; ++i)
-                    {
-                        _tempKeys._items[i] = await _keySelector.Invoke(elements._items[i]);
-                    }
-                }
-
                 new private void Dispose()
                 {
                     base.Dispose();
@@ -755,21 +725,29 @@ namespace Proto.Promises
                                 elements.Add(source.Current);
                             } while (await source.MoveNextAsync());
 
-                            await ComputeKeys(elements);
-                            var next = _next;
-                            while (next != null)
-                            {
-                                await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements);
-                                next = next._next;
-                            }
-
                             using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
                             {
                                 for (int i = 0; i < elements._count; ++i)
                                 {
                                     indices._items[i] = i;
                                 }
-                                indices.Span.Sort(new IndexComparer(this));
+                                using (var keys = new TempCollectionBuilder<TKey>(elements._count, elements._count))
+                                {
+                                    for (int i = 0; i < keys._count; ++i)
+                                    {
+                                        keys._items[i] = await _keySelector.Invoke(elements._items[i]);
+                                    }
+                                    var next = _next;
+                                    while (next != null)
+                                    {
+                                        await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements);
+                                        next = next._next;
+                                    }
+                                    indices.Span.Sort(new IndexComparer<TKey, TComparer>(this, keys._items, _comparer));
+                                }
+
+                                // Dispose all the keys before yielding back the ordered results.
+                                base.Dispose();
 
                                 for (int i = 0; i < indices._count; ++i)
                                 {
@@ -823,16 +801,6 @@ namespace Proto.Promises
                     return instance;
                 }
 
-                private async Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter)
-                {
-                    _tempKeys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
-                    for (int i = 0; i < _tempKeys._count; ++i)
-                    {
-                        await switchToConfiguredContextAwaiter;
-                        _tempKeys._items[i] = await _keySelector.Invoke(elements._items[i]);
-                    }
-                }
-
                 new private void Dispose()
                 {
                     base.Dispose();
@@ -863,22 +831,31 @@ namespace Proto.Promises
                                 elements.Add(source.Current);
                             } while (await source.MoveNextAsync());
 
-                            var switchToConfiguredContextAwaiter = source.SwitchToContextReusable();
-                            await ComputeKeys(elements, switchToConfiguredContextAwaiter);
-                            var next = _next;
-                            while (next != null)
-                            {
-                                await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
-                                next = next._next;
-                            }
-
                             using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
                             {
                                 for (int i = 0; i < elements._count; ++i)
                                 {
                                     indices._items[i] = i;
                                 }
-                                indices.Span.Sort(new IndexComparer(this));
+                                using (var keys = new TempCollectionBuilder<TKey>(elements._count, elements._count))
+                                {
+                                    var switchToConfiguredContextAwaiter = source.SwitchToContextReusable();
+                                    for (int i = 0; i < keys._count; ++i)
+                                    {
+                                        await switchToConfiguredContextAwaiter;
+                                        keys._items[i] = await _keySelector.Invoke(elements._items[i]);
+                                    }
+                                    var next = _next;
+                                    while (next != null)
+                                    {
+                                        await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
+                                        next = next._next;
+                                    }
+                                    indices.Span.Sort(new IndexComparer<TKey, TComparer>(this, keys._items, _comparer));
+                                }
+
+                                // Dispose all the keys before yielding back the ordered results.
+                                base.Dispose();
 
                                 for (int i = 0; i < indices._count; ++i)
                                 {
@@ -917,18 +894,18 @@ namespace Proto.Promises
             internal abstract class Comparer<TKey, TComparer> : OrderedAsyncEnumerableThenBy<TSource>
                 where TComparer : IComparer<TKey>
             {
-                protected TempCollectionBuilder<TKey> _tempKeys;
+                protected TempCollectionBuilder<TKey> _keys;
                 protected TComparer _comparer;
 
                 // The head ensures stability, we don't do it here.
                 internal override sealed int Compare(int index1, int index2)
-                    => _comparer.Compare(_tempKeys._items[index1], _tempKeys._items[index2]);
+                    => _comparer.Compare(_keys._items[index1], _keys._items[index2]);
 
                 internal override void Dispose()
                 {
-                    if (_tempKeys._items != null)
+                    if (_keys._items != null)
                     {
-                        _tempKeys.Dispose();
+                        _keys.Dispose();
                     }
                     _comparer = default;
                 }
@@ -967,8 +944,8 @@ namespace Proto.Promises
                 private void ComputeKeysSync(TempCollectionBuilder<TSource> elements)
                 {
                     var elementsSpan = elements.ReadOnlySpan;
-                    _tempKeys = new TempCollectionBuilder<TKey>(elementsSpan.Length, elementsSpan.Length);
-                    var tempSpan = _tempKeys.Span;
+                    _keys = new TempCollectionBuilder<TKey>(elementsSpan.Length, elementsSpan.Length);
+                    var tempSpan = _keys.Span;
                     for (int i = 0; i < elementsSpan.Length; ++i)
                     {
                         tempSpan[i] = _keySelector.Invoke(elementsSpan[i]);
@@ -1026,20 +1003,20 @@ namespace Proto.Promises
 
                 internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements)
                 {
-                    _tempKeys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
-                    for (int i = 0; i < _tempKeys._count; ++i)
+                    _keys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
+                    for (int i = 0; i < _keys._count; ++i)
                     {
-                        _tempKeys._items[i] = await _keySelector.Invoke(elements._items[i]);
+                        _keys._items[i] = await _keySelector.Invoke(elements._items[i]);
                     }
                 }
 
                 internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter)
                 {
-                    _tempKeys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
-                    for (int i = 0; i < _tempKeys._count; ++i)
+                    _keys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
+                    for (int i = 0; i < _keys._count; ++i)
                     {
                         await switchToConfiguredContextAwaiter;
-                        _tempKeys._items[i] = await _keySelector.Invoke(elements._items[i]);
+                        _keys._items[i] = await _keySelector.Invoke(elements._items[i]);
                     }
                 }
 
