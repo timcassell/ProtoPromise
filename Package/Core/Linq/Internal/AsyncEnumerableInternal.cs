@@ -5,6 +5,7 @@
 #endif
 
 using Proto.Promises.Async.CompilerServices;
+using Proto.Promises.Linq;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -15,6 +16,12 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
+        internal interface IAsyncEnumerable<T>
+        {
+            AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken);
+            bool GetIsValid(int id);
+        }
+
         internal interface IAsyncIterator<T>
         {
             AsyncEnumerableMethod Start(AsyncStreamWriter<T> streamWriter, CancelationToken cancelationToken);
@@ -73,7 +80,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract class AsyncEnumerableBase<T> : PromiseSingleAwait<bool>
+            internal abstract class AsyncEnumerableBase<T> : PromiseSingleAwait<bool>, IAsyncEnumerable<T>
             {
                 internal CancelationToken _cancelationToken;
                 protected T _current;
@@ -119,7 +126,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal virtual Linq.AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
+                public virtual AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
                 {
                     int newId = id + 1;
                     if (Interlocked.CompareExchange(ref _enumerableId, newId, id) != id)
@@ -127,8 +134,10 @@ namespace Proto.Promises
                         throw new InvalidOperationException("AsyncEnumerable.GetAsyncEnumerator: instance is not valid. AsyncEnumerable may only be used once.", GetFormattedStacktrace(2));
                     }
                     _cancelationToken = cancelationToken;
-                    return new Linq.AsyncEnumerator<T>(this, newId);
+                    return new AsyncEnumerator<T>(this, newId);
                 }
+
+                public bool GetIsValid(int id) => id == _enumerableId;
 
                 [MethodImpl(InlineOption)]
                 internal T GetCurrent(int id)
@@ -405,7 +414,7 @@ namespace Proto.Promises
                 // We hook this up directly to the returned promise so we can know when the iteration is complete, and use this for the DisposeAsync promise.
                 iteratorPromise._ref.HookupExistingWaiter(iteratorPromise._id, this);
             }
-        } // class AsyncEnumerableImpl<TValue, TIterator>
+        } // class AsyncEnumerableCreate<TValue, TIterator>
     } // class Internal
 #endif
 } // namespace Proto.Promises

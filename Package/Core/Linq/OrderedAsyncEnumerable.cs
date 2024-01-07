@@ -5,7 +5,6 @@
 #endif
 
 using Proto.Promises.Async.CompilerServices;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -16,22 +15,22 @@ using System.Threading;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER // We only expose AsyncEnumerable where custom async method builders are supported.
+#if CSHARP_7_3_OR_NEWER // We only expose OrderedAsyncEnumerable where custom async method builders are supported.
     /// <summary>
-    /// Exposes an enumerator that provides asynchronous iteration over values of a specified type.
+    /// Exposes an enumerator that provides asynchronous iteration over ordered values of a specified type.
     /// An instance of this type may only be consumed once.
     /// </summary>
-    /// <typeparam name="T">The type of the elements in the async-enumerable sequence.</typeparam>
+    /// <typeparam name="T">The type of the elements in the ordered async-enumerable sequence.</typeparam>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly partial struct AsyncEnumerable<T>
+    public readonly partial struct OrderedAsyncEnumerable<T>
 #if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
         : IAsyncEnumerable<T>
 #endif
     {
-        private readonly Internal.IAsyncEnumerable<T> _target;
-        private readonly int _id;
+        internal readonly Internal.OrderedAsyncEnumerableBase<T> _target;
+        internal readonly int _id;
 
         /// <summary>
         /// Gets whether this instance is valid for enumeration. Once enumeration has begun, this will return false.
@@ -40,10 +39,7 @@ namespace Proto.Promises.Linq
             => _target?.GetIsValid(_id) == true;
 
         [MethodImpl(Internal.InlineOption)]
-        internal AsyncEnumerable(Internal.PromiseRefBase.AsyncEnumerableBase<T> target) : this(target, target.EnumerableId) { }
-
-        [MethodImpl(Internal.InlineOption)]
-        internal AsyncEnumerable(Internal.IAsyncEnumerable<T> target, int id)
+        internal OrderedAsyncEnumerable(Internal.OrderedAsyncEnumerableBase<T> target, int id)
         {
             _target = target;
             _id = id;
@@ -67,7 +63,7 @@ namespace Proto.Promises.Linq
 #endif
 
         /// <summary>
-        /// Sets the <see cref="CancelationToken"/> to be passed to <see cref="AsyncEnumerable{T}.GetAsyncEnumerator(CancelationToken)"/> when iterating.
+        /// Sets the <see cref="CancelationToken"/> to be passed to <see cref="OrderedAsyncEnumerable{T}.GetAsyncEnumerator(CancelationToken)"/> when iterating.
         /// </summary>
         /// <param name="cancelationToken">The cancelation token to use.</param>
         /// <returns>The configured enumerable.</returns>
@@ -102,56 +98,21 @@ namespace Proto.Promises.Linq
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(bool continueOnCapturedContext)
             => continueOnCapturedContext ? ConfigureAwait(SynchronizationContext.Current) : ConfigureAwait(SynchronizationOption.Synchronous);
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
-    }
 
-    /// <summary>
-    /// Supports a simple asynchronous iteration over an async-enumerable sequence.
-    /// An instance of this type may only be consumed once.
-    /// </summary>
-    /// <typeparam name="T">The type of the elements in the async-enumerable sequence.</typeparam>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    public readonly struct AsyncEnumerator<T>
-#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
-        : IAsyncEnumerator<T>
-#endif
-    {
-        internal readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
-        private readonly int _id;
-
+        /// <summary>
+        /// Returns this ordered async-enumerable as a normal <see cref="AsyncEnumerable{T}"/>.
+        /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        internal AsyncEnumerator(Internal.PromiseRefBase.AsyncEnumerableBase<T> target, int id)
-        {
-            _target = target;
-            _id = id;
-        }
+        public AsyncEnumerable<T> AsAsyncEnumerable()
+            => new AsyncEnumerable<T>(_target, _id);
 
         /// <summary>
-        /// Gets the element in the async-enumerable sequence at the current position of the enumerator.
+        /// Casts the ordered async-enumerable to a normal <see cref="AsyncEnumerable{T}"/>.
         /// </summary>
-        public T Current
-        {
-            [MethodImpl(Internal.InlineOption)]
-            get { return _target.GetCurrent(_id); }
-        }
-
-        /// <summary>
-        /// Advances the enumerator asynchronously to the next element of the async-enumerable sequence.
-        /// </summary>
-        public Promise<bool> MoveNextAsync()
-            => _target.MoveNextAsync(_id);
-
-        /// <summary>
-        /// Asynchronously releases resources used by this enumerator.
-        /// </summary>
-        public Promise DisposeAsync()
-            => _target.DisposeAsync(_id);
-
-#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
-        System.Threading.Tasks.ValueTask<bool> IAsyncEnumerator<T>.MoveNextAsync() => MoveNextAsync();
-        System.Threading.Tasks.ValueTask IAsyncDisposable.DisposeAsync() => DisposeAsync();
-#endif
+        /// <param name="oae">The ordered async-enumerable to be casted.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public static implicit operator AsyncEnumerable<T>(OrderedAsyncEnumerable<T> oae)
+            => oae.AsAsyncEnumerable();
     }
 #endif // CSHARP_7_3_OR_NEWER
 }

@@ -130,7 +130,7 @@ namespace Proto.Promises.Collections
             return list;
         }
 
-#if NETCOREAPP || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER // We only expose Span where it's supported natively (no nuget package required).
+#if NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER || NET47_OR_GREATER
         /// <summary>
         /// Gets a readonly view of the elements.
         /// </summary>
@@ -140,10 +140,10 @@ namespace Proto.Promises.Collections
             get
             {
                 ValidateAccess();
-                return _target.Span;
+                return _target.ReadOnlySpan;
             }
         }
-#endif // NETCOREAPP || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER
+#endif // NETCOREAPP || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NET47_OR_GREATER
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
         private void ValidateIndex(int index)
@@ -319,21 +319,21 @@ namespace Proto.Promises.Collections
             _count = -1;
         }
 
-#if NETCOREAPP || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER
         [MethodImpl(Internal.InlineOption)]
         internal void CopyTo(T[] array, int arrayIndex)
-            => Span.CopyTo(array.AsSpan(arrayIndex));
+            => ReadOnlySpan.CopyTo(array.AsSpan(arrayIndex));
 
-        internal ReadOnlySpan<T> Span
+        internal Span<T> Span
+        {
+            [MethodImpl(Internal.InlineOption)]
+            get { return new Span<T>(_items, 0, _count); }
+        }
+
+        internal ReadOnlySpan<T> ReadOnlySpan
         {
             [MethodImpl(Internal.InlineOption)]
             get { return new ReadOnlySpan<T>(_items, 0, _count); }
         }
-#else
-        [MethodImpl(Internal.InlineOption)]
-        internal void CopyTo(T[] array, int arrayIndex)
-            => Array.Copy(_items, 0, array, arrayIndex, _count);
-#endif // NETCOREAPP || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER
     }
 #endif // CSHARP_7_3_OR_NEWER
 } // namespace Proto.Promises.Collections
