@@ -74,6 +74,8 @@ namespace Proto.Promises
                 new GameObject("Proto.Promises.Unity.PromiseBehaviour")
                     .AddComponent<PromiseBehaviour>()
                     .SetSynchronizationContext();
+
+                StaticInit();
             }
 
             private void SetSynchronizationContext()
@@ -108,6 +110,7 @@ namespace Proto.Promises
                 Init();
             }
 
+            static partial void StaticInit();
             partial void Init();
 
             // This should never be called except when the application is shutting down.
@@ -159,7 +162,11 @@ namespace Proto.Promises
                     // This implementation minimizes it to 1 extra stack frame always (because `Update()` is called from Unity's side, and they do not include their own internal stack traces).
                     UnityEngine.Debug.LogException(_currentlyReportingExceptions.Dequeue());
                 }
+
+                ProcessUpdate();
             }
+
+            partial void ProcessUpdate();
 
             private void OnApplicationQuit()
             {

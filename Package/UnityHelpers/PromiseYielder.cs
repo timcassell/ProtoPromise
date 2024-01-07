@@ -18,7 +18,7 @@ using UnityEngine;
 namespace Proto.Promises
 {
     /// <summary>
-    /// Yielder used to wait for a yield instruction to complete in the form of a Promise, using Unity's coroutines.
+    /// Helper class containing methods for awaitable common Unity yield instructions and events.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -26,13 +26,14 @@ namespace Proto.Promises
     public static partial class PromiseYielder
     {
         /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve after the <paramref name="yieldInstruction"/> has completed.
+        /// Runs a <see cref="Coroutine"/> that yields the <paramref name="yieldInstruction"/>, and
+        /// returns a <see cref="Promise"/> that will resolve after the <paramref name="yieldInstruction"/> has completed.
         /// </summary>
         /// <param name="yieldInstruction">The yield instruction to wait for.</param>
-        /// <param name="runner">The <see cref="MonoBehaviour"/> instance on which the <paramref name="yieldInstruction"/> will be ran.</param>
-        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to stop the internal wait and cancel the promise.</param>
+        /// <param name="runner">The <see cref="MonoBehaviour"/> instance on which the <see cref="Coroutine"/> will be ran.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to stop the <see cref="Coroutine"/> and cancel the promise.</param>
         /// <remarks>
-        /// If <paramref name="runner"/> is provided, the coroutine will be ran on it, otherwise it will be ran on the singleton PromiseYielder instance.
+        /// If <paramref name="runner"/> is provided, the <see cref="Coroutine"/> will be ran on it, otherwise it will be ran on singleton instance.
         /// </remarks>
         public static Promise WaitFor(object yieldInstruction, MonoBehaviour runner = null, CancelationToken cancelationToken = default(CancelationToken))
         {
@@ -57,6 +58,7 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Instructions.WaitOneFrameAwaiter"/> that will complete after 1 frame.
         /// </summary>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitOneFrameAwaiter WaitOneFrame()
         {
             return new Instructions.WaitOneFrameAwaiter();
@@ -66,6 +68,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Instructions.WaitFramesInstruction"/> that will complete after the specified number of frames have passed.
         /// </summary>
         /// <param name="frames">How many frames to wait for.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitFramesInstruction WaitForFrames(uint frames)
         {
             return new Instructions.WaitFramesInstruction(frames);
@@ -76,6 +79,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="frames">How many frames to wait for.</param>
         /// <param name="progressToken">The progress token that will have progress reported to it.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitFramesWithProgressInstruction WaitForFrames(uint frames, ProgressToken progressToken)
         {
             return new Instructions.WaitFramesWithProgressInstruction(frames, progressToken);
@@ -85,6 +89,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Instructions.WaitTimeInstruction"/> that will complete after the specified timespan has passed, using scaled time.
         /// </summary>
         /// <param name="time">How much time to wait for.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitTimeInstruction WaitForTime(TimeSpan time)
         {
             return new Instructions.WaitTimeInstruction(time);
@@ -95,6 +100,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="time">How much time to wait for.</param>
         /// <param name="progressToken">The progress token that will have progress reported to it.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitTimeWithProgressInstruction WaitForTime(TimeSpan time, ProgressToken progressToken)
         {
             return new Instructions.WaitTimeWithProgressInstruction(time, progressToken);
@@ -104,6 +110,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Instructions.WaitRealTimeInstruction"/> that will complete after the specified timespan has passed, using unscaled, real time.
         /// </summary>
         /// <param name="time">How much time to wait for.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitRealTimeInstruction WaitForRealTime(TimeSpan time)
         {
             return new Instructions.WaitRealTimeInstruction(time);
@@ -114,6 +121,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="time">How much time to wait for.</param>
         /// <param name="progressToken">The progress token that will have progress reported to it.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitRealTimeWithProgressInstruction WaitForRealTime(TimeSpan time, ProgressToken progressToken)
         {
             return new Instructions.WaitRealTimeWithProgressInstruction(time, progressToken);
@@ -123,6 +131,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Instructions.WaitUntilInstruction"/> that will complete when the supplied delegate returns true.
         /// </summary>
         /// <param name="predicate">The function that will be ran to determine if the wait should complete.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitUntilInstruction WaitUntil(Func<bool> predicate)
         {
             return new Instructions.WaitUntilInstruction(predicate);
@@ -133,6 +142,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="captureValue">The value that will be passed to the delegate.</param>
         /// <param name="predicate">The function that will be ran to determine if the wait should complete.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitUntilInstruction<TCapture> WaitUntil<TCapture>(TCapture captureValue, Func<TCapture, bool> predicate)
         {
             return new Instructions.WaitUntilInstruction<TCapture>(captureValue, predicate);
@@ -142,6 +152,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Instructions.WaitWhileInstruction"/> that will complete when the supplied delegate returns false.
         /// </summary>
         /// <param name="predicate">The function that will be ran to determine if the wait should complete.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitWhileInstruction WaitWhile(Func<bool> predicate)
         {
             ValidateArgument(predicate, "predicate", 1);
@@ -153,6 +164,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="captureValue">The value that will be passed to the delegate.</param>
         /// <param name="predicate">The function that will be ran to determine if the wait should complete.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitWhileInstruction<TCapture> WaitWhile<TCapture>(TCapture captureValue, Func<TCapture, bool> predicate)
         {
             ValidateArgument(predicate, "predicate", 1);
@@ -163,6 +175,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Instructions.WaitAsyncOperationInstruction"/> that will complete when the <paramref name="asyncOperation"/> is complete.
         /// </summary>
         /// <param name="asyncOperation">The async operation to wait for.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitAsyncOperationInstruction WaitForAsyncOperation(UnityEngine.AsyncOperation asyncOperation)
         {
             return new Instructions.WaitAsyncOperationInstruction(asyncOperation);
@@ -173,25 +186,46 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="asyncOperation">The async operation to wait for.</param>
         /// <param name="progressToken">The progress token that will have progress reported to it.</param>
+        [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitAsyncOperationWithProgressInstruction WaitForAsyncOperation(UnityEngine.AsyncOperation asyncOperation, ProgressToken progressToken)
         {
             return new Instructions.WaitAsyncOperationWithProgressInstruction(asyncOperation, progressToken);
         }
 
         /// <summary>
-        /// Returns a <see cref="Instructions.WaitOnceAwaiter"/> that will complete at the next end of frame.
+        /// Returns a <see cref="Instructions.WaitForUpdateAwaiter"/> that will complete at the next Update.
         /// </summary>
-        public static Instructions.WaitOnceAwaiter WaitForEndOfFrame()
+        [MethodImpl(Internal.InlineOption)]
+        public static Instructions.WaitForUpdateAwaiter WaitForUpdate()
         {
-            return new Instructions.WaitOnceAwaiter(InternalHelper.PromiseBehaviour.Instance._endOfFrameProcessor);
+            return new Instructions.WaitForUpdateAwaiter();
         }
 
         /// <summary>
-        /// Returns a <see cref="Instructions.WaitOnceAwaiter"/> that will complete at the next fixed update.
+        /// Returns a <see cref="Instructions.WaitForLateUpdateAwaiter"/> that will complete at the next LateUpdate.
         /// </summary>
-        public static Instructions.WaitOnceAwaiter WaitForFixedUpdate()
+        [MethodImpl(Internal.InlineOption)]
+        public static Instructions.WaitForLateUpdateAwaiter WaitForLateUpdate()
         {
-            return new Instructions.WaitOnceAwaiter(InternalHelper.PromiseBehaviour.Instance._fixedUpdateProcessor);
+            return new Instructions.WaitForLateUpdateAwaiter();
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Instructions.WaitForFixedUpdateAwaiter"/> that will complete at the next FixedUpdate.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        public static Instructions.WaitForFixedUpdateAwaiter WaitForFixedUpdate()
+        {
+            return new Instructions.WaitForFixedUpdateAwaiter();
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Instructions.WaitForEndOfFrameAwaiter"/> that will complete at the next EndOfFrame.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        public static Instructions.WaitForEndOfFrameAwaiter WaitForEndOfFrame()
+        {
+            return new Instructions.WaitForEndOfFrameAwaiter();
         }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -248,26 +282,15 @@ namespace Proto.Promises
                 public void OnCompleted(Action continuation)
                 {
                     ValidateArgument(continuation, "continuation", 1);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE // We don't need to validate in RELEASE because WaitForNext calls Time.frameCount which already has validation.
                     InternalHelper.ValidateIsOnMainThread(1);
 #endif
-                    var behaviour = InternalHelper.PromiseBehaviour.Instance;
-                    if (Time.frameCount == behaviour._currentFrame)
-                    {
-                        // The update queue already ran this frame, wait for the next.
-                        behaviour._oneFrameProcessor.WaitForNext(continuation);
-                        return;
-                    }
-
-                    // The update queue has not yet run this frame, so to force it to wait for the next frame
-                    // (instead of resolving later in the same frame), we wait for 2 frame updates.
-                    behaviour._oneFrameProcessor.WaitForFollowing(continuation);
+                    InternalHelper.PromiseBehaviour.s_waitOneFrameProcessor.WaitForNext(continuation);
                 }
 
                 /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
                 /// <param name="continuation">The action to invoke when the await operation completes.</param>
                 /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
-                /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
                 [MethodImpl(Internal.InlineOption)]
                 public void UnsafeOnCompleted(Action continuation)
                 {
@@ -399,7 +422,7 @@ namespace Proto.Promises
                     unchecked
                     {
                         // Multiplier is 0 on the first call, 1 on all future calls.
-                        _current += InternalHelper.PromiseBehaviour.Instance._deltaTime * _multiplier;
+                        _current += InternalHelper.PromiseBehaviour.s_deltaTime * _multiplier;
                         _multiplier = 1f;
                         // If the target is <= 0, progress will be NaN or +/-Infinity. But it's fine because it won't be reported.
                         progress = (float) (_current / _target);
@@ -451,7 +474,7 @@ namespace Proto.Promises
                     unchecked
                     {
                         // Multiplier is 0 on the first call, 1 on all future calls.
-                        _current += InternalHelper.PromiseBehaviour.Instance._deltaTime * _multiplier;
+                        _current += InternalHelper.PromiseBehaviour.s_deltaTime * _multiplier;
                         // _target could be <= zero, which would result in NaN or +/-Infinity progress if we divided it, so we have to check for it first.
                         if (_current >= _target)
                         {
@@ -806,25 +829,18 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Awaiter used to wait for a context (FixedUpdate, EndOfFrame).
+            /// Awaiter used to wait for the next Update.
             /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            public struct WaitOnceAwaiter : PromiseYieldExtensions.IAwaiter<WaitOnceAwaiter>
+            public struct WaitForUpdateAwaiter : PromiseYieldExtensions.IAwaiter<WaitForUpdateAwaiter>
             {
-                private readonly InternalHelper.SingleInstructionProcessor _processor;
-
-                internal WaitOnceAwaiter(InternalHelper.SingleInstructionProcessor processor)
-                {
-                    _processor = processor;
-                }
-
                 /// <summary>Gets the awaiter for this.</summary>
                 /// <remarks>This method is intended for compiler use rather than use directly in code.</remarks>
                 /// <returns>this</returns>
                 [MethodImpl(Internal.InlineOption)]
-                public WaitOnceAwaiter GetAwaiter()
+                public WaitForUpdateAwaiter GetAwaiter()
                 {
                     return this;
                 }
@@ -854,13 +870,177 @@ namespace Proto.Promises
                 {
                     ValidateArgument(continuation, "continuation", 1);
                     InternalHelper.ValidateIsOnMainThread(1);
-                    _processor.WaitForNext(continuation);
+                    InternalHelper.PromiseBehaviour.s_updateProcessor.WaitForNext(continuation);
                 }
 
                 /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
                 /// <param name="continuation">The action to invoke when the await operation completes.</param>
                 /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
-                /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
+                [MethodImpl(Internal.InlineOption)]
+                public void UnsafeOnCompleted(Action continuation)
+                {
+                    OnCompleted(continuation);
+                }
+            }
+
+            /// <summary>
+            /// Awaiter used to wait for the next LateUpdate.
+            /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            public struct WaitForLateUpdateAwaiter : PromiseYieldExtensions.IAwaiter<WaitForLateUpdateAwaiter>
+            {
+                /// <summary>Gets the awaiter for this.</summary>
+                /// <remarks>This method is intended for compiler use rather than use directly in code.</remarks>
+                /// <returns>this</returns>
+                [MethodImpl(Internal.InlineOption)]
+                public WaitForLateUpdateAwaiter GetAwaiter()
+                {
+                    return this;
+                }
+
+                /// <summary>Gets whether the operation is complete.</summary>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+                /// <returns>false</returns>
+                public bool IsCompleted
+                {
+                    [MethodImpl(Internal.InlineOption)]
+                    get { return false; }
+                }
+
+                /// <summary>Called after the operation has completed.</summary>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+                [MethodImpl(Internal.InlineOption)]
+                public void GetResult()
+                {
+                    // Do nothing.
+                }
+
+                /// <summary>Schedules the continuation.</summary>
+                /// <param name="continuation">The action to invoke when the operation completes.</param>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+                [MethodImpl(Internal.InlineOption)]
+                public void OnCompleted(Action continuation)
+                {
+                    ValidateArgument(continuation, "continuation", 1);
+                    InternalHelper.ValidateIsOnMainThread(1);
+                    InternalHelper.PromiseBehaviour.s_lateUpdateProcessor.WaitForNext(continuation);
+                }
+
+                /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
+                /// <param name="continuation">The action to invoke when the await operation completes.</param>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+                [MethodImpl(Internal.InlineOption)]
+                public void UnsafeOnCompleted(Action continuation)
+                {
+                    OnCompleted(continuation);
+                }
+            }
+
+            /// <summary>
+            /// Awaiter used to wait for the next FixedUpdate.
+            /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            public struct WaitForFixedUpdateAwaiter : PromiseYieldExtensions.IAwaiter<WaitForFixedUpdateAwaiter>
+            {
+                /// <summary>Gets the awaiter for this.</summary>
+                /// <remarks>This method is intended for compiler use rather than use directly in code.</remarks>
+                /// <returns>this</returns>
+                [MethodImpl(Internal.InlineOption)]
+                public WaitForFixedUpdateAwaiter GetAwaiter()
+                {
+                    return this;
+                }
+
+                /// <summary>Gets whether the operation is complete.</summary>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+                /// <returns>false</returns>
+                public bool IsCompleted
+                {
+                    [MethodImpl(Internal.InlineOption)]
+                    get { return false; }
+                }
+
+                /// <summary>Called after the operation has completed.</summary>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+                [MethodImpl(Internal.InlineOption)]
+                public void GetResult()
+                {
+                    // Do nothing.
+                }
+
+                /// <summary>Schedules the continuation.</summary>
+                /// <param name="continuation">The action to invoke when the operation completes.</param>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+                [MethodImpl(Internal.InlineOption)]
+                public void OnCompleted(Action continuation)
+                {
+                    ValidateArgument(continuation, "continuation", 1);
+                    InternalHelper.ValidateIsOnMainThread(1);
+                    InternalHelper.PromiseBehaviour.s_fixedUpdateProcessor.WaitForNext(continuation);
+                }
+
+                /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
+                /// <param name="continuation">The action to invoke when the await operation completes.</param>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+                [MethodImpl(Internal.InlineOption)]
+                public void UnsafeOnCompleted(Action continuation)
+                {
+                    OnCompleted(continuation);
+                }
+            }
+
+            /// <summary>
+            /// Awaiter used to wait for the next EndOfFrame.
+            /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            public struct WaitForEndOfFrameAwaiter : PromiseYieldExtensions.IAwaiter<WaitForEndOfFrameAwaiter>
+            {
+                /// <summary>Gets the awaiter for this.</summary>
+                /// <remarks>This method is intended for compiler use rather than use directly in code.</remarks>
+                /// <returns>this</returns>
+                [MethodImpl(Internal.InlineOption)]
+                public WaitForEndOfFrameAwaiter GetAwaiter()
+                {
+                    return this;
+                }
+
+                /// <summary>Gets whether the operation is complete.</summary>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+                /// <returns>false</returns>
+                public bool IsCompleted
+                {
+                    [MethodImpl(Internal.InlineOption)]
+                    get { return false; }
+                }
+
+                /// <summary>Called after the operation has completed.</summary>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+                [MethodImpl(Internal.InlineOption)]
+                public void GetResult()
+                {
+                    // Do nothing.
+                }
+
+                /// <summary>Schedules the continuation.</summary>
+                /// <param name="continuation">The action to invoke when the operation completes.</param>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
+                [MethodImpl(Internal.InlineOption)]
+                public void OnCompleted(Action continuation)
+                {
+                    ValidateArgument(continuation, "continuation", 1);
+                    InternalHelper.ValidateIsOnMainThread(1);
+                    InternalHelper.PromiseBehaviour.s_endOfFrameProcessor.WaitForNext(continuation);
+                }
+
+                /// <summary>Schedules the continuation onto the <see cref="Promise"/> associated with this <see cref="PromiseAwaiterVoid"/>.</summary>
+                /// <param name="continuation">The action to invoke when the await operation completes.</param>
+                /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
                 [MethodImpl(Internal.InlineOption)]
                 public void UnsafeOnCompleted(Action continuation)
                 {
