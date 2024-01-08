@@ -20,16 +20,17 @@ namespace Proto.Promises
 #endif
         internal static class GroupByHelper<TKey, TElement>
         {
-            private readonly struct GroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
+            private readonly struct GroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly AsyncEnumerator<TSource> _asyncEnumerator;
                 private readonly TKeySelector _keySelector;
                 private readonly TElementSelector _elementSelector;
-                private readonly IEqualityComparer<TKey> _comparer;
+                private readonly TEqualityComparer _comparer;
 
-                internal GroupByKeyElementSyncIterator(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TElementSelector elementSelector, IEqualityComparer<TKey> comparer)
+                internal GroupByKeyElementSyncIterator(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TElementSelector elementSelector, TEqualityComparer comparer)
                 {
                     _asyncEnumerator = asyncEnumerator;
                     _keySelector = keySelector;
@@ -50,7 +51,7 @@ namespace Proto.Promises
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement> lookup = default;
+                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _asyncEnumerator.MoveNextAsync())
@@ -59,7 +60,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement>(_comparer, true);
+                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
                         do
                         {
                             var item = _asyncEnumerator.Current;
@@ -91,27 +92,29 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TSource, TKeySelector, TElementSelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
                 AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector>>.GetOrCreate(
-                    new GroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector>(asyncEnumerator, keySelector, elementSelector, comparer));
+                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>>.GetOrCreate(
+                    new GroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>(asyncEnumerator, keySelector, elementSelector, comparer));
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
-            private readonly struct GroupByKeySyncIterator<TKeySelector> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
+            private readonly struct GroupByKeySyncIterator<TKeySelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TElement, TKey>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly AsyncEnumerator<TElement> _asyncEnumerator;
                 private readonly TKeySelector _keySelector;
-                private readonly IEqualityComparer<TKey> _comparer;
+                private readonly TEqualityComparer _comparer;
 
-                internal GroupByKeySyncIterator(AsyncEnumerator<TElement> asyncEnumerator, TKeySelector keySelector, IEqualityComparer<TKey> comparer)
+                internal GroupByKeySyncIterator(AsyncEnumerator<TElement> asyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
                 {
                     _asyncEnumerator = asyncEnumerator;
                     _keySelector = keySelector;
@@ -131,7 +134,7 @@ namespace Proto.Promises
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement> lookup = default;
+                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _asyncEnumerator.MoveNextAsync())
@@ -140,7 +143,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement>(_comparer, true);
+                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
                         do
                         {
                             var item = _asyncEnumerator.Current;
@@ -169,27 +172,29 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TKeySelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TKeySelector, TEqualityComparer>(
                 AsyncEnumerator<TElement> asyncEnumerator,
                 TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TElement, TKey>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeySyncIterator<TKeySelector>>.GetOrCreate(
-                    new GroupByKeySyncIterator<TKeySelector>(asyncEnumerator, keySelector, comparer));
+                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeySyncIterator<TKeySelector, TEqualityComparer>>.GetOrCreate(
+                    new GroupByKeySyncIterator<TKeySelector, TEqualityComparer>(asyncEnumerator, keySelector, comparer));
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
-            private readonly struct GroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
+            private readonly struct GroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly AsyncEnumerator<TSource> _asyncEnumerator;
                 private readonly TKeySelector _keySelector;
                 private readonly TElementSelector _elementSelector;
-                private readonly IEqualityComparer<TKey> _comparer;
+                private readonly TEqualityComparer _comparer;
 
-                internal GroupByKeyElementAsyncIterator(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TElementSelector elementSelector, IEqualityComparer<TKey> comparer)
+                internal GroupByKeyElementAsyncIterator(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TElementSelector elementSelector, TEqualityComparer comparer)
                 {
                     _asyncEnumerator = asyncEnumerator;
                     _keySelector = keySelector;
@@ -210,7 +215,7 @@ namespace Proto.Promises
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement> lookup = default;
+                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _asyncEnumerator.MoveNextAsync())
@@ -219,7 +224,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement>(_comparer, true);
+                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
                         do
                         {
                             var item = _asyncEnumerator.Current;
@@ -251,27 +256,29 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TSource, TKeySelector, TElementSelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
                 AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector>>.GetOrCreate(
-                    new GroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector>(asyncEnumerator, keySelector, elementSelector, comparer));
+                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>>.GetOrCreate(
+                    new GroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>(asyncEnumerator, keySelector, elementSelector, comparer));
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
-            private readonly struct GroupByKeyAsyncIterator<TKeySelector> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
+            private readonly struct GroupByKeyAsyncIterator<TKeySelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly AsyncEnumerator<TElement> _asyncEnumerator;
                 private readonly TKeySelector _keySelector;
-                private readonly IEqualityComparer<TKey> _comparer;
+                private readonly TEqualityComparer _comparer;
 
-                internal GroupByKeyAsyncIterator(AsyncEnumerator<TElement> asyncEnumerator, TKeySelector keySelector, IEqualityComparer<TKey> comparer)
+                internal GroupByKeyAsyncIterator(AsyncEnumerator<TElement> asyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
                 {
                     _asyncEnumerator = asyncEnumerator;
                     _keySelector = keySelector;
@@ -291,7 +298,7 @@ namespace Proto.Promises
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement> lookup = default;
+                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _asyncEnumerator.MoveNextAsync())
@@ -300,7 +307,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement>(_comparer, true);
+                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
                         do
                         {
                             var item = _asyncEnumerator.Current;
@@ -329,27 +336,29 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TKeySelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TKeySelector, TEqualityComparer>(
                 AsyncEnumerator<TElement> asyncEnumerator,
                 TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeyAsyncIterator<TKeySelector>>.GetOrCreate(
-                    new GroupByKeyAsyncIterator<TKeySelector>(asyncEnumerator, keySelector, comparer));
+                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeyAsyncIterator<TKeySelector, TEqualityComparer>>.GetOrCreate(
+                    new GroupByKeyAsyncIterator<TKeySelector, TEqualityComparer>(asyncEnumerator, keySelector, comparer));
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
-            private readonly struct ConfiguredGroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
+            private readonly struct ConfiguredGroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredAsyncEnumerator;
                 private readonly TKeySelector _keySelector;
                 private readonly TElementSelector _elementSelector;
-                private readonly IEqualityComparer<TKey> _comparer;
+                private readonly TEqualityComparer _comparer;
 
-                internal ConfiguredGroupByKeyElementSyncIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TKeySelector keySelector, TElementSelector elementSelector, IEqualityComparer<TKey> comparer)
+                internal ConfiguredGroupByKeyElementSyncIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TKeySelector keySelector, TElementSelector elementSelector, TEqualityComparer comparer)
                 {
                     _configuredAsyncEnumerator = configuredAsyncEnumerator;
                     _keySelector = keySelector;
@@ -370,7 +379,7 @@ namespace Proto.Promises
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement> lookup = default;
+                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _configuredAsyncEnumerator.MoveNextAsync())
@@ -379,7 +388,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement>(_comparer, true);
+                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
                         do
                         {
                             var item = _configuredAsyncEnumerator.Current;
@@ -412,27 +421,29 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TSource, TKeySelector, TElementSelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
                 ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector>>.GetOrCreate(
-                    new ConfiguredGroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector>(configuredAsyncEnumerator, keySelector, elementSelector, comparer));
+                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>>.GetOrCreate(
+                    new ConfiguredGroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>(configuredAsyncEnumerator, keySelector, elementSelector, comparer));
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
-            private readonly struct ConfiguredGroupByKeySyncIterator<TKeySelector> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
+            private readonly struct ConfiguredGroupByKeySyncIterator<TKeySelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TElement, TKey>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly ConfiguredAsyncEnumerable<TElement>.Enumerator _configuredAsyncEnumerator;
                 private readonly TKeySelector _keySelector;
-                private readonly IEqualityComparer<TKey> _comparer;
+                private readonly TEqualityComparer _comparer;
 
-                internal ConfiguredGroupByKeySyncIterator(ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator, TKeySelector keySelector, IEqualityComparer<TKey> comparer)
+                internal ConfiguredGroupByKeySyncIterator(ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
                 {
                     _configuredAsyncEnumerator = configuredAsyncEnumerator;
                     _keySelector = keySelector;
@@ -452,7 +463,7 @@ namespace Proto.Promises
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement> lookup = default;
+                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _configuredAsyncEnumerator.MoveNextAsync())
@@ -461,7 +472,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement>(_comparer, true);
+                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
                         do
                         {
                             var item = _configuredAsyncEnumerator.Current;
@@ -491,27 +502,29 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TKeySelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TKeySelector, TEqualityComparer>(
                 ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TElement, TKey>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeySyncIterator<TKeySelector>>.GetOrCreate(
-                    new ConfiguredGroupByKeySyncIterator<TKeySelector>(configuredAsyncEnumerator, keySelector, comparer));
+                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeySyncIterator<TKeySelector, TEqualityComparer>>.GetOrCreate(
+                    new ConfiguredGroupByKeySyncIterator<TKeySelector, TEqualityComparer>(configuredAsyncEnumerator, keySelector, comparer));
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
-            private readonly struct ConfiguredGroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
+            private readonly struct ConfiguredGroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredAsyncEnumerator;
                 private readonly TKeySelector _keySelector;
                 private readonly TElementSelector _elementSelector;
-                private readonly IEqualityComparer<TKey> _comparer;
+                private readonly TEqualityComparer _comparer;
 
-                internal ConfiguredGroupByKeyElementAsyncIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TKeySelector keySelector, TElementSelector elementSelector, IEqualityComparer<TKey> comparer)
+                internal ConfiguredGroupByKeyElementAsyncIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TKeySelector keySelector, TElementSelector elementSelector, TEqualityComparer comparer)
                 {
                     _configuredAsyncEnumerator = configuredAsyncEnumerator;
                     _keySelector = keySelector;
@@ -532,7 +545,7 @@ namespace Proto.Promises
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement> lookup = default;
+                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _configuredAsyncEnumerator.MoveNextAsync())
@@ -541,7 +554,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement>(_comparer, true);
+                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
                         do
                         {
                             var item = _configuredAsyncEnumerator.Current;
@@ -577,27 +590,29 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TSource, TKeySelector, TElementSelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
                 ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector>>.GetOrCreate(
-                    new ConfiguredGroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector>(configuredAsyncEnumerator, keySelector, elementSelector, comparer));
+                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>>.GetOrCreate(
+                    new ConfiguredGroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>(configuredAsyncEnumerator, keySelector, elementSelector, comparer));
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
-            private readonly struct ConfiguredGroupByKeyAsyncIterator<TKeySelector> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
+            private readonly struct ConfiguredGroupByKeyAsyncIterator<TKeySelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly ConfiguredAsyncEnumerable<TElement>.Enumerator _configuredAsyncEnumerator;
                 private readonly TKeySelector _keySelector;
-                private readonly IEqualityComparer<TKey> _comparer;
+                private readonly TEqualityComparer _comparer;
 
-                internal ConfiguredGroupByKeyAsyncIterator(ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator, TKeySelector keySelector, IEqualityComparer<TKey> comparer)
+                internal ConfiguredGroupByKeyAsyncIterator(ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
                 {
                     _configuredAsyncEnumerator = configuredAsyncEnumerator;
                     _keySelector = keySelector;
@@ -617,7 +632,7 @@ namespace Proto.Promises
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement> lookup = default;
+                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _configuredAsyncEnumerator.MoveNextAsync())
@@ -626,7 +641,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement>(_comparer, true);
+                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
                         do
                         {
                             var item = _configuredAsyncEnumerator.Current;
@@ -656,14 +671,15 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TKeySelector>(
+            internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TKeySelector, TEqualityComparer>(
                 ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeyAsyncIterator<TKeySelector>>.GetOrCreate(
-                    new ConfiguredGroupByKeyAsyncIterator<TKeySelector>(configuredAsyncEnumerator, keySelector, comparer));
+                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeyAsyncIterator<TKeySelector, TEqualityComparer>>.GetOrCreate(
+                    new ConfiguredGroupByKeyAsyncIterator<TKeySelector, TEqualityComparer>(configuredAsyncEnumerator, keySelector, comparer));
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
         } // class Lookup<TKey, TElement>

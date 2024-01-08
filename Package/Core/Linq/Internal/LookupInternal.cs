@@ -24,17 +24,18 @@ namespace Proto.Promises
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         // Implemented in a struct so that GroupBy doesn't need to allocate the Lookup class.
-        internal struct LookupImpl<TKey, TElement> : IDisposable
+        internal struct LookupImpl<TKey, TElement, TEqualityComparer> : IDisposable
+            where TEqualityComparer : IEqualityComparer<TKey>
         {
-            private readonly IEqualityComparer<TKey> _comparer;
+            private readonly TEqualityComparer _comparer;
             internal Grouping<TKey, TElement> _lastGrouping;
             // We use a TempCollectionBuilder to handle renting from ArrayPool.
             internal TempCollectionBuilder<Grouping<TKey, TElement>> _groupings;
             internal int _count;
 
-            internal LookupImpl(IEqualityComparer<TKey> comparer, bool willBeDisposed)
+            internal LookupImpl(TEqualityComparer comparer, bool willBeDisposed)
             {
-                _comparer = comparer ?? EqualityComparer<TKey>.Default;
+                _comparer = comparer;
                 _lastGrouping = null;
                 // The smallest array returned from ArrayPool by default is 16, so we use 15 count to start instead of 7 that System.Linq uses.
                 // The actual array length could be larger than the requested size, so we make sure the count is what we expect.
@@ -148,11 +149,12 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class Lookup<TKey, TElement> : ILookup<TKey, TElement>
+        private sealed class Lookup<TKey, TElement, TEqualityComparer> : ILookup<TKey, TElement>
+            where TEqualityComparer : IEqualityComparer<TKey>
         {
-            private readonly LookupImpl<TKey, TElement> _impl;
+            private readonly LookupImpl<TKey, TElement, TEqualityComparer> _impl;
 
-            private Lookup(LookupImpl<TKey, TElement> impl)
+            internal Lookup(LookupImpl<TKey, TElement, TEqualityComparer> impl)
             {
                 _impl = impl;
             }
@@ -188,16 +190,23 @@ namespace Proto.Promises
                     } while (g != _impl._lastGrouping);
                 }
             }
+        }
 
-            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TSource, TKeySelector, TElementSelector>(
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal static class LookupHelper<TKey, TElement>
+        {
+            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
                 AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
 
                 try
                 {
@@ -216,16 +225,17 @@ namespace Proto.Promises
                     await asyncEnumerator.DisposeAsync();
                 }
 
-                return new Lookup<TKey, TElement>(lookup);
+                return new Lookup<TKey, TElement, TEqualityComparer>(lookup);
             }
 
-            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TKeySelector>(
+            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TKeySelector, TEqualityComparer>(
                 AsyncEnumerator<TElement> asyncEnumerator,
                 TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TElement, TKey>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
 
                 try
                 {
@@ -241,18 +251,19 @@ namespace Proto.Promises
                     await asyncEnumerator.DisposeAsync();
                 }
 
-                return new Lookup<TKey, TElement>(lookup);
+                return new Lookup<TKey, TElement, TEqualityComparer>(lookup);
             }
 
-            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TSource, TKeySelector, TElementSelector>(
+            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
                 AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
 
                 try
                 {
@@ -271,16 +282,17 @@ namespace Proto.Promises
                     await asyncEnumerator.DisposeAsync();
                 }
 
-                return new Lookup<TKey, TElement>(lookup);
+                return new Lookup<TKey, TElement, TEqualityComparer>(lookup);
             }
 
-            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TKeySelector>(
+            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TKeySelector, TEqualityComparer>(
                 AsyncEnumerator<TElement> asyncEnumerator,
                 TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
 
                 try
                 {
@@ -296,18 +308,19 @@ namespace Proto.Promises
                     await asyncEnumerator.DisposeAsync();
                 }
 
-                return new Lookup<TKey, TElement>(lookup);
+                return new Lookup<TKey, TElement, TEqualityComparer>(lookup);
             }
 
-            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TSource, TKeySelector, TElementSelector>(
+            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
                 ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
 
                 try
                 {
@@ -326,16 +339,17 @@ namespace Proto.Promises
                     await configuredAsyncEnumerator.DisposeAsync();
                 }
 
-                return new Lookup<TKey, TElement>(lookup);
+                return new Lookup<TKey, TElement, TEqualityComparer>(lookup);
             }
 
-            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TKeySelector>(
+            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAsync<TKeySelector, TEqualityComparer>(
                 ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TElement, TKey>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
 
                 try
                 {
@@ -351,18 +365,19 @@ namespace Proto.Promises
                     await configuredAsyncEnumerator.DisposeAsync();
                 }
 
-                return new Lookup<TKey, TElement>(lookup);
+                return new Lookup<TKey, TElement, TEqualityComparer>(lookup);
             }
 
-            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TSource, TKeySelector, TElementSelector>(
+            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
                 ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
 
                 try
                 {
@@ -384,16 +399,17 @@ namespace Proto.Promises
                     await configuredAsyncEnumerator.DisposeAsync();
                 }
 
-                return new Lookup<TKey, TElement>(lookup);
+                return new Lookup<TKey, TElement, TEqualityComparer>(lookup);
             }
 
-            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TKeySelector>(
+            internal static async Promise<ILookup<TKey, TElement>> GetOrCreateAwaitAsync<TKeySelector, TEqualityComparer>(
                 ConfiguredAsyncEnumerable<TElement>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
+                TEqualityComparer comparer)
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
+                where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
 
                 try
                 {
@@ -409,7 +425,7 @@ namespace Proto.Promises
                     await configuredAsyncEnumerator.DisposeAsync();
                 }
 
-                return new Lookup<TKey, TElement>(lookup);
+                return new Lookup<TKey, TElement, TEqualityComparer>(lookup);
             }
         } // class Lookup<TKey, TElement>
     } // class Internal

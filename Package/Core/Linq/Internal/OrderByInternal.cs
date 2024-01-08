@@ -1032,11 +1032,12 @@ namespace Proto.Promises
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         // We use a reverse comparer and generics so that we don't need an extra branch on every comparison.
-        internal readonly struct ReverseComparer<TKey> : IComparer<TKey>
+        internal readonly struct ReverseComparer<TKey, TComparer> : IComparer<TKey>
+            where TComparer : IComparer<TKey>
         {
-            private readonly IComparer<TKey> _comparer;
+            private readonly TComparer _comparer;
 
-            internal ReverseComparer(IComparer<TKey> comparer)
+            internal ReverseComparer(TComparer comparer)
                 => _comparer = comparer;
 
             [MethodImpl(InlineOption)]

@@ -21,17 +21,24 @@ namespace Proto.Promises.Linq
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         public static OrderedAsyncEnumerable<TSource> Order<TSource>(this AsyncEnumerable<TSource> source)
-            => Order(source, comparer: null);
+            => Order(source, Comparer<TSource>.Default);
 
         /// <summary>
         /// Sorts the elements of an async-enumerable sequence in ascending order according to a specified comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        public static OrderedAsyncEnumerable<TSource> Order<TSource>(this AsyncEnumerable<TSource> source, IComparer<TSource> comparer)
-            => Internal.OrderHelper<TSource>.Order(source.GetAsyncEnumerator(), comparer ?? Comparer<TSource>.Default);
+        /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> Order<TSource, TComparer>(this AsyncEnumerable<TSource> source, TComparer comparer)
+            where TComparer : IComparer<TSource>
+        {
+            ValidateArgument(comparer, nameof(comparer), 1);
+
+            return Internal.OrderHelper<TSource>.Order(source.GetAsyncEnumerator(), comparer);
+        }
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in ascending order.
@@ -40,17 +47,24 @@ namespace Proto.Promises.Linq
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         public static OrderedAsyncEnumerable<TSource> Order<TSource>(this ConfiguredAsyncEnumerable<TSource> configuredSource)
-            => Order(configuredSource, comparer: null);
+            => Order(configuredSource, Comparer<TSource>.Default);
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in ascending order according to a specified comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        public static OrderedAsyncEnumerable<TSource> Order<TSource>(this ConfiguredAsyncEnumerable<TSource> configuredSource, IComparer<TSource> comparer)
-            => Internal.OrderHelper<TSource>.Order(configuredSource.GetAsyncEnumerator(), comparer ?? Comparer<TSource>.Default);
+        /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> Order<TSource, TComparer>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TComparer comparer)
+            where TComparer : IComparer<TSource>
+        {
+            ValidateArgument(comparer, nameof(comparer), 1);
+
+            return Internal.OrderHelper<TSource>.Order(configuredSource.GetAsyncEnumerator(), comparer);
+        }
 
         /// <summary>
         /// Sorts the elements of an async-enumerable sequence in descending order.
@@ -59,17 +73,24 @@ namespace Proto.Promises.Linq
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         public static OrderedAsyncEnumerable<TSource> OrderDescending<TSource>(this AsyncEnumerable<TSource> source)
-            => OrderDescending(source, comparer: null);
+            => OrderDescending(source, Comparer<TSource>.Default);
 
         /// <summary>
         /// Sorts the elements of an async-enumerable sequence in descending order according to a specified comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        public static OrderedAsyncEnumerable<TSource> OrderDescending<TSource>(this AsyncEnumerable<TSource> source, IComparer<TSource> comparer)
-            => Internal.OrderHelper<TSource>.Order(source.GetAsyncEnumerator(), new Internal.ReverseComparer<TSource>(comparer ?? Comparer<TSource>.Default));
+        /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderDescending<TSource, TComparer>(this AsyncEnumerable<TSource> source, TComparer comparer)
+            where TComparer : IComparer<TSource>
+        {
+            ValidateArgument(comparer, nameof(comparer), 1);
+
+            return Internal.OrderHelper<TSource>.Order(source.GetAsyncEnumerator(), new Internal.ReverseComparer<TSource, TComparer>(comparer));
+        }
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in descending order.
@@ -78,17 +99,24 @@ namespace Proto.Promises.Linq
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         public static OrderedAsyncEnumerable<TSource> OrderDescending<TSource>(this ConfiguredAsyncEnumerable<TSource> configuredSource)
-            => OrderDescending(configuredSource, comparer: null);
+            => OrderDescending(configuredSource, Comparer<TSource>.Default);
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in descending order according to a specified comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        public static OrderedAsyncEnumerable<TSource> OrderDescending<TSource>(this ConfiguredAsyncEnumerable<TSource> configuredSource, IComparer<TSource> comparer)
-            => Internal.OrderHelper<TSource>.Order(configuredSource.GetAsyncEnumerator(), new Internal.ReverseComparer<TSource>(comparer ?? Comparer<TSource>.Default));
+        /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderDescending<TSource, TComparer>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TComparer comparer)
+            where TComparer : IComparer<TSource>
+        {
+            ValidateArgument(comparer, nameof(comparer), 1);
+
+            return Internal.OrderHelper<TSource>.Order(configuredSource.GetAsyncEnumerator(), new Internal.ReverseComparer<TSource, TComparer>(comparer));
+        }
         #endregion Order
 
         #region OrderBy
@@ -104,7 +132,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector)
-            => OrderBy(source, keySelector, comparer: null);
+            => OrderBy(source, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of an async-enumerable sequence in ascending order according to a specified key selector function.
@@ -121,26 +149,29 @@ namespace Proto.Promises.Linq
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector)
-            => OrderBy(source, keyCaptureValue, keySelector, comparer: null);
+            => OrderBy(source, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of an async-enumerable sequence in ascending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <param name="keySelector">A function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey, TComparer>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -149,21 +180,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey, TComparer>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -178,7 +212,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector)
-            => OrderBy<TSource, TKey>(source, keySelector, comparer: null);
+            => OrderBy<TSource, TKey, IComparer<TKey>>(source, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of an async-enumerable sequence in ascending order according to a specified key selector function.
@@ -195,26 +229,29 @@ namespace Proto.Promises.Linq
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
-            => OrderBy<TSource, TCaptureKey, TKey>(source, keyCaptureValue, keySelector, comparer: null);
+            => OrderBy<TSource, TCaptureKey, TKey, IComparer<TKey>>(source, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of an async-enumerable sequence in ascending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey, TComparer>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -223,21 +260,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey, TComparer>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -252,7 +292,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector)
-            => OrderBy(configuredSource, keySelector, comparer: null);
+            => OrderBy(configuredSource, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in ascending order according to a specified key selector function.
@@ -269,26 +309,29 @@ namespace Proto.Promises.Linq
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector)
-            => OrderBy(configuredSource, keyCaptureValue, keySelector, comparer: null);
+            => OrderBy(configuredSource, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in ascending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <param name="keySelector">A function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey, TComparer>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -297,21 +340,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey, TComparer>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -326,7 +372,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector)
-            => OrderBy<TSource, TKey>(configuredSource, keySelector, comparer: null);
+            => OrderBy<TSource, TKey, IComparer<TKey>>(configuredSource, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in ascending order according to a specified key selector function.
@@ -343,26 +389,29 @@ namespace Proto.Promises.Linq
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
-            => OrderBy<TSource, TCaptureKey, TKey>(configuredSource, keyCaptureValue, keySelector, comparer: null);
+            => OrderBy<TSource, TCaptureKey, TKey, IComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in ascending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey, TComparer>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -371,21 +420,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey, TComparer>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -400,7 +452,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector)
-            => OrderByDescending(source, keySelector, comparer: null);
+            => OrderByDescending(source, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of an async-enumerable sequence in descending order according to a specified key selector function.
@@ -417,26 +469,29 @@ namespace Proto.Promises.Linq
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector)
-            => OrderByDescending(source, keyCaptureValue, keySelector, comparer: null);
+            => OrderByDescending(source, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of an async-enumerable sequence in descending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <param name="keySelector">A function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey, TComparer>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -445,21 +500,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey, TComparer>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -474,7 +532,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector)
-            => OrderByDescending<TSource, TKey>(source, keySelector, comparer: null);
+            => OrderByDescending<TSource, TKey, IComparer<TKey>>(source, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of an async-enumerable sequence in descending order according to a specified key selector function.
@@ -491,26 +549,29 @@ namespace Proto.Promises.Linq
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
-            => OrderByDescending<TSource, TCaptureKey, TKey>(source, keyCaptureValue, keySelector, comparer: null);
+            => OrderByDescending<TSource, TCaptureKey, TKey, IComparer<TKey>>(source, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of an async-enumerable sequence in descending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey, TComparer>(
             this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -519,21 +580,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An async-enumerable sequence to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey, TComparer>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -548,7 +612,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector)
-            => OrderByDescending(configuredSource, keySelector, comparer: null);
+            => OrderByDescending(configuredSource, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in descending order according to a specified key selector function.
@@ -565,26 +629,29 @@ namespace Proto.Promises.Linq
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector)
-            => OrderByDescending(configuredSource, keyCaptureValue, keySelector, comparer: null);
+            => OrderByDescending(configuredSource, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in descending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <param name="keySelector">A function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey, TComparer>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -593,21 +660,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey, TComparer>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -622,7 +692,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector)
-            => OrderByDescending<TSource, TKey>(configuredSource, keySelector, comparer: null);
+            => OrderByDescending<TSource, TKey, IComparer<TKey>>(configuredSource, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in descending order according to a specified key selector function.
@@ -639,26 +709,29 @@ namespace Proto.Promises.Linq
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
-            => OrderByDescending<TSource, TCaptureKey, TKey>(configuredSource, keyCaptureValue, keySelector, comparer: null);
+            => OrderByDescending<TSource, TCaptureKey, TKey, IComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Sorts the elements of a configured async-enumerable sequence in descending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey, TComparer>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -667,21 +740,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey, TComparer>(
             this ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
         #endregion OrderBy
 
@@ -698,7 +774,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> ThenBy<TSource, TKey>(
             this OrderedAsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector)
-            => ThenBy(source, keySelector, comparer: null);
+            => ThenBy(source, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Performs a subsequent ordering of the elements in an async-enumerable sequence in ascending order according to a specified key selector function.
@@ -715,26 +791,29 @@ namespace Proto.Promises.Linq
             this OrderedAsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector)
-            => ThenBy(source, keyCaptureValue, keySelector, comparer: null);
+            => ThenBy(source, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Performs a subsequent ordering of the elements in an async-enumerable sequence in ascending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An ordered async-enumerable sequence that contains elements to sort.</param>
         /// <param name="keySelector">A function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> ThenBy<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> ThenBy<TSource, TKey, TComparer>(
             this OrderedAsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -743,21 +822,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An ordered async-enumerable sequence that contains elements to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> ThenBy<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> ThenBy<TSource, TCaptureKey, TKey, TComparer>(
             this OrderedAsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -772,7 +854,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> ThenBy<TSource, TKey>(
             this OrderedAsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector)
-            => ThenBy<TSource, TKey>(source, keySelector, comparer: null);
+            => ThenBy<TSource, TKey, IComparer<TKey>>(source, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Performs a subsequent ordering of the elements in an async-enumerable sequence in ascending order according to a specified key selector function.
@@ -789,26 +871,29 @@ namespace Proto.Promises.Linq
             this OrderedAsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
-            => ThenBy<TSource, TCaptureKey, TKey>(source, keyCaptureValue, keySelector, comparer: null);
+            => ThenBy<TSource, TCaptureKey, TKey, IComparer<TKey>>(source, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Performs a subsequent ordering of the elements in an async-enumerable sequence in ascending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An ordered async-enumerable sequence that contains elements to sort.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> ThenBy<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> ThenBy<TSource, TKey, TComparer>(
             this OrderedAsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -817,21 +902,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An ordered async-enumerable sequence that contains elements to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> ThenBy<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> ThenBy<TSource, TCaptureKey, TKey, TComparer>(
             this OrderedAsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer ?? Comparer<TKey>.Default);
+            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -846,7 +934,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> ThenByDescending<TSource, TKey>(
             this OrderedAsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector)
-            => ThenByDescending(source, keySelector, comparer: null);
+            => ThenByDescending(source, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Performs a subsequent ordering of the elements in an async-enumerable sequence in descending order according to a specified key selector function.
@@ -863,26 +951,29 @@ namespace Proto.Promises.Linq
             this OrderedAsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector)
-            => ThenByDescending(source, keyCaptureValue, keySelector, comparer: null);
+            => ThenByDescending(source, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Performs a subsequent ordering of the elements in an async-enumerable sequence in descending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An ordered async-enumerable sequence that contains elements to sort.</param>
         /// <param name="keySelector">A function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> ThenByDescending<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> ThenByDescending<TSource, TKey, TComparer>(
             this OrderedAsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -891,21 +982,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An ordered async-enumerable sequence that contains elements to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> ThenByDescending<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> ThenByDescending<TSource, TCaptureKey, TKey, TComparer>(
             this OrderedAsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -920,7 +1014,7 @@ namespace Proto.Promises.Linq
         public static OrderedAsyncEnumerable<TSource> ThenByDescending<TSource, TKey>(
             this OrderedAsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector)
-            => ThenByDescending<TSource, TKey>(source, keySelector, comparer: null);
+            => ThenByDescending<TSource, TKey, IComparer<TKey>>(source, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Performs a subsequent ordering of the elements in an async-enumerable sequence in descending order according to a specified key selector function.
@@ -937,26 +1031,29 @@ namespace Proto.Promises.Linq
             this OrderedAsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
-            => ThenByDescending<TSource, TCaptureKey, TKey>(source, keyCaptureValue, keySelector, comparer: null);
+            => ThenByDescending<TSource, TCaptureKey, TKey, IComparer<TKey>>(source, keyCaptureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
         /// Performs a subsequent ordering of the elements in an async-enumerable sequence in descending order according to a specified key selector function, and a comparer.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An ordered async-enumerable sequence that contains elements to sort.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> ThenByDescending<TSource, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> ThenByDescending<TSource, TKey, TComparer>(
             this OrderedAsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -965,21 +1062,24 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCaptureKey">The type of the captured value that will be passed to the key selector.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by the <paramref name="keySelector"/>.</typeparam>
+        /// <typeparam name="TComparer">The type of the comparer.</typeparam>
         /// <param name="source">An ordered async-enumerable sequence that contains elements to sort.</param>
         /// <param name="keyCaptureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An asynchronous function to extract a key from an element.</param>
         /// <param name="comparer">A comparer to compare keys. If null, the default comparer will be used.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> ThenByDescending<TSource, TCaptureKey, TKey>(
+        /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
+        public static OrderedAsyncEnumerable<TSource> ThenByDescending<TSource, TCaptureKey, TKey, TComparer>(
             this OrderedAsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            IComparer<TKey> comparer)
+            TComparer comparer)
+            where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey>(comparer ?? Comparer<TKey>.Default));
+            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
         #endregion ThenBy
     }
