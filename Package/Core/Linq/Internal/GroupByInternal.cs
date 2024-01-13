@@ -41,12 +41,6 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncFromNeverStarted()
-                {
-                    return _asyncEnumerator.DisposeAsync();
-                }
-
                 public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
@@ -127,12 +121,6 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncFromNeverStarted()
-                {
-                    return _asyncEnumerator.DisposeAsync();
-                }
-
                 public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
@@ -209,12 +197,6 @@ namespace Proto.Promises
                     _keySelector = keySelector;
                     _elementSelector = elementSelector;
                     _comparer = comparer;
-                }
-
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncFromNeverStarted()
-                {
-                    return _asyncEnumerator.DisposeAsync();
                 }
 
                 public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
@@ -297,12 +279,6 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncFromNeverStarted()
-                {
-                    return _asyncEnumerator.DisposeAsync();
-                }
-
                 public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
@@ -379,12 +355,6 @@ namespace Proto.Promises
                     _keySelector = keySelector;
                     _elementSelector = elementSelector;
                     _comparer = comparer;
-                }
-
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncFromNeverStarted()
-                {
-                    return _configuredAsyncEnumerator.DisposeAsync();
                 }
 
                 public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
@@ -468,12 +438,6 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncFromNeverStarted()
-                {
-                    return _configuredAsyncEnumerator.DisposeAsync();
-                }
-
                 public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
@@ -551,12 +515,6 @@ namespace Proto.Promises
                     _keySelector = keySelector;
                     _elementSelector = elementSelector;
                     _comparer = comparer;
-                }
-
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncFromNeverStarted()
-                {
-                    return _configuredAsyncEnumerator.DisposeAsync();
                 }
 
                 public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
@@ -641,12 +599,6 @@ namespace Proto.Promises
                     _configuredAsyncEnumerator = configuredAsyncEnumerator;
                     _keySelector = keySelector;
                     _comparer = comparer;
-                }
-
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncFromNeverStarted()
-                {
-                    return _configuredAsyncEnumerator.DisposeAsync();
                 }
 
                 public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
