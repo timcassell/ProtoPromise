@@ -638,154 +638,153 @@ namespace ProtoPromiseTests.APIs.Linq
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
-        // TODO: add tests when Select extension is added.
-        //[Test]
-        //public void Join11(
-        //    [Values] bool configured,
-        //    [Values] bool async,
-        //    [Values] bool captureOuterKey,
-        //    [Values] bool captureInnerKey,
-        //    [Values] bool withComparer)
-        //{
-        //    Promise.Run(async () =>
-        //    {
-        //        var customers = new List<Customer>
-        //        {
-        //            new Customer { CustomerId = "ALFKI" },
-        //            new Customer { CustomerId = "ANANT" },
-        //            new Customer { CustomerId = "FISSA" },
-        //        };
+        [Test]
+        public void Join11(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureOuterKey,
+            [Values] bool captureInnerKey,
+            [Values] bool withComparer)
+        {
+            Promise.Run(async () =>
+            {
+                var customers = new List<Customer>
+                {
+                    new Customer { CustomerId = "ALFKI" },
+                    new Customer { CustomerId = "ANANT" },
+                    new Customer { CustomerId = "FISSA" },
+                };
 
-        //        var orders = new List<Order>
-        //        {
-        //            new Order { OrderId = 1, CustomerId = "ALFKI"},
-        //            new Order { OrderId = 2, CustomerId = "ALFKI"},
-        //            new Order { OrderId = 3, CustomerId = "ALFKI"},
-        //            new Order { OrderId = 4, CustomerId = "FISSA"},
-        //            new Order { OrderId = 5, CustomerId = "FISSA"},
-        //            new Order { OrderId = 6, CustomerId = "FISSA"},
-        //        };
+                var orders = new List<Order>
+                {
+                    new Order { OrderId = 1, CustomerId = "ALFKI"},
+                    new Order { OrderId = 2, CustomerId = "ALFKI"},
+                    new Order { OrderId = 3, CustomerId = "ALFKI"},
+                    new Order { OrderId = 4, CustomerId = "FISSA"},
+                    new Order { OrderId = 5, CustomerId = "FISSA"},
+                    new Order { OrderId = 6, CustomerId = "FISSA"},
+                };
 
-        //        var asyncEnumerator = customers.ToAsyncEnumerable()
-        //            .Join(orders.ToAsyncEnumerable(), configured, async, c => c.CustomerId, captureOuterKey, o => o.CustomerId, captureInnerKey, equalityComparer: GetDefaultOrNullComparer<string>(withComparer))
-        //            .Select((c, o) => new CustomerOrder { CustomerId = c.CustomerId, OrderId = o.OrderId })
-        //            .GetAsyncEnumerator();
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 1 }, asyncEnumerator.Current);
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 2 }, asyncEnumerator.Current);
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 3 }, asyncEnumerator.Current);
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 1 }, asyncEnumerator.Current);
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 2 }, asyncEnumerator.Current);
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 3 }, asyncEnumerator.Current);
-        //        Assert.False(await asyncEnumerator.MoveNextAsync());
-        //        await asyncEnumerator.DisposeAsync();
-        //    }, SynchronizationOption.Synchronous)
-        //        .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        //}
+                var asyncEnumerator = customers.ToAsyncEnumerable()
+                    .Join(orders.ToAsyncEnumerable(), configured, async, c => c.CustomerId, captureOuterKey, o => o.CustomerId, captureInnerKey, equalityComparer: GetDefaultOrNullComparer<string>(withComparer))
+                    .Select(x => new CustomerOrder { CustomerId = x.Outer.CustomerId, OrderId = x.Inner.OrderId })
+                    .GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 1 }, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 2 }, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 3 }, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 4 }, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 5 }, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 6 }, asyncEnumerator.Current);
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
 
-        //[Test]
-        //public void Join12(
-        //    [Values] bool configured,
-        //    [Values] bool async,
-        //    [Values] bool captureOuterKey,
-        //    [Values] bool captureInnerKey,
-        //    [Values] bool withComparer)
-        //{
-        //    Promise.Run(async () =>
-        //    {
-        //        var customers = new List<Customer>
-        //        {
-        //            new Customer { CustomerId = "ANANT" },
-        //            new Customer { CustomerId = "ALFKI" },
-        //            new Customer { CustomerId = "FISSA" }
-        //        };
+        [Test]
+        public void Join12(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureOuterKey,
+            [Values] bool captureInnerKey,
+            [Values] bool withComparer)
+        {
+            Promise.Run(async () =>
+            {
+                var customers = new List<Customer>
+                {
+                    new Customer { CustomerId = "ANANT" },
+                    new Customer { CustomerId = "ALFKI" },
+                    new Customer { CustomerId = "FISSA" }
+                };
 
-        //        var orders = new List<Order>
-        //        {
-        //            new Order { OrderId = 1, CustomerId = "ALFKI"},
-        //            new Order { OrderId = 2, CustomerId = "ALFKI"},
-        //            new Order { OrderId = 3, CustomerId = "ALFKI"},
-        //            new Order { OrderId = 4, CustomerId = "FISSA"},
-        //            new Order { OrderId = 5, CustomerId = "FISSA"},
-        //            new Order { OrderId = 6, CustomerId = "FISSA"},
-        //        };
+                var orders = new List<Order>
+                {
+                    new Order { OrderId = 1, CustomerId = "ALFKI"},
+                    new Order { OrderId = 2, CustomerId = "ALFKI"},
+                    new Order { OrderId = 3, CustomerId = "ALFKI"},
+                    new Order { OrderId = 4, CustomerId = "FISSA"},
+                    new Order { OrderId = 5, CustomerId = "FISSA"},
+                    new Order { OrderId = 6, CustomerId = "FISSA"},
+                };
 
-        //        var asyncEnumerator = customers.ToAsyncEnumerable()
-        //            .Join(orders.ToAsyncEnumerable(), configured, async, c => c.CustomerId, captureOuterKey, o => o.CustomerId, captureInnerKey, equalityComparer: GetDefaultOrNullComparer<string>(withComparer))
-        //            .Select((c, o) => new CustomerOrder { CustomerId = c.CustomerId, OrderId = o.OrderId })
-        //            .GetAsyncEnumerator();
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 1 }, asyncEnumerator.Current);
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 2 }, asyncEnumerator.Current);
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 3 }, asyncEnumerator.Current);
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 1 }, asyncEnumerator.Current);
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 2 }, asyncEnumerator.Current);
-        //        Assert.True(await asyncEnumerator.MoveNextAsync());
-        //        Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 3 }, asyncEnumerator.Current);
-        //        Assert.False(await asyncEnumerator.MoveNextAsync());
-        //        await asyncEnumerator.DisposeAsync();
-        //    }, SynchronizationOption.Synchronous)
-        //        .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        //}
+                var asyncEnumerator = customers.ToAsyncEnumerable()
+                    .Join(orders.ToAsyncEnumerable(), configured, async, c => c.CustomerId, captureOuterKey, o => o.CustomerId, captureInnerKey, equalityComparer: GetDefaultOrNullComparer<string>(withComparer))
+                    .Select(x => new CustomerOrder { CustomerId = x.Outer.CustomerId, OrderId = x.Inner.OrderId })
+                    .GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 1 }, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 2 }, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "ALFKI", OrderId = 3 }, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 4 }, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 5 }, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(new CustomerOrder { CustomerId = "FISSA", OrderId = 6 }, asyncEnumerator.Current);
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
 
-        //public class Customer
-        //{
-        //    public string CustomerId { get; set; }
-        //}
+        public class Customer
+        {
+            public string CustomerId { get; set; }
+        }
 
-        //public class Order
-        //{
-        //    public int OrderId { get; set; }
-        //    public string CustomerId { get; set; }
-        //}
+        public class Order
+        {
+            public int OrderId { get; set; }
+            public string CustomerId { get; set; }
+        }
 
-        //public class CustomerOrder : IEquatable<CustomerOrder>
-        //{
-        //    public int OrderId { get; set; }
-        //    public string CustomerId { get; set; }
+        public class CustomerOrder : IEquatable<CustomerOrder>
+        {
+            public int OrderId { get; set; }
+            public string CustomerId { get; set; }
 
-        //    public bool Equals(CustomerOrder other)
-        //    {
-        //        if (other is null) return false;
-        //        if (ReferenceEquals(this, other)) return true;
-        //        return OrderId == other.OrderId && string.Equals(CustomerId, other.CustomerId);
-        //    }
+            public bool Equals(CustomerOrder other)
+            {
+                if (other is null) return false;
+                if (ReferenceEquals(this, other)) return true;
+                return OrderId == other.OrderId && string.Equals(CustomerId, other.CustomerId);
+            }
 
-        //    public override bool Equals(object obj)
-        //    {
-        //        if (obj is null) return false;
-        //        if (ReferenceEquals(this, obj)) return true;
-        //        if (obj.GetType() != GetType()) return false;
-        //        return Equals((CustomerOrder) obj);
-        //    }
+            public override bool Equals(object obj)
+            {
+                if (obj is null) return false;
+                if (ReferenceEquals(this, obj)) return true;
+                if (obj.GetType() != GetType()) return false;
+                return Equals((CustomerOrder) obj);
+            }
 
-        //    public override int GetHashCode()
-        //    {
-        //        unchecked
-        //        {
-        //            return (OrderId * 397) ^ (CustomerId != null ? CustomerId.GetHashCode() : 0);
-        //        }
-        //    }
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return (OrderId * 397) ^ (CustomerId != null ? CustomerId.GetHashCode() : 0);
+                }
+            }
 
-        //    public static bool operator ==(CustomerOrder left, CustomerOrder right)
-        //    {
-        //        return Equals(left, right);
-        //    }
+            public static bool operator ==(CustomerOrder left, CustomerOrder right)
+            {
+                return Equals(left, right);
+            }
 
-        //    public static bool operator !=(CustomerOrder left, CustomerOrder right)
-        //    {
-        //        return !Equals(left, right);
-        //    }
-        //}
+            public static bool operator !=(CustomerOrder left, CustomerOrder right)
+            {
+                return !Equals(left, right);
+            }
+        }
     }
 }
 
