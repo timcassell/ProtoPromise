@@ -261,7 +261,8 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var asyncEnumerator = new[] { 0, 1, 2 }.ToAsyncEnumerable()
-                    .Select(configured, async, x => 1 / x, captureValue)
+                    // IL2CPP crashes on integer divide by zero, so throw the exception manually instead.
+                    .Select(configured, async, x => { if (x == 0) throw new DivideByZeroException(); return 1 / x; }, captureValue)
                     .GetAsyncEnumerator();
                 await TestHelper.AssertThrowsAsync<DivideByZeroException>(() => asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
@@ -278,7 +279,8 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var asyncEnumerator = new[] { 8, 5, 7 }.ToAsyncEnumerable()
-                    .Select(configured, async, (x, i) => 1 / i, captureValue)
+                    // IL2CPP crashes on integer divide by zero, so throw the exception manually instead.
+                    .Select(configured, async, (x, i) => { if (i == 0) throw new DivideByZeroException(); return 1 / i; }, captureValue)
                     .GetAsyncEnumerator();
                 await TestHelper.AssertThrowsAsync<DivideByZeroException>(() => asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
