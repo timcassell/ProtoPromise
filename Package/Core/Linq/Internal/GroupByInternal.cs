@@ -20,6 +20,9 @@ namespace Proto.Promises
 #endif
         internal static class GroupByHelper<TKey, TElement>
         {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private readonly struct GroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
@@ -106,6 +109,9 @@ namespace Proto.Promises
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private readonly struct GroupByKeySyncIterator<TKeySelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TElement, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
@@ -184,6 +190,9 @@ namespace Proto.Promises
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private readonly struct GroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
@@ -270,6 +279,9 @@ namespace Proto.Promises
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private readonly struct GroupByKeyAsyncIterator<TKeySelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
@@ -348,6 +360,9 @@ namespace Proto.Promises
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private readonly struct ConfiguredGroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TSource, TKey>
                 where TElementSelector : IFunc<TSource, TElement>
@@ -435,6 +450,9 @@ namespace Proto.Promises
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private readonly struct ConfiguredGroupByKeySyncIterator<TKeySelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TElement, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
@@ -514,6 +532,9 @@ namespace Proto.Promises
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private readonly struct ConfiguredGroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TSource, Promise<TKey>>
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
@@ -604,6 +625,9 @@ namespace Proto.Promises
                 return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private readonly struct ConfiguredGroupByKeyAsyncIterator<TKeySelector, TEqualityComparer> : IAsyncIterator<Linq.Grouping<TKey, TElement>>
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
