@@ -5,6 +5,7 @@
 #endif
 
 using Proto.Promises.Async.CompilerServices;
+using Proto.Promises.Collections;
 using Proto.Promises.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,12 +18,12 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal static class JoinHelper<TKey>
+        internal static class GroupJoinHelper<TKey>
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private readonly struct JoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer> : IAsyncIterator<(TOuter Outer, TInner Inner)>
+            private readonly struct GroupJoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer> : IAsyncIterator<(TOuter Outer, TempCollection<TInner> InnerElements)>
                 where TOuterKeySelector : IFunc<TOuter, TKey>
                 where TInnerKeySelector : IFunc<TInner, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
@@ -33,7 +34,7 @@ namespace Proto.Promises
                 private readonly TInnerKeySelector _innerKeySelector;
                 private readonly TEqualityComparer _comparer;
 
-                internal JoinSyncIterator(AsyncEnumerator<TOuter> outerAsyncEnumerator,
+                internal GroupJoinSyncIterator(AsyncEnumerator<TOuter> outerAsyncEnumerator,
                     AsyncEnumerator<TInner> innerAsyncEnumerator,
                     TOuterKeySelector outerKeySelector,
                     TInnerKeySelector innerKeySelector,
@@ -46,7 +47,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
+                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TempCollection<TInner> InnerElements)> writer, CancelationToken cancelationToken)
                 {
                     // The enumerators were retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -55,13 +56,14 @@ namespace Proto.Promises
 
                     // We could do await Lookup<TKey, TInner>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
                     LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer, true);
+                    var emptyInnerElements = new TempCollectionBuilder<TInner>(0);
                     try
                     {
                         while (await _innerAsyncEnumerator.MoveNextAsync())
                         {
                             var item = _innerAsyncEnumerator.Current;
                             var key = _innerKeySelector.Invoke(item);
-                            // Unlike GroupBy, Join ignores null keys.
+                            // Unlike GroupBy, GroupJoin ignores null keys.
                             if (key != null)
                             {
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
@@ -76,11 +78,11 @@ namespace Proto.Promises
                             var g = lookup.GetGrouping(_outerKeySelector.Invoke(outer));
                             if (g == null)
                             {
-                                continue;
+                                await writer.YieldAsync((outer, emptyInnerElements.View));
                             }
-                            foreach (var inner in g)
+                            else
                             {
-                                await writer.YieldAsync((outer, inner));
+                                await writer.YieldAsync((outer, g._elements.View));
                             }
                         }
 
@@ -89,6 +91,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        emptyInnerElements.Dispose();
                         lookup.Dispose();
                         try
                         {
@@ -102,7 +105,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
+            internal static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
                 AsyncEnumerator<TOuter> outerAsyncEnumerator,
                 AsyncEnumerator<TInner> innerAsyncEnumerator,
                 TOuterKeySelector outerKeySelector,
@@ -112,15 +115,15 @@ namespace Proto.Promises
                 where TInnerKeySelector : IFunc<TInner, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TInner Inner), JoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
-                    new JoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(outerAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
-                return new AsyncEnumerable<(TOuter Outer, TInner Inner)>(enumerable);
+                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TempCollection<TInner> InnerElements), GroupJoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
+                    new GroupJoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(outerAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
+                return new AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private readonly struct JoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer> : IAsyncIterator<(TOuter Outer, TInner Inner)>
+            private readonly struct GroupJoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer> : IAsyncIterator<(TOuter Outer, TempCollection<TInner> InnerElements)>
                 where TOuterKeySelector : IFunc<TOuter, Promise<TKey>>
                 where TInnerKeySelector : IFunc<TInner, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
@@ -131,7 +134,7 @@ namespace Proto.Promises
                 private readonly TInnerKeySelector _innerKeySelector;
                 private readonly TEqualityComparer _comparer;
 
-                internal JoinAsyncIterator(AsyncEnumerator<TOuter> outerAsyncEnumerator,
+                internal GroupJoinAsyncIterator(AsyncEnumerator<TOuter> outerAsyncEnumerator,
                     AsyncEnumerator<TInner> innerAsyncEnumerator,
                     TOuterKeySelector outerKeySelector,
                     TInnerKeySelector innerKeySelector,
@@ -144,7 +147,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
+                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TempCollection<TInner> InnerElements)> writer, CancelationToken cancelationToken)
                 {
                     // The enumerators were retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -153,13 +156,14 @@ namespace Proto.Promises
 
                     // We could do await Lookup<TKey, TInner>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
                     LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer, true);
+                    var emptyInnerElements = new TempCollectionBuilder<TInner>(0);
                     try
                     {
                         while (await _innerAsyncEnumerator.MoveNextAsync())
                         {
                             var item = _innerAsyncEnumerator.Current;
                             var key = await _innerKeySelector.Invoke(item);
-                            // Unlike GroupBy, Join ignores null keys.
+                            // Unlike GroupBy, GroupJoin ignores null keys.
                             if (key != null)
                             {
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
@@ -174,11 +178,11 @@ namespace Proto.Promises
                             var g = lookup.GetGrouping(await _outerKeySelector.Invoke(outer));
                             if (g == null)
                             {
-                                continue;
+                                await writer.YieldAsync((outer, emptyInnerElements.View));
                             }
-                            foreach (var inner in g)
+                            else
                             {
-                                await writer.YieldAsync((outer, inner));
+                                await writer.YieldAsync((outer, g._elements.View));
                             }
                         }
 
@@ -187,6 +191,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        emptyInnerElements.Dispose();
                         lookup.Dispose();
                         try
                         {
@@ -200,7 +205,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<(TOuter Outer, TInner Inner)> JoinAwait<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
+            internal static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoinAwait<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
                 AsyncEnumerator<TOuter> outerAsyncEnumerator,
                 AsyncEnumerator<TInner> innerAsyncEnumerator,
                 TOuterKeySelector outerKeySelector,
@@ -210,15 +215,15 @@ namespace Proto.Promises
                 where TInnerKeySelector : IFunc<TInner, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TInner Inner), JoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
-                    new JoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(outerAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
-                return new AsyncEnumerable<(TOuter Outer, TInner Inner)>(enumerable);
+                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TempCollection<TInner> InnerElements), GroupJoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
+                    new GroupJoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(outerAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
+                return new AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private readonly struct ConfiguredJoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer> : IAsyncIterator<(TOuter Outer, TInner Inner)>
+            private readonly struct ConfiguredGroupJoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer> : IAsyncIterator<(TOuter Outer, TempCollection<TInner> InnerElements)>
                 where TOuterKeySelector : IFunc<TOuter, TKey>
                 where TInnerKeySelector : IFunc<TInner, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
@@ -229,7 +234,7 @@ namespace Proto.Promises
                 private readonly TInnerKeySelector _innerKeySelector;
                 private readonly TEqualityComparer _comparer;
 
-                internal ConfiguredJoinSyncIterator(ConfiguredAsyncEnumerable<TOuter>.Enumerator configuredOuterAsyncEnumerator,
+                internal ConfiguredGroupJoinSyncIterator(ConfiguredAsyncEnumerable<TOuter>.Enumerator configuredOuterAsyncEnumerator,
                     AsyncEnumerator<TInner> innerAsyncEnumerator,
                     TOuterKeySelector outerKeySelector,
                     TInnerKeySelector innerKeySelector,
@@ -242,7 +247,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
+                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TempCollection<TInner> InnerElements)> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredOuterAsyncEnumerator._enumerator._target;
@@ -252,6 +257,7 @@ namespace Proto.Promises
 
                     // We could do await Lookup<TKey, TInner>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
                     LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer, true);
+                    var emptyInnerElements = new TempCollectionBuilder<TInner>(0);
                     try
                     {
                         while (await _innerAsyncEnumerator.MoveNextAsync())
@@ -260,7 +266,7 @@ namespace Proto.Promises
                             await _configuredOuterAsyncEnumerator.SwitchToContext();
                             var item = _innerAsyncEnumerator.Current;
                             var key = _innerKeySelector.Invoke(item);
-                            // Unlike GroupBy, Join ignores null keys.
+                            // Unlike GroupBy, GroupJoin ignores null keys.
                             if (key != null)
                             {
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
@@ -275,11 +281,11 @@ namespace Proto.Promises
                             var g = lookup.GetGrouping(_outerKeySelector.Invoke(outer));
                             if (g == null)
                             {
-                                continue;
+                                await writer.YieldAsync((outer, emptyInnerElements.View));
                             }
-                            foreach (var inner in g)
+                            else
                             {
-                                await writer.YieldAsync((outer, inner));
+                                await writer.YieldAsync((outer, g._elements.View));
                             }
                         }
 
@@ -289,6 +295,7 @@ namespace Proto.Promises
                     finally
                     {
                         joinedCancelationSource.TryDispose();
+                        emptyInnerElements.Dispose();
                         lookup.Dispose();
                         try
                         {
@@ -302,7 +309,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
+            internal static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
                 ConfiguredAsyncEnumerable<TOuter>.Enumerator configuredOuterAsyncEnumerator,
                 AsyncEnumerator<TInner> innerAsyncEnumerator,
                 TOuterKeySelector outerKeySelector,
@@ -312,15 +319,15 @@ namespace Proto.Promises
                 where TInnerKeySelector : IFunc<TInner, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TInner Inner), ConfiguredJoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
-                    new ConfiguredJoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(configuredOuterAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
-                return new AsyncEnumerable<(TOuter Outer, TInner Inner)>(enumerable);
+                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TempCollection<TInner> InnerElements), ConfiguredGroupJoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
+                    new ConfiguredGroupJoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(configuredOuterAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
+                return new AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private readonly struct ConfiguredJoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer> : IAsyncIterator<(TOuter Outer, TInner Inner)>
+            private readonly struct ConfiguredGroupJoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer> : IAsyncIterator<(TOuter Outer, TempCollection<TInner> InnerElements)>
                 where TOuterKeySelector : IFunc<TOuter, Promise<TKey>>
                 where TInnerKeySelector : IFunc<TInner, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
@@ -331,7 +338,7 @@ namespace Proto.Promises
                 private readonly TInnerKeySelector _innerKeySelector;
                 private readonly TEqualityComparer _comparer;
 
-                internal ConfiguredJoinAsyncIterator(ConfiguredAsyncEnumerable<TOuter>.Enumerator configuredOuterAsyncEnumerator,
+                internal ConfiguredGroupJoinAsyncIterator(ConfiguredAsyncEnumerable<TOuter>.Enumerator configuredOuterAsyncEnumerator,
                     AsyncEnumerator<TInner> innerAsyncEnumerator,
                     TOuterKeySelector outerKeySelector,
                     TInnerKeySelector innerKeySelector,
@@ -344,7 +351,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
+                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TempCollection<TInner> InnerElements)> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredOuterAsyncEnumerator._enumerator._target;
@@ -354,6 +361,7 @@ namespace Proto.Promises
 
                     // We could do await Lookup<TKey, TInner>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
                     LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer, true);
+                    var emptyInnerElements = new TempCollectionBuilder<TInner>(0);
                     try
                     {
                         while (await _innerAsyncEnumerator.MoveNextAsync())
@@ -362,7 +370,7 @@ namespace Proto.Promises
                             await _configuredOuterAsyncEnumerator.SwitchToContext();
                             var item = _innerAsyncEnumerator.Current;
                             var key = await _innerKeySelector.Invoke(item);
-                            // Unlike GroupBy, Join ignores null keys.
+                            // Unlike GroupBy, GroupJoin ignores null keys.
                             if (key != null)
                             {
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
@@ -377,11 +385,11 @@ namespace Proto.Promises
                             var g = lookup.GetGrouping(await _outerKeySelector.Invoke(outer));
                             if (g == null)
                             {
-                                continue;
+                                await writer.YieldAsync((outer, emptyInnerElements.View));
                             }
-                            foreach (var inner in g)
+                            else
                             {
-                                await writer.YieldAsync((outer, inner));
+                                await writer.YieldAsync((outer, g._elements.View));
                             }
                         }
 
@@ -391,6 +399,7 @@ namespace Proto.Promises
                     finally
                     {
                         joinedCancelationSource.TryDispose();
+                        emptyInnerElements.Dispose();
                         lookup.Dispose();
                         try
                         {
@@ -404,7 +413,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal static AsyncEnumerable<(TOuter Outer, TInner Inner)> JoinAwait<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
+            internal static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoinAwait<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
                 ConfiguredAsyncEnumerable<TOuter>.Enumerator configuredOuterAsyncEnumerator,
                 AsyncEnumerator<TInner> innerAsyncEnumerator,
                 TOuterKeySelector outerKeySelector,
@@ -414,9 +423,9 @@ namespace Proto.Promises
                 where TInnerKeySelector : IFunc<TInner, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TInner Inner), ConfiguredJoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
-                    new ConfiguredJoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(configuredOuterAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
-                return new AsyncEnumerable<(TOuter Outer, TInner Inner)>(enumerable);
+                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TempCollection<TInner> InnerElements), ConfiguredGroupJoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
+                    new ConfiguredGroupJoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(configuredOuterAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
+                return new AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)>(enumerable);
             }
         } // class Lookup<TKey, TElement>
     } // class Internal
