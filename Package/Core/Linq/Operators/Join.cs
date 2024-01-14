@@ -237,7 +237,7 @@ namespace Proto.Promises.Linq
                 Internal.PromiseRefBase.DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
                 comparer);
         }
-        
+
         /// <summary>
         /// Correlates the elements of two sequences based on matching keys. The default equality comparer is used to compare keys.
         /// </summary>
@@ -246,8 +246,8 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the keys returned by the key selector functions.</typeparam>
         /// <param name="outer">The first async-enumerable sequence to join.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TKey>(this AsyncEnumerable<TOuter> outer,
@@ -266,8 +266,8 @@ namespace Proto.Promises.Linq
         /// <param name="outer">The first async-enumerable sequence to join.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
         /// <param name="outerCaptureValue">The extra value that will be passed to <paramref name="outerKeySelector"/>.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TKey, TOuterCapture>(this AsyncEnumerable<TOuter> outer,
@@ -286,9 +286,9 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TInnerCapture">The type of the captured value that will be passed to <paramref name="innerKeySelector"/>.</typeparam>
         /// <param name="outer">The first async-enumerable sequence to join.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
         /// <param name="innerCaptureValue">The extra value that will be passed to <paramref name="innerKeySelector"/>.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TKey, TInnerCapture>(this AsyncEnumerable<TOuter> outer,
@@ -309,9 +309,9 @@ namespace Proto.Promises.Linq
         /// <param name="outer">The first async-enumerable sequence to join.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
         /// <param name="outerCaptureValue">The extra value that will be passed to <paramref name="outerKeySelector"/>.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
         /// <param name="innerCaptureValue">The extra value that will be passed to <paramref name="innerKeySelector"/>.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TKey, TOuterCapture, TInnerCapture>(this AsyncEnumerable<TOuter> outer,
@@ -331,8 +331,8 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TEqualityComparer">The type of the comparer.</typeparam>
         /// <param name="outer">The first async-enumerable sequence to join.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> or <paramref name="comparer"/> is null.</exception>
@@ -365,8 +365,8 @@ namespace Proto.Promises.Linq
         /// <param name="outer">The first async-enumerable sequence to join.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
         /// <param name="outerCaptureValue">The extra value that will be passed to <paramref name="outerKeySelector"/>.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
@@ -399,9 +399,9 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TEqualityComparer">The type of the comparer.</typeparam>
         /// <param name="outer">The first async-enumerable sequence to join.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
         /// <param name="innerCaptureValue">The extra value that will be passed to <paramref name="innerKeySelector"/>.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
@@ -436,9 +436,9 @@ namespace Proto.Promises.Linq
         /// <param name="outer">The first async-enumerable sequence to join.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
         /// <param name="outerCaptureValue">The extra value that will be passed to <paramref name="outerKeySelector"/>.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
         /// <param name="innerCaptureValue">The extra value that will be passed to <paramref name="innerKeySelector"/>.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
@@ -696,8 +696,8 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the keys returned by the key selector functions.</typeparam>
         /// <param name="configuredOuter">The first async-enumerable sequence to join with await configuration.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TKey>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
@@ -716,8 +716,8 @@ namespace Proto.Promises.Linq
         /// <param name="configuredOuter">The first async-enumerable sequence to join with await configuration.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
         /// <param name="outerCaptureValue">The extra value that will be passed to <paramref name="outerKeySelector"/>.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TKey, TOuterCapture>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
@@ -736,9 +736,9 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TInnerCapture">The type of the captured value that will be passed to <paramref name="innerKeySelector"/>.</typeparam>
         /// <param name="configuredOuter">The first async-enumerable sequence to join with await configuration.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
         /// <param name="innerCaptureValue">The extra value that will be passed to <paramref name="innerKeySelector"/>.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TKey, TInnerCapture>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
@@ -759,9 +759,9 @@ namespace Proto.Promises.Linq
         /// <param name="configuredOuter">The first async-enumerable sequence to join with await configuration.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
         /// <param name="outerCaptureValue">The extra value that will be passed to <paramref name="outerKeySelector"/>.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
         /// <param name="innerCaptureValue">The extra value that will be passed to <paramref name="innerKeySelector"/>.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TKey, TOuterCapture, TInnerCapture>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
@@ -781,8 +781,8 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TEqualityComparer">The type of the comparer.</typeparam>
         /// <param name="configuredOuter">The first async-enumerable sequence to join with await configuration.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> or <paramref name="comparer"/> is null.</exception>
@@ -815,8 +815,8 @@ namespace Proto.Promises.Linq
         /// <param name="configuredOuter">The first async-enumerable sequence to join with await configuration.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
         /// <param name="outerCaptureValue">The extra value that will be passed to <paramref name="outerKeySelector"/>.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
@@ -849,9 +849,9 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TEqualityComparer">The type of the comparer.</typeparam>
         /// <param name="configuredOuter">The first async-enumerable sequence to join with await configuration.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
         /// <param name="innerCaptureValue">The extra value that will be passed to <paramref name="innerKeySelector"/>.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
@@ -886,9 +886,9 @@ namespace Proto.Promises.Linq
         /// <param name="configuredOuter">The first async-enumerable sequence to join with await configuration.</param>
         /// <param name="inner">The async-enumerable sequence to join to the first sequence.</param>
         /// <param name="outerCaptureValue">The extra value that will be passed to <paramref name="outerKeySelector"/>.</param>
-        /// <param name="outerKeySelector">A function to extract the join key from each element of the first sequence.</param>
+        /// <param name="outerKeySelector">An asynchronous function to extract the join key from each element of the first sequence.</param>
         /// <param name="innerCaptureValue">The extra value that will be passed to <paramref name="innerKeySelector"/>.</param>
-        /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
+        /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> that are obtained by performing an inner join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
