@@ -262,6 +262,8 @@ namespace Proto.Promises
                     {
                         while (await _innerAsyncEnumerator.MoveNextAsync())
                         {
+                            // The inner enumerator is not configured, so we have to switch to the context of the configured outer enumerator before invoking the inner key selector.
+                            await _configuredOuterAsyncEnumerator.SwitchToContext();
                             var item = _innerAsyncEnumerator.Current;
                             var key = _innerKeySelector.Invoke(item);
                             // Unlike GroupBy, GroupJoin ignores null keys.
@@ -269,8 +271,6 @@ namespace Proto.Promises
                             {
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             }
-                            // The inner enumerator is not configured, so we have to switch back to the context of the configured outer enumerator in case the inner enumerator changed context.
-                            await _configuredOuterAsyncEnumerator.SwitchToContext();
                         }
                         // We don't dispose the enumerators until the owner is disposed.
                         // This is in case either enumerator contains TempCollection that they will still be valid until the owner is disposed.
@@ -366,6 +366,8 @@ namespace Proto.Promises
                     {
                         while (await _innerAsyncEnumerator.MoveNextAsync())
                         {
+                            // The inner enumerator is not configured, so we have to switch to the context of the configured outer enumerator before invoking the inner key selector.
+                            await _configuredOuterAsyncEnumerator.SwitchToContext();
                             var item = _innerAsyncEnumerator.Current;
                             var key = await _innerKeySelector.Invoke(item);
                             // Unlike GroupBy, GroupJoin ignores null keys.
@@ -373,9 +375,6 @@ namespace Proto.Promises
                             {
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             }
-                            // The inner enumerator is not configured, so we have to switch back to the context of the configured outer enumerator
-                            // in case the inner enumerator or the _innerKeySelector changed context.
-                            await _configuredOuterAsyncEnumerator.SwitchToContext();
                         }
                         // We don't dispose the enumerators until the owner is disposed.
                         // This is in case either enumerator contains TempCollection that they will still be valid until the owner is disposed.
