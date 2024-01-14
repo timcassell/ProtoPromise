@@ -349,40 +349,6 @@ namespace Proto.Promises.Linq
             }
         }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        private readonly struct AsyncActionElementIndex<T> : Internal.IFunc<T, int, Promise>
-        {
-            private readonly Func<T, int, Promise> _action;
-
-            [MethodImpl(Internal.InlineOption)]
-            public AsyncActionElementIndex(Func<T, int, Promise> action)
-            {
-                _action = action;
-            }
-
-            public Promise Invoke(T arg1, int arg2) => _action.Invoke(arg1, arg2);
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        private readonly struct AsyncActionElementIndexCapture<T, TCapture> : Internal.IFunc<T, int, Promise>
-        {
-            private readonly Func<TCapture, T, int, Promise> _action;
-            private readonly TCapture _capturedValue;
-
-            [MethodImpl(Internal.InlineOption)]
-            public AsyncActionElementIndexCapture(in TCapture capturedValue, Func<TCapture, T, int, Promise> action)
-            {
-                _action = action;
-                _capturedValue = capturedValue;
-            }
-
-            public Promise Invoke(T arg1, int arg2) => _action.Invoke(_capturedValue, arg1, arg2);
-        }
-
         /// <summary>
         /// Invokes an <see cref="Func{T, T, TResult}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence, incorporating the element's index.
         /// The sequence will not be moved forward until the <see cref="Promise"/> returned from the <paramref name="asyncAction"/> is resolved.
@@ -397,7 +363,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(cancelationToken), new AsyncActionElementIndex<T>(asyncAction));
+            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(asyncAction));
         }
 
         /// <summary>
@@ -416,7 +382,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(cancelationToken), new AsyncActionElementIndexCapture<T, TCapture>(captureValue, asyncAction));
+            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAction));
         }
 
         private static async Promise ForEachWithIndexCoreAsync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
@@ -449,7 +415,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(configuredSource.GetAsyncEnumerator(), new AsyncActionElementIndex<T>(asyncAction));
+            return ForEachWithIndexCoreAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(asyncAction));
         }
 
         /// <summary>
@@ -467,7 +433,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(configuredSource.GetAsyncEnumerator(), new AsyncActionElementIndexCapture<T, TCapture>(captureValue, asyncAction));
+            return ForEachWithIndexCoreAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAction));
         }
 
         private static async Promise ForEachWithIndexCoreAsync<T, TAction>(ConfiguredAsyncEnumerable<T>.Enumerator asyncEnumerator, TAction action)
