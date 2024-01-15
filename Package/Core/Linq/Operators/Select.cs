@@ -89,7 +89,7 @@ namespace Proto.Promises.Linq
         /// <param name="selector">A transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, TResult> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, TResult> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 
@@ -107,7 +107,7 @@ namespace Proto.Promises.Linq
         /// <param name="selector">A transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, TResult> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, TResult> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 
@@ -123,7 +123,7 @@ namespace Proto.Promises.Linq
         /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<TResult>> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<TResult>> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 
@@ -141,7 +141,7 @@ namespace Proto.Promises.Linq
         /// <param name="selector">An asynchronous transform to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<TResult>> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<TResult>> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 
@@ -225,7 +225,7 @@ namespace Proto.Promises.Linq
         /// <param name="selector">A transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, TResult> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, TResult> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 
@@ -243,7 +243,7 @@ namespace Proto.Promises.Linq
         /// <param name="selector">A transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, TResult> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, TResult> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 
@@ -259,7 +259,7 @@ namespace Proto.Promises.Linq
         /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, Promise<TResult>> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, Promise<TResult>> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 
@@ -277,7 +277,7 @@ namespace Proto.Promises.Linq
         /// <param name="selector">An asynchronous transform to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, Promise<TResult>> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, Promise<TResult>> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 

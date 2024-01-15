@@ -653,7 +653,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector)
             => ToLookupAsync(configuredSource, keySelector, EqualityComparer<TKey>.Default);
 
@@ -669,7 +669,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector)
             => ToLookupAsync(configuredSource, keyCaptureValue, keySelector, EqualityComparer<TKey>.Default);
@@ -686,7 +686,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
@@ -711,7 +711,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             TEqualityComparer comparer)
@@ -733,7 +733,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector)
             => ToLookupAsync<TSource, TKey, IEqualityComparer<TKey>>(configuredSource, keySelector, EqualityComparer<TKey>.Default);
 
@@ -749,7 +749,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
             => ToLookupAsync<TSource, TCaptureKey, TKey, IEqualityComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, EqualityComparer<TKey>.Default);
@@ -766,7 +766,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
@@ -791,7 +791,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             TEqualityComparer comparer)
@@ -815,7 +815,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             Func<TSource, TElement> elementSelector)
             => ToLookupAsync(configuredSource, keySelector, elementSelector, EqualityComparer<TKey>.Default);
@@ -834,7 +834,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             Func<TSource, TElement> elementSelector)
@@ -854,7 +854,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             TCaptureElement elementCaptureValue,
             Func<TCaptureElement, TSource, TElement> elementSelector)
@@ -876,7 +876,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             TCaptureElement elementCaptureValue,
@@ -897,7 +897,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             Func<TSource, TElement> elementSelector,
             TEqualityComparer comparer)
@@ -929,7 +929,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             Func<TSource, TElement> elementSelector,
@@ -962,7 +962,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             TCaptureElement elementCaptureValue,
             Func<TCaptureElement, TSource, TElement> elementSelector,
@@ -997,7 +997,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             TCaptureElement elementCaptureValue,
@@ -1027,7 +1027,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             Func<TSource, Promise<TElement>> elementSelector)
             => ToLookupAsync<TSource, TKey, TElement, IEqualityComparer<TKey>>(configuredSource, keySelector, elementSelector, EqualityComparer<TKey>.Default);
@@ -1046,7 +1046,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             Func<TSource, Promise<TElement>> elementSelector)
@@ -1066,7 +1066,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
             Func<TCaptureElement, TSource, Promise<TElement>> elementSelector)
@@ -1088,7 +1088,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
@@ -1109,7 +1109,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             Func<TSource, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
@@ -1141,7 +1141,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             Func<TSource, Promise<TElement>> elementSelector,
@@ -1174,7 +1174,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
             Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
@@ -1209,7 +1209,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> whose result will be a lookup mapping unique key values onto the corresponding source sequence's elements.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,

@@ -46,7 +46,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        public static OrderedAsyncEnumerable<TSource> Order<TSource>(this ConfiguredAsyncEnumerable<TSource> configuredSource)
+        public static OrderedAsyncEnumerable<TSource> Order<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource)
             => Order(configuredSource, Comparer<TSource>.Default);
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> Order<TSource, TComparer>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TComparer comparer)
+        public static OrderedAsyncEnumerable<TSource> Order<TSource, TComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TComparer comparer)
             where TComparer : IComparer<TSource>
         {
             ValidateArgument(comparer, nameof(comparer), 1);
@@ -98,7 +98,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <param name="configuredSource">A configured async-enumerable sequence to sort.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
-        public static OrderedAsyncEnumerable<TSource> OrderDescending<TSource>(this ConfiguredAsyncEnumerable<TSource> configuredSource)
+        public static OrderedAsyncEnumerable<TSource> OrderDescending<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource)
             => OrderDescending(configuredSource, Comparer<TSource>.Default);
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
-        public static OrderedAsyncEnumerable<TSource> OrderDescending<TSource, TComparer>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TComparer comparer)
+        public static OrderedAsyncEnumerable<TSource> OrderDescending<TSource, TComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TComparer comparer)
             where TComparer : IComparer<TSource>
         {
             ValidateArgument(comparer, nameof(comparer), 1);
@@ -290,7 +290,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector)
             => OrderBy(configuredSource, keySelector, Comparer<TKey>.Default);
 
@@ -306,7 +306,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector)
             => OrderBy(configuredSource, keyCaptureValue, keySelector, Comparer<TKey>.Default);
@@ -323,7 +323,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey, TComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             TComparer comparer)
             where TComparer : IComparer<TKey>
@@ -348,7 +348,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey, TComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             TComparer comparer)
@@ -370,7 +370,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector)
             => OrderBy<TSource, TKey, IComparer<TKey>>(configuredSource, keySelector, Comparer<TKey>.Default);
 
@@ -386,7 +386,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
             => OrderBy<TSource, TCaptureKey, TKey, IComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, Comparer<TKey>.Default);
@@ -403,7 +403,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey, TComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             TComparer comparer)
             where TComparer : IComparer<TKey>
@@ -428,7 +428,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TCaptureKey, TKey, TComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             TComparer comparer)
@@ -610,7 +610,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector)
             => OrderByDescending(configuredSource, keySelector, Comparer<TKey>.Default);
 
@@ -626,7 +626,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector)
             => OrderByDescending(configuredSource, keyCaptureValue, keySelector, Comparer<TKey>.Default);
@@ -643,7 +643,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey, TComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             TComparer comparer)
             where TComparer : IComparer<TKey>
@@ -668,7 +668,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey, TComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             TComparer comparer)
@@ -690,7 +690,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector)
             => OrderByDescending<TSource, TKey, IComparer<TKey>>(configuredSource, keySelector, Comparer<TKey>.Default);
 
@@ -706,7 +706,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
             => OrderByDescending<TSource, TCaptureKey, TKey, IComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, Comparer<TKey>.Default);
@@ -723,7 +723,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey, TComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             TComparer comparer)
             where TComparer : IComparer<TKey>
@@ -748,7 +748,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="OrderedAsyncEnumerable{T}"/> whose elements are sorted.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TCaptureKey, TKey, TComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             TComparer comparer)

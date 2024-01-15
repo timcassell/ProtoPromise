@@ -477,7 +477,7 @@ namespace Proto.Promises.Linq
         /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             Func<TOuter, TKey> outerKeySelector,
             Func<TInner, TKey> innerKeySelector)
@@ -497,7 +497,7 @@ namespace Proto.Promises.Linq
         /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
             Func<TOuterCapture, TOuter, TKey> outerKeySelector,
@@ -518,7 +518,7 @@ namespace Proto.Promises.Linq
         /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             Func<TOuter, TKey> outerKeySelector,
             TInnerCapture innerCaptureValue,
@@ -541,7 +541,7 @@ namespace Proto.Promises.Linq
         /// <param name="innerKeySelector">A function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
             Func<TOuterCapture, TOuter, TKey> outerKeySelector,
@@ -563,7 +563,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> or <paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TEqualityComparer>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             Func<TOuter, TKey> outerKeySelector,
             Func<TInner, TKey> innerKeySelector,
@@ -597,7 +597,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TEqualityComparer>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
             Func<TOuterCapture, TOuter, TKey> outerKeySelector,
@@ -632,7 +632,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture, TEqualityComparer>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             Func<TOuter, TKey> outerKeySelector,
             TInnerCapture innerCaptureValue,
@@ -669,7 +669,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture, TEqualityComparer>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
             Func<TOuterCapture, TOuter, TKey> outerKeySelector,
@@ -701,7 +701,7 @@ namespace Proto.Promises.Linq
         /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             Func<TOuter, Promise<TKey>> outerKeySelector,
             Func<TInner, Promise<TKey>> innerKeySelector)
@@ -721,7 +721,7 @@ namespace Proto.Promises.Linq
         /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
             Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,
@@ -742,7 +742,7 @@ namespace Proto.Promises.Linq
         /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             Func<TOuter, Promise<TKey>> outerKeySelector,
             TInnerCapture innerCaptureValue,
@@ -765,7 +765,7 @@ namespace Proto.Promises.Linq
         /// <param name="innerKeySelector">An asynchronous function to extract the join key from each element of the second sequence.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
             Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,
@@ -787,7 +787,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> or <paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TEqualityComparer>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             Func<TOuter, Promise<TKey>> outerKeySelector,
             Func<TInner, Promise<TKey>> innerKeySelector,
@@ -821,7 +821,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TEqualityComparer>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
             Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,
@@ -856,7 +856,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture, TEqualityComparer>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             Func<TOuter, Promise<TKey>> outerKeySelector,
             TInnerCapture innerCaptureValue,
@@ -893,7 +893,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">A comparer to compare keys.</param>
         /// <returns>An async-enumerable sequence that has elements of <see cref="ValueTuple{T1, T2}"/> of each outer element and the inner elements of the same key, that are obtained by performing a grouped join on two sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture, TEqualityComparer>(this ConfiguredAsyncEnumerable<TOuter> configuredOuter,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
             Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,

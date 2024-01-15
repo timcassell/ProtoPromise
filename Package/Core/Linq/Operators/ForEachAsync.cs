@@ -23,6 +23,7 @@ namespace Proto.Promises.Linq
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T> action, CancelationToken cancelationToken = default)
         {
             ValidateArgument(action, nameof(action), 1);
@@ -41,6 +42,7 @@ namespace Proto.Promises.Linq
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T> action, CancelationToken cancelationToken = default)
         {
             ValidateArgument(action, nameof(action), 1);
@@ -72,6 +74,7 @@ namespace Proto.Promises.Linq
         /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Action<T> action)
         {
             ValidateArgument(action, nameof(action), 1);
@@ -89,6 +92,7 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Action<TCapture, T> action)
         {
             ValidateArgument(action, nameof(action), 1);
@@ -155,6 +159,7 @@ namespace Proto.Promises.Linq
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T, int> action, CancelationToken cancelationToken = default)
         {
             ValidateArgument(action, nameof(action), 1);
@@ -173,6 +178,7 @@ namespace Proto.Promises.Linq
         /// <param name="action">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T, int> action, CancelationToken cancelationToken = default)
         {
             ValidateArgument(action, nameof(action), 1);
@@ -205,6 +211,7 @@ namespace Proto.Promises.Linq
         /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Action<T, int> action)
         {
             ValidateArgument(action, nameof(action), 1);
@@ -223,6 +230,7 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="action"/>.</param>
         /// <param name="action">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Action<TCapture, T, int> action)
         {
             ValidateArgument(action, nameof(action), 1);
@@ -257,6 +265,7 @@ namespace Proto.Promises.Linq
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
@@ -276,6 +285,7 @@ namespace Proto.Promises.Linq
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
@@ -308,6 +318,7 @@ namespace Proto.Promises.Linq
         /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Func<T, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
@@ -326,6 +337,7 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Func<TCapture, T, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
@@ -359,6 +371,7 @@ namespace Proto.Promises.Linq
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, int, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
@@ -378,6 +391,7 @@ namespace Proto.Promises.Linq
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="AsyncEnumerable{T}"/> sequence.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
@@ -411,6 +425,7 @@ namespace Proto.Promises.Linq
         /// <param name="configuredSource">Configured source sequence.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Func<T, int, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
@@ -429,6 +444,7 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="asyncAction"/>.</param>
         /// <param name="asyncAction">Action to invoke for each element in the <see cref="ConfiguredAsyncEnumerable{T}"/> sequence.</param>
         /// <returns><see cref="Promise"/> that signals the termination of the sequence.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction)
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);

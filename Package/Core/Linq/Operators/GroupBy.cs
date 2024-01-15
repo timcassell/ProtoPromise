@@ -680,7 +680,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector)
             => GroupBy(configuredSource, keySelector, EqualityComparer<TKey>.Default);
 
@@ -696,7 +696,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TCaptureKey, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector)
             => GroupBy(configuredSource, keyCaptureValue, keySelector, EqualityComparer<TKey>.Default);
@@ -713,7 +713,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TKey, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
@@ -738,7 +738,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TCaptureKey, TKey, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             TEqualityComparer comparer)
@@ -760,7 +760,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector)
             => GroupBy<TSource, TKey, IEqualityComparer<TKey>>(configuredSource, keySelector, EqualityComparer<TKey>.Default);
 
@@ -776,7 +776,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TCaptureKey, TKey>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
             => GroupBy<TSource, TCaptureKey, TKey, IEqualityComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, EqualityComparer<TKey>.Default);
@@ -793,7 +793,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TKey, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
@@ -818,7 +818,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TCaptureKey, TKey, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             TEqualityComparer comparer)
@@ -842,7 +842,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             Func<TSource, TElement> elementSelector)
             => GroupBy(configuredSource, keySelector, elementSelector, EqualityComparer<TKey>.Default);
@@ -861,7 +861,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             Func<TSource, TElement> elementSelector)
@@ -881,7 +881,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TCaptureElement, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             TCaptureElement elementCaptureValue,
             Func<TCaptureElement, TSource, TElement> elementSelector)
@@ -903,7 +903,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             TCaptureElement elementCaptureValue,
@@ -924,7 +924,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             Func<TSource, TElement> elementSelector,
             TEqualityComparer comparer)
@@ -956,7 +956,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             Func<TSource, TElement> elementSelector,
@@ -989,7 +989,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TCaptureElement, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector,
             TCaptureElement elementCaptureValue,
             Func<TCaptureElement, TSource, TElement> elementSelector,
@@ -1024,7 +1024,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TCaptureElement, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, TKey> keySelector,
             TCaptureElement elementCaptureValue,
@@ -1054,7 +1054,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             Func<TSource, Promise<TElement>> elementSelector)
             => GroupBy<TSource, TKey, TElement, IEqualityComparer<TKey>>(configuredSource, keySelector, elementSelector, EqualityComparer<TKey>.Default);
@@ -1073,7 +1073,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             Func<TSource, Promise<TElement>> elementSelector)
@@ -1093,7 +1093,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TCaptureElement, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
             Func<TCaptureElement, TSource, Promise<TElement>> elementSelector)
@@ -1115,7 +1115,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
@@ -1136,7 +1136,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             Func<TSource, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
@@ -1168,7 +1168,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             Func<TSource, Promise<TElement>> elementSelector,
@@ -1201,7 +1201,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TCaptureElement, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
             Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
@@ -1236,7 +1236,7 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence of groups, each of which corresponds to a unique key value, containing all elements that share that same key value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TCaptureElement, TElement, TEqualityComparer>(
-            this ConfiguredAsyncEnumerable<TSource> configuredSource,
+            this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
             Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
