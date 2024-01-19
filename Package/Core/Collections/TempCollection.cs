@@ -306,6 +306,12 @@ namespace Proto.Promises.Collections
             _count = count + 1;
         }
 
+        internal void Clear()
+        {
+            Array.Clear(_items, 0, _count);
+            _count = 0;
+        }
+
         public void Dispose()
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
