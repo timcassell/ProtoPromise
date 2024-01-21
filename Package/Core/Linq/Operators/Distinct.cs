@@ -119,6 +119,7 @@ namespace Proto.Promises.Linq
                 }
                 finally
                 {
+                    joinedCancelationSource.TryDispose();
                     await cv.configuredAsyncEnumerator.DisposeAsync();
                 }
             });
@@ -472,6 +473,7 @@ namespace Proto.Promises.Linq
                     }
                     finally
                     {
+                        joinedCancelationSource.TryDispose();
                         await cv.configuredAsyncEnumerator.DisposeAsync();
                     }
                 });
@@ -550,6 +552,7 @@ namespace Proto.Promises.Linq
                     }
                     finally
                     {
+                        joinedCancelationSource.TryDispose();
                         await cv.configuredAsyncEnumerator.DisposeAsync();
                     }
                 });
