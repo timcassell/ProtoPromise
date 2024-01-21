@@ -65,6 +65,9 @@ namespace Proto.Promises.Linq
                             }
                         }
                     }
+
+                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
+                    await writer.YieldAsync(default).ForLinqExtension();
                 }
                 finally
                 {
@@ -116,6 +119,9 @@ namespace Proto.Promises.Linq
                             }
                         }
                     }
+
+                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
+                    await writer.YieldAsync(default).ForLinqExtension();
                 }
                 finally
                 {
@@ -431,6 +437,9 @@ namespace Proto.Promises.Linq
                                 }
                             }
                         }
+
+                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
+                        await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
@@ -470,6 +479,9 @@ namespace Proto.Promises.Linq
                                 }
                             }
                         }
+
+                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
+                        await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
@@ -510,6 +522,9 @@ namespace Proto.Promises.Linq
                                 }
                             }
                         }
+
+                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
+                        await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
@@ -549,6 +564,9 @@ namespace Proto.Promises.Linq
                                 }
                             }
                         }
+
+                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
+                        await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
