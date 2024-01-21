@@ -40,7 +40,7 @@ namespace Proto.Promises.Linq
             return ContainsCore(source.GetAsyncEnumerator(), value, equalityComparer);
         }
 
-        private static async Promise<bool> ContainsCore<TSource, TEqualityComparer>(this AsyncEnumerator<TSource> asyncEnumerator, TSource value, TEqualityComparer equalityComparer)
+        private static async Promise<bool> ContainsCore<TSource, TEqualityComparer>(AsyncEnumerator<TSource> asyncEnumerator, TSource value, TEqualityComparer equalityComparer)
             where TEqualityComparer : IEqualityComparer<TSource>
         {
             try
@@ -88,7 +88,7 @@ namespace Proto.Promises.Linq
             return ContainsCore(source.GetAsyncEnumerator(), value, equalityComparer);
         }
 
-        private static async Promise<bool> ContainsCore<TSource, TEqualityComparer>(this ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TSource value, TEqualityComparer equalityComparer)
+        private static async Promise<bool> ContainsCore<TSource, TEqualityComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TSource value, TEqualityComparer equalityComparer)
             where TEqualityComparer : IEqualityComparer<TSource>
         {
             try
