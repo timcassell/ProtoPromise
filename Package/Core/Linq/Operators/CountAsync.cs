@@ -50,7 +50,7 @@ namespace Proto.Promises.Linq
         /// Returns a <see cref="Promise{T}"/> resulting in how many elements in the specified async-enumerable sequence satisfy a condition.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">The sequence in which to locate a value.</param>
+        /// <param name="source">The sequence that contains elements to be counted.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
@@ -67,7 +67,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="source">The sequence in which to locate a value.</param>
+        /// <param name="source">The sequence that contains elements to be counted.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
@@ -108,7 +108,7 @@ namespace Proto.Promises.Linq
         /// Returns a <see cref="Promise{T}"/> resulting in how many elements in the specified async-enumerable sequence satisfy a condition.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">The sequence in which to locate a value.</param>
+        /// <param name="source">The sequence that contains elements to be counted.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
@@ -125,7 +125,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="source">The sequence in which to locate a value.</param>
+        /// <param name="source">The sequence that contains elements to be counted.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
@@ -165,35 +165,35 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> resulting in how many elements in the specified configured async-enumerable sequence satisfy a condition.
         /// </summary>
-        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">The sequence in which to locate a value.</param>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
+        /// <param name="configuredSource">The configured async-enumerable sequence that contains elements to be counted.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="configuredSource"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource>(this ConfiguredAsyncEnumerable<TSource> source, Func<TSource, bool> predicate)
+        public static Promise<int> CountAsync<TSource>(this ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return CountCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> resulting in how many elements in the specified configured async-enumerable sequence satisfy a condition.
         /// </summary>
-        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="source">The sequence in which to locate a value.</param>
+        /// <param name="configuredSource">The configured async-enumerable sequence that contains elements to be counted.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="configuredSource"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource, TCapture>(this ConfiguredAsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
+        public static Promise<int> CountAsync<TSource, TCapture>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return CountCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<int> CountCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
@@ -223,35 +223,35 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> resulting in how many elements in the specified configured async-enumerable sequence satisfy a condition.
         /// </summary>
-        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">The sequence in which to locate a value.</param>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
+        /// <param name="configuredSource">The configured async-enumerable sequence that contains elements to be counted.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="configuredSource"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource>(this ConfiguredAsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate)
+        public static Promise<int> CountAsync<TSource>(this ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return CountAwaitCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> resulting in how many elements in the specified configured async-enumerable sequence satisfy a condition.
         /// </summary>
-        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="source">The sequence in which to locate a value.</param>
+        /// <param name="configuredSource">The configured async-enumerable sequence that contains elements to be counted.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="configuredSource"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource, TCapture>(this ConfiguredAsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
+        public static Promise<int> CountAsync<TSource, TCapture>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return CountAwaitCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<int> CountAwaitCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
