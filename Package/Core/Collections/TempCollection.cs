@@ -284,17 +284,22 @@ namespace Proto.Promises.Collections
             _items = ArrayPool<T>.Shared.Rent(capacity);
         }
 
+        internal void SetCapacityAndCopy(int capacity)
+        {
+            var newStorage = ArrayPool<T>.Shared.Rent(capacity);
+            _items.CopyTo(newStorage, 0);
+            Array.Clear(_items, 0, _count);
+            ArrayPool<T>.Shared.Return(_items, false);
+            _items = newStorage;
+        }
+
         internal void EnsureCapacity(int capacity)
         {
             if (capacity <= _items.Length)
             {
                 return;
             }
-            var newStorage = ArrayPool<T>.Shared.Rent(capacity);
-            _items.CopyTo(newStorage, 0);
-            Array.Clear(_items, 0, _count);
-            ArrayPool<T>.Shared.Return(_items, false);
-            _items = newStorage;
+            SetCapacityAndCopy(capacity);
         }
 
         internal void Add(T item)
