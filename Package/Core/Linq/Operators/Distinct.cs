@@ -50,7 +50,7 @@ namespace Proto.Promises.Linq
                         return;
                     }
 
-                    using (var set = new Internal.Set<TSource, TEqualityComparer>(cv.comparer))
+                    using (var set = new Internal.PoolBackedSet<TSource, TEqualityComparer>(cv.comparer))
                     {
                         var current = cv.asyncEnumerator.Current;
                         set.Add(current);
@@ -104,7 +104,7 @@ namespace Proto.Promises.Linq
                         return;
                     }
 
-                    using (var set = new Internal.Set<TSource, TEqualityComparer>(cv.comparer))
+                    using (var set = new Internal.PoolBackedSet<TSource, TEqualityComparer>(cv.comparer))
                     {
                         var current = cv.configuredAsyncEnumerator.Current;
                         set.Add(current);
@@ -422,7 +422,7 @@ namespace Proto.Promises.Linq
                             return;
                         }
 
-                        using (var set = new Internal.Set<TKey, TEqualityComparer>(cv.comparer))
+                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(cv.comparer))
                         {
                             var current = cv.asyncEnumerator.Current;
                             set.Add(keySelector.Invoke(current));
@@ -464,7 +464,7 @@ namespace Proto.Promises.Linq
                             return;
                         }
 
-                        using (var set = new Internal.Set<TKey, TEqualityComparer>(cv.comparer))
+                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(cv.comparer))
                         {
                             var current = cv.configuredAsyncEnumerator.Current;
                             set.Add(keySelector.Invoke(current));
@@ -507,7 +507,7 @@ namespace Proto.Promises.Linq
                             return;
                         }
 
-                        using (var set = new Internal.Set<TKey, TEqualityComparer>(cv.comparer))
+                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(cv.comparer))
                         {
                             var current = cv.asyncEnumerator.Current;
                             set.Add(await keySelector.Invoke(current));
@@ -549,7 +549,7 @@ namespace Proto.Promises.Linq
                             return;
                         }
 
-                        using (var set = new Internal.Set<TKey, TEqualityComparer>(cv.comparer))
+                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(cv.comparer))
                         {
                             var current = cv.configuredAsyncEnumerator.Current;
                             set.Add(await keySelector.Invoke(current));

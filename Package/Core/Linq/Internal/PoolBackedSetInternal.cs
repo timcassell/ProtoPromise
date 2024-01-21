@@ -19,7 +19,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal struct Set<TElement, TEqualityComparer> : IDisposable
+        internal struct PoolBackedSet<TElement, TEqualityComparer> : IDisposable
             where TEqualityComparer : IEqualityComparer<TElement>
         {
             private readonly TEqualityComparer _comparer;
@@ -31,7 +31,7 @@ namespace Proto.Promises
             private bool _haveRemoved;
 #endif
 
-            internal Set(TEqualityComparer comparer)
+            internal PoolBackedSet(TEqualityComparer comparer)
             {
                 _comparer = comparer;
                 // The smallest array returned from ArrayPool by default is 16, so we use 15 count to start instead of 7 that System.Linq uses.
