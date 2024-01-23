@@ -1,3 +1,4 @@
+using Proto.Promises.Async.CompilerServices;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -6,7 +7,7 @@ using System.Security;
 // AsyncMethodBuilderAttribute
 #pragma warning disable 0436 // Type conflicts with imported type
 
-namespace Proto.Promises.Async.CompilerServices
+namespace Proto.Promises.CompilerServices
 {
 #if CSHARP_7_3_OR_NEWER
     /// <summary>
@@ -49,8 +50,8 @@ namespace Proto.Promises.Async.CompilerServices
             get { return new AsyncEnumerableMethod(_builder.Task); }
         }
 
-        /// <summary>Initializes a new <see cref="PromiseMethodBuilder"/>.</summary>
-        /// <returns>The initialized <see cref="PromiseMethodBuilder"/>.</returns>
+        /// <summary>Initializes a new <see cref="AsyncEnumerableMethodBuilder"/>.</summary>
+        /// <returns>The initialized <see cref="AsyncEnumerableMethodBuilder"/>.</returns>
         [MethodImpl(Internal.InlineOption)]
         public static AsyncEnumerableMethodBuilder Create()
             => new AsyncEnumerableMethodBuilder(PromiseMethodBuilder.Create());

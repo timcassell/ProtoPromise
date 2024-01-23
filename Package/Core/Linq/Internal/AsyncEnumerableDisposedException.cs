@@ -2,7 +2,7 @@ using System;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
-namespace Proto.Promises.Async.CompilerServices
+namespace Proto.Promises.CompilerServices
 {
 #if CSHARP_7_3_OR_NEWER
     internal sealed class AsyncEnumerableDisposedException : Exception

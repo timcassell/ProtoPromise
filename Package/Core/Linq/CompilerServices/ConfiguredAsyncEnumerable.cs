@@ -5,7 +5,7 @@ using System.Threading;
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
 
-namespace Proto.Promises.Async.CompilerServices
+namespace Proto.Promises.CompilerServices
 {
 #if CSHARP_7_3_OR_NEWER
     /// <summary>

@@ -4,7 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-using Proto.Promises.Async.CompilerServices;
+using Proto.Promises.CompilerServices;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
