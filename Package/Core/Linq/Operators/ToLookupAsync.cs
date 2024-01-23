@@ -1,4 +1,4 @@
-using Proto.Promises.Async.CompilerServices;
+using Proto.Promises.CompilerServices;
 using System;
 using System.Collections.Generic;
 using System.Linq;

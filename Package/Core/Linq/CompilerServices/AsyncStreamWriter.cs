@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace Proto.Promises.Async.CompilerServices
+namespace Proto.Promises.CompilerServices
 {
 #if CSHARP_7_3_OR_NEWER
     /// <summary>

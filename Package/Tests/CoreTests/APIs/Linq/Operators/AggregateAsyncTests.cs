@@ -8,7 +8,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
-using Proto.Promises.Async.CompilerServices;
+using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
 using System;
 using System.Collections.Generic;
