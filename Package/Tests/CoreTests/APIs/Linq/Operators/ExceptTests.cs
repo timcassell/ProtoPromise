@@ -46,6 +46,7 @@ namespace ProtoPromiseTests.APIs.Linq
             var nullComparer = default(IEqualityComparer<int>);
 
             Assert.Catch<System.ArgumentNullException>(() => first.Except(second, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).Except(second, nullComparer));
 
             first.GetAsyncEnumerator().DisposeAsync().Forget();
             second.GetAsyncEnumerator().DisposeAsync().Forget();
@@ -87,11 +88,15 @@ namespace ProtoPromiseTests.APIs.Linq
         // We test all the different overloads.
         private static AsyncEnumerable<TSource> Except<TSource>(AsyncEnumerable<TSource> firstAsyncEnumerable,
             AsyncEnumerable<TSource> secondAsyncEnumerable,
+            bool configured,
             IEqualityComparer<TSource> equalityComparer = null)
         {
-            return equalityComparer != null
-                ? firstAsyncEnumerable.Except(secondAsyncEnumerable, equalityComparer)
-                : firstAsyncEnumerable.Except(secondAsyncEnumerable);
+            return configured
+                // There is no overload accepting a configured enumerable without a comparer, so we always pass a valid comparer.
+                ? firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Except(secondAsyncEnumerable, equalityComparer ?? EqualityComparer<TSource>.Default)
+                : equalityComparer != null
+                    ? firstAsyncEnumerable.Except(secondAsyncEnumerable, equalityComparer)
+                    : firstAsyncEnumerable.Except(secondAsyncEnumerable);
         }
 
         private static AsyncEnumerable<TSource> ExceptBy<TSource, TKey>(AsyncEnumerable<TSource> firstAsyncEnumerable,
@@ -201,13 +206,14 @@ namespace ProtoPromiseTests.APIs.Linq
 
         [Test]
         public void Except_EmptyFirst(
+            [Values] bool configured,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
             {
                 var xs = AsyncEnumerable.Empty<int>();
                 var ys = new[] { 3, 5, 1, 4 }.ToAsyncEnumerable();
-                var asyncEnumerator = Except(xs, ys, GetDefaultOrNullComparer<int>(withComparer)).GetAsyncEnumerator();
+                var asyncEnumerator = Except(xs, ys, configured, GetDefaultOrNullComparer<int>(withComparer)).GetAsyncEnumerator();
                 Assert.False(await asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
             }, SynchronizationOption.Synchronous)
@@ -216,13 +222,14 @@ namespace ProtoPromiseTests.APIs.Linq
 
         [Test]
         public void Except_EmptySecond(
+            [Values] bool configured,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
             {
                 var xs = new[] { 3, 5, 1, 4 }.ToAsyncEnumerable();
                 var ys = AsyncEnumerable.Empty<int>();
-                var asyncEnumerator = Except(xs, ys, GetDefaultOrNullComparer<int>(withComparer)).GetAsyncEnumerator();
+                var asyncEnumerator = Except(xs, ys, configured, GetDefaultOrNullComparer<int>(withComparer)).GetAsyncEnumerator();
                 Assert.True(await asyncEnumerator.MoveNextAsync());
                 Assert.AreEqual(3, asyncEnumerator.Current);
                 Assert.True(await asyncEnumerator.MoveNextAsync());
@@ -239,13 +246,14 @@ namespace ProtoPromiseTests.APIs.Linq
 
         [Test]
         public void Except_Simple(
+            [Values] bool configured,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
             {
                 var xs = new[] { 1, 2, 3 }.ToAsyncEnumerable();
                 var ys = new[] { 3, 5, 1, 4 }.ToAsyncEnumerable();
-                var asyncEnumerator = Except(xs, ys, GetDefaultOrNullComparer<int>(withComparer)).GetAsyncEnumerator();
+                var asyncEnumerator = Except(xs, ys, configured, GetDefaultOrNullComparer<int>(withComparer)).GetAsyncEnumerator();
                 Assert.True(await asyncEnumerator.MoveNextAsync());
                 Assert.AreEqual(2, asyncEnumerator.Current);
                 Assert.False(await asyncEnumerator.MoveNextAsync());
