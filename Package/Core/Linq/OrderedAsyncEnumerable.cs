@@ -35,8 +35,8 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Gets whether this instance is valid for enumeration. Once enumeration has begun, this will return false.
         /// </summary>
-        public bool IsValid
-            => _target?.GetIsValid(_id) == true;
+        public bool CanBeEnumerated
+            => _target?.GetCanBeEnumerated(_id) == true;
 
         [MethodImpl(Internal.InlineOption)]
         internal OrderedAsyncEnumerable(Internal.OrderedAsyncEnumerableBase<T> target, int id)

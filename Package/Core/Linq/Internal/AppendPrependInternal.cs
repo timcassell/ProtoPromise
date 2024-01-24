@@ -49,7 +49,7 @@ namespace Proto.Promises
             protected AsyncEnumerator<TSource> _source;
             internal int _id = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
 
-            public bool GetIsValid(int id) => id == _id;
+            public bool GetCanBeEnumerated(int id) => id == _id;
 
             protected void IncrementId(int id)
             {

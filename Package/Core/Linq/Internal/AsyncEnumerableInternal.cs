@@ -19,7 +19,7 @@ namespace Proto.Promises
         internal interface IAsyncEnumerable<T>
         {
             AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken);
-            bool GetIsValid(int id);
+            bool GetCanBeEnumerated(int id);
         }
 
         internal interface IAsyncIterator<T>
@@ -137,7 +137,7 @@ namespace Proto.Promises
                     return new AsyncEnumerator<T>(this, newId);
                 }
 
-                public bool GetIsValid(int id) => id == _enumerableId;
+                public bool GetCanBeEnumerated(int id) => id == _enumerableId;
 
                 [MethodImpl(InlineOption)]
                 internal T GetCurrent(int id)

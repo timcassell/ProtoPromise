@@ -124,7 +124,7 @@ namespace Proto.Promises
         {
             internal int _id = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
 
-            public bool GetIsValid(int id) => id == _id;
+            public bool GetCanBeEnumerated(int id) => id == _id;
 
             internal void IncrementId(int id)
             {
