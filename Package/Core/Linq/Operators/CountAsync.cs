@@ -171,7 +171,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="configuredSource"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource>(this ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate)
+        public static Promise<int> CountAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -189,7 +189,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="configuredSource"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource, TCapture>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
+        public static Promise<int> CountAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -229,7 +229,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="configuredSource"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource>(this ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
+        public static Promise<int> CountAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -247,7 +247,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="configuredSource"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource, TCapture>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
+        public static Promise<int> CountAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 

@@ -77,7 +77,7 @@ namespace ProtoPromiseTests.APIs.Linq
             }
         }
 
-        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(this ConfiguredAsyncEnumerable<TSource> asyncEnumerable,
+        public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> asyncEnumerable,
             bool async,
             Func<TSource, TKey> keySelector, bool captureKey,
             IComparer<TKey> comparer)
@@ -173,7 +173,7 @@ namespace ProtoPromiseTests.APIs.Linq
             }
         }
 
-        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(this ConfiguredAsyncEnumerable<TSource> asyncEnumerable,
+        public static OrderedAsyncEnumerable<TSource> OrderByDescending<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> asyncEnumerable,
             bool async,
             Func<TSource, TKey> keySelector, bool captureKey,
             IComparer<TKey> comparer)

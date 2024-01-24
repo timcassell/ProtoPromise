@@ -67,7 +67,7 @@ namespace Proto.Promises.Linq
         /// <param name="configuredSource">The sequence in which to locate a value.</param>
         /// <param name="value">The value to locate in the sequence.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in whether the source sequence contains an element that has the specified value.</returns>
-        public static Promise<bool> ContainsAsync<TSource>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TSource value)
+        public static Promise<bool> ContainsAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TSource value)
             => ContainsCore(configuredSource.GetAsyncEnumerator(), value, EqualityComparer<TSource>.Default);
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace Proto.Promises.Linq
         /// <param name="equalityComparer">An equality comparer to compare values.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in whether the source sequence contains an element that has the specified value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="equalityComparer"/> is null.</exception>
-        public static Promise<bool> ContainsAsync<TSource, TEqualityComparer>(this ConfiguredAsyncEnumerable<TSource> configuredSource, TSource value, TEqualityComparer equalityComparer)
+        public static Promise<bool> ContainsAsync<TSource, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TSource value, TEqualityComparer equalityComparer)
             where TEqualityComparer : IEqualityComparer<TSource>
         {
             ValidateArgument(equalityComparer, nameof(equalityComparer), 1);

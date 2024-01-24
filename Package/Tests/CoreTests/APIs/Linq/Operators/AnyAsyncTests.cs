@@ -56,7 +56,7 @@ namespace ProtoPromiseTests.APIs.Linq
             }
         }
 
-        public static Promise<bool> AnyAsync<TSource>(this ConfiguredAsyncEnumerable<TSource> source,
+        public static Promise<bool> AnyAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> source,
             bool async,
             Func<TSource, bool> predicate, bool captureValue)
         {

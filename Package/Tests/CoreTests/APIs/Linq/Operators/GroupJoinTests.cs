@@ -155,7 +155,7 @@ namespace ProtoPromiseTests.APIs.Linq
             }
         }
 
-        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey>(this ConfiguredAsyncEnumerable<TOuter> outer,
+        public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey>(this in ConfiguredAsyncEnumerable<TOuter> outer,
             AsyncEnumerable<TInner> inner,
             bool async,
             Func<TInner, TKey> innerKeySelector, bool captureInnerKey,

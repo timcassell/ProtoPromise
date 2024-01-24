@@ -56,7 +56,7 @@ namespace ProtoPromiseTests.APIs.Linq
             }
         }
 
-        public static Promise<TSource> AggregateAsync<TSource>(this ConfiguredAsyncEnumerable<TSource> source,
+        public static Promise<TSource> AggregateAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> source,
             bool async,
             Func<TSource, TSource, TSource> accumulator, bool captureValue)
         {
@@ -119,7 +119,7 @@ namespace ProtoPromiseTests.APIs.Linq
             }
         }
 
-        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate>(this ConfiguredAsyncEnumerable<TSource> source,
+        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate>(this in ConfiguredAsyncEnumerable<TSource> source,
             bool async,
             TAccumulate seed,
             Func<TAccumulate, TSource, TAccumulate> accumulator, bool captureValue)

@@ -60,7 +60,7 @@ namespace ProtoPromiseTests.APIs.Linq
             }
         }
 
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this ConfiguredAsyncEnumerable<TSource> source,
+        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> source,
             bool async,
             Func<TSource, TResult> selector, bool captureValue)
         {
@@ -123,7 +123,7 @@ namespace ProtoPromiseTests.APIs.Linq
             }
         }
 
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this ConfiguredAsyncEnumerable<TSource> source,
+        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> source,
             bool async,
             Func<TSource, int, TResult> selector, bool captureValue)
         {
