@@ -106,7 +106,7 @@ namespace Proto.Promises
                 return false;
             }
 
-            internal int InternalGetHashCode(TElement value)
+            private int InternalGetHashCode(TElement value)
             {
                 // Handle comparer implementations that throw when passed null
                 return (value == null) ? 0 : _comparer.GetHashCode(value) & 0x7FFFFFFF;

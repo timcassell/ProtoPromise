@@ -14,7 +14,7 @@ namespace Proto.Promises.CompilerServices
     /// <typeparam name="T">The type of values to enumerate.</typeparam>
     public readonly struct ConfiguredAsyncEnumerable<T>
     {
-        private readonly AsyncEnumerable<T> _enumerable;
+        internal readonly AsyncEnumerable<T> _enumerable;
         private readonly CancelationToken _cancelationToken;
         private readonly SynchronizationContext _synchronizationContext;
         private readonly Internal.SynchronizationOption _synchronizationOption;
