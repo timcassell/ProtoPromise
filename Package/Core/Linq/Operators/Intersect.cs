@@ -81,6 +81,16 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
+        /// Produces the set intersection of two async-enumerable sequences by using the default equality comparer to compare values.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of the input sequences.</typeparam>
+        /// <param name="configuredFirst">A configured async-enumerable sequence whose distinct elements that also appear in <paramref name="second"/> will be returned.</param>
+        /// <param name="second">An async-enumerable sequence whose distinct elements that also appear in <paramref name="configuredFirst"/> will be returned.</param>
+        /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
+        public static AsyncEnumerable<TSource> Intersect<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second)
+            => Intersect(configuredFirst, second, EqualityComparer<TSource>.Default);
+
+        /// <summary>
         /// Produces the set intersection of two async-enumerable sequences by using the specified equality comparer to compare values.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of the input sequences.</typeparam>
@@ -129,6 +139,7 @@ namespace Proto.Promises.Linq
                 }
                 finally
                 {
+                    joinedCancelationSource.TryDispose();
                     try
                     {
                         await cv.secondAsyncEnumerator.DisposeAsync();
@@ -551,6 +562,7 @@ namespace Proto.Promises.Linq
                     }
                     finally
                     {
+                        joinedCancelationSource.TryDispose();
                         try
                         {
                             await cv.secondAsyncEnumerator.DisposeAsync();
@@ -606,6 +618,7 @@ namespace Proto.Promises.Linq
                     }
                     finally
                     {
+                        joinedCancelationSource.TryDispose();
                         try
                         {
                             await cv.secondAsyncEnumerator.DisposeAsync();

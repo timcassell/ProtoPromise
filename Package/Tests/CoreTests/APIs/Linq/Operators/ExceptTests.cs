@@ -92,8 +92,9 @@ namespace ProtoPromiseTests.APIs.Linq
             IEqualityComparer<TSource> equalityComparer = null)
         {
             return configured
-                // There is no overload accepting a configured enumerable without a comparer, so we always pass a valid comparer.
-                ? firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Except(secondAsyncEnumerable, equalityComparer ?? EqualityComparer<TSource>.Default)
+                ? equalityComparer != null
+                    ? firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Except(secondAsyncEnumerable, equalityComparer)
+                    : firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Except(secondAsyncEnumerable)
                 : equalityComparer != null
                     ? firstAsyncEnumerable.Except(secondAsyncEnumerable, equalityComparer)
                     : firstAsyncEnumerable.Except(secondAsyncEnumerable);

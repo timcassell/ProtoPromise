@@ -77,20 +77,29 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
+        /// Returns an async-enumerable sequence that contains only distinct elements by using the default equality comparer.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
+        /// <param name="configuredSource">The configured async-enumerable sequence to remove duplicate elements from.</param>
+        /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains distinct elements from the source sequence.</returns>
+        public static AsyncEnumerable<TSource> Distinct<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource)
+            => Distinct(configuredSource, EqualityComparer<TSource>.Default);
+
+        /// <summary>
         /// Returns an async-enumerable sequence that contains only distinct elements by using the specified equality comparer.
         /// </summary>
-        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
         /// <typeparam name="TEqualityComparer">The type of the <paramref name="comparer"/>.</typeparam>
-        /// <param name="source">The configured async-enumerable sequence to remove duplicate elements from.</param>
+        /// <param name="configuredSource">The configured async-enumerable sequence to remove duplicate elements from.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare values.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains distinct elements from the source sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> Distinct<TSource, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> source, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> Distinct<TSource, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TSource>
         {
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return AsyncEnumerable<TSource>.Create((configuredAsyncEnumerator: source.GetAsyncEnumerator(), comparer), async (cv, writer, cancelationToken) =>
+            return AsyncEnumerable<TSource>.Create((configuredAsyncEnumerator: configuredSource.GetAsyncEnumerator(), comparer), async (cv, writer, cancelationToken) =>
             {
                 // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                 var enumerableRef = cv.configuredAsyncEnumerator._enumerator._target;

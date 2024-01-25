@@ -86,15 +86,13 @@ namespace ProtoPromiseTests.APIs.Linq
             bool configured,
             IEqualityComparer<TSource> equalityComparer = null)
         {
-            if (configured)
-            {
-                // There is no overload accepting a configured source without a comparer, so we always pass a valid comparer.
-                return asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Distinct(equalityComparer ?? EqualityComparer<TSource>.Default);
-            }
-
-            return equalityComparer != null
-                ? asyncEnumerable.Distinct(equalityComparer)
-                : asyncEnumerable.Distinct();
+            return configured
+                ? equalityComparer != null
+                    ? asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Distinct(equalityComparer)
+                    : asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Distinct()
+                : equalityComparer != null
+                    ? asyncEnumerable.Distinct(equalityComparer)
+                    : asyncEnumerable.Distinct();
         }
 
         private static AsyncEnumerable<TSource> DistinctBy<TSource, TKey>(AsyncEnumerable<TSource> asyncEnumerable,
