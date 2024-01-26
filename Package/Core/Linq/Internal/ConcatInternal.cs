@@ -202,7 +202,7 @@ namespace Proto.Promises
 #endif
         internal sealed class ConcatNAsyncEnumerable<TSource> : ConcatAsyncEnumerableBase<TSource>
         {
-            internal AsyncEnumerator<TSource> _nextEnumerator;
+            private AsyncEnumerator<TSource> _nextEnumerator;
 
             private ConcatNAsyncEnumerable() { }
 
