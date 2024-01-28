@@ -22,16 +22,17 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <param name="source">The sequence to retrieve an element from.</param>
         /// <param name="index">The zero-based index of the element to retrieve.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in the element at the specified index.</returns>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is less than 0 or greater than or equal to the number of elements in <paramref name="source"/>.</exception>
-        public static Promise<TSource> ElementAtAsync<TSource>(this AsyncEnumerable<TSource> source, int index)
+        public static Promise<TSource> ElementAtAsync<TSource>(this AsyncEnumerable<TSource> source, int index, CancelationToken cancelationToken = default)
         {
             if (index < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(index), "index must be greater or equal to zero.", Internal.GetFormattedStacktrace(1));
             }
 
-            return Core(source.GetAsyncEnumerator(), index);
+            return Core(source.GetAsyncEnumerator(cancelationToken), index);
 
             async Promise<TSource> Core(AsyncEnumerator<TSource> asyncEnumerator, int i)
             {
@@ -61,16 +62,17 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <param name="source">The sequence to retrieve an element from.</param>
         /// <param name="index">The zero-based index of the element to retrieve.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in the element at the specified index.</returns>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is less than 0 or greater than or equal to the number of elements in <paramref name="source"/>.</exception>
-        public static Promise<TSource> ElementAtOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, int index)
+        public static Promise<TSource> ElementAtOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, int index, CancelationToken cancelationToken = default)
         {
             if (index < 0)
             {
                 return Promise.Resolved(default(TSource));
             }
 
-            return Core(source.GetAsyncEnumerator(), index);
+            return Core(source.GetAsyncEnumerator(cancelationToken), index);
 
             async Promise<TSource> Core(AsyncEnumerator<TSource> asyncEnumerator, int i)
             {
@@ -100,13 +102,14 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <param name="source">The sequence to retrieve an element from.</param>
         /// <param name="index">The zero-based index of the element to retrieve.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in the element at the specified index.</returns>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is less than 0 or greater than or equal to the number of elements in <paramref name="source"/>.</exception>
-        public static Promise<TSource> ElementAtAsync<TSource>(this AsyncEnumerable<TSource> source, System.Index index)
+        public static Promise<TSource> ElementAtAsync<TSource>(this AsyncEnumerable<TSource> source, System.Index index, CancelationToken cancelationToken = default)
         {
             if (!index.IsFromEnd)
             {
-                return source.ElementAtAsync(index.Value);
+                return source.ElementAtAsync(index.Value, cancelationToken);
             }
 
             if (index.Value < 1)
@@ -114,7 +117,7 @@ namespace Proto.Promises.Linq
                 throw new ArgumentOutOfRangeException(nameof(index), $"index ({index}) is out of range.", Internal.GetFormattedStacktrace(1));
             }
 
-            return Core(source.GetAsyncEnumerator(), index.Value);
+            return Core(source.GetAsyncEnumerator(cancelationToken), index.Value);
 
             async Promise<TSource> Core(AsyncEnumerator<TSource> asyncEnumerator, int indexFromEnd)
             {
@@ -157,18 +160,19 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <param name="source">The sequence to retrieve an element from.</param>
         /// <param name="index">The zero-based index of the element to retrieve.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in the element at the specified index.</returns>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is less than 0 or greater than or equal to the number of elements in <paramref name="source"/>.</exception>
-        public static Promise<TSource> ElementAtOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, System.Index index)
+        public static Promise<TSource> ElementAtOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, System.Index index, CancelationToken cancelationToken = default)
         {
             if (!index.IsFromEnd)
             {
-                return source.ElementAtOrDefaultAsync(index.Value);
+                return source.ElementAtOrDefaultAsync(index.Value, cancelationToken);
             }
 
             return index.Value < 1
                 ? Promise.Resolved(default(TSource))
-                : Core(source.GetAsyncEnumerator(), index.Value);
+                : Core(source.GetAsyncEnumerator(cancelationToken), index.Value);
 
             async Promise<TSource> Core(AsyncEnumerator<TSource> asyncEnumerator, int indexFromEnd)
             {

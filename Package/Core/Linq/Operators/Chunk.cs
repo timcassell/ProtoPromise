@@ -6,6 +6,8 @@
 
 using Proto.Promises.Collections;
 
+#pragma warning disable IDE0063 // Use simple 'using' statement
+
 namespace Proto.Promises.Linq
 {
 #if CSHARP_7_3_OR_NEWER
@@ -67,6 +69,10 @@ namespace Proto.Promises.Linq
         private static AsyncEnumerable<TempCollection<TSource>> ChunkFull<TSource>(AsyncEnumerator<TSource> asyncEnumerator, int size)
             => AsyncEnumerable<TempCollection<TSource>>.Create((asyncEnumerator, size), async (cv, writer, cancelationToken) =>
             {
+                // The enumerator was retrieved without a cancelation token when the original function was called.
+                // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                cv.asyncEnumerator._target._cancelationToken = cancelationToken;
+
                 // We store each builder to be disposed after the entire operation.
                 // In most cases one might think we could use a single builder for all yields, but users could combine this with further Linq queries,
                 // so we need them to persist until the enumerator is disposed.
@@ -110,6 +116,10 @@ namespace Proto.Promises.Linq
         private static AsyncEnumerable<TempCollection<TSource>> ChunkSameStorage<TSource>(AsyncEnumerator<TSource> asyncEnumerator, int size)
             => AsyncEnumerable<TempCollection<TSource>>.Create((asyncEnumerator, size), async (cv, writer, cancelationToken) =>
             {
+                // The enumerator was retrieved without a cancelation token when the original function was called.
+                // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                cv.asyncEnumerator._target._cancelationToken = cancelationToken;
+
                 // In this case, the user explicitly declared that they don't need each yielded TempCollection to persist, so we can optimize it to use a single builder.
                 try
                 {

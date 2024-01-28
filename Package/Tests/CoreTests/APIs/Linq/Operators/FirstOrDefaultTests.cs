@@ -162,11 +162,12 @@ namespace ProtoPromiseTests.APIs.Linq
             bool captureValue,
             Func<TSource, bool> predicate,
             bool withDefaultParam,
-            TSource defaultParam)
+            TSource defaultParam,
+            CancelationToken cancelationToken = default)
         {
             if (configured)
             {
-                return FirstOrDefaultAsync(source.ConfigureAwait(SynchronizationOption.Foreground), async, captureValue, predicate, withDefaultParam, defaultParam);
+                return FirstOrDefaultAsync(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(cancelationToken), async, captureValue, predicate, withDefaultParam, defaultParam);
             }
 
             const string valueCapture = "valueCapture";
@@ -175,11 +176,11 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? withDefaultParam
-                        ? source.FirstOrDefaultAsync(async x => predicate(x), defaultParam)
-                        : source.FirstOrDefaultAsync(async x => predicate(x))
+                        ? source.FirstOrDefaultAsync(async x => predicate(x), defaultParam, cancelationToken)
+                        : source.FirstOrDefaultAsync(async x => predicate(x), cancelationToken)
                     : withDefaultParam
-                        ? source.FirstOrDefaultAsync(predicate, defaultParam)
-                        : source.FirstOrDefaultAsync(predicate);
+                        ? source.FirstOrDefaultAsync(predicate, defaultParam, cancelationToken)
+                        : source.FirstOrDefaultAsync(predicate, cancelationToken);
             }
             else
             {
@@ -189,23 +190,23 @@ namespace ProtoPromiseTests.APIs.Linq
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return predicate(x);
-                        }, defaultParam)
+                        }, defaultParam, cancelationToken)
                         : source.FirstOrDefaultAsync(valueCapture, async (cv, x) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return predicate(x);
-                        })
+                        }, cancelationToken)
                     : withDefaultParam
                         ? source.FirstOrDefaultAsync(valueCapture, (cv, x) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return predicate(x);
-                        }, defaultParam)
+                        }, defaultParam, cancelationToken)
                         : source.FirstOrDefaultAsync(valueCapture, (cv, x) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return predicate(x);
-                        });
+                        }, cancelationToken);
             }
         }
 
@@ -377,6 +378,98 @@ namespace ProtoPromiseTests.APIs.Linq
                 // IL2CPP crashes on integer divide by zero, so throw the exception manually instead.
                 var res = FirstOrDefaultAsync(new[] { 0, 1, 2 }.ToAsyncEnumerable(), configured, async, captureValue, x => { if (x == 0) throw new DivideByZeroException(); return 1 / x > 0; }, withDefaultParam, 42);
                 await TestHelper.AssertThrowsAsync<DivideByZeroException>(() => res);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void FirstOrDefaultAsync_NoParam_Cancel()
+        {
+            Promise.Run(async () =>
+            {
+                var deferred = Promise.NewDeferred();
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var res = xs.FirstOrDefaultAsync(cancelationSource.Token);
+                    cancelationSource.Cancel();
+                    deferred.Resolve();
+                    await TestHelper.AssertCanceledAsync(() => res);
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void FirstOrDefaultAsync_DefaultParam_Cancel()
+        {
+            Promise.Run(async () =>
+            {
+                var deferred = Promise.NewDeferred();
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var res = xs.FirstOrDefaultAsync(42, cancelationSource.Token);
+                    cancelationSource.Cancel();
+                    deferred.Resolve();
+                    await TestHelper.AssertCanceledAsync(() => res);
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void FirstOrDefaultAsync_Predicate_Cancel(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureValue,
+            [Values] bool withDefaultParam)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(0);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var res = FirstOrDefaultAsync(xs, configured, async, captureValue, x =>
+                    {
+                        if (x == 2)
+                        {
+                            cancelationSource.Cancel();
+                        }
+                        return x == 6;
+                    }, withDefaultParam, 42, cancelationSource.Token);
+                    await TestHelper.AssertCanceledAsync(() => res);
+                }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }

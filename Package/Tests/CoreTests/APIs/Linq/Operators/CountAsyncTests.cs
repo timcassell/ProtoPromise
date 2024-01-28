@@ -60,11 +60,12 @@ namespace ProtoPromiseTests.APIs.Linq
             bool configured,
             bool async,
             bool captureValue,
-            Func<int, bool> predicate)
+            Func<int, bool> predicate,
+            CancelationToken cancelationToken = default)
         {
             if (configured)
             {
-                return CountAsync(source.ConfigureAwait(SynchronizationOption.Foreground), async, captureValue, predicate);
+                return CountAsync(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(cancelationToken), async, captureValue, predicate);
             }
 
             const string capturedValue = "capturedValue";
@@ -72,8 +73,8 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.CountAsync(async x => predicate(x))
-                    : source.CountAsync(predicate);
+                    ? source.CountAsync(async x => predicate(x), cancelationToken)
+                    : source.CountAsync(predicate, cancelationToken);
             }
             else
             {
@@ -82,12 +83,12 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         Assert.AreEqual(capturedValue, cv);
                         return predicate(x);
-                    })
+                    }, cancelationToken)
                     : source.CountAsync(capturedValue, (cv, x) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
                         return predicate(x);
-                    });
+                    }, cancelationToken);
             }
         }
 
@@ -121,10 +122,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void CountAsync_Simple(
-            [Values] bool configured,
-            [Values] bool async,
-            [Values] bool captureValue)
+        public void CountAsync_Simple()
         {
             Promise.Run(async () =>
             {
@@ -135,10 +133,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void CountAsync_Simple_Throws_Source(
-            [Values] bool configured,
-            [Values] bool async,
-            [Values] bool captureValue)
+        public void CountAsync_Simple_Throws_Source()
         {
             Promise.Run(async () =>
             {
@@ -186,6 +181,73 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 var ex = new Exception("Bang!");
                 await TestHelper.AssertThrowsAsync(() => CountAsync(AsyncEnumerable<int>.Rejected(ex), configured, async, captureValue, x => x < 3), ex);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void CountAsync_Simple_Cancel()
+        {
+            Promise.Run(async () =>
+            {
+                var deferred = Promise.NewDeferred();
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var res = xs.CountAsync(cancelationSource.Token);
+                    var def = deferred;
+                    deferred = Promise.NewDeferred();
+                    def.Resolve();
+                    cancelationSource.Cancel();
+                    deferred.Resolve();
+                    await TestHelper.AssertCanceledAsync(() => res);
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void CountAsync_Predicate_Cancel(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureValue)
+        {
+            Promise.Run(async () =>
+            {
+                var deferred = Promise.NewDeferred();
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var res = CountAsync(xs, configured, async, captureValue, x => x < 3, cancelationSource.Token);
+                    var def = deferred;
+                    deferred = Promise.NewDeferred();
+                    def.Resolve();
+                    cancelationSource.Cancel();
+                    deferred.Resolve();
+                    await TestHelper.AssertCanceledAsync(() => res);
+                }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }

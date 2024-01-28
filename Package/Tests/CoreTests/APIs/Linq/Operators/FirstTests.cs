@@ -99,11 +99,12 @@ namespace ProtoPromiseTests.APIs.Linq
             bool configured,
             bool async,
             bool captureValue,
-            Func<TSource, bool> predicate)
+            Func<TSource, bool> predicate,
+            CancelationToken cancelationToken = default)
         {
             if (configured)
             {
-                return FirstAsync(source.ConfigureAwait(SynchronizationOption.Foreground), async, captureValue, predicate);
+                return FirstAsync(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(cancelationToken), async, captureValue, predicate);
             }
 
             const string valueCapture = "valueCapture";
@@ -111,8 +112,8 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.FirstAsync(async x => predicate(x))
-                    : source.FirstAsync(predicate);
+                    ? source.FirstAsync(async x => predicate(x), cancelationToken)
+                    : source.FirstAsync(predicate, cancelationToken);
             }
             else
             {
@@ -121,12 +122,12 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);
-                    })
+                    }, cancelationToken)
                     : source.FirstAsync(valueCapture, (cv, x) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);
-                    });
+                    }, cancelationToken);
             }
         }
 
@@ -269,6 +270,68 @@ namespace ProtoPromiseTests.APIs.Linq
                 // IL2CPP crashes on integer divide by zero, so throw the exception manually instead.
                 var res = FirstAsync(new[] { 0, 1, 2 }.ToAsyncEnumerable(), configured, async, captureValue, x => { if (x == 0) throw new DivideByZeroException(); return 1 / x > 0; });
                 await TestHelper.AssertThrowsAsync<DivideByZeroException>(() => res);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void FirstAsync_NoParam_Cancel()
+        {
+            Promise.Run(async () =>
+            {
+                var deferred = Promise.NewDeferred();
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var res = xs.FirstAsync(cancelationSource.Token);
+                    cancelationSource.Cancel();
+                    deferred.Resolve();
+                    await TestHelper.AssertCanceledAsync(() => res);
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void FirstAsync_Predicate_Cancel(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureValue)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(0);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var res = FirstAsync(xs, configured, async, captureValue, x =>
+                    {
+                        if (x == 2)
+                        {
+                            cancelationSource.Cancel();
+                        }
+                        return x == 4;
+                    }, cancelationSource.Token);
+                    await TestHelper.AssertCanceledAsync(() => res);
+                }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }

@@ -9,6 +9,8 @@ using Proto.Promises.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 namespace Proto.Promises
 {
 #if CSHARP_7_3_OR_NEWER

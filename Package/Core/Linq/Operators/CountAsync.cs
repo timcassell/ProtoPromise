@@ -21,10 +21,11 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <param name="source">The sequence that contains elements to be counted.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in number of elements in the input sequence.</returns>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource>(this AsyncEnumerable<TSource> source)
-            => CountCore(source.GetAsyncEnumerator());
+        public static Promise<int> CountAsync<TSource>(this AsyncEnumerable<TSource> source, CancelationToken cancelationToken = default)
+            => CountCore(source.GetAsyncEnumerator(cancelationToken));
 
         private static async Promise<int> CountCore<TSource>(AsyncEnumerator<TSource> asyncEnumerator)
         {
@@ -52,14 +53,15 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <param name="source">The sequence that contains elements to be counted.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate)
+        public static Promise<int> CountAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return CountCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -70,14 +72,15 @@ namespace Proto.Promises.Linq
         /// <param name="source">The sequence that contains elements to be counted.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
+        public static Promise<int> CountAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return CountCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<int> CountCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
@@ -110,14 +113,15 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <param name="source">The sequence that contains elements to be counted.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate)
+        public static Promise<int> CountAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return CountAwaitCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -128,14 +132,15 @@ namespace Proto.Promises.Linq
         /// <param name="source">The sequence that contains elements to be counted.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
+        public static Promise<int> CountAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return CountAwaitCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<int> CountAwaitCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)

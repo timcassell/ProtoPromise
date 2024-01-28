@@ -53,9 +53,9 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 var xs = new[] { 1, 2, 3, 4, 5 }.ToAsyncEnumerable();
                 if (configured)
-                    Assert.True(await xs.ContainsAsync(3));
-                else
                     Assert.True(await xs.ConfigureAwait(SynchronizationOption.Foreground).ContainsAsync(3));
+                else
+                    Assert.True(await xs.ContainsAsync(3));
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -68,9 +68,9 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 var xs = new[] { 1, 2, 3, 4, 5 }.ToAsyncEnumerable();
                 if (configured)
-                    Assert.False(await xs.ContainsAsync(6));
-                else
                     Assert.False(await xs.ConfigureAwait(SynchronizationOption.Foreground).ContainsAsync(6));
+                else
+                    Assert.False(await xs.ContainsAsync(6));
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -98,9 +98,9 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 var xs = new[] { 1, 2, 3, 4, 5 }.ToAsyncEnumerable();
                 if (configured)
-                    Assert.False(await xs.ContainsAsync(-6, new Eq()));
-                else
                     Assert.False(await xs.ConfigureAwait(SynchronizationOption.Foreground).ContainsAsync(-6, new Eq()));
+                else
+                    Assert.False(await xs.ContainsAsync(-6, new Eq()));
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -116,6 +116,41 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 throw new NotImplementedException();
             }
+        }
+
+        [Test]
+        public void ContainsAsync_Cancel(
+            [Values] bool configured)
+        {
+            Promise.Run(async () =>
+            {
+                var deferred = Promise.NewDeferred();
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(0);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var res = configured
+                        ? xs.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(cancelationSource.Token).ContainsAsync(6)
+                        : xs.ContainsAsync(6, cancelationSource.Token);
+                    var def = deferred;
+                    deferred = Promise.NewDeferred();
+                    def.Resolve();
+                    cancelationSource.Cancel();
+                    deferred.Resolve();
+                    await TestHelper.AssertCanceledAsync(() => res);
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
     }
 }

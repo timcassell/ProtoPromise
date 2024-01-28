@@ -25,11 +25,13 @@ namespace ProtoPromiseTests.APIs.Linq
         public static Promise<bool> AnyAsync<TSource>(this AsyncEnumerable<TSource> source,
             bool configured,
             bool async,
-            Func<TSource, bool> predicate, bool captureValue)
+            bool captureValue,
+            Func<TSource, bool> predicate,
+            CancelationToken cancelationToken = default)
         {
             if (configured)
             {
-                return AnyAsync(source.ConfigureAwait(SynchronizationOption.Foreground), async, predicate, captureValue);
+                return AnyAsync(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(cancelationToken), async, predicate, captureValue);
             }
 
             const string valueCapture = "valueCapture";
@@ -37,8 +39,8 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.AnyAsync(async x => predicate(x))
-                    : source.AnyAsync(predicate);
+                    ? source.AnyAsync(async x => predicate(x), cancelationToken)
+                    : source.AnyAsync(predicate, cancelationToken);
             }
             else
             {
@@ -47,12 +49,12 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);
-                    })
+                    }, cancelationToken)
                     : source.AnyAsync(valueCapture, (cv, x) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);
-                    });
+                    }, cancelationToken);
             }
         }
 
@@ -130,7 +132,7 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var res = new int[0].ToAsyncEnumerable()
-                    .AnyAsync(configured, async, x => x % 2 == 0, captureValue);
+                    .AnyAsync(configured, async, captureValue, x => x % 2 == 0);
                 Assert.False(await res);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -145,7 +147,7 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var res = new[] { 1, 2, 3, 4 }.ToAsyncEnumerable()
-                    .AnyAsync(configured, async, x => x % 2 == 0, captureValue);
+                    .AnyAsync(configured, async, captureValue, x => x % 2 == 0);
                 Assert.True(await res);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -160,7 +162,7 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var res = new[] { 2, 8, 4 }.ToAsyncEnumerable()
-                    .AnyAsync(configured, async, x => x % 2 != 0, captureValue);
+                    .AnyAsync(configured, async, captureValue, x => x % 2 != 0);
                 Assert.False(await res);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -176,7 +178,7 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 var ex = new Exception("Bang!");
                 var res = AsyncEnumerable<int>.Rejected(ex)
-                    .AnyAsync(configured, async, x => x % 2 == 0, captureValue);
+                    .AnyAsync(configured, async, captureValue, x => x % 2 == 0);
                 await TestHelper.AssertThrowsAsync(() => res, ex);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -192,7 +194,7 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 var ex = new Exception("Bang!");
                 var res = new[] { 2, 8, 4 }.ToAsyncEnumerable()
-                    .AnyAsync(configured, async, x => { throw ex; }, captureValue);
+                    .AnyAsync(configured, async, captureValue, x => { throw ex; });
                 await TestHelper.AssertThrowsAsync(() => res, ex);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -216,6 +218,71 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 var res = new int[0].ToAsyncEnumerable().AnyAsync();
                 Assert.False(await res);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AnyAsync_Cancel(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureValue)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(0);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var ys = xs.AnyAsync(configured, async, captureValue, x =>
+                    {
+                        if (x == 2)
+                        {
+                            cancelationSource.Cancel();
+                        }
+                        return x % 2 != 0;
+                    }, cancelationSource.Token);
+                    await TestHelper.AssertCanceledAsync(() => ys);
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AnyAsync_NoPredicate_Cancel(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureValue)
+        {
+            Promise.Run(async () =>
+            {
+                var deferred = Promise.NewDeferred();
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    await deferred.Promise;
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var res = xs.AnyAsync(cancelationSource.Token);
+                    cancelationSource.Cancel();
+                    deferred.Resolve();
+                    await TestHelper.AssertCanceledAsync(() => res);
+                }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }

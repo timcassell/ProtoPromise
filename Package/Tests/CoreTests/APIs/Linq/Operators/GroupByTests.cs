@@ -185,11 +185,12 @@ namespace ProtoPromiseTests.APIs.Linq
             bool configured,
             bool async,
             Func<TSource, TKey> keySelector, bool captureKey,
-            IEqualityComparer<TKey> equalityComparer = null)
+            IEqualityComparer<TKey> equalityComparer = null,
+            CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return GroupBy(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground), async, keySelector, captureKey, equalityComparer);
+                return GroupBy(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, keySelector, captureKey, equalityComparer);
             }
 
             const string keyCapture = "keyCapture";
@@ -237,11 +238,12 @@ namespace ProtoPromiseTests.APIs.Linq
             bool async,
             Func<TSource, TKey> keySelector, bool captureKey,
             Func<TSource, TElement> elementSelector, bool captureElement,
-            IEqualityComparer<TKey> equalityComparer = null)
+            IEqualityComparer<TKey> equalityComparer = null,
+            CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return GroupBy(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground), async, keySelector, captureKey, elementSelector, captureElement, equalityComparer);
+                return GroupBy(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, keySelector, captureKey, elementSelector, captureElement, equalityComparer);
             }
 
             const string keyCapture = "keyCapture";
@@ -547,7 +549,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void GroupBy_KeySelector_Sync_Simple1(
+        public void GroupBy_KeySelector_Simple1(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
@@ -601,7 +603,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void GroupBy_KeySelector_Sync_Simple2_TempCollectionIsStillValidAfterMoveNextAsyncUntilDisposeAsync(
+        public void GroupBy_KeySelector_Simple2_TempCollectionIsStillValidAfterMoveNextAsyncUntilDisposeAsync(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
@@ -662,7 +664,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void GroupBy_KeySelector_Sync_Simple2_TempCollectionToArrayIsPersistedAfterMoveNextAndDisposeAsync(
+        public void GroupBy_KeySelector_Simple2_TempCollectionToArrayIsPersistedAfterMoveNextAndDisposeAsync(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
@@ -723,7 +725,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void GroupBy_KeySelector_Sync_Empty(
+        public void GroupBy_KeySelector_Empty(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
@@ -739,7 +741,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void GroupBy_KeySelector_Sync_Throws_Source1(
+        public void GroupBy_KeySelector_Throws_Source1(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey)
@@ -755,7 +757,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void GroupBy_KeySelector_Sync_Throws_Source2(
+        public void GroupBy_KeySelector_Throws_Source2(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
@@ -779,7 +781,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void GroupBy_KeySelector_Sync_Throws_KeySelector1(
+        public void GroupBy_KeySelector_Throws_KeySelector1(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
@@ -796,7 +798,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void GroupBy_KeySelector_Sync_Throws_KeySelector2(
+        public void GroupBy_KeySelector_Throws_KeySelector2(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
@@ -813,7 +815,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void GroupBy_KeySelector_Sync_Comparer_Simple(
+        public void GroupBy_KeySelector_Comparer_Simple(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey)
@@ -858,20 +860,22 @@ namespace ProtoPromiseTests.APIs.Linq
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
-        // TODO: add this test when CountAsync extension is added.
-        //[Test]
-        //public void GroupBy_KeySelector_Sync_Comparer_Count()
-        //{
-        //    var xs = AsyncEnumerable.Range(0, 10);
-        //    var ys = xs.GroupBy(x => x, new EqMod(3));
-
-        //    var gar = await ys.CountAsync();
-
-        //    Assert.Equal(3, gar);
-        //}
+        [Test]
+        public void GroupBy_KeySelector_Comparer_Count(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureKey)
+        {
+            Promise.Run(async () =>
+            {
+                var ys = GroupBy(AsyncEnumerable.Range(0, 10), configured, async, x => x, captureKey, new EqMod(3));
+                Assert.AreEqual(3, await ys.CountAsync());
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
 
         [Test]
-        public void GroupBy_KeySelector_ElementSelector_Sync_Simple(
+        public void GroupBy_KeySelector_ElementSelector_Simple(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
@@ -916,20 +920,24 @@ namespace ProtoPromiseTests.APIs.Linq
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
-        // TODO: add this test when CountAsync extension is added.
-        //[Test]
-        //public void GroupBy_KeySelector_ElementSelector_Sync_Count()
-        //{
-        //    var xs = AsyncEnumerable.Range(0, 10);
-        //    var ys = xs.GroupBy(x => x % 3, x => (char) ('a' + x));
-
-        //    var gar = await ys.CountAsync();
-
-        //    Assert.Equal(3, gar);
-        //}
+        [Test]
+        public void GroupBy_KeySelector_ElementSelector_Count(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureKey,
+            [Values] bool captureElement,
+            [Values] bool withComparer)
+        {
+            Promise.Run(async () =>
+            {
+                var ys = GroupBy(AsyncEnumerable.Range(0, 10), configured, async, x => x % 3, captureKey, x => (char) ('a' + x), captureElement, equalityComparer: GetDefaultOrNullComparer<int>(withComparer));
+                Assert.AreEqual(3, await ys.CountAsync());
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
 
         [Test]
-        public void GroupBy_KeySelector_ElementSelector_Sync_Comparer_Simple1(
+        public void GroupBy_KeySelector_ElementSelector_Comparer_Simple1(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
@@ -974,7 +982,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void GroupBy_KeySelector_ElementSelector_Sync_Comparer_TempCollectionIsInvalidatedAfterDisposeAsync(
+        public void GroupBy_KeySelector_ElementSelector_Comparer_TempCollectionIsInvalidatedAfterDisposeAsync(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
@@ -1019,6 +1027,120 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return EqualityComparer<int>.Default.GetHashCode(obj % _d);
             }
+        }
+
+        public enum ConfiguredType
+        {
+            NotConfigured,
+            Configured,
+            ConfiguredWithCancelation
+        }
+
+        [Test]
+        public void GroupBy_KeySelector_Cancel(
+            [Values] ConfiguredType configuredType,
+            [Values] bool async,
+            [Values] bool captureKey,
+            [Values] bool withComparer,
+            [Values] bool enumeratorToken)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = GroupBy(xs.ToAsyncEnumerable(), configuredType != ConfiguredType.NotConfigured, async, x =>
+                            {
+                                if (x == 2)
+                                {
+                                    configuredCancelationSource.Cancel();
+                                    enumeratorCancelationSource.Cancel();
+                                }
+                                return x;
+                            }, captureKey,
+                            equalityComparer: GetDefaultOrNullComparer<int>(withComparer),
+                            configuredCancelationToken: configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                        {
+                            await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                        }
+                        else
+                        {
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(1, asyncEnumerator.Current.Key);
+                            Assert.AreEqual(1, asyncEnumerator.Current.Elements.Count);
+                            Assert.AreEqual(1, asyncEnumerator.Current.Elements[0]);
+                        }
+                        await asyncEnumerator.DisposeAsync();
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void GroupBy_KeySelector_ElementSelector_Cancel(
+            [Values] ConfiguredType configuredType,
+            [Values] bool async,
+            [Values] bool captureKey,
+            [Values] bool captureElement,
+            [Values] bool withComparer,
+            [Values] bool enumeratorToken)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = GroupBy(xs.ToAsyncEnumerable(), configuredType != ConfiguredType.NotConfigured, async, x =>
+                            {
+                                if (x == 2)
+                                {
+                                    configuredCancelationSource.Cancel();
+                                    enumeratorCancelationSource.Cancel();
+                                }
+                                return x;
+                            }, captureKey, x => (char) ('a' + x), captureElement,
+                            equalityComparer: GetDefaultOrNullComparer<int>(withComparer),
+                            configuredCancelationToken: configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                        {
+                            await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                        }
+                        else
+                        {
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(1, asyncEnumerator.Current.Key);
+                            Assert.AreEqual(1, asyncEnumerator.Current.Elements.Count);
+                            Assert.AreEqual('b', asyncEnumerator.Current.Elements[0]);
+                        }
+                        await asyncEnumerator.DisposeAsync();
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
     }
 }

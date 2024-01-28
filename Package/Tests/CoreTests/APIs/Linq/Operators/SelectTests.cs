@@ -29,11 +29,12 @@ namespace ProtoPromiseTests.APIs.Linq
         public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source,
             bool configured,
             bool async,
-            Func<TSource, TResult> selector, bool captureValue)
+            Func<TSource, TResult> selector, bool captureValue,
+            CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return Select(source.ConfigureAwait(SynchronizationOption.Foreground), async, selector, captureValue);
+                return Select(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, selector, captureValue);
             }
 
             const string capturedValue = "capturedValue";
@@ -92,11 +93,12 @@ namespace ProtoPromiseTests.APIs.Linq
         public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source,
             bool configured,
             bool async,
-            Func<TSource, int, TResult> selector, bool captureValue)
+            Func<TSource, int, TResult> selector, bool captureValue,
+            CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return Select(source.ConfigureAwait(SynchronizationOption.Foreground), async, selector, captureValue);
+                return Select(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, selector, captureValue);
             }
 
             const string capturedValue = "capturedValue";
@@ -339,6 +341,56 @@ namespace ProtoPromiseTests.APIs.Linq
 
         //    Assert.Equal(new[] { 2, 4, 6, 8, 10 }, await ys.ToArrayAsync());
         //}
+
+        public enum ConfiguredType
+        {
+            NotConfigured,
+            Configured,
+            ConfiguredWithCancelation
+        }
+
+        [Test]
+        public void Select_Cancel(
+            [Values] ConfiguredType configuredType,
+            [Values] bool async,
+            [Values] bool captureValue,
+            [Values] bool enumeratorToken)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(0);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = xs
+                            .Select(configuredType != ConfiguredType.NotConfigured, async, x => (char) ('a' + x), captureValue,
+                                configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .GetAsyncEnumerator(enumeratorCancelationSource.Token);
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual('a', asyncEnumerator.Current);
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual('b', asyncEnumerator.Current);
+                        configuredCancelationSource.Cancel();
+                        enumeratorCancelationSource.Cancel();
+                        if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                        {
+                            await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                        }
+                        await asyncEnumerator.DisposeAsync();
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
     }
 }
 

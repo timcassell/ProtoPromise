@@ -598,6 +598,47 @@ namespace ProtoPromiseTests.APIs.Linq
 
             yieldPromise.Forget();
         }
+
+        [Test]
+        public void AsyncEnumerableMerge_CancelFromSource()
+        {
+            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
+            {
+                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                {
+                    for (int i = start; i < start + count; i++)
+                    {
+                        cancelationToken.ThrowIfCancelationRequested();
+                        await writer.YieldAsync(i);
+                    }
+                });
+            };
+
+            Promise.Run(async () =>
+            {
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var asyncEnumerator = AsyncEnumerable.Merge(
+                        EnumerableRangeAsync(0, 2),
+                        EnumerableRangeAsync(0, 3),
+                        EnumerableRangeAsync(0, 4)
+                    )
+                        .GetAsyncEnumerator(cancelationSource.Token);
+
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(0, asyncEnumerator.Current);
+                    cancelationSource.Cancel();
+                    // The first MoveNextAsync pulls from every merged enumerable, so we need to move forward that many times before cancelation will be observed.
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(0, asyncEnumerator.Current);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(0, asyncEnumerator.Current);
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
     }
 }
 

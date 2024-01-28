@@ -8,6 +8,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
 using System;
 using System.Collections.Generic;
@@ -78,186 +79,252 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 #endif
 
+        // We test all the different overloads.
+        private static Promise ForEachAsync<TSource>(AsyncEnumerable<TSource> source,
+            bool configured,
+            bool async,
+            bool captureValue,
+            Action<TSource> action,
+            CancelationToken cancelationToken = default)
+        {
+            if (configured)
+            {
+                return ForEachAsync(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(cancelationToken), async, captureValue, action);
+            }
+
+            const string valueCapture = "valueCapture";
+
+            if (!captureValue)
+            {
+                return async
+                    ? source.ForEachAsync(async x => action(x), cancelationToken)
+                    : source.ForEachAsync(action, cancelationToken);
+            }
+            else
+            {
+                return async
+                    ? source.ForEachAsync(valueCapture, async (cv, x) =>
+                    {
+                        Assert.AreEqual(valueCapture, cv);
+                        action(x);
+                    }, cancelationToken)
+                    : source.ForEachAsync(valueCapture, (cv, x) =>
+                    {
+                        Assert.AreEqual(valueCapture, cv);
+                        action(x);
+                    }, cancelationToken);
+            }
+        }
+
+        private static Promise ForEachAsync<TSource>(ConfiguredAsyncEnumerable<TSource> source,
+            bool async,
+            bool captureValue,
+            Action<TSource> action)
+        {
+            const string valueCapture = "valueCapture";
+
+            if (!captureValue)
+            {
+                return async
+                    ? source.ForEachAsync(async x => action(x))
+                    : source.ForEachAsync(action);
+            }
+            else
+            {
+                return async
+                    ? source.ForEachAsync(valueCapture, async (cv, x) =>
+                    {
+                        Assert.AreEqual(valueCapture, cv);
+                        action(x);
+                    })
+                    : source.ForEachAsync(valueCapture, (cv, x) =>
+                    {
+                        Assert.AreEqual(valueCapture, cv);
+                        action(x);
+                    });
+            }
+        }
+
+        // We test all the different overloads.
+        private static Promise ForEachAsync<TSource>(AsyncEnumerable<TSource> source,
+            bool configured,
+            bool async,
+            bool captureValue,
+            Action<TSource, int> action,
+            CancelationToken cancelationToken = default)
+        {
+            if (configured)
+            {
+                return ForEachAsync(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(cancelationToken), async, captureValue, action);
+            }
+
+            const string valueCapture = "valueCapture";
+
+            if (!captureValue)
+            {
+                return async
+                    ? source.ForEachAsync(async (x, i) => action(x, i), cancelationToken)
+                    : source.ForEachAsync(action, cancelationToken);
+            }
+            else
+            {
+                return async
+                    ? source.ForEachAsync(valueCapture, async (cv, x, i) =>
+                    {
+                        Assert.AreEqual(valueCapture, cv);
+                        action(x, i);
+                    }, cancelationToken)
+                    : source.ForEachAsync(valueCapture, (cv, x, i) =>
+                    {
+                        Assert.AreEqual(valueCapture, cv);
+                        action(x, i);
+                    }, cancelationToken);
+            }
+        }
+
+        private static Promise ForEachAsync<TSource>(ConfiguredAsyncEnumerable<TSource> source,
+            bool async,
+            bool captureValue,
+            Action<TSource, int> action)
+        {
+            const string valueCapture = "valueCapture";
+
+            if (!captureValue)
+            {
+                return async
+                    ? source.ForEachAsync(async (x, i) => action(x, i))
+                    : source.ForEachAsync(action);
+            }
+            else
+            {
+                return async
+                    ? source.ForEachAsync(valueCapture, async (cv, x, i) =>
+                    {
+                        Assert.AreEqual(valueCapture, cv);
+                        action(x, i);
+                    })
+                    : source.ForEachAsync(valueCapture, (cv, x, i) =>
+                    {
+                        Assert.AreEqual(valueCapture, cv);
+                        action(x, i);
+                    });
+            }
+        }
+
         [Test]
-        public void ForEachAsync_Simple()
+        public void ForEachAsync_Simple(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureValue)
         {
             var sum = 0;
-            EnumerableRangeAsync(1, 4)
-                .ForEachAsync(x => sum += x)
+            ForEachAsync(EnumerableRangeAsync(1, 4), configured, async, captureValue, x => sum += x)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             Assert.AreEqual(10, sum);
         }
 
         [Test]
-        public void ForEachAsync_Simple_WithCaptureValue()
+        public void ForEachAsync_Indexed(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureValue)
         {
             var sum = 0;
-            string expected = "captured";
-            EnumerableRangeAsync(1, 4)
-                .ForEachAsync(expected, (s, x) =>
-                {
-                    Assert.AreEqual(expected, s);
-                    sum += x;
-                })
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-            Assert.AreEqual(10, sum);
-        }
-
-        [Test]
-        public void ForEachAsync_Indexed()
-        {
-            var sum = 0;
-            EnumerableRangeAsync(1, 4)
-                .ForEachAsync((x, i) => sum += x * i)
+            ForEachAsync(EnumerableRangeAsync(1, 4), configured, async, captureValue, (x, i) => sum += x * i)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             Assert.AreEqual(1 * 0 + 2 * 1 + 3 * 2 + 4 * 3, sum);
         }
 
         [Test]
-        public void ForEachAsync_Indexed_WithCaptureValue()
-        {
-            var sum = 0;
-            string expected = "captured";
-            EnumerableRangeAsync(1, 4)
-                .ForEachAsync(expected, (s, x, i) =>
-                {
-                    Assert.AreEqual(expected, s);
-                    sum += x * i;
-                })
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-            Assert.AreEqual(1 * 0 + 2 * 1 + 3 * 2 + 4 * 3, sum);
-        }
-
-        [Test]
-        public void ForEachAsync_Throws_Action()
+        public void ForEachAsync_Throws_Action(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureValue)
         {
             Promise.Run(async () =>
             {
                 var ex = new Exception("Bang");
-                Exception actual = null;
-                try
-                {
-                    await EnumerableRangeAsync(1, 4)
-                        .ForEachAsync(x => { throw ex; });
-                }
-                catch (Exception e)
-                {
-                    actual = e;
-                }
-                Assert.AreEqual(ex, actual);
+                var res = ForEachAsync(EnumerableRangeAsync(1, 4), configured, async, captureValue, x => { throw ex; });
+                await TestHelper.AssertThrowsAsync(() => res, ex);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
-        public void ForEachAsync_Indexed_Throws_Action()
+        public void ForEachAsync_Indexed_Throws_Action(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureValue)
         {
             Promise.Run(async () =>
             {
                 var ex = new Exception("Bang");
-                Exception actual = null;
-                try
-                {
-                    await EnumerableRangeAsync(1, 4)
-                        .ForEachAsync((x, i) => { throw ex; });
-                }
-                catch (Exception e)
-                {
-                    actual = e;
-                }
-                Assert.AreEqual(ex, actual);
+                var res = ForEachAsync(EnumerableRangeAsync(1, 4), configured, async, captureValue, (x, i) => { throw ex; });
+                await TestHelper.AssertThrowsAsync(() => res, ex);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
-        public void ForEachAwaitAsync_Simple()
-        {
-            var sum = 0;
-            EnumerableRangeAsync(1, 4)
-                .ForEachAsync(async x => sum += x)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-            Assert.AreEqual(10, sum);
-        }
-
-        [Test]
-        public void ForEachAwaitAsync_Simple_WithCaptureValue()
-        {
-            var sum = 0;
-            string expected = "captured";
-            EnumerableRangeAsync(1, 4)
-                .ForEachAsync(expected, async (s, x) =>
-                {
-                    Assert.AreEqual(expected, s);
-                    sum += x;
-                })
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-            Assert.AreEqual(10, sum);
-        }
-
-        [Test]
-        public void ForEachAwaitAsync_Indexed()
-        {
-            var sum = 0;
-            EnumerableRangeAsync(1, 4)
-                .ForEachAsync((x, i) => sum += x * i)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-            Assert.AreEqual(1 * 0 + 2 * 1 + 3 * 2 + 4 * 3, sum);
-        }
-
-        [Test]
-        public void ForEachAwaitAsync_Indexed_WithCaptureValue()
-        {
-            var sum = 0;
-            string expected = "captured";
-            EnumerableRangeAsync(1, 4)
-                .ForEachAsync(expected, async (s, x, i) =>
-                {
-                    Assert.AreEqual(expected, s);
-                    sum += x * i;
-                })
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-            Assert.AreEqual(1 * 0 + 2 * 1 + 3 * 2 + 4 * 3, sum);
-        }
-
-        [Test]
-        public void ForEachAwaitAsync_Throws_Action()
+        public void ForEachAsync_Simple_Cancel(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureValue)
         {
             Promise.Run(async () =>
             {
-                var ex = new Exception("Bang");
-                Exception actual = null;
-                try
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
                 {
-                    await EnumerableRangeAsync(1, 4)
-                        .ForEachAsync(x => Promise.Rejected(ex));
-                }
-                catch (Exception e)
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
                 {
-                    actual = e;
+                    var res = ForEachAsync(xs, configured, async, captureValue, x =>
+                    {
+                        if (x == 2)
+                        {
+                            cancelationSource.Cancel();
+                        }
+                    }, cancelationSource.Token);
+                    await TestHelper.AssertCanceledAsync(() => res);
                 }
-                Assert.AreEqual(ex, actual);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
-        public void ForEachAwaitAsync_Indexed_Throws_Action()
+        public void ForEachAsync_Indexed_Cancel(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureValue)
         {
             Promise.Run(async () =>
             {
-                var ex = new Exception("Bang");
-                Exception actual = null;
-                try
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
                 {
-                    await EnumerableRangeAsync(1, 4)
-                        .ForEachAsync((x, i) => Promise.Rejected(ex));
-                }
-                catch (Exception e)
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
                 {
-                    actual = e;
+                    var res = ForEachAsync(xs, configured, async, captureValue, (x, i) =>
+                    {
+                        if (x == 2)
+                        {
+                            cancelationSource.Cancel();
+                        }
+                    }, cancelationSource.Token);
+                    await TestHelper.AssertCanceledAsync(() => res);
                 }
-                Assert.AreEqual(ex, actual);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }

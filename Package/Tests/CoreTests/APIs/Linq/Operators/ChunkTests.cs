@@ -150,6 +150,37 @@ namespace ProtoPromiseTests.APIs.Linq
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
+
+        [Test]
+        public void Chunk_Cancel(
+            [Values] bool allowSameStorage)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    foreach (var num in new[] { 9999, 0, 888, -1, 66, -777, 1, 2, -12345 })
+                    {
+                        cancelationToken.ThrowIfCancelationRequested();
+                        await writer.YieldAsync(num);
+                    }
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var chunksEnumerator = xs
+                        .Chunk(3, allowSameStorage)
+                        .GetAsyncEnumerator(cancelationSource.Token);
+                    Assert.True(await chunksEnumerator.MoveNextAsync());
+                    CollectionAssert.AreEqual(new[] { 9999, 0, 888 }, chunksEnumerator.Current);
+                    Assert.True(await chunksEnumerator.MoveNextAsync());
+                    CollectionAssert.AreEqual(new[] { -1, 66, -777 }, chunksEnumerator.Current);
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => chunksEnumerator.MoveNextAsync());
+                    await chunksEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
     }
 }
 

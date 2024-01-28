@@ -26,12 +26,13 @@ namespace ProtoPromiseTests.APIs.Linq
         public static AsyncEnumerable<TSource> Union<TSource>(this AsyncEnumerable<TSource> firstAsyncEnumerable,
             AsyncEnumerable<TSource> secondAsyncEnumerable,
             bool configured,
-            IEqualityComparer<TSource> equalityComparer = null)
+            IEqualityComparer<TSource> equalityComparer = null,
+            CancelationToken configuredCancelationToken = default)
         {
             return configured
                 ? equalityComparer != null
-                    ? firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Union(secondAsyncEnumerable, equalityComparer)
-                    : firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Union(secondAsyncEnumerable)
+                    ? firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken).Union(secondAsyncEnumerable, equalityComparer)
+                    : firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken).Union(secondAsyncEnumerable)
                 : equalityComparer != null
                     ? firstAsyncEnumerable.Union(secondAsyncEnumerable, equalityComparer)
                     : firstAsyncEnumerable.Union(secondAsyncEnumerable);
@@ -43,11 +44,12 @@ namespace ProtoPromiseTests.APIs.Linq
             bool async,
             bool captureValue,
             Func<TSource, TKey> keySelector,
-            IEqualityComparer<TKey> equalityComparer = null)
+            IEqualityComparer<TKey> equalityComparer = null,
+            CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return UnionBy(firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground), secondAsyncEnumerable, async, captureValue, keySelector, equalityComparer);
+                return UnionBy(firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), secondAsyncEnumerable, async, captureValue, keySelector, equalityComparer);
             }
 
             const string valueCapture = "valueCapture";
@@ -831,6 +833,508 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return EqualityComparer<int>.Default.GetHashCode(Math.Abs(obj));
             }
+        }
+
+        public enum ConfiguredType
+        {
+            NotConfigured,
+            Configured,
+            ConfiguredWithCancelation
+        }
+
+        [Test]
+        public void Union_2_Cancel(
+            [Values] ConfiguredType configuredType,
+            [Values] bool withComparer,
+            [Values] bool enumeratorToken,
+            [Values(0, 1)] int cancelSequence)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                var ys = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(5);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = xs.Union(ys, configuredType != ConfiguredType.NotConfigured, GetDefaultOrNullComparer<int>(withComparer),
+                            configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        try
+                        {
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(1, asyncEnumerator.Current);
+                            if (cancelSequence == 0)
+                            {
+                                configuredCancelationSource.Cancel();
+                                enumeratorCancelationSource.Cancel();
+                                if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                                {
+                                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                                }
+                                return;
+                            }
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(2, asyncEnumerator.Current);
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(3, asyncEnumerator.Current);
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(4, asyncEnumerator.Current);
+                            configuredCancelationSource.Cancel();
+                            enumeratorCancelationSource.Cancel();
+                            if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                            {
+                                await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                            }
+                        }
+                        finally
+                        {
+                            await asyncEnumerator.DisposeAsync();
+                        }
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void Union_3_Cancel(
+            [Values] ConfiguredType configured1Type,
+            [Values] ConfiguredType configured2Type,
+            [Values] bool withComparer1,
+            [Values] bool withComparer2,
+            [Values] bool enumeratorToken,
+            [Values(0, 1, 2)] int cancelSequence)
+        {
+            Promise.Run(async () =>
+            {
+                var xs1 = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                var xs2 = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(5);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                });
+                var xs3 = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(5);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(6);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = xs1
+                            .Union(xs2, configured1Type != ConfiguredType.NotConfigured, GetDefaultOrNullComparer<int>(withComparer1),
+                                configured1Type == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .Union(xs3, configured2Type != ConfiguredType.NotConfigured, GetDefaultOrNullComparer<int>(withComparer2),
+                                configured2Type == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        try
+                        {
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(1, asyncEnumerator.Current);
+                            if (cancelSequence == 0)
+                            {
+                                configuredCancelationSource.Cancel();
+                                enumeratorCancelationSource.Cancel();
+                                if (configured1Type == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                                {
+                                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                                }
+                                return;
+                            }
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(2, asyncEnumerator.Current);
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(3, asyncEnumerator.Current);
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(4, asyncEnumerator.Current);
+                            if (cancelSequence == 1)
+                            {
+                                configuredCancelationSource.Cancel();
+                                enumeratorCancelationSource.Cancel();
+                                if (configured1Type == ConfiguredType.ConfiguredWithCancelation || configured2Type == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                                {
+                                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                                }
+                                return;
+                            }
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(5, asyncEnumerator.Current);
+                            configuredCancelationSource.Cancel();
+                            enumeratorCancelationSource.Cancel();
+                            if (configured1Type == ConfiguredType.ConfiguredWithCancelation || configured2Type == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                            {
+                                await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                            }
+                        }
+                        finally
+                        {
+                            await asyncEnumerator.DisposeAsync();
+                        }
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void Union_UnionedSecond_Cancel(
+            [Values] ConfiguredType configured1Type,
+            [Values] ConfiguredType configured2Type,
+            [Values] bool withComparer1,
+            [Values] bool withComparer2,
+            [Values] bool enumeratorToken,
+            [Values(0, 1, 2)] int cancelSequence)
+        {
+            Promise.Run(async () =>
+            {
+                var xs1 = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                var xs2 = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(5);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                });
+                var xs3 = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(5);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(6);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = xs1
+                            .Union(
+                                xs2.Union(xs3, configured2Type != ConfiguredType.NotConfigured, GetDefaultOrNullComparer<int>(withComparer2),
+                                    configured2Type == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None), configured1Type != ConfiguredType.NotConfigured, GetDefaultOrNullComparer<int>(withComparer1),
+                                configured1Type == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            
+                            .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        try
+                        {
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(1, asyncEnumerator.Current);
+                            if (cancelSequence == 0)
+                            {
+                                configuredCancelationSource.Cancel();
+                                enumeratorCancelationSource.Cancel();
+                                if (configured1Type == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                                {
+                                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                                }
+                                return;
+                            }
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(2, asyncEnumerator.Current);
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(3, asyncEnumerator.Current);
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(4, asyncEnumerator.Current);
+                            if (cancelSequence == 1)
+                            {
+                                configuredCancelationSource.Cancel();
+                                enumeratorCancelationSource.Cancel();
+                                if (configured1Type == ConfiguredType.ConfiguredWithCancelation || configured2Type == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                                {
+                                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                                }
+                                return;
+                            }
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(5, asyncEnumerator.Current);
+                            configuredCancelationSource.Cancel();
+                            enumeratorCancelationSource.Cancel();
+                            if (configured1Type == ConfiguredType.ConfiguredWithCancelation || configured2Type == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                            {
+                                await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                            }
+                        }
+                        finally
+                        {
+                            await asyncEnumerator.DisposeAsync();
+                        }
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        private static IEnumerable<TestCaseData> Union_UnionedBoth_Cancel_Args()
+        {
+            ConfiguredType[] configuredTypes = new ConfiguredType[]
+            {
+                ConfiguredType.NotConfigured,
+                ConfiguredType.Configured,
+                ConfiguredType.ConfiguredWithCancelation
+            };
+            bool[] bools = new bool[] { true, false };
+            int[] cancelSequences = new int[] { 0, 1, 2, 3 };
+
+            foreach (var configured1Type in configuredTypes)
+            foreach (var configured2Type in configuredTypes)
+            foreach (var configured3Type in configuredTypes)
+            foreach (var withComparer1 in bools)
+            foreach (var withComparer2 in bools)
+            foreach (var withComparer3 in bools)
+            foreach (var enumeratorToken in bools)
+            foreach (var cancelSequence in cancelSequences)
+            {
+                if (configured1Type == ConfiguredType.ConfiguredWithCancelation
+                    || configured2Type == ConfiguredType.ConfiguredWithCancelation
+                    || configured3Type == ConfiguredType.ConfiguredWithCancelation
+                    || enumeratorToken)
+                {
+                    yield return new TestCaseData(configured1Type, configured2Type, configured3Type, withComparer1, withComparer2, withComparer3, enumeratorToken, cancelSequence);
+                }
+            }
+        }
+
+        [Test, TestCaseSource(nameof(Union_UnionedBoth_Cancel_Args))]
+
+        public void Union_UnionedBoth_Cancel(
+            ConfiguredType configured1Type,
+            ConfiguredType configured2Type,
+            ConfiguredType configured3Type,
+            bool withComparer1,
+            bool withComparer2,
+            bool withComparer3,
+            bool enumeratorToken,
+            int cancelSequence)
+        {
+            Promise.Run(async () =>
+            {
+                var xs1 = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                });
+                var xs2 = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                });
+                var xs3 = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(5);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(6);
+                });
+                var xs4 = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(7);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(6);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = xs1
+                            .Union(xs2, configured1Type != ConfiguredType.NotConfigured, GetDefaultOrNullComparer<int>(withComparer1),
+                                configured1Type == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .Union(
+                                xs3.Union(xs4, configured2Type != ConfiguredType.NotConfigured, GetDefaultOrNullComparer<int>(withComparer2),
+                                    configured2Type == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None), configured3Type != ConfiguredType.NotConfigured, GetDefaultOrNullComparer<int>(withComparer3),
+                                configured3Type == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+
+                            .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        try
+                        {
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(1, asyncEnumerator.Current);
+                            if (cancelSequence == 0)
+                            {
+                                configuredCancelationSource.Cancel();
+                                enumeratorCancelationSource.Cancel();
+                                await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                                return;
+                            }
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(2, asyncEnumerator.Current);
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(3, asyncEnumerator.Current);
+                            if (cancelSequence == 1)
+                            {
+                                configuredCancelationSource.Cancel();
+                                enumeratorCancelationSource.Cancel();
+                                await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                                return;
+                            }
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(4, asyncEnumerator.Current);
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(5, asyncEnumerator.Current);
+                            if (cancelSequence == 2)
+                            {
+                                configuredCancelationSource.Cancel();
+                                enumeratorCancelationSource.Cancel();
+                                await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                                return;
+                            }
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(6, asyncEnumerator.Current);
+                            configuredCancelationSource.Cancel();
+                            enumeratorCancelationSource.Cancel();
+                            await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                        }
+                        finally
+                        {
+                            await asyncEnumerator.DisposeAsync();
+                        }
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void UnionBy_Cancel(
+            [Values] ConfiguredType configuredType,
+            [Values] bool async,
+            [Values] bool captureValue,
+            [Values] bool withComparer,
+            [Values] bool enumeratorToken,
+            [Values(0, 1)] int cancelSequence)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                var ys = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(5);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = xs.UnionBy(ys, configuredType != ConfiguredType.NotConfigured, async, captureValue, x => x, GetDefaultOrNullComparer<int>(withComparer),
+                            configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        try
+                        {
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(1, asyncEnumerator.Current);
+                            if (cancelSequence == 0)
+                            {
+                                configuredCancelationSource.Cancel();
+                                enumeratorCancelationSource.Cancel();
+                                if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                                {
+                                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                                }
+                                return;
+                            }
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(2, asyncEnumerator.Current);
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(3, asyncEnumerator.Current);
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(4, asyncEnumerator.Current);
+                            configuredCancelationSource.Cancel();
+                            enumeratorCancelationSource.Cancel();
+                            if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                            {
+                                await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                            }
+                        }
+                        finally
+                        {
+                            await asyncEnumerator.DisposeAsync();
+                        }
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
     }
 }

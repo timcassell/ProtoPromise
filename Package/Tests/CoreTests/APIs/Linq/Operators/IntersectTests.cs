@@ -89,12 +89,13 @@ namespace ProtoPromiseTests.APIs.Linq
         private static AsyncEnumerable<TSource> Intersect<TSource>(AsyncEnumerable<TSource> firstAsyncEnumerable,
             AsyncEnumerable<TSource> secondAsyncEnumerable,
             bool configured,
-            IEqualityComparer<TSource> equalityComparer = null)
+            IEqualityComparer<TSource> equalityComparer = null,
+            CancelationToken configuredCancelationToken = default)
         {
             return configured
                 ? equalityComparer != null
-                    ? firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Intersect(secondAsyncEnumerable, equalityComparer ?? EqualityComparer<TSource>.Default)
-                    : firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Intersect(secondAsyncEnumerable)
+                    ? firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken).Intersect(secondAsyncEnumerable, equalityComparer ?? EqualityComparer<TSource>.Default)
+                    : firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken).Intersect(secondAsyncEnumerable)
                 : equalityComparer != null
                     ? firstAsyncEnumerable.Intersect(secondAsyncEnumerable, equalityComparer)
                     : firstAsyncEnumerable.Intersect(secondAsyncEnumerable);
@@ -106,11 +107,12 @@ namespace ProtoPromiseTests.APIs.Linq
             bool async,
             bool captureValue,
             Func<TSource, TKey> keySelector,
-            IEqualityComparer<TKey> equalityComparer = null)
+            IEqualityComparer<TKey> equalityComparer = null,
+            CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return IntersectBy(firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground), secondAsyncEnumerable, async, captureValue, keySelector, equalityComparer);
+                return IntersectBy(firstAsyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), secondAsyncEnumerable, async, captureValue, keySelector, equalityComparer);
             }
 
             const string valueCapture = "valueCapture";
@@ -433,6 +435,131 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return EqualityComparer<int>.Default.GetHashCode(Math.Abs(obj));
             }
+        }
+
+        public enum ConfiguredType
+        {
+            NotConfigured,
+            Configured,
+            ConfiguredWithCancelation
+        }
+
+        [Test]
+        public void Intersect_Cancel(
+            [Values] ConfiguredType configuredType,
+            [Values] bool withComparer,
+            [Values] bool enumeratorToken,
+            [Values] bool cancelFirst)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                var ys = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(5);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = Intersect(xs, ys, configuredType != ConfiguredType.NotConfigured, GetDefaultOrNullComparer<int>(withComparer),
+                            configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        if (cancelFirst)
+                        {
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(1, asyncEnumerator.Current);
+                        }
+                        configuredCancelationSource.Cancel();
+                        enumeratorCancelationSource.Cancel();
+                        if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                        {
+                            await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                        }
+                        else
+                        {
+                            await asyncEnumerator.MoveNextAsync();
+                        }
+                        await asyncEnumerator.DisposeAsync();
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void IntersectBy_Cancel(
+            [Values] ConfiguredType configuredType,
+            [Values] bool async,
+            [Values] bool captureValue,
+            [Values] bool withComparer,
+            [Values] bool enumeratorToken,
+            [Values] bool cancelFirst)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                var ys = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(5);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = IntersectBy(xs, ys, configuredType != ConfiguredType.NotConfigured, async, captureValue, x => x, GetDefaultOrNullComparer<int>(withComparer),
+                            configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        if (cancelFirst)
+                        {
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual(1, asyncEnumerator.Current);
+                        }
+                        configuredCancelationSource.Cancel();
+                        enumeratorCancelationSource.Cancel();
+                        if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                        {
+                            await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                        }
+                        else
+                        {
+                            await asyncEnumerator.MoveNextAsync();
+                        }
+                        await asyncEnumerator.DisposeAsync();
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
     }
 }

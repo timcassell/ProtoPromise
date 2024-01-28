@@ -258,6 +258,94 @@ namespace ProtoPromiseTests.APIs.Linq
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
+
+        [Test]
+        public void DefaultIfEmpty_Many_Cancel()
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var asyncEnumerator = xs.DefaultIfEmpty().GetAsyncEnumerator(cancelationSource.Token);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(1, asyncEnumerator.Current);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(2, asyncEnumerator.Current);
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void DefaultIfEmpty_Value_Many_Cancel()
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var asyncEnumerator = xs.DefaultIfEmpty(42).GetAsyncEnumerator(cancelationSource.Token);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(1, asyncEnumerator.Current);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(2, asyncEnumerator.Current);
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void DefaultIfEmpty_Retriever_Many_Cancel(
+            [Values] bool captureValue)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var asyncEnumerator = DefaultIfEmpty(xs, captureValue, () => 42).GetAsyncEnumerator(cancelationSource.Token);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(1, asyncEnumerator.Current);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(2, asyncEnumerator.Current);
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
     }
 }
 
