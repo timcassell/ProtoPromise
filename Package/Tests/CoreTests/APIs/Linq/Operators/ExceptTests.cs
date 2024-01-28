@@ -499,10 +499,6 @@ namespace ProtoPromiseTests.APIs.Linq
                         {
                             await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
                         }
-                        else
-                        {
-                            await asyncEnumerator.MoveNextAsync();
-                        }
                         await asyncEnumerator.DisposeAsync();
                     }
                 }
@@ -558,10 +554,6 @@ namespace ProtoPromiseTests.APIs.Linq
                         if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
                         {
                             await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
-                        }
-                        else
-                        {
-                            await asyncEnumerator.MoveNextAsync();
                         }
                         await asyncEnumerator.DisposeAsync();
                     }

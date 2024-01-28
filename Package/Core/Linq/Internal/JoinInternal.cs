@@ -48,7 +48,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
                 {
                     // The enumerators were retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -102,6 +102,13 @@ namespace Proto.Promises
                         }
                     }
                 }
+
+                public Promise DisposeAsyncWithoutStart()
+                {
+                    // We consume less memory by using .Finally instead of async/await.
+                    return _innerAsyncEnumerator.DisposeAsync()
+                        .Finally(_outerAsyncEnumerator, e => e.DisposeAsync());
+                }
             }
 
             internal static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
@@ -114,9 +121,8 @@ namespace Proto.Promises
                 where TInnerKeySelector : IFunc<TInner, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TInner Inner), JoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<(TOuter Outer, TInner Inner)>.Create(
                     new JoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(outerAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
-                return new AsyncEnumerable<(TOuter Outer, TInner Inner)>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -146,7 +152,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
                 {
                     // The enumerators were retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -200,6 +206,13 @@ namespace Proto.Promises
                         }
                     }
                 }
+
+                public Promise DisposeAsyncWithoutStart()
+                {
+                    // We consume less memory by using .Finally instead of async/await.
+                    return _innerAsyncEnumerator.DisposeAsync()
+                        .Finally(_outerAsyncEnumerator, e => e.DisposeAsync());
+                }
             }
 
             internal static AsyncEnumerable<(TOuter Outer, TInner Inner)> JoinAwait<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
@@ -212,9 +225,8 @@ namespace Proto.Promises
                 where TInnerKeySelector : IFunc<TInner, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TInner Inner), JoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<(TOuter Outer, TInner Inner)>.Create(
                     new JoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(outerAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
-                return new AsyncEnumerable<(TOuter Outer, TInner Inner)>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -244,7 +256,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredOuterAsyncEnumerator._enumerator._target;
@@ -302,6 +314,13 @@ namespace Proto.Promises
                         }
                     }
                 }
+
+                public Promise DisposeAsyncWithoutStart()
+                {
+                    // We consume less memory by using .Finally instead of async/await.
+                    return _innerAsyncEnumerator.DisposeAsync()
+                        .Finally(_configuredOuterAsyncEnumerator, e => e.DisposeAsync());
+                }
             }
 
             internal static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
@@ -314,9 +333,8 @@ namespace Proto.Promises
                 where TInnerKeySelector : IFunc<TInner, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TInner Inner), ConfiguredJoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<(TOuter Outer, TInner Inner)>.Create(
                     new ConfiguredJoinSyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(configuredOuterAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
-                return new AsyncEnumerable<(TOuter Outer, TInner Inner)>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -346,7 +364,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<(TOuter Outer, TInner Inner)> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredOuterAsyncEnumerator._enumerator._target;
@@ -404,6 +422,13 @@ namespace Proto.Promises
                         }
                     }
                 }
+
+                public Promise DisposeAsyncWithoutStart()
+                {
+                    // We consume less memory by using .Finally instead of async/await.
+                    return _innerAsyncEnumerator.DisposeAsync()
+                        .Finally(_configuredOuterAsyncEnumerator, e => e.DisposeAsync());
+                }
             }
 
             internal static AsyncEnumerable<(TOuter Outer, TInner Inner)> JoinAwait<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(
@@ -416,9 +441,8 @@ namespace Proto.Promises
                 where TInnerKeySelector : IFunc<TInner, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<(TOuter Outer, TInner Inner), ConfiguredJoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<(TOuter Outer, TInner Inner)>.Create(
                     new ConfiguredJoinAsyncIterator<TOuter, TInner, TOuterKeySelector, TInnerKeySelector, TEqualityComparer>(configuredOuterAsyncEnumerator, innerAsyncEnumerator, outerKeySelector, innerKeySelector, comparer));
-                return new AsyncEnumerable<(TOuter Outer, TInner Inner)>(enumerable);
             }
         } // class Lookup<TKey, TElement>
     } // class Internal

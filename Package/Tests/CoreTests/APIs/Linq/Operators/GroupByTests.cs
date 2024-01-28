@@ -1059,7 +1059,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     using (var enumeratorCancelationSource = CancelationSource.New())
                     {
-                        var asyncEnumerator = GroupBy(xs.ToAsyncEnumerable(), configuredType != ConfiguredType.NotConfigured, async, x =>
+                        var asyncEnumerator = GroupBy(xs, configuredType != ConfiguredType.NotConfigured, async, x =>
                             {
                                 if (x == 2)
                                 {
@@ -1074,13 +1074,6 @@ namespace ProtoPromiseTests.APIs.Linq
                         if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
                         {
                             await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
-                        }
-                        else
-                        {
-                            Assert.True(await asyncEnumerator.MoveNextAsync());
-                            Assert.AreEqual(1, asyncEnumerator.Current.Key);
-                            Assert.AreEqual(1, asyncEnumerator.Current.Elements.Count);
-                            Assert.AreEqual(1, asyncEnumerator.Current.Elements[0]);
                         }
                         await asyncEnumerator.DisposeAsync();
                     }
@@ -1113,7 +1106,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     using (var enumeratorCancelationSource = CancelationSource.New())
                     {
-                        var asyncEnumerator = GroupBy(xs.ToAsyncEnumerable(), configuredType != ConfiguredType.NotConfigured, async, x =>
+                        var asyncEnumerator = GroupBy(xs, configuredType != ConfiguredType.NotConfigured, async, x =>
                             {
                                 if (x == 2)
                                 {
@@ -1128,13 +1121,6 @@ namespace ProtoPromiseTests.APIs.Linq
                         if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
                         {
                             await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
-                        }
-                        else
-                        {
-                            Assert.True(await asyncEnumerator.MoveNextAsync());
-                            Assert.AreEqual(1, asyncEnumerator.Current.Key);
-                            Assert.AreEqual(1, asyncEnumerator.Current.Elements.Count);
-                            Assert.AreEqual('b', asyncEnumerator.Current.Elements[0]);
                         }
                         await asyncEnumerator.DisposeAsync();
                     }

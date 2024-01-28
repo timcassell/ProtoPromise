@@ -7,6 +7,7 @@
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
@@ -33,7 +34,7 @@ namespace Proto.Promises
                     _selector = selector;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -55,14 +56,16 @@ namespace Proto.Promises
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<TResult> Select<TSource, TSelector>(AsyncEnumerator<TSource> source, TSelector selector)
                 where TSelector : IFunc<TSource, TResult>
             {
-                var enumerable = AsyncEnumerableCreate<TResult, SelectSyncIterator<TSource, TSelector>>.GetOrCreate(
-                    new SelectSyncIterator<TSource, TSelector>(source, selector));
-                return new AsyncEnumerable<TResult>(enumerable);
+                return AsyncEnumerable<TResult>.Create(new SelectSyncIterator<TSource, TSelector>(source, selector));
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -80,7 +83,7 @@ namespace Proto.Promises
                     _selector = selector;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -102,14 +105,16 @@ namespace Proto.Promises
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<TResult> SelectAwait<TSource, TSelector>(AsyncEnumerator<TSource> source, TSelector selector)
                 where TSelector : IFunc<TSource, Promise<TResult>>
             {
-                var enumerable = AsyncEnumerableCreate<TResult, SelectAsyncIterator<TSource, TSelector>>.GetOrCreate(
-                    new SelectAsyncIterator<TSource, TSelector>(source, selector));
-                return new AsyncEnumerable<TResult>(enumerable);
+                return AsyncEnumerable<TResult>.Create(new SelectAsyncIterator<TSource, TSelector>(source, selector));
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -127,7 +132,7 @@ namespace Proto.Promises
                     _selector = selector;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
@@ -151,14 +156,16 @@ namespace Proto.Promises
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _configuredAsyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<TResult> Select<TSource, TSelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TSelector selector)
                 where TSelector : IFunc<TSource, TResult>
             {
-                var enumerable = AsyncEnumerableCreate<TResult, ConfiguredSelectSyncIterator<TSource, TSelector>>.GetOrCreate(
-                    new ConfiguredSelectSyncIterator<TSource, TSelector>(configuredSource, selector));
-                return new AsyncEnumerable<TResult>(enumerable);
+                return AsyncEnumerable<TResult>.Create(new ConfiguredSelectSyncIterator<TSource, TSelector>(configuredSource, selector));
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -176,7 +183,7 @@ namespace Proto.Promises
                     _selector = selector;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
@@ -200,14 +207,16 @@ namespace Proto.Promises
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _configuredAsyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<TResult> SelectAwait<TSource, TSelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TSelector selector)
                 where TSelector : IFunc<TSource, Promise<TResult>>
             {
-                var enumerable = AsyncEnumerableCreate<TResult, ConfiguredSelectAsyncIterator<TSource, TSelector>>.GetOrCreate(
-                    new ConfiguredSelectAsyncIterator<TSource, TSelector>(configuredSource, selector));
-                return new AsyncEnumerable<TResult>(enumerable);
+                return AsyncEnumerable<TResult>.Create(new ConfiguredSelectAsyncIterator<TSource, TSelector>(configuredSource, selector));
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -225,7 +234,7 @@ namespace Proto.Promises
                     _selector = selector;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -248,14 +257,16 @@ namespace Proto.Promises
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<TResult> SelectWithIndex<TSource, TSelector>(AsyncEnumerator<TSource> source, TSelector selector)
                 where TSelector : IFunc<TSource, int, TResult>
             {
-                var enumerable = AsyncEnumerableCreate<TResult, SelectWithIndexSyncIterator<TSource, TSelector>>.GetOrCreate(
-                    new SelectWithIndexSyncIterator<TSource, TSelector>(source, selector));
-                return new AsyncEnumerable<TResult>(enumerable);
+                return AsyncEnumerable<TResult>.Create(new SelectWithIndexSyncIterator<TSource, TSelector>(source, selector));
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -273,7 +284,7 @@ namespace Proto.Promises
                     _selector = selector;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -296,14 +307,16 @@ namespace Proto.Promises
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<TResult> SelectWithIndexAwait<TSource, TSelector>(AsyncEnumerator<TSource> source, TSelector selector)
                 where TSelector : IFunc<TSource, int, Promise<TResult>>
             {
-                var enumerable = AsyncEnumerableCreate<TResult, SelectWithIndexAsyncIterator<TSource, TSelector>>.GetOrCreate(
-                    new SelectWithIndexAsyncIterator<TSource, TSelector>(source, selector));
-                return new AsyncEnumerable<TResult>(enumerable);
+                return AsyncEnumerable<TResult>.Create(new SelectWithIndexAsyncIterator<TSource, TSelector>(source, selector));
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -321,7 +334,7 @@ namespace Proto.Promises
                     _selector = selector;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
@@ -346,14 +359,16 @@ namespace Proto.Promises
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _configuredAsyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<TResult> SelectWithIndex<TSource, TSelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TSelector selector)
                 where TSelector : IFunc<TSource, int, TResult>
             {
-                var enumerable = AsyncEnumerableCreate<TResult, ConfiguredSelectWithIndexSyncIterator<TSource, TSelector>>.GetOrCreate(
-                    new ConfiguredSelectWithIndexSyncIterator<TSource, TSelector>(configuredSource, selector));
-                return new AsyncEnumerable<TResult>(enumerable);
+                return AsyncEnumerable<TResult>.Create(new ConfiguredSelectWithIndexSyncIterator<TSource, TSelector>(configuredSource, selector));
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -371,7 +386,7 @@ namespace Proto.Promises
                     _selector = selector;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
@@ -396,14 +411,16 @@ namespace Proto.Promises
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _configuredAsyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<TResult> SelectWithIndexAwait<TSource, TSelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TSelector selector)
                 where TSelector : IFunc<TSource, int, Promise<TResult>>
             {
-                var enumerable = AsyncEnumerableCreate<TResult, ConfiguredSelectWithIndexAsyncIterator<TSource, TSelector>>.GetOrCreate(
-                    new ConfiguredSelectWithIndexAsyncIterator<TSource, TSelector>(configuredSource, selector));
-                return new AsyncEnumerable<TResult>(enumerable);
+                return AsyncEnumerable<TResult>.Create(new ConfiguredSelectWithIndexAsyncIterator<TSource, TSelector>(configuredSource, selector));
             }
         }
     } // class Internal

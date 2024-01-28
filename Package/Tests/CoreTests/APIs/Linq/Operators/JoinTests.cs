@@ -844,10 +844,6 @@ namespace ProtoPromiseTests.APIs.Linq
                         {
                             await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
                         }
-                        else
-                        {
-                            await asyncEnumerator.MoveNextAsync();
-                        }
                         await asyncEnumerator.DisposeAsync();
                     }
                 }

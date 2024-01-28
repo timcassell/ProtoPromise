@@ -1,32 +1,15 @@
 using Proto.Promises.Async.CompilerServices;
+using Proto.Promises.Linq;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Security;
 
-// AsyncMethodBuilderAttribute
-#pragma warning disable 0436 // Type conflicts with imported type
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 namespace Proto.Promises.CompilerServices
 {
 #if CSHARP_7_3_OR_NEWER
-    /// <summary>
-    /// Type used to create an <see cref="Linq.AsyncEnumerable{T}"/> with <see cref="Linq.AsyncEnumerable.Create{T}(Func{AsyncStreamWriter{T}, CancelationToken, AsyncEnumerableMethod})"/>.
-    /// </summary>
-    /// <remarks>This type is intended for compiler use rather than use directly in code.</remarks>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    [AsyncMethodBuilder(typeof(AsyncEnumerableMethodBuilder))]
-    public readonly struct AsyncEnumerableMethod
-    {
-        internal readonly Promise _promise;
-
-        [MethodImpl(Internal.InlineOption)]
-        internal AsyncEnumerableMethod(Promise promise)
-            => _promise = promise;
-    }
-
     /// <summary>
     /// Awaitable type used to wait for the consumer to move the async iterator forward.
     /// </summary>
@@ -34,27 +17,28 @@ namespace Proto.Promises.CompilerServices
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public struct AsyncEnumerableMethodBuilder
+    public struct AsyncIteratorMethodBuilder
+
     {
         private PromiseMethodBuilder _builder;
 
         [MethodImpl(Internal.InlineOption)]
-        private AsyncEnumerableMethodBuilder(PromiseMethodBuilder builder)
+        private AsyncIteratorMethodBuilder(PromiseMethodBuilder builder)
             => _builder = builder;
 
-        /// <summary>Gets the <see cref="AsyncEnumerableMethod"/> for this builder.</summary>
-        /// <returns>The <see cref="AsyncEnumerableMethod"/> representing the builder's asynchronous operation.</returns>
-        public AsyncEnumerableMethod Task
+        /// <summary>Gets the <see cref="AsyncIteratorMethod"/> for this builder.</summary>
+        /// <returns>The <see cref="AsyncIteratorMethod"/> representing the builder's asynchronous operation.</returns>
+        public AsyncIteratorMethod Task
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return new AsyncEnumerableMethod(_builder.Task); }
+            get { return new AsyncIteratorMethod(_builder.Task); }
         }
 
-        /// <summary>Initializes a new <see cref="AsyncEnumerableMethodBuilder"/>.</summary>
-        /// <returns>The initialized <see cref="AsyncEnumerableMethodBuilder"/>.</returns>
+        /// <summary>Initializes a new <see cref="AsyncIteratorMethodBuilder"/>.</summary>
+        /// <returns>The initialized <see cref="AsyncIteratorMethodBuilder"/>.</returns>
         [MethodImpl(Internal.InlineOption)]
-        public static AsyncEnumerableMethodBuilder Create()
-            => new AsyncEnumerableMethodBuilder(PromiseMethodBuilder.Create());
+        public static AsyncIteratorMethodBuilder Create()
+            => new AsyncIteratorMethodBuilder(PromiseMethodBuilder.Create());
 
         /// <summary>
         /// Completes the <see cref="Promise"/> in the <see cref="Promise.State">Rejected</see> state with the specified exception.
@@ -118,7 +102,8 @@ namespace Proto.Promises.CompilerServices
         /// <summary>Does nothing.</summary>
         /// <param name="stateMachine">The heap-allocated state machine object.</param>
         [MethodImpl(Internal.InlineOption)]
-        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+        public void SetStateMachine(IAsyncStateMachine stateMachine)
+            => _builder.SetStateMachine(stateMachine);
     }
 #endif
 }

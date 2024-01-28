@@ -41,7 +41,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -87,6 +87,10 @@ namespace Proto.Promises
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
@@ -98,9 +102,8 @@ namespace Proto.Promises
                 where TElementSelector : IFunc<TSource, TElement>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create(
                     new GroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>(asyncEnumerator, keySelector, elementSelector, comparer));
-                return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -121,7 +124,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -164,6 +167,10 @@ namespace Proto.Promises
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TKeySelector, TEqualityComparer>(
@@ -173,9 +180,8 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TElement, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeySyncIterator<TKeySelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create(
                     new GroupByKeySyncIterator<TKeySelector, TEqualityComparer>(asyncEnumerator, keySelector, comparer));
-                return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -199,7 +205,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -245,6 +251,10 @@ namespace Proto.Promises
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
@@ -256,9 +266,8 @@ namespace Proto.Promises
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create(
                     new GroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>(asyncEnumerator, keySelector, elementSelector, comparer));
-                return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -279,7 +288,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -322,6 +331,10 @@ namespace Proto.Promises
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TKeySelector, TEqualityComparer>(
@@ -331,9 +344,8 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, GroupByKeyAsyncIterator<TKeySelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create(
                     new GroupByKeyAsyncIterator<TKeySelector, TEqualityComparer>(asyncEnumerator, keySelector, comparer));
-                return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -357,7 +369,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
@@ -404,6 +416,10 @@ namespace Proto.Promises
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _configuredAsyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
@@ -415,9 +431,8 @@ namespace Proto.Promises
                 where TElementSelector : IFunc<TSource, TElement>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create(
                     new ConfiguredGroupByKeyElementSyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>(configuredAsyncEnumerator, keySelector, elementSelector, comparer));
-                return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -438,7 +453,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
@@ -482,6 +497,10 @@ namespace Proto.Promises
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _configuredAsyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupBy<TKeySelector, TEqualityComparer>(
@@ -491,9 +510,8 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TElement, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeySyncIterator<TKeySelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create(
                     new ConfiguredGroupByKeySyncIterator<TKeySelector, TEqualityComparer>(configuredAsyncEnumerator, keySelector, comparer));
-                return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -517,7 +535,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
@@ -567,6 +585,10 @@ namespace Proto.Promises
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _configuredAsyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TSource, TKeySelector, TElementSelector, TEqualityComparer>(
@@ -578,9 +600,8 @@ namespace Proto.Promises
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create(
                     new ConfiguredGroupByKeyElementAsyncIterator<TSource, TKeySelector, TElementSelector, TEqualityComparer>(configuredAsyncEnumerator, keySelector, elementSelector, comparer));
-                return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -601,7 +622,7 @@ namespace Proto.Promises
                     _comparer = comparer;
                 }
 
-                public async AsyncEnumerableMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<Linq.Grouping<TKey, TElement>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
@@ -645,6 +666,10 @@ namespace Proto.Promises
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
+
+                [MethodImpl(InlineOption)]
+                public Promise DisposeAsyncWithoutStart()
+                    => _configuredAsyncEnumerator.DisposeAsync();
             }
 
             internal static AsyncEnumerable<Linq.Grouping<TKey, TElement>> GroupByAwait<TKeySelector, TEqualityComparer>(
@@ -654,9 +679,8 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var enumerable = AsyncEnumerableCreate<Linq.Grouping<TKey, TElement>, ConfiguredGroupByKeyAsyncIterator<TKeySelector, TEqualityComparer>>.GetOrCreate(
+                return AsyncEnumerable<Linq.Grouping<TKey, TElement>>.Create(
                     new ConfiguredGroupByKeyAsyncIterator<TKeySelector, TEqualityComparer>(configuredAsyncEnumerator, keySelector, comparer));
-                return new AsyncEnumerable<Linq.Grouping<TKey, TElement>>(enumerable);
             }
         } // class Lookup<TKey, TElement>
     } // class Internal

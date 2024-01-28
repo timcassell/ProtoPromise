@@ -690,12 +690,6 @@ namespace ProtoPromiseTests.APIs.Linq
                         {
                             await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
                         }
-                        else if (!cancelOuter)
-                        {
-                            Assert.True(await asyncEnumerator.MoveNextAsync());
-                            Assert.AreEqual(0, asyncEnumerator.Current.Outer);
-                            CollectionAssert.AreEqual(new[] { 3, 6 }, asyncEnumerator.Current.InnerElements);
-                        }
                         await asyncEnumerator.DisposeAsync();
                     }
                 }

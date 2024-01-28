@@ -27,6 +27,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0060 // Remove unused parameter
 #pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable IDE0251 // Make member 'readonly'
 // Other async libraries could be doing the same AsyncMethodBuilderAttribute trick, but left theirs public, so we suppress the warning just in case.
 #pragma warning disable 0436 // Type conflicts with imported type
 

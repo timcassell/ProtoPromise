@@ -1143,6 +1143,14 @@ namespace ProtoPromiseTests.APIs.Linq
                     || configured3Type == ConfiguredType.ConfiguredWithCancelation
                     || enumeratorToken)
                 {
+                    if ((cancelSequence == 0 && (!enumeratorToken && configured1Type != ConfiguredType.ConfiguredWithCancelation))
+                        || (cancelSequence == 1 && (!enumeratorToken && configured1Type != ConfiguredType.ConfiguredWithCancelation))
+                        || (cancelSequence == 2 && (!enumeratorToken && configured2Type != ConfiguredType.ConfiguredWithCancelation && configured3Type != ConfiguredType.ConfiguredWithCancelation))
+                        || (cancelSequence == 3 && (!enumeratorToken && configured2Type != ConfiguredType.ConfiguredWithCancelation && configured3Type != ConfiguredType.ConfiguredWithCancelation))
+                        )
+                    {
+                        continue;
+                    }
                     yield return new TestCaseData(configured1Type, configured2Type, configured3Type, withComparer1, withComparer2, withComparer3, enumeratorToken, cancelSequence);
                 }
             }

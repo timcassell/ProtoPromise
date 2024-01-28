@@ -624,7 +624,6 @@ namespace ProtoPromiseTests.APIs.Linq
                         EnumerableRangeAsync(0, 4)
                     )
                         .GetAsyncEnumerator(cancelationSource.Token);
-
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     Assert.AreEqual(0, asyncEnumerator.Current);
                     cancelationSource.Cancel();
@@ -636,6 +635,76 @@ namespace ProtoPromiseTests.APIs.Linq
                     await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
                     await asyncEnumerator.DisposeAsync();
                 }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncEnumerableMerge_Sync_DisposeWithoutMoveNext()
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerator = AsyncEnumerable.Merge(
+                    AsyncEnumerable.Range(0, 2),
+                    AsyncEnumerable.Range(0, 3),
+                    AsyncEnumerable.Range(0, 4)
+                )
+                    .GetAsyncEnumerator();
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncEnumerableMerge_Sync_EarlyDispose()
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerator = AsyncEnumerable.Merge(
+                    AsyncEnumerable.Range(0, 2),
+                    AsyncEnumerable.Range(0, 3),
+                    AsyncEnumerable.Range(0, 4)
+                )
+                    .GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncEnumerableMerge_Async_DisposeWithoutMoveNext()
+        {
+            Promise.Run(async () =>
+            {
+                var enumerablesAsync = AsyncEnumerable.Create<AsyncEnumerable<int>>(async (writer, cancelationToken) =>
+                {
+                    await writer.YieldAsync(AsyncEnumerable.Range(0, 2));
+                    await writer.YieldAsync(AsyncEnumerable.Range(0, 3));
+                    await writer.YieldAsync(AsyncEnumerable.Range(0, 4));
+                });
+                var asyncEnumerator = AsyncEnumerable.Merge(enumerablesAsync).GetAsyncEnumerator();
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncEnumerableMerge_Async_EarlyDispose()
+        {
+            Promise.Run(async () =>
+            {
+                var enumerablesAsync = AsyncEnumerable.Create<AsyncEnumerable<int>>(async (writer, cancelationToken) =>
+                {
+                    await writer.YieldAsync(AsyncEnumerable.Range(0, 2));
+                    await writer.YieldAsync(AsyncEnumerable.Range(0, 3));
+                    await writer.YieldAsync(AsyncEnumerable.Range(0, 4));
+                });
+                var asyncEnumerator = AsyncEnumerable.Merge(enumerablesAsync).GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+                await asyncEnumerator.DisposeAsync();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }

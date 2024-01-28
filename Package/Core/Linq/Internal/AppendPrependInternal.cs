@@ -68,7 +68,8 @@ namespace Proto.Promises
                 return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
             }
 
-            public abstract AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> streamWriter, CancelationToken cancelationToken);
+            public abstract AsyncIteratorMethod Start(AsyncStreamWriter<TSource> streamWriter, CancelationToken cancelationToken);
+            public abstract Promise DisposeAsyncWithoutStart();
 
             internal abstract AppendPrependAsyncEnumerableBase<TSource> Prepend(int enumerableId, TSource element);
             internal abstract AppendPrependAsyncEnumerableBase<TSource> Append(int enumerableId, TSource element);
@@ -109,7 +110,14 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+            public override Promise DisposeAsyncWithoutStart()
+            {
+                var source = _source;
+                Dispose();
+                return source.DisposeAsync();
+            }
+
+            public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
             {
                 // The enumerator was retrieved without a cancelation token when the original function was called.
                 // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -190,7 +198,14 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+            public override Promise DisposeAsyncWithoutStart()
+            {
+                var source = _source;
+                Dispose();
+                return source.DisposeAsync();
+            }
+
+            public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
             {
                 // The enumerator was retrieved without a cancelation token when the original function was called.
                 // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -274,7 +289,14 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+            public override Promise DisposeAsyncWithoutStart()
+            {
+                var source = _source;
+                Dispose();
+                return source.DisposeAsync();
+            }
+
+            public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
             {
                 // The enumerator was retrieved without a cancelation token when the original function was called.
                 // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -363,6 +385,13 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
+            public override Promise DisposeAsyncWithoutStart()
+            {
+                var source = _source;
+                Dispose();
+                return source.DisposeAsync();
+            }
+
             private void RepoolWithoutDispose()
             {
                 _source = default;
@@ -370,7 +399,7 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+            public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
             {
                 // The enumerator was retrieved without a cancelation token when the original function was called.
                 // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -452,6 +481,13 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
+            public override Promise DisposeAsyncWithoutStart()
+            {
+                var source = _source;
+                Dispose();
+                return source.DisposeAsync();
+            }
+
             private void RepoolWithoutDispose()
             {
                 _source = default;
@@ -459,7 +495,7 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+            public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
             {
                 // The enumerator was retrieved without a cancelation token when the original function was called.
                 // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -544,7 +580,14 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+            public override Promise DisposeAsyncWithoutStart()
+            {
+                var source = _source;
+                Dispose();
+                return source.DisposeAsync();
+            }
+
+            public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
             {
                 // The enumerator was retrieved without a cancelation token when the original function was called.
                 // We need to propagate the token that was passed in, so we assign it before starting iteration.

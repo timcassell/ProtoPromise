@@ -152,7 +152,8 @@ namespace Proto.Promises
 #endif
         internal abstract class OrderedAsyncEnumerableHead<TSource> : OrderedAsyncEnumerableBase<TSource>, IAsyncIterator<TSource>
         {
-            public abstract AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> streamWriter, CancelationToken cancelationToken);
+            public abstract AsyncIteratorMethod Start(AsyncStreamWriter<TSource> streamWriter, CancelationToken cancelationToken);
+            public abstract Promise DisposeAsyncWithoutStart();
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -249,19 +250,25 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
+                    _source = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override Promise DisposeAsyncWithoutStart()
                 {
                     var source = _source;
-                    _source = default;
+                    Dispose();
+                    return source.DisposeAsync();
+                }
+
+                public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                    source._target._cancelationToken = cancelationToken;
+                    _source._target._cancelationToken = cancelationToken;
                     try
                     {
-                        if (!await source.MoveNextAsync())
+                        if (!await _source.MoveNextAsync())
                         {
                             // Empty source.
                             return;
@@ -271,8 +278,8 @@ namespace Proto.Promises
                         {
                             do
                             {
-                                elements.Add(source.Current);
-                            } while (await source.MoveNextAsync());
+                                elements.Add(_source.Current);
+                            } while (await _source.MoveNextAsync());
 
                             var next = _next;
                             while (next != null)
@@ -305,6 +312,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        var source = _source;
                         Dispose();
                         await source.DisposeAsync();
                     }
@@ -344,20 +352,26 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
+                    _configuredSource = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override Promise DisposeAsyncWithoutStart()
                 {
                     var source = _configuredSource;
-                    _configuredSource = default;
+                    Dispose();
+                    return source.DisposeAsync();
+                }
+
+                public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = source._enumerator._target;
+                    var enumerableRef = _configuredSource._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
                     {
-                        if (!await source.MoveNextAsync())
+                        if (!await _configuredSource.MoveNextAsync())
                         {
                             // Empty source.
                             return;
@@ -367,13 +381,13 @@ namespace Proto.Promises
                         {
                             do
                             {
-                                elements.Add(source.Current);
-                            } while (await source.MoveNextAsync());
+                                elements.Add(_configuredSource.Current);
+                            } while (await _configuredSource.MoveNextAsync());
 
                             var next = _next;
                             if (next != null)
                             {
-                                var switchToConfiguredContextAwaiter = source.SwitchToContextReusable();
+                                var switchToConfiguredContextAwaiter = _configuredSource.SwitchToContextReusable();
                                 do
                                 {
                                     await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
@@ -405,8 +419,9 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        Dispose();
                         joinedCancelationSource.TryDispose();
+                        var source = _configuredSource;
+                        Dispose();
                         await source.DisposeAsync();
                     }
                 }
@@ -468,32 +483,37 @@ namespace Proto.Promises
                     return instance;
                 }
 
-                private void ComputeKeys(ReadOnlySpan<TSource> elements, TempCollectionBuilder<TKey> keys)
+                private void ComputeKeys(ReadOnlySpan<TSource> elements, Span<TKey> keys)
                 {
-                    var keysSpan = keys.Span;
                     for (int i = 0; i < elements.Length; ++i)
                     {
-                        keysSpan[i] = _keySelector.Invoke(elements[i]);
+                        keys[i] = _keySelector.Invoke(elements[i]);
                     }
                 }
 
                 new private void Dispose()
                 {
                     base.Dispose();
+                    _source = default;
                     _keySelector = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override Promise DisposeAsyncWithoutStart()
                 {
                     var source = _source;
-                    _source = default;
+                    Dispose();
+                    return source.DisposeAsync();
+                }
+
+                public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                    source._target._cancelationToken = cancelationToken;
+                    _source._target._cancelationToken = cancelationToken;
                     try
                     {
-                        if (!await source.MoveNextAsync())
+                        if (!await _source.MoveNextAsync())
                         {
                             // Empty source.
                             return;
@@ -503,8 +523,8 @@ namespace Proto.Promises
                         {
                             do
                             {
-                                elements.Add(source.Current);
-                            } while (await source.MoveNextAsync());
+                                elements.Add(_source.Current);
+                            } while (await _source.MoveNextAsync());
 
                             using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
                             {
@@ -514,7 +534,7 @@ namespace Proto.Promises
                                 }
                                 using (var keys = new TempCollectionBuilder<TKey>(elements._count, elements._count))
                                 {
-                                    ComputeKeys(elements.ReadOnlySpan, keys);
+                                    ComputeKeys(elements.ReadOnlySpan, keys.Span);
                                     var next = _next;
                                     while (next != null)
                                     {
@@ -540,6 +560,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        var source = _source;
                         Dispose();
                         await source.DisposeAsync();
                     }
@@ -591,21 +612,27 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
+                    _configuredSource = default;
                     _keySelector = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override Promise DisposeAsyncWithoutStart()
                 {
                     var source = _configuredSource;
-                    _configuredSource = default;
+                    Dispose();
+                    return source.DisposeAsync();
+                }
+
+                public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = source._enumerator._target;
+                    var enumerableRef = _configuredSource._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
                     {
-                        if (!await source.MoveNextAsync())
+                        if (!await _configuredSource.MoveNextAsync())
                         {
                             // Empty source.
                             return;
@@ -615,8 +642,8 @@ namespace Proto.Promises
                         {
                             do
                             {
-                                elements.Add(source.Current);
-                            } while (await source.MoveNextAsync());
+                                elements.Add(_configuredSource.Current);
+                            } while (await _configuredSource.MoveNextAsync());
 
                             using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
                             {
@@ -630,7 +657,7 @@ namespace Proto.Promises
                                     var next = _next;
                                     if (next != null)
                                     {
-                                        var switchToConfiguredContextAwaiter = source.SwitchToContextReusable();
+                                        var switchToConfiguredContextAwaiter = _configuredSource.SwitchToContextReusable();
                                         do
                                         {
                                             await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
@@ -656,8 +683,9 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        Dispose();
                         joinedCancelationSource.TryDispose();
+                        var source = _configuredSource;
+                        Dispose();
                         await source.DisposeAsync();
                     }
                 }
@@ -699,20 +727,26 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
+                    _source = default;
                     _keySelector = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override Promise DisposeAsyncWithoutStart()
                 {
                     var source = _source;
-                    _source = default;
+                    Dispose();
+                    return source.DisposeAsync();
+                }
+
+                public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
                     // The enumerator was retrieved without a cancelation token when the original function was called.
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                    source._target._cancelationToken = cancelationToken;
+                    _source._target._cancelationToken = cancelationToken;
                     try
                     {
-                        if (!await source.MoveNextAsync())
+                        if (!await _source.MoveNextAsync())
                         {
                             // Empty source.
                             return;
@@ -722,8 +756,8 @@ namespace Proto.Promises
                         {
                             do
                             {
-                                elements.Add(source.Current);
-                            } while (await source.MoveNextAsync());
+                                elements.Add(_source.Current);
+                            } while (await _source.MoveNextAsync());
 
                             using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
                             {
@@ -762,6 +796,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
+                        var source = _source;
                         Dispose();
                         await source.DisposeAsync();
                     }
@@ -804,21 +839,27 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
+                    _configuredSource = default;
                     _keySelector = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
-                public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                public override Promise DisposeAsyncWithoutStart()
                 {
                     var source = _configuredSource;
-                    _configuredSource = default;
+                    Dispose();
+                    return source.DisposeAsync();
+                }
+
+                public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = source._enumerator._target;
+                    var enumerableRef = _configuredSource._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
                     {
-                        if (!await source.MoveNextAsync())
+                        if (!await _configuredSource.MoveNextAsync())
                         {
                             // Empty source.
                             return;
@@ -828,8 +869,8 @@ namespace Proto.Promises
                         {
                             do
                             {
-                                elements.Add(source.Current);
-                            } while (await source.MoveNextAsync());
+                                elements.Add(_configuredSource.Current);
+                            } while (await _configuredSource.MoveNextAsync());
 
                             using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
                             {
@@ -839,7 +880,7 @@ namespace Proto.Promises
                                 }
                                 using (var keys = new TempCollectionBuilder<TKey>(elements._count, elements._count))
                                 {
-                                    var switchToConfiguredContextAwaiter = source.SwitchToContextReusable();
+                                    var switchToConfiguredContextAwaiter = _configuredSource.SwitchToContextReusable();
                                     for (int i = 0; i < keys._count; ++i)
                                     {
                                         await switchToConfiguredContextAwaiter;
@@ -870,8 +911,9 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        Dispose();
                         joinedCancelationSource.TryDispose();
+                        var source = _configuredSource;
+                        Dispose();
                         await source.DisposeAsync();
                     }
                 }
