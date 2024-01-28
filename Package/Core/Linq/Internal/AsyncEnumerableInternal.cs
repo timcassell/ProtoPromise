@@ -251,7 +251,7 @@ namespace Proto.Promises
                     {
                         if (oldId == id + 1)
                         {
-                            throw new InvalidOperationException("AsyncEnumerable.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                            throw new InvalidOperationException("AsyncEnumerator.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
                         }
                         // IAsyncDisposable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
                         return Promise.Resolved();
@@ -290,7 +290,7 @@ namespace Proto.Promises
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
                         handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
-                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create iterator function completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
                         state = Promise.State.Rejected;
                     }
                     else
@@ -308,7 +308,7 @@ namespace Proto.Promises
                     Promise.State state = Promise.State.Resolved;
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
-                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create iterator function completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
                         state = Promise.State.Rejected;
                     }
                     HandleNextInternal(rejectContainer, state);
@@ -329,7 +329,7 @@ namespace Proto.Promises
                             // Throw this special exception so that the async iterator function will run any finally blocks and complete.
                             throw AsyncEnumerableDisposedException.s_instance;
                         }
-                        throw new InvalidOperationException("AsyncStreamYielder.GetResult: instance is not valid. This should only be called from the iterator method, and it may only be called once.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncStreamYielder.GetResult: instance is not valid. This should only be called from the async iterator method, and it may only be called once.", GetFormattedStacktrace(2));
                     }
                     // Reset in case the async iterator function completes synchronously from Start.
                     ResetWithoutStacktrace();
