@@ -222,6 +222,16 @@ namespace ProtoPromiseTests
                 });
         }
 
+        public static Promise AssertCanceledAsync(Func<Promise> asyncAction)
+        {
+            return Promise.Run(asyncAction, SynchronizationOption.Synchronous)
+                .ContinueWith(resultContainer =>
+                {
+                    resultContainer.RethrowIfRejected();
+                    Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
+                });
+        }
+
         public static float Lerp(float a, float b, float t)
         {
             return a + (b - a) * t;

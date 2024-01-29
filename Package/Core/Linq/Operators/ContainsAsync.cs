@@ -18,9 +18,10 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <param name="source">The sequence in which to locate a value.</param>
         /// <param name="value">The value to locate in the sequence.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in whether the source sequence contains an element that has the specified value.</returns>
-        public static Promise<bool> ContainsAsync<TSource>(this AsyncEnumerable<TSource> source, TSource value)
-            => ContainsCore(source.GetAsyncEnumerator(), value, EqualityComparer<TSource>.Default);
+        public static Promise<bool> ContainsAsync<TSource>(this AsyncEnumerable<TSource> source, TSource value, CancelationToken cancelationToken = default)
+            => ContainsCore(source.GetAsyncEnumerator(cancelationToken), value, EqualityComparer<TSource>.Default);
 
         /// <summary>
         /// Determines whether an async-enumerable sequence contains a specified element by using a specified equality comparer.
@@ -30,14 +31,15 @@ namespace Proto.Promises.Linq
         /// <param name="source">The sequence in which to locate a value.</param>
         /// <param name="value">The value to locate in the sequence.</param>
         /// <param name="equalityComparer">An equality comparer to compare values.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in whether the source sequence contains an element that has the specified value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="equalityComparer"/> is null.</exception>
-        public static Promise<bool> ContainsAsync<TSource, TEqualityComparer>(this AsyncEnumerable<TSource> source, TSource value, TEqualityComparer equalityComparer)
+        public static Promise<bool> ContainsAsync<TSource, TEqualityComparer>(this AsyncEnumerable<TSource> source, TSource value, TEqualityComparer equalityComparer, CancelationToken cancelationToken = default)
             where TEqualityComparer : IEqualityComparer<TSource>
         {
             ValidateArgument(equalityComparer, nameof(equalityComparer), 1);
 
-            return ContainsCore(source.GetAsyncEnumerator(), value, equalityComparer);
+            return ContainsCore(source.GetAsyncEnumerator(cancelationToken), value, equalityComparer);
         }
 
         private static async Promise<bool> ContainsCore<TSource, TEqualityComparer>(AsyncEnumerator<TSource> asyncEnumerator, TSource value, TEqualityComparer equalityComparer)

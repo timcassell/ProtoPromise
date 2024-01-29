@@ -5,6 +5,9 @@
 #endif
 
 using Proto.Promises.Collections;
+using System.Diagnostics;
+
+#pragma warning disable IDE0063 // Use simple 'using' statement
 
 namespace Proto.Promises.Linq
 {
@@ -33,8 +36,9 @@ namespace Proto.Promises.Linq
                 throw new ArgumentOutOfRangeException(nameof(size), "size must be greater than 0.", Internal.GetFormattedStacktrace(1));
             }
 
-            return ChunkFull(source.GetAsyncEnumerator(), size);
+            return ChunkHelper.ChunkFull(source.GetAsyncEnumerator(), size);
         }
+
         /// <summary>
         /// Splits the elements of an async-enumerable sequence into chunks of size at most <paramref name="size"/>.
         /// </summary>
@@ -60,118 +64,174 @@ namespace Proto.Promises.Linq
             }
 
             return allowSameStorage
-                ? ChunkSameStorage(source.GetAsyncEnumerator(), size)
-                : ChunkFull(source.GetAsyncEnumerator(), size);
+                ? ChunkHelper.ChunkSameStorage(source.GetAsyncEnumerator(), size)
+                : ChunkHelper.ChunkFull(source.GetAsyncEnumerator(), size);
         }
 
-        private static AsyncEnumerable<TempCollection<TSource>> ChunkFull<TSource>(AsyncEnumerator<TSource> asyncEnumerator, int size)
-            => AsyncEnumerable<TempCollection<TSource>>.Create((asyncEnumerator, size), async (cv, writer, cancelationToken) =>
+        private static class ChunkHelper
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private readonly struct ChunkFullIterator<TSource> : IAsyncIterator<TempCollection<TSource>>
             {
-                // We store each builder to be disposed after the entire operation.
-                // In most cases one might think we could use a single builder for all yields, but users could combine this with further Linq queries,
-                // so we need them to persist until the enumerator is disposed.
-                var chunkBuilders = new TempCollectionBuilder<TempCollectionBuilder<TSource>>(0);
-                try
+                private readonly AsyncEnumerator<TSource> _asyncEnumerator;
+                private readonly int _size;
+
+                internal ChunkFullIterator(AsyncEnumerator<TSource> asyncEnumerator, int size)
                 {
-                    while (await cv.asyncEnumerator.MoveNextAsync())
+                    _asyncEnumerator = asyncEnumerator;
+                    _size = size;
+                }
+
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TempCollection<TSource>> writer, CancelationToken cancelationToken)
+                {
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    _asyncEnumerator._target._cancelationToken = cancelationToken;
+
+                    // We store each builder to be disposed after the entire operation.
+                    // In most cases one might think we could use a single builder for all yields, but users could combine this with further Linq queries,
+                    // so we need them to persist until the enumerator is disposed.
+                    var chunkBuilders = new TempCollectionBuilder<TempCollectionBuilder<TSource>>(0);
+                    try
                     {
-                        int currentChunk = chunkBuilders._count;
-                        // We start with capacity 1 instead of size in case the chunk size is very large but the source only has few elements.
-                        chunkBuilders.Add(new TempCollectionBuilder<TSource>(1, 1));
-                        chunkBuilders._items[currentChunk]._items[0] = cv.asyncEnumerator.Current;
-                        for (int i = 1; i < cv.size; ++i)
+                        while (await _asyncEnumerator.MoveNextAsync())
                         {
-                            if (!await cv.asyncEnumerator.MoveNextAsync())
+                            int currentChunk = chunkBuilders._count;
+                            // We start with capacity 1 instead of size in case the chunk size is very large but the source only has few elements.
+                            chunkBuilders.Add(new TempCollectionBuilder<TSource>(1, 1));
+                            chunkBuilders._items[currentChunk]._items[0] = _asyncEnumerator.Current;
+                            for (int i = 1; i < _size; ++i)
                             {
-                                await writer.YieldAsync(chunkBuilders._items[currentChunk].View);
-                                goto End;
+                                if (!await _asyncEnumerator.MoveNextAsync())
+                                {
+                                    await writer.YieldAsync(chunkBuilders._items[currentChunk].View);
+                                    goto End;
+                                }
+                                chunkBuilders._items[currentChunk].Add(_asyncEnumerator.Current);
                             }
-                            chunkBuilders._items[currentChunk].Add(cv.asyncEnumerator.Current);
+
+                            await writer.YieldAsync(chunkBuilders._items[currentChunk].View);
+                        }
+                    End:
+
+                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
+                        await writer.YieldAsync(default).ForLinqExtension();
+                    }
+                    finally
+                    {
+                        for (int i = 0; i < chunkBuilders._count; ++i)
+                        {
+                            chunkBuilders._items[i].Dispose();
+                        }
+                        chunkBuilders.Dispose();
+                        await _asyncEnumerator.DisposeAsync();
+                    }
+                }
+
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
+            }
+
+            internal static AsyncEnumerable<TempCollection<TSource>> ChunkFull<TSource>(AsyncEnumerator<TSource> asyncEnumerator, int size)
+            {
+                return AsyncEnumerable<TempCollection<TSource>>.Create(new ChunkFullIterator<TSource>(asyncEnumerator, size));
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private readonly struct ChunkSameStorageIterator<TSource, TValueRetriever> : IAsyncIterator<TempCollection<TSource>>
+                where TValueRetriever : Internal.IFunc<Promise<TSource>>
+            {
+                private readonly AsyncEnumerator<TSource> _asyncEnumerator;
+                private readonly int _size;
+
+                internal ChunkSameStorageIterator(AsyncEnumerator<TSource> asyncEnumerator, int size)
+                {
+                    _asyncEnumerator = asyncEnumerator;
+                    _size = size;
+                }
+
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TempCollection<TSource>> writer, CancelationToken cancelationToken)
+                {
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    _asyncEnumerator._target._cancelationToken = cancelationToken;
+
+                    // In this case, the user explicitly declared that they don't need each yielded TempCollection to persist, so we can optimize it to use a single builder.
+                    try
+                    {
+                        if (!await _asyncEnumerator.MoveNextAsync())
+                        {
+                            // Empty source.
+                            return;
                         }
 
-                        await writer.YieldAsync(chunkBuilders._items[currentChunk].View);
-                    }
-                End:
-
-                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                    await writer.YieldAsync(default).ForLinqExtension();
-                }
-                finally
-                {
-                    for (int i = 0; i < chunkBuilders._count; ++i)
-                    {
-                        chunkBuilders._items[i].Dispose();
-                    }
-                    chunkBuilders.Dispose();
-                    await cv.asyncEnumerator.DisposeAsync();
-                }
-            });
-
-        private static AsyncEnumerable<TempCollection<TSource>> ChunkSameStorage<TSource>(AsyncEnumerator<TSource> asyncEnumerator, int size)
-            => AsyncEnumerable<TempCollection<TSource>>.Create((asyncEnumerator, size), async (cv, writer, cancelationToken) =>
-            {
-                // In this case, the user explicitly declared that they don't need each yielded TempCollection to persist, so we can optimize it to use a single builder.
-                try
-                {
-                    if (!await cv.asyncEnumerator.MoveNextAsync())
-                    {
-                        // Empty source.
-                        return;
-                    }
-
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    // Even though the user declared that the TempCollection storage can be re-used, we use different builders in DEBUG mode for validation purposes.
-                    do
-                    {
+                        // Even though the user declared that the TempCollection storage can be re-used, we use different builders in DEBUG mode for validation purposes.
+                        do
+                        {
+                            // We start with capacity 1 instead of size in case the chunk size is very large but the source only has few elements.
+                            using (var chunkBuilder = new TempCollectionBuilder<TSource>(1))
+                            {
+                                chunkBuilder.Add(_asyncEnumerator.Current);
+                                for (int i = 1; i < _size; ++i)
+                                {
+                                    if (!await _asyncEnumerator.MoveNextAsync())
+                                    {
+                                        await writer.YieldAsync(chunkBuilder.View);
+                                        goto End;
+                                    }
+                                    chunkBuilder.Add(_asyncEnumerator.Current);
+                                }
+
+                                await writer.YieldAsync(chunkBuilder.View);
+                            }
+                        } while (await _asyncEnumerator.MoveNextAsync());
+#else // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                         // We start with capacity 1 instead of size in case the chunk size is very large but the source only has few elements.
                         using (var chunkBuilder = new TempCollectionBuilder<TSource>(1))
                         {
-                            chunkBuilder.Add(cv.asyncEnumerator.Current);
-                            for (int i = 1; i < cv.size; ++i)
+                            do
                             {
-                                if (!await cv.asyncEnumerator.MoveNextAsync())
+                                chunkBuilder.Clear();
+                                chunkBuilder.Add(_asyncEnumerator.Current);
+                                for (int i = 1; i < _size; ++i)
                                 {
-                                    await writer.YieldAsync(chunkBuilder.View);
-                                    goto End;
+                                    if (!await _asyncEnumerator.MoveNextAsync())
+                                    {
+                                        await writer.YieldAsync(chunkBuilder.View);
+                                        goto End;
+                                    }
+                                    chunkBuilder.Add(_asyncEnumerator.Current);
                                 }
-                                chunkBuilder.Add(cv.asyncEnumerator.Current);
-                            }
 
-                            await writer.YieldAsync(chunkBuilder.View);
+                                await writer.YieldAsync(chunkBuilder.View);
+                            } while (await _asyncEnumerator.MoveNextAsync());
                         }
-                    } while (await cv.asyncEnumerator.MoveNextAsync());
-#else // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    // We start with capacity 1 instead of size in case the chunk size is very large but the source only has few elements.
-                    using (var chunkBuilder = new TempCollectionBuilder<TSource>(1))
-                    {
-                        do
-                        {
-                            chunkBuilder.Clear();
-                            chunkBuilder.Add(cv.asyncEnumerator.Current);
-                            for (int i = 1; i < cv.size; ++i)
-                            {
-                                if (!await cv.asyncEnumerator.MoveNextAsync())
-                                {
-                                    await writer.YieldAsync(chunkBuilder.View);
-                                    goto End;
-                                }
-                                chunkBuilder.Add(cv.asyncEnumerator.Current);
-                            }
-
-                            await writer.YieldAsync(chunkBuilder.View);
-                        } while (await cv.asyncEnumerator.MoveNextAsync());
-                    }
 #endif // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                End:
+                    End:
 
-                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                    await writer.YieldAsync(default).ForLinqExtension();
+                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
+                        await writer.YieldAsync(default).ForLinqExtension();
+                    }
+                    finally
+                    {
+                        await _asyncEnumerator.DisposeAsync();
+                    }
                 }
-                finally
-                {
-                    await cv.asyncEnumerator.DisposeAsync();
-                }
-            });
+
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
+            }
+
+            internal static AsyncEnumerable<TempCollection<TSource>> ChunkSameStorage<TSource>(AsyncEnumerator<TSource> asyncEnumerator, int size)
+            {
+                return AsyncEnumerable<TempCollection<TSource>>.Create(new ChunkFullIterator<TSource>(asyncEnumerator, size));
+            }
+        }
     }
 #endif // CSHARP_7_3_OR_NEWER
 }

@@ -4,8 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-using Proto.Promises.CompilerServices;
-using System;
+#pragma warning disable IDE0062 // Make local function 'static'
 
 namespace Proto.Promises.Linq
 {
@@ -16,11 +15,12 @@ namespace Proto.Promises.Linq
         /// Computes the average of an async-enumerable sequence of <see cref="int"/> values.
         /// </summary>
         /// <param name="source">An async-enumerable sequence of <see cref="int"/> values to calculate the average of.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in the average of the sequence of values.</returns>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> contains no elements.</exception>
-        public static Promise<double> AverageAsync(this AsyncEnumerable<int> source)
+        public static Promise<double> AverageAsync(this AsyncEnumerable<int> source, CancelationToken cancelationToken = default)
         {
-            return Core(source.GetAsyncEnumerator());
+            return Core(source.GetAsyncEnumerator(cancelationToken));
 
             async Promise<double> Core(AsyncEnumerator<int> asyncEnumerator)
             {
@@ -55,11 +55,12 @@ namespace Proto.Promises.Linq
         /// Computes the average of an async-enumerable sequence of <see cref="long"/> values.
         /// </summary>
         /// <param name="source">An async-enumerable sequence of <see cref="long"/> values to calculate the average of.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in the average of the sequence of values.</returns>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> contains no elements.</exception>
-        public static Promise<double> AverageAsync(this AsyncEnumerable<long> source)
+        public static Promise<double> AverageAsync(this AsyncEnumerable<long> source, CancelationToken cancelationToken = default)
         {
-            return Core(source.GetAsyncEnumerator());
+            return Core(source.GetAsyncEnumerator(cancelationToken));
 
             async Promise<double> Core(AsyncEnumerator<long> asyncEnumerator)
             {
@@ -94,11 +95,12 @@ namespace Proto.Promises.Linq
         /// Computes the average of an async-enumerable sequence of <see cref="float"/> values.
         /// </summary>
         /// <param name="source">An async-enumerable sequence of <see cref="float"/> values to calculate the average of.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in the average of the sequence of values.</returns>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> contains no elements.</exception>
-        public static Promise<float> AverageAsync(this AsyncEnumerable<float> source)
+        public static Promise<float> AverageAsync(this AsyncEnumerable<float> source, CancelationToken cancelationToken = default)
         {
-            return Core(source.GetAsyncEnumerator());
+            return Core(source.GetAsyncEnumerator(cancelationToken));
 
             async Promise<float> Core(AsyncEnumerator<float> asyncEnumerator)
             {
@@ -133,11 +135,12 @@ namespace Proto.Promises.Linq
         /// Computes the average of an async-enumerable sequence of <see cref="double"/> values.
         /// </summary>
         /// <param name="source">An async-enumerable sequence of <see cref="double"/> values to calculate the average of.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in the average of the sequence of values.</returns>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> contains no elements.</exception>
-        public static Promise<double> AverageAsync(this AsyncEnumerable<double> source)
+        public static Promise<double> AverageAsync(this AsyncEnumerable<double> source, CancelationToken cancelationToken = default)
         {
-            return Core(source.GetAsyncEnumerator());
+            return Core(source.GetAsyncEnumerator(cancelationToken));
 
             async Promise<double> Core(AsyncEnumerator<double> asyncEnumerator)
             {
@@ -172,11 +175,12 @@ namespace Proto.Promises.Linq
         /// Computes the average of an async-enumerable sequence of <see cref="decimal"/> values.
         /// </summary>
         /// <param name="source">An async-enumerable sequence of <see cref="decimal"/> values to calculate the average of.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in the average of the sequence of values.</returns>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> contains no elements.</exception>
-        public static Promise<decimal> AverageAsync(this AsyncEnumerable<decimal> source)
+        public static Promise<decimal> AverageAsync(this AsyncEnumerable<decimal> source, CancelationToken cancelationToken = default)
         {
-            return Core(source.GetAsyncEnumerator());
+            return Core(source.GetAsyncEnumerator(cancelationToken));
 
             async Promise<decimal> Core(AsyncEnumerator<decimal> asyncEnumerator)
             {
@@ -211,13 +215,14 @@ namespace Proto.Promises.Linq
         /// Computes the average of an async-enumerable sequence of nullable <see cref="int"/> values.
         /// </summary>
         /// <param name="source">An async-enumerable sequence of <see cref="int"/> values to calculate the average of.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
         /// A <see cref="Promise{T}"/> resulting in the average of the sequence of values,
         /// or <see langword="null"/> if the source sequence is empty or contains only values that are <see langword="null"/>.
         /// </returns>
-        public static Promise<double?> AverageAsync(this AsyncEnumerable<int?> source)
+        public static Promise<double?> AverageAsync(this AsyncEnumerable<int?> source, CancelationToken cancelationToken = default)
         {
-            return Core(source.GetAsyncEnumerator());
+            return Core(source.GetAsyncEnumerator(cancelationToken));
 
             async Promise<double?> Core(AsyncEnumerator<int?> asyncEnumerator)
             {
@@ -260,13 +265,14 @@ namespace Proto.Promises.Linq
         /// Computes the average of an async-enumerable sequence of nullable <see cref="long"/> values.
         /// </summary>
         /// <param name="source">An async-enumerable sequence of <see cref="long"/> values to calculate the average of.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
         /// A <see cref="Promise{T}"/> resulting in the average of the sequence of values,
         /// or <see langword="null"/> if the source sequence is empty or contains only values that are <see langword="null"/>.
         /// </returns>
-        public static Promise<double?> AverageAsync(this AsyncEnumerable<long?> source)
+        public static Promise<double?> AverageAsync(this AsyncEnumerable<long?> source, CancelationToken cancelationToken = default)
         {
-            return Core(source.GetAsyncEnumerator());
+            return Core(source.GetAsyncEnumerator(cancelationToken));
 
             async Promise<double?> Core(AsyncEnumerator<long?> asyncEnumerator)
             {
@@ -309,13 +315,14 @@ namespace Proto.Promises.Linq
         /// Computes the average of an async-enumerable sequence of nullable <see cref="float"/> values.
         /// </summary>
         /// <param name="source">An async-enumerable sequence of <see cref="float"/> values to calculate the average of.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
         /// A <see cref="Promise{T}"/> resulting in the average of the sequence of values,
         /// or <see langword="null"/> if the source sequence is empty or contains only values that are <see langword="null"/>.
         /// </returns>
-        public static Promise<float?> AverageAsync(this AsyncEnumerable<float?> source)
+        public static Promise<float?> AverageAsync(this AsyncEnumerable<float?> source, CancelationToken cancelationToken = default)
         {
-            return Core(source.GetAsyncEnumerator());
+            return Core(source.GetAsyncEnumerator(cancelationToken));
 
             async Promise<float?> Core(AsyncEnumerator<float?> asyncEnumerator)
             {
@@ -358,13 +365,14 @@ namespace Proto.Promises.Linq
         /// Computes the average of an async-enumerable sequence of nullable <see cref="double"/> values.
         /// </summary>
         /// <param name="source">An async-enumerable sequence of <see cref="double"/> values to calculate the average of.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
         /// A <see cref="Promise{T}"/> resulting in the average of the sequence of values,
         /// or <see langword="null"/> if the source sequence is empty or contains only values that are <see langword="null"/>.
         /// </returns>
-        public static Promise<double?> AverageAsync(this AsyncEnumerable<double?> source)
+        public static Promise<double?> AverageAsync(this AsyncEnumerable<double?> source, CancelationToken cancelationToken = default)
         {
-            return Core(source.GetAsyncEnumerator());
+            return Core(source.GetAsyncEnumerator(cancelationToken));
 
             async Promise<double?> Core(AsyncEnumerator<double?> asyncEnumerator)
             {
@@ -407,13 +415,14 @@ namespace Proto.Promises.Linq
         /// Computes the average of an async-enumerable sequence of nullable <see cref="decimal"/> values.
         /// </summary>
         /// <param name="source">An async-enumerable sequence of <see cref="decimal"/> values to calculate the average of.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
         /// A <see cref="Promise{T}"/> resulting in the average of the sequence of values,
         /// or <see langword="null"/> if the source sequence is empty or contains only values that are <see langword="null"/>.
         /// </returns>
-        public static Promise<decimal?> AverageAsync(this AsyncEnumerable<decimal?> source)
+        public static Promise<decimal?> AverageAsync(this AsyncEnumerable<decimal?> source, CancelationToken cancelationToken = default)
         {
-            return Core(source.GetAsyncEnumerator());
+            return Core(source.GetAsyncEnumerator(cancelationToken));
 
             async Promise<decimal?> Core(AsyncEnumerator<decimal?> asyncEnumerator)
             {

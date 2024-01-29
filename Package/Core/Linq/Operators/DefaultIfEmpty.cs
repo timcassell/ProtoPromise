@@ -5,6 +5,7 @@
 #endif
 
 using System;
+using System.Diagnostics;
 
 namespace Proto.Promises.Linq
 {
@@ -28,28 +29,7 @@ namespace Proto.Promises.Linq
         /// <param name="defaultValue">The value to return if the sequence is empty.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the elements of the <paramref name="source"/> sequence or the default value for the <typeparamref name="TSource"/> type if the <paramref name="source"/> sequence is empty.</returns>
         public static AsyncEnumerable<TSource> DefaultIfEmpty<TSource>(this AsyncEnumerable<TSource> source, TSource defaultValue)
-            => AsyncEnumerable<TSource>.Create((asyncEnumerator: source.GetAsyncEnumerator(), defaultValue), async (cv, writer, cancelationToken) =>
-            {
-                // The enumerator was retrieved without a cancelation token when the original function was called.
-                // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                cv.asyncEnumerator._target._cancelationToken = cancelationToken;
-                try
-                {
-                    if (!await cv.asyncEnumerator.MoveNextAsync())
-                    {
-                        await writer.YieldAsync(cv.defaultValue);
-                        return;
-                    }
-                    do
-                    {
-                        await writer.YieldAsync(cv.asyncEnumerator.Current);
-                    } while (await cv.asyncEnumerator.MoveNextAsync());
-                }
-                finally
-                {
-                    await cv.asyncEnumerator.DisposeAsync();
-                }
-            });
+            => DefaultIfEmptyHelper.DefaultIfEmpty(source.GetAsyncEnumerator(), defaultValue);
 
         /// <summary>
         /// Returns an async-enumerable sequence containing the elements of the <paramref name="source"/> sequence or the result of the <paramref name="defaultValueRetriever"/> if the <paramref name="source"/> sequence is empty.
@@ -62,7 +42,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(defaultValueRetriever, nameof(defaultValueRetriever), 1);
 
-            return DefaultIfEmptyCore(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(defaultValueRetriever));
+            return DefaultIfEmptyHelper.DefaultIfEmpty(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(defaultValueRetriever));
         }
 
         /// <summary>
@@ -78,33 +58,105 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(defaultValueRetriever, nameof(defaultValueRetriever), 1);
 
-            return DefaultIfEmptyCore(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, defaultValueRetriever));
+            return DefaultIfEmptyHelper.DefaultIfEmpty(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, defaultValueRetriever));
         }
 
-        private static AsyncEnumerable<TSource> DefaultIfEmptyCore<TSource, TValueRetriever>(AsyncEnumerator<TSource> asyncEnumerator, TValueRetriever defaultValueRetriever)
-            where TValueRetriever : Internal.IFunc<Promise<TSource>>
-            => AsyncEnumerable<TSource>.Create((asyncEnumerator, defaultValueRetriever), async (cv, writer, cancelationToken) =>
+        private static class DefaultIfEmptyHelper
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private readonly struct DefaultIfEmptyIterator<TSource> : IAsyncIterator<TSource>
             {
-                // The enumerator was retrieved without a cancelation token when the original function was called.
-                // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                cv.asyncEnumerator._target._cancelationToken = cancelationToken;
-                try
+                private readonly AsyncEnumerator<TSource> _asyncEnumerator;
+                private readonly TSource _defaultValue;
+
+                internal DefaultIfEmptyIterator(AsyncEnumerator<TSource> asyncEnumerator, TSource defaultValue)
                 {
-                    if (!await cv.asyncEnumerator.MoveNextAsync())
+                    _asyncEnumerator = asyncEnumerator;
+                    _defaultValue = defaultValue;
+                }
+
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    _asyncEnumerator._target._cancelationToken = cancelationToken;
+                    try
                     {
-                        await writer.YieldAsync(await cv.defaultValueRetriever.Invoke());
-                        return;
+                        if (!await _asyncEnumerator.MoveNextAsync())
+                        {
+                            await writer.YieldAsync(_defaultValue);
+                            return;
+                        }
+                        do
+                        {
+                            await writer.YieldAsync(_asyncEnumerator.Current);
+                        } while (await _asyncEnumerator.MoveNextAsync());
                     }
-                    do
+                    finally
                     {
-                        await writer.YieldAsync(cv.asyncEnumerator.Current);
-                    } while (await cv.asyncEnumerator.MoveNextAsync());
+                        await _asyncEnumerator.DisposeAsync();
+                    }
                 }
-                finally
+
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
+            }
+
+            internal static AsyncEnumerable<TSource> DefaultIfEmpty<TSource>(AsyncEnumerator<TSource> asyncEnumerator, TSource defaultValue)
+            {
+                return AsyncEnumerable<TSource>.Create(new DefaultIfEmptyIterator<TSource>(asyncEnumerator, defaultValue));
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private readonly struct DefaultIfEmptyIterator<TSource, TValueRetriever> : IAsyncIterator<TSource>
+                where TValueRetriever : Internal.IFunc<Promise<TSource>>
+            {
+                private readonly AsyncEnumerator<TSource> _asyncEnumerator;
+                private readonly TValueRetriever _defaultValueRetriever;
+
+                internal DefaultIfEmptyIterator(AsyncEnumerator<TSource> asyncEnumerator, TValueRetriever defaultValueRetriever)
                 {
-                    await cv.asyncEnumerator.DisposeAsync();
+                    _asyncEnumerator = asyncEnumerator;
+                    _defaultValueRetriever = defaultValueRetriever;
                 }
-            });
+
+                public async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+                {
+                    // The enumerator was retrieved without a cancelation token when the original function was called.
+                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                    _asyncEnumerator._target._cancelationToken = cancelationToken;
+                    try
+                    {
+                        if (!await _asyncEnumerator.MoveNextAsync())
+                        {
+                            await writer.YieldAsync(await _defaultValueRetriever.Invoke());
+                            return;
+                        }
+                        do
+                        {
+                            await writer.YieldAsync(_asyncEnumerator.Current);
+                        } while (await _asyncEnumerator.MoveNextAsync());
+                    }
+                    finally
+                    {
+                        await _asyncEnumerator.DisposeAsync();
+                    }
+                }
+
+                public Promise DisposeAsyncWithoutStart()
+                    => _asyncEnumerator.DisposeAsync();
+            }
+
+            internal static AsyncEnumerable<TSource> DefaultIfEmpty<TSource, TValueRetriever>(AsyncEnumerator<TSource> asyncEnumerator, TValueRetriever defaultValueRetriever)
+                where TValueRetriever : Internal.IFunc<Promise<TSource>>
+            {
+                return AsyncEnumerable<TSource>.Create(new DefaultIfEmptyIterator<TSource, TValueRetriever>(asyncEnumerator, defaultValueRetriever));
+            }
+        }
     }
 #endif // CSHARP_7_3_OR_NEWER
 }

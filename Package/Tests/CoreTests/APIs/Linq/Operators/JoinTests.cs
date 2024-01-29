@@ -32,11 +32,12 @@ namespace ProtoPromiseTests.APIs.Linq
             bool async,
             Func<TOuter, TKey> outerKeySelector, bool captureOuterKey,
             Func<TInner, TKey> innerKeySelector, bool captureInnerKey,
-            IEqualityComparer<TKey> equalityComparer = null)
+            IEqualityComparer<TKey> equalityComparer = null,
+            CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return Join(outer.ConfigureAwait(SynchronizationOption.Foreground), inner, async, innerKeySelector, captureInnerKey, outerKeySelector, captureOuterKey, equalityComparer);
+                return Join(outer.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), inner, async, innerKeySelector, captureInnerKey, outerKeySelector, captureOuterKey, equalityComparer);
             }
 
             const string outerKeyCapture = "outerKeyCapture";
@@ -784,6 +785,70 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return !Equals(left, right);
             }
+        }
+
+        public enum ConfiguredType
+        {
+            NotConfigured,
+            Configured,
+            ConfiguredWithCancelation
+        }
+
+        [Test]
+        public void Join_Cancel(
+            [Values] ConfiguredType configuredType,
+            [Values] bool async,
+            [Values] bool captureOuterKey,
+            [Values] bool captureInnerKey,
+            [Values] bool withComparer,
+            [Values] bool enumeratorToken,
+            [Values] bool cancelFirst)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(0);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                });
+                var ys = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(6);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = xs.Join(ys, configuredType != ConfiguredType.NotConfigured, async, x => x % 3, captureOuterKey, y => y % 3, captureInnerKey, GetDefaultOrNullComparer<int>(withComparer),
+                            configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        if (cancelFirst)
+                        {
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual((0, 3), asyncEnumerator.Current);
+                            Assert.True(await asyncEnumerator.MoveNextAsync());
+                            Assert.AreEqual((0, 6), asyncEnumerator.Current);
+                        }
+                        configuredCancelationSource.Cancel();
+                        enumeratorCancelationSource.Cancel();
+                        if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                        {
+                            await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                        }
+                        await asyncEnumerator.DisposeAsync();
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
     }
 }

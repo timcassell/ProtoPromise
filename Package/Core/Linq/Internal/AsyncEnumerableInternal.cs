@@ -22,17 +22,12 @@ namespace Proto.Promises
             bool GetCanBeEnumerated(int id);
         }
 
-        internal interface IAsyncIterator<T>
-        {
-            AsyncEnumerableMethod Start(AsyncStreamWriter<T> streamWriter, CancelationToken cancelationToken);
-        }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal readonly struct AsyncIterator<T> : IAsyncIterator<T>
         {
-            private readonly Func<AsyncStreamWriter<T>, CancelationToken, AsyncEnumerableMethod> _func;
+            private readonly Func<AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> _func;
 
             public bool IsNull
             {
@@ -41,12 +36,16 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal AsyncIterator(Func<AsyncStreamWriter<T>, CancelationToken, AsyncEnumerableMethod> func)
+            internal AsyncIterator(Func<AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> func)
                 => _func = func;
 
             [MethodImpl(InlineOption)]
-            public AsyncEnumerableMethod Start(AsyncStreamWriter<T> streamWriter, CancelationToken cancelationToken)
+            public AsyncIteratorMethod Start(AsyncStreamWriter<T> streamWriter, CancelationToken cancelationToken)
                 => _func.Invoke(streamWriter, cancelationToken);
+
+            [MethodImpl(InlineOption)]
+            public Promise DisposeAsyncWithoutStart()
+                => Promise.Resolved();
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -55,7 +54,7 @@ namespace Proto.Promises
         internal readonly struct AsyncIterator<T, TCapture> : IAsyncIterator<T>
         {
             private readonly TCapture _capturedValue;
-            private readonly Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncEnumerableMethod> _func;
+            private readonly Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> _func;
 
             public bool IsNull
             {
@@ -64,15 +63,19 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal AsyncIterator(TCapture captureValue, Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncEnumerableMethod> func)
+            internal AsyncIterator(TCapture captureValue, Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> func)
             {
                 _capturedValue = captureValue;
                 _func = func;
             }
 
             [MethodImpl(InlineOption)]
-            public AsyncEnumerableMethod Start(AsyncStreamWriter<T> streamWriter, CancelationToken cancelationToken)
+            public AsyncIteratorMethod Start(AsyncStreamWriter<T> streamWriter, CancelationToken cancelationToken)
                 => _func.Invoke(_capturedValue, streamWriter, cancelationToken);
+
+            [MethodImpl(InlineOption)]
+            public Promise DisposeAsyncWithoutStart()
+                => Promise.Resolved();
         }
 
         partial class PromiseRefBase
@@ -248,7 +251,7 @@ namespace Proto.Promises
                     {
                         if (oldId == id + 1)
                         {
-                            throw new InvalidOperationException("AsyncEnumerable.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                            throw new InvalidOperationException("AsyncEnumerator.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
                         }
                         // IAsyncDisposable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
                         return Promise.Resolved();
@@ -260,12 +263,10 @@ namespace Proto.Promises
                     if (iteratorPromise == null)
                     {
                         // DisposeAsync was called before MoveNextAsync, the async iterator function never started.
-                        // Dispose this and return a resolved promise.
                         State = Promise.State.Resolved;
                         // This is never used as a backing reference for Promises, so we need to suppress the UnobservedPromiseException from the base finalizer.
                         WasAwaitedOrForgotten = true;
-                        DisposeAndReturnToPool();
-                        return Promise.Resolved();
+                        return DisposeAsyncWithoutStart();
                     }
 
                     // The async iterator function is not already complete, we move the async state machine forward.
@@ -289,7 +290,7 @@ namespace Proto.Promises
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
                         handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
-                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create iterator function completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
                         state = Promise.State.Rejected;
                     }
                     else
@@ -307,7 +308,7 @@ namespace Proto.Promises
                     Promise.State state = Promise.State.Resolved;
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
-                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create iterator function completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
                         state = Promise.State.Rejected;
                     }
                     HandleNextInternal(rejectContainer, state);
@@ -328,7 +329,7 @@ namespace Proto.Promises
                             // Throw this special exception so that the async iterator function will run any finally blocks and complete.
                             throw AsyncEnumerableDisposedException.s_instance;
                         }
-                        throw new InvalidOperationException("AsyncStreamYielder.GetResult: instance is not valid. This should only be called from the iterator method, and it may only be called once.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncStreamYielder.GetResult: instance is not valid. This should only be called from the async iterator method, and it may only be called once.", GetFormattedStacktrace(2));
                     }
                     // Reset in case the async iterator function completes synchronously from Start.
                     ResetWithoutStacktrace();
@@ -348,6 +349,7 @@ namespace Proto.Promises
 
                 protected abstract void Start(int enumerableId);
                 protected abstract void DisposeAndReturnToPool();
+                protected abstract Promise DisposeAsyncWithoutStart();
             } // class AsyncEnumerableWithIterator<TValue>
         } // class PromiseRefBase
 
@@ -413,6 +415,13 @@ namespace Proto.Promises
 #endif
                 // We hook this up directly to the returned promise so we can know when the iteration is complete, and use this for the DisposeAsync promise.
                 iteratorPromise._ref.HookupExistingWaiter(iteratorPromise._id, this);
+            }
+
+            protected override Promise DisposeAsyncWithoutStart()
+            {
+                var iterator = _iterator;
+                DisposeAndReturnToPool();
+                return iterator.DisposeAsyncWithoutStart();
             }
         } // class AsyncEnumerableCreate<TValue, TIterator>
     } // class Internal

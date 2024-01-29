@@ -12,7 +12,7 @@ using System.Threading;
 
 namespace ProtoPromiseTests.APIs.Linq
 {
-    public class AsyncEnumerableExtensionsTests
+    public class ToAsyncEnumerableTests
     {
         [SetUp]
         public void Setup()

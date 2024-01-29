@@ -49,7 +49,8 @@ namespace Proto.Promises
                 return new AsyncEnumerable<TSource>(enumerable).GetAsyncEnumerator(cancelationToken);
             }
 
-            public abstract AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> streamWriter, CancelationToken cancelationToken);
+            public abstract AsyncIteratorMethod Start(AsyncStreamWriter<TSource> streamWriter, CancelationToken cancelationToken);
+            public abstract Promise DisposeAsyncWithoutStart();
             internal abstract AsyncEnumerator<TSource> GetNextEnumerator(ref ConcatAsyncEnumerableBase<TSource> nextRef, ref bool first);
             internal abstract AsyncEnumerator<TSource> GetNextEnumeratorAndDispose(ref ConcatAsyncEnumerableBase<TSource> nextRef, ref bool first);
         }
@@ -91,6 +92,49 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
+            public override async Promise DisposeAsyncWithoutStart()
+            {
+                var firstEnumerator = _first;
+                var nextEnumerator = _second;
+                var next = _next.UnsafeAs<ConcatAsyncEnumerableBase<TSource>>();
+                Dispose();
+                try
+                {
+                    await firstEnumerator.DisposeAsync();
+                }
+                finally
+                {
+                    try
+                    {
+                        await nextEnumerator.DisposeAsync();
+                    }
+                    finally
+                    {
+                        // We can't do a try/finally loop to dispose all of the ConcatN enumerators,
+                        // and we don't want to dispose recursively,
+                        // so instead we simulate the behavior by only capturing the last exception.
+                        Exception ex = null;
+                        bool first = true;
+                        while (next != null)
+                        {
+                            nextEnumerator = next.GetNextEnumeratorAndDispose(ref next, ref first);
+                            try
+                            {
+                                await nextEnumerator.DisposeAsync();
+                            }
+                            catch (Exception e)
+                            {
+                                ex = e;
+                            }
+                        }
+                        if (ex != null)
+                        {
+                            ExceptionDispatchInfo.Capture(ex).Throw();
+                        }
+                    }
+                }
+            }
+
             // This will be called if 2 concatenated enumerables were concatenated (so the concatenations were flattened).
             internal override AsyncEnumerator<TSource> GetNextEnumerator(ref ConcatAsyncEnumerableBase<TSource> nextRef, ref bool first)
             {
@@ -118,7 +162,7 @@ namespace Proto.Promises
                 return second;
             }
 
-            public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+            public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
             {
                 // The enumerators were retrieved without a cancelation token when the original function was called.
                 // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -154,6 +198,7 @@ namespace Proto.Promises
                 }
                 finally
                 {
+                    // Disposal logic is exactly the same as DisposeAsyncWithoutStart, we copy it here instead of calling the method so that we only have 1 async state machine.
                     var firstEnumerator = _first;
                     var nextEnumerator = _second;
                     var next = _next.UnsafeAs<ConcatAsyncEnumerableBase<TSource>>();
@@ -230,6 +275,41 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
+            public override async Promise DisposeAsyncWithoutStart()
+            {
+                var nextEnumerator = _nextEnumerator;
+                var next = _next.UnsafeAs<ConcatAsyncEnumerableBase<TSource>>();
+                Dispose();
+                try
+                {
+                    await nextEnumerator.DisposeAsync();
+                }
+                finally
+                {
+                    // We can't do a try/finally loop to dispose all of the ConcatN enumerators,
+                    // and we don't want to dispose recursively,
+                    // so instead we simulate the behavior by only capturing the last exception.
+                    Exception ex = null;
+                    bool first = true;
+                    while (next != null)
+                    {
+                        nextEnumerator = next.GetNextEnumeratorAndDispose(ref next, ref first);
+                        try
+                        {
+                            await nextEnumerator.DisposeAsync();
+                        }
+                        catch (Exception e)
+                        {
+                            ex = e;
+                        }
+                    }
+                    if (ex != null)
+                    {
+                        ExceptionDispatchInfo.Capture(ex).Throw();
+                    }
+                }
+            }
+
             internal override AsyncEnumerator<TSource> GetNextEnumerator(ref ConcatAsyncEnumerableBase<TSource> nextRef, ref bool first)
             {
                 nextRef = _next.UnsafeAs<ConcatAsyncEnumerableBase<TSource>>();
@@ -244,7 +324,7 @@ namespace Proto.Promises
                 return next;
             }
 
-            public override async AsyncEnumerableMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+            public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
             {
                 // The enumerators were retrieved without a cancelation token when the original function was called.
                 // We need to propagate the token that was passed in, so we assign it before starting iteration.
@@ -275,6 +355,7 @@ namespace Proto.Promises
                 }
                 finally
                 {
+                    // Disposal logic is exactly the same as DisposeAsyncWithoutStart, we copy it here instead of calling the method so that we only have 1 async state machine.
                     var nextEnumerator = _nextEnumerator;
                     var next = _next.UnsafeAs<ConcatAsyncEnumerableBase<TSource>>();
                     Dispose();

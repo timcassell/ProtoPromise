@@ -228,6 +228,261 @@ namespace ProtoPromiseTests.APIs.Linq
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
+
+        [Test]
+        public void Append_Cancel(
+            [Values(0, 1, 2)] int appendCount)
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    for (int i = 1; i <= appendCount; ++i)
+                    {
+                        asyncEnumerable = asyncEnumerable.Append(i);
+                    }
+                    var asyncEnumerator = asyncEnumerable.GetAsyncEnumerator(cancelationSource.Token);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(1, asyncEnumerator.Current);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(2, asyncEnumerator.Current);
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void Prepend_Cancel(
+            [Values(0, 1, 2)] int prependCount)
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    for (int i = 1; i <= prependCount; ++i)
+                    {
+                        asyncEnumerable = asyncEnumerable.Prepend(i);
+                    }
+                    var asyncEnumerator = asyncEnumerable.GetAsyncEnumerator(cancelationSource.Token);
+                    cancelationSource.Cancel();
+                    for (int i = prependCount; i > 0; --i)
+                    {
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(i, asyncEnumerator.Current);
+                    }
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AppendPrepend_Cancel(
+            [Values(0, 1, 2)] int appendCount,
+            [Values(0, 1, 2)] int prependCount)
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    for (int i = 1; i <= appendCount; ++i)
+                    {
+                        asyncEnumerable = asyncEnumerable.Append(i);
+                    }
+                    for (int i = 1; i <= prependCount; ++i)
+                    {
+                        asyncEnumerable = asyncEnumerable.Prepend(i);
+                    }
+                    var asyncEnumerator = asyncEnumerable.GetAsyncEnumerator(cancelationSource.Token);
+                    cancelationSource.Cancel();
+                    for (int i = prependCount; i > 0; --i)
+                    {
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(i, asyncEnumerator.Current);
+                    }
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void PrependAppend_Cancel(
+            [Values(0, 1, 2)] int prependCount,
+            [Values(0, 1, 2)] int appendCount)
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    for (int i = 1; i <= prependCount; ++i)
+                    {
+                        asyncEnumerable = asyncEnumerable.Prepend(i);
+                    }
+                    for (int i = 1; i <= appendCount; ++i)
+                    {
+                        asyncEnumerable = asyncEnumerable.Append(i);
+                    }
+                    var asyncEnumerator = asyncEnumerable.GetAsyncEnumerator(cancelationSource.Token);
+                    for (int i = prependCount; i > 0; --i)
+                    {
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(i, asyncEnumerator.Current);
+                    }
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(1, asyncEnumerator.Current);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(2, asyncEnumerator.Current);
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AppendPrepend_Interleaved_Cancel(
+            [Values(0, 1, 2)] int appendCount,
+            [Values(0, 1, 2)] int prependCount)
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    int i = 1;
+                    for (; i <= appendCount && i <= prependCount; ++i)
+                    {
+                        asyncEnumerable = asyncEnumerable
+                            .Append(i)
+                            .Prepend(i);
+                    }
+                    for (int j = i; j <= appendCount; ++j)
+                    {
+                        asyncEnumerable = asyncEnumerable
+                            .Append(j);
+                    }
+                    for (int j = i; j <= prependCount; ++j)
+                    {
+                        asyncEnumerable = asyncEnumerable
+                            .Prepend(j);
+                    }
+                    var asyncEnumerator = asyncEnumerable.GetAsyncEnumerator(cancelationSource.Token);
+                    for (i = prependCount; i > 0; --i)
+                    {
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(i, asyncEnumerator.Current);
+                    }
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(1, asyncEnumerator.Current);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(2, asyncEnumerator.Current);
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void PrependAppend_Interleaved_Cancel(
+            [Values(0, 1, 2)] int prependCount,
+            [Values(0, 1, 2)] int appendCount)
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    int i = 1;
+                    for (; i <= appendCount && i <= prependCount; ++i)
+                    {
+                        asyncEnumerable = asyncEnumerable
+                            .Prepend(i)
+                            .Append(i);
+                    }
+                    for (int j = i; j <= appendCount; ++j)
+                    {
+                        asyncEnumerable = asyncEnumerable
+                            .Append(j);
+                    }
+                    for (int j = i; j <= prependCount; ++j)
+                    {
+                        asyncEnumerable = asyncEnumerable
+                            .Prepend(j);
+                    }
+                    var asyncEnumerator = asyncEnumerable.GetAsyncEnumerator(cancelationSource.Token);
+                    cancelationSource.Cancel();
+                    for (i = prependCount; i > 0; --i)
+                    {
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(i, asyncEnumerator.Current);
+                    }
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
     }
 }
 

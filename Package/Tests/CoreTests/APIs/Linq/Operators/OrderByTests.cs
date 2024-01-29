@@ -26,15 +26,44 @@ namespace ProtoPromiseTests.APIs.Linq
     public static class OrderHelper
     {
         // We test all the different overloads.
+        public static OrderedAsyncEnumerable<TSource> Order<TSource>(this AsyncEnumerable<TSource> asyncEnumerable,
+            bool configured,
+            IComparer<TSource> comparer = null,
+            CancelationToken configuredCancelationToken = default)
+        {
+            return configured
+                ? comparer != null
+                    ? asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken).Order(comparer)
+                    : asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken).Order()
+                : comparer != null
+                    ? asyncEnumerable.Order(comparer)
+                    : asyncEnumerable.Order();
+        }
+
+        public static OrderedAsyncEnumerable<TSource> OrderDescending<TSource>(this AsyncEnumerable<TSource> asyncEnumerable,
+            bool configured,
+            IComparer<TSource> comparer = null,
+            CancelationToken configuredCancelationToken = default)
+        {
+            return configured
+                ? comparer != null
+                    ? asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken).OrderDescending(comparer)
+                    : asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken).OrderDescending()
+                : comparer != null
+                    ? asyncEnumerable.OrderDescending(comparer)
+                    : asyncEnumerable.OrderDescending();
+        }
+
         public static OrderedAsyncEnumerable<TSource> OrderBy<TSource, TKey>(this AsyncEnumerable<TSource> asyncEnumerable,
             bool configured,
             bool async,
             Func<TSource, TKey> keySelector, bool captureKey,
-            IComparer<TKey> comparer = null)
+            IComparer<TKey> comparer = null,
+            CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return OrderBy(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground), async, keySelector, captureKey, comparer);
+                return OrderBy(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, keySelector, captureKey, comparer);
             }
 
             const string keyCapture = "keyCapture";
@@ -126,11 +155,12 @@ namespace ProtoPromiseTests.APIs.Linq
             bool configured,
             bool async,
             Func<TSource, TKey> keySelector, bool captureKey,
-            IComparer<TKey> comparer = null)
+            IComparer<TKey> comparer = null,
+            CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return OrderByDescending(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground), async, keySelector, captureKey, comparer);
+                return OrderByDescending(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, keySelector, captureKey, comparer);
             }
 
             const string keyCapture = "keyCapture";
@@ -985,10 +1015,15 @@ namespace ProtoPromiseTests.APIs.Linq
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
-        private class Person
+        private class Person : IComparable<Person>
         {
             public string Name;
             public int Age;
+
+            public int CompareTo(Person other)
+            {
+                return Age.CompareTo(other.Age);
+            }
         }
 
         private class PersonFirstNameComparer : IComparer<Person>
@@ -1183,6 +1218,116 @@ namespace ProtoPromiseTests.APIs.Linq
 
                 Assert.False(await resa.MoveNextAsync());
                 await resa.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        public enum OrderType
+        {
+            Ascending,
+            Descending,
+            ByAscending,
+            ByDescending
+        }
+
+        public enum ThenByType
+        {
+            None,
+            Ascending,
+            Descending,
+        }
+
+        public enum ConfiguredType
+        {
+            NotConfigured,
+            Configured,
+            ConfiguredWithCancelation
+        }
+
+        private static IEnumerable<TestCaseData> Order_Cancel_Args()
+        {
+            OrderType[] orderTypes = new OrderType[]
+            {
+                OrderType.Ascending,
+                OrderType.Descending,
+                OrderType.ByAscending,
+                OrderType.ByDescending
+            };
+            ThenByType[] thenByTypes = new ThenByType[]
+            {
+                ThenByType.None,
+                ThenByType.Ascending,
+                ThenByType.Descending
+            };
+            ConfiguredType[] configuredTypes = new ConfiguredType[]
+            {
+                ConfiguredType.NotConfigured,
+                ConfiguredType.Configured,
+                ConfiguredType.ConfiguredWithCancelation
+            };
+            bool[] bools = new bool[] { true, false };
+
+            foreach (var orderType in orderTypes)
+            foreach (var thenByType in thenByTypes)
+            foreach (var configuredType in configuredTypes)
+            foreach (bool async in bools)
+            foreach (bool captureKey in bools)
+            foreach (bool withComparer in bools)
+            foreach (bool enumeratorToken in bools)
+            {
+                if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                {
+                    yield return new TestCaseData(orderType, thenByType, configuredType, async, captureKey, withComparer, enumeratorToken);
+                }
+            }
+        }
+
+        [Test, TestCaseSource(nameof(Order_Cancel_Args))]
+        public void Order_Cancel(
+            OrderType orderType,
+            ThenByType thenByType,
+            ConfiguredType configuredType,
+            bool async,
+            bool captureKey,
+            bool withComparer,
+            bool enumeratorToken)
+        {
+            Promise.Run(async () =>
+            {
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var xs = AsyncEnumerable.Create<Person>(async (writer, cancelationToken) =>
+                        {
+                            cancelationToken.ThrowIfCancelationRequested();
+                            configuredCancelationSource.Cancel();
+                            enumeratorCancelationSource.Cancel();
+                            await writer.YieldAsync(new Person() { Name = "Bart", Age = 27 });
+                            cancelationToken.ThrowIfCancelationRequested();
+                            await writer.YieldAsync(new Person() { Name = "John", Age = 62 });
+                            cancelationToken.ThrowIfCancelationRequested();
+                            await writer.YieldAsync(new Person() { Name = "Eric", Age = 27 });
+                        });
+
+                        var configured = configuredType != ConfiguredType.NotConfigured;
+                        var configuredToken = configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None;
+                        var orderedAsyncEnumerable =
+                            orderType == OrderType.Ascending ? xs.Order(configured, GetDefaultOrNullComparer<Person>(withComparer), configuredToken)
+                            : orderType == OrderType.Descending ? xs.OrderDescending(configured, GetDefaultOrNullComparer<Person>(withComparer), configuredToken)
+                            : orderType == OrderType.ByAscending ? xs.OrderBy(configured, async, x => x.Age, captureKey, GetDefaultOrNullComparer<int>(withComparer), configuredToken)
+                            : xs.OrderByDescending(configured, async, x => x.Age, captureKey, GetDefaultOrNullComparer<int>(withComparer), configuredToken);
+
+                        orderedAsyncEnumerable =
+                            thenByType == ThenByType.None ? orderedAsyncEnumerable
+                            : thenByType == ThenByType.Ascending ? orderedAsyncEnumerable.ThenBy(async, x => x.Name, captureKey, comparer: GetDefaultOrNullComparer<string>(withComparer))
+                            : orderedAsyncEnumerable.ThenByDescending(async, x => x.Name, captureKey, comparer: GetDefaultOrNullComparer<string>(withComparer));
+
+                        var asyncEnumerable = orderedAsyncEnumerable.GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        await TestHelper.AssertCanceledAsync(() => asyncEnumerable.MoveNextAsync());
+                        await asyncEnumerable.DisposeAsync();
+                    }
+                }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }

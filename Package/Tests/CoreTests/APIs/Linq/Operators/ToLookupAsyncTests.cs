@@ -184,11 +184,12 @@ namespace ProtoPromiseTests.APIs.Linq
             bool async,
             Func<int, int> keySelector, bool captureKey,
             Func<int, int> elementSelector = null, bool captureElement = false,
-            IEqualityComparer<int> equalityComparer = null)
+            IEqualityComparer<int> equalityComparer = null,
+            CancelationToken cancelationToken = default)
         {
             if (configured)
             {
-                return ToLookupAsync(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground), async, keySelector, captureKey, elementSelector, captureElement, equalityComparer);
+                return ToLookupAsync(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(cancelationToken), async, keySelector, captureKey, elementSelector, captureElement, equalityComparer);
             }
 
             const string keyCapture = "keyCapture";
@@ -200,11 +201,11 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? asyncEnumerable.ToLookupAsync(async x => keySelector(x), equalityComparer)
-                            : asyncEnumerable.ToLookupAsync(async x => keySelector(x))
+                            ? asyncEnumerable.ToLookupAsync(async x => keySelector(x), equalityComparer, cancelationToken)
+                            : asyncEnumerable.ToLookupAsync(async x => keySelector(x), cancelationToken)
                         : equalityComparer != null
-                            ? asyncEnumerable.ToLookupAsync(keySelector, equalityComparer)
-                            : asyncEnumerable.ToLookupAsync(keySelector);
+                            ? asyncEnumerable.ToLookupAsync(keySelector, equalityComparer, cancelationToken)
+                            : asyncEnumerable.ToLookupAsync(keySelector, cancelationToken);
                 }
                 else
                 {
@@ -214,23 +215,23 @@ namespace ProtoPromiseTests.APIs.Linq
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
-                            }, equalityComparer)
+                            }, equalityComparer, cancelationToken)
                             : asyncEnumerable.ToLookupAsync(keyCapture, async (cv, x) =>
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
-                            })
+                            }, cancelationToken)
                         : equalityComparer != null
                             ? asyncEnumerable.ToLookupAsync(keyCapture, (cv, x) =>
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
-                            }, equalityComparer)
+                            }, equalityComparer, cancelationToken)
                             : asyncEnumerable.ToLookupAsync(keyCapture, (cv, x) =>
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
-                            });
+                            }, cancelationToken);
                 }
             }
             else
@@ -241,11 +242,11 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.ToLookupAsync(async x => keySelector(x), async x => elementSelector(x), equalityComparer)
-                                : asyncEnumerable.ToLookupAsync(async x => keySelector(x), async x => elementSelector(x))
+                                ? asyncEnumerable.ToLookupAsync(async x => keySelector(x), async x => elementSelector(x), equalityComparer, cancelationToken)
+                                : asyncEnumerable.ToLookupAsync(async x => keySelector(x), async x => elementSelector(x), cancelationToken)
                             : equalityComparer != null
-                                ? asyncEnumerable.ToLookupAsync(keySelector, elementSelector, equalityComparer)
-                                : asyncEnumerable.ToLookupAsync(keySelector, elementSelector);
+                                ? asyncEnumerable.ToLookupAsync(keySelector, elementSelector, equalityComparer, cancelationToken)
+                                : asyncEnumerable.ToLookupAsync(keySelector, elementSelector, cancelationToken);
                     }
                     else
                     {
@@ -256,26 +257,26 @@ namespace ProtoPromiseTests.APIs.Linq
                                 {
                                     Assert.AreEqual(elementCapture, cv);
                                     return elementSelector(x);
-                                }, equalityComparer)
+                                }, equalityComparer, cancelationToken)
                                 : asyncEnumerable.ToLookupAsync(async x => keySelector(x),
                                 elementCapture, async (cv, x) =>
                                 {
                                     Assert.AreEqual(elementCapture, cv);
                                     return elementSelector(x);
-                                })
+                                }, cancelationToken)
                             : equalityComparer != null
                                 ? asyncEnumerable.ToLookupAsync(x => keySelector(x),
                                 elementCapture, (cv, x) =>
                                 {
                                     Assert.AreEqual(elementCapture, cv);
                                     return elementSelector(x);
-                                }, equalityComparer)
+                                }, equalityComparer, cancelationToken)
                                 : asyncEnumerable.ToLookupAsync(x => keySelector(x),
                                 elementCapture, (cv, x) =>
                                 {
                                     Assert.AreEqual(elementCapture, cv);
                                     return elementSelector(x);
-                                });
+                                }, cancelationToken);
                     }
                 }
                 else
@@ -288,23 +289,23 @@ namespace ProtoPromiseTests.APIs.Linq
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, async x => elementSelector(x), equalityComparer)
+                                }, async x => elementSelector(x), equalityComparer, cancelationToken)
                                 : asyncEnumerable.ToLookupAsync(keyCapture, async (cv, x) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, async x => elementSelector(x))
+                                }, async x => elementSelector(x), cancelationToken)
                             : equalityComparer != null
                                 ? asyncEnumerable.ToLookupAsync(keyCapture, (cv, x) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, elementSelector, equalityComparer)
+                                }, elementSelector, equalityComparer, cancelationToken)
                                 : asyncEnumerable.ToLookupAsync(keyCapture, (cv, x) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, elementSelector);
+                                }, elementSelector, cancelationToken);
                     }
                     else
                     {
@@ -319,7 +320,7 @@ namespace ProtoPromiseTests.APIs.Linq
                                 {
                                     Assert.AreEqual(elementCapture, cv);
                                     return elementSelector(x);
-                                }, equalityComparer)
+                                }, equalityComparer, cancelationToken)
                                 : asyncEnumerable.ToLookupAsync(keyCapture, async (cv, x) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
@@ -329,7 +330,7 @@ namespace ProtoPromiseTests.APIs.Linq
                                 {
                                     Assert.AreEqual(elementCapture, cv);
                                     return elementSelector(x);
-                                })
+                                }, cancelationToken)
                             : equalityComparer != null
                                 ? asyncEnumerable.ToLookupAsync(keyCapture, (cv, x) =>
                                 {
@@ -340,7 +341,7 @@ namespace ProtoPromiseTests.APIs.Linq
                                 {
                                     Assert.AreEqual(elementCapture, cv);
                                     return elementSelector(x);
-                                }, equalityComparer)
+                                }, equalityComparer, cancelationToken)
                                 : asyncEnumerable.ToLookupAsync(keyCapture, (cv, x) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
@@ -350,7 +351,7 @@ namespace ProtoPromiseTests.APIs.Linq
                                 {
                                     Assert.AreEqual(elementCapture, cv);
                                     return elementSelector(x);
-                                });
+                                }, cancelationToken);
                     }
                 }
             }
@@ -725,6 +726,82 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return EqualityComparer<int>.Default.GetHashCode(Math.Abs(obj));
             }
+        }
+
+        public enum ConfiguredType
+        {
+            NotConfigured,
+            Configured,
+            ConfiguredWithCancelation
+        }
+
+        [Test]
+        public void ToLookup_KeySelector_Cancel(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureKey,
+            [Values] bool withComparer)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var res = ToLookupAsync(xs, configured, async, x =>
+                    {
+                        if (x == 1)
+                        {
+                            cancelationSource.Cancel();
+                        }
+                        return x % 2;
+                    }, captureKey, equalityComparer: GetDefaultOrNullComparer<int>(withComparer), cancelationToken: cancelationSource.Token);
+                    await TestHelper.AssertCanceledAsync(() => res);
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void ToLookup_KeySelector_ElementSelector_Cancel(
+            [Values] bool configured,
+            [Values] bool async,
+            [Values] bool captureKey,
+            [Values] bool captureElement,
+            [Values] bool withComparer)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(4);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var res = ToLookupAsync(xs, configured, async, x =>
+                    {
+                        if (x == 1)
+                        {
+                            cancelationSource.Cancel();
+                        }
+                        return x % 2;
+                    }, captureKey, x => x, captureElement, equalityComparer: GetDefaultOrNullComparer<int>(withComparer), cancelationSource.Token);
+                    await TestHelper.AssertCanceledAsync(() => res);
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
     }
 }

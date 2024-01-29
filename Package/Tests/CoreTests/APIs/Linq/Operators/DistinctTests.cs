@@ -84,12 +84,13 @@ namespace ProtoPromiseTests.APIs.Linq
         // We test all the different overloads.
         private static AsyncEnumerable<TSource> Distinct<TSource>(AsyncEnumerable<TSource> asyncEnumerable,
             bool configured,
-            IEqualityComparer<TSource> equalityComparer = null)
+            IEqualityComparer<TSource> equalityComparer = null,
+            CancelationToken configuredCancelationToken = default)
         {
             return configured
                 ? equalityComparer != null
-                    ? asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Distinct(equalityComparer)
-                    : asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).Distinct()
+                    ? asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken).Distinct(equalityComparer)
+                    : asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken).Distinct()
                 : equalityComparer != null
                     ? asyncEnumerable.Distinct(equalityComparer)
                     : asyncEnumerable.Distinct();
@@ -100,11 +101,12 @@ namespace ProtoPromiseTests.APIs.Linq
             bool async,
             bool captureValue,
             Func<TSource, TKey> keySelector,
-            IEqualityComparer<TKey> equalityComparer = null)
+            IEqualityComparer<TKey> equalityComparer = null,
+            CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return DistinctBy(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground), async, captureValue, keySelector, equalityComparer);
+                return DistinctBy(asyncEnumerable.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, captureValue, keySelector, equalityComparer);
             }
 
             const string valueCapture = "valueCapture";
@@ -386,6 +388,101 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return EqualityComparer<int>.Default.GetHashCode(Math.Abs(obj));
             }
+        }
+
+        public enum ConfiguredType
+        {
+            NotConfigured,
+            Configured,
+            ConfiguredWithCancelation
+        }
+
+        [Test]
+        public void Distinct_Cancel(
+            [Values] ConfiguredType configuredType,
+            [Values] bool withComparer,
+            [Values] bool enumeratorToken)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = Distinct(xs, configuredType != ConfiguredType.NotConfigured, GetDefaultOrNullComparer<int>(withComparer),
+                            configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                            .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(1, asyncEnumerator.Current);
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(2, asyncEnumerator.Current);
+                        configuredCancelationSource.Cancel();
+                        enumeratorCancelationSource.Cancel();
+                        if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                        {
+                            await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                        }
+                        await asyncEnumerator.DisposeAsync();
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void DistinctBy_Cancel(
+            [Values] ConfiguredType configuredType,
+            [Values] bool async,
+            [Values] bool captureValue,
+            [Values] bool withComparer,
+            [Values] bool enumeratorToken)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(1);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(2);
+                    cancelationToken.ThrowIfCancelationRequested();
+                    await writer.YieldAsync(3);
+                });
+                using (var configuredCancelationSource = CancelationSource.New())
+                {
+                    using (var enumeratorCancelationSource = CancelationSource.New())
+                    {
+                        var asyncEnumerator = DistinctBy(xs, configuredType != ConfiguredType.NotConfigured, async, captureValue, x => x, GetDefaultOrNullComparer<int>(withComparer),
+                        configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
+                        .GetAsyncEnumerator(enumeratorToken ? enumeratorCancelationSource.Token : CancelationToken.None);
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(1, asyncEnumerator.Current);
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(2, asyncEnumerator.Current);
+                        configuredCancelationSource.Cancel();
+                        enumeratorCancelationSource.Cancel();
+                        if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
+                        {
+                            await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                        }
+                        await asyncEnumerator.DisposeAsync();
+                    }
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
     }
 }
