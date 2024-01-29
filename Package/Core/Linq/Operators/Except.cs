@@ -38,46 +38,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return AsyncEnumerable<TSource>.Create((firstAsyncEnumerator: first.GetAsyncEnumerator(), secondAsyncEnumerator: second.GetAsyncEnumerator(), comparer), async (cv, writer, cancelationToken) =>
-            {
-                // The enumerators were retrieved without a cancelation token when the original function was called.
-                // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                cv.firstAsyncEnumerator._target._cancelationToken = cancelationToken;
-                cv.secondAsyncEnumerator._target._cancelationToken = cancelationToken;
-                try
-                {
-                    using (var set = new Internal.PoolBackedSet<TSource, TEqualityComparer>(cv.comparer))
-                    {
-                        while (await cv.secondAsyncEnumerator.MoveNextAsync())
-                        {
-                            set.Add(cv.secondAsyncEnumerator.Current);
-                        }
-
-                        while (await cv.firstAsyncEnumerator.MoveNextAsync())
-                        {
-                            var element = cv.firstAsyncEnumerator.Current;
-                            if (set.Add(element))
-                            {
-                                await writer.YieldAsync(element);
-                            }
-                        }
-                    }
-
-                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                    await writer.YieldAsync(default).ForLinqExtension();
-                }
-                finally
-                {
-                    try
-                    {
-                        await cv.secondAsyncEnumerator.DisposeAsync();
-                    }
-                    finally
-                    {
-                        await cv.firstAsyncEnumerator.DisposeAsync();
-                    }
-                }
-            });
+            return Internal.ExceptHelper.Except(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), comparer);
         }
 
         /// <summary>
@@ -105,51 +66,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return AsyncEnumerable<TSource>.Create((firstAsyncEnumerator: configuredFirst.GetAsyncEnumerator(), secondAsyncEnumerator: second.GetAsyncEnumerator(), comparer), async (cv, writer, cancelationToken) =>
-            {
-                // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                var enumerableRef = cv.firstAsyncEnumerator._enumerator._target;
-                var joinedCancelationSource = Internal.MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
-                // Use the same cancelation token for both enumerators.
-                cv.secondAsyncEnumerator._target._cancelationToken = enumerableRef._cancelationToken;
-
-                try
-                {
-                    using (var set = new Internal.PoolBackedSet<TSource, TEqualityComparer>(cv.comparer))
-                    {
-                        while (await cv.secondAsyncEnumerator.MoveNextAsync())
-                        {
-                            // We need to make sure we're on the configured context before invoking the comparer.
-                            await cv.firstAsyncEnumerator.SwitchToContext();
-                            set.Add(cv.secondAsyncEnumerator.Current);
-                        }
-
-                        while (await cv.firstAsyncEnumerator.MoveNextAsync())
-                        {
-                            var element = cv.firstAsyncEnumerator.Current;
-                            if (set.Add(element))
-                            {
-                                await writer.YieldAsync(element);
-                            }
-                        }
-                    }
-
-                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                    await writer.YieldAsync(default).ForLinqExtension();
-                }
-                finally
-                {
-                    joinedCancelationSource.TryDispose();
-                    try
-                    {
-                        await cv.secondAsyncEnumerator.DisposeAsync();
-                    }
-                    finally
-                    {
-                        await cv.firstAsyncEnumerator.DisposeAsync();
-                    }
-                }
-            });
+            return Internal.ExceptHelper.Except(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), comparer);
         }
 
         /// <summary>
@@ -182,7 +99,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return ExceptByHelper<TKey>.ExceptBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -219,7 +136,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return ExceptByHelper<TKey>.ExceptBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -252,7 +169,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return ExceptByHelper<TKey>.ExceptByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -289,7 +206,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return ExceptByHelper<TKey>.ExceptByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -322,7 +239,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return ExceptByHelper<TKey>.ExceptBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -359,7 +276,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return ExceptByHelper<TKey>.ExceptBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -392,7 +309,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return ExceptByHelper<TKey>.ExceptByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -429,206 +346,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return ExceptByHelper<TKey>.ExceptByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
-        }
-
-        private static class ExceptByHelper<TKey>
-        {
-            internal static AsyncEnumerable<TSource> ExceptBy<TSource, TKeySelector, TEqualityComparer>(
-                AsyncEnumerator<TSource> firstAsyncEnumerator, AsyncEnumerator<TSource> secondAsyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
-                where TKeySelector : Internal.IFunc<TSource, TKey>
-                where TEqualityComparer : IEqualityComparer<TKey>
-                => AsyncEnumerable<TSource>.Create((firstAsyncEnumerator, secondAsyncEnumerator, keySelector, comparer), async (cv, writer, cancelationToken) =>
-                {
-                    // The enumerators were retrieved without a cancelation token when the original function was called.
-                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                    cv.firstAsyncEnumerator._target._cancelationToken = cancelationToken;
-                    cv.secondAsyncEnumerator._target._cancelationToken = cancelationToken;
-                    try
-                    {
-                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(cv.comparer))
-                        {
-                            while (await cv.secondAsyncEnumerator.MoveNextAsync())
-                            {
-                                set.Add(cv.keySelector.Invoke(cv.secondAsyncEnumerator.Current));
-                            }
-
-                            while (await cv.firstAsyncEnumerator.MoveNextAsync())
-                            {
-                                var element = cv.firstAsyncEnumerator.Current;
-                                if (set.Add(cv.keySelector.Invoke(element)))
-                                {
-                                    await writer.YieldAsync(element);
-                                }
-                            }
-                        }
-
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
-                    }
-                    finally
-                    {
-                        try
-                        {
-                            await cv.secondAsyncEnumerator.DisposeAsync();
-                        }
-                        finally
-                        {
-                            await cv.firstAsyncEnumerator.DisposeAsync();
-                        }
-                    }
-                });
-
-            internal static AsyncEnumerable<TSource> ExceptByAwait<TSource, TKeySelector, TEqualityComparer>(
-                AsyncEnumerator<TSource> firstAsyncEnumerator, AsyncEnumerator<TSource> secondAsyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
-                where TKeySelector : Internal.IFunc<TSource, Promise<TKey>>
-                where TEqualityComparer : IEqualityComparer<TKey>
-                => AsyncEnumerable<TSource>.Create((firstAsyncEnumerator, secondAsyncEnumerator, keySelector, comparer), async (cv, writer, cancelationToken) =>
-                {
-                    // The enumerators were retrieved without a cancelation token when the original function was called.
-                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                    cv.firstAsyncEnumerator._target._cancelationToken = cancelationToken;
-                    cv.secondAsyncEnumerator._target._cancelationToken = cancelationToken;
-                    try
-                    {
-                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(cv.comparer))
-                        {
-                            while (await cv.secondAsyncEnumerator.MoveNextAsync())
-                            {
-                                set.Add(await cv.keySelector.Invoke(cv.secondAsyncEnumerator.Current));
-                            }
-
-                            while (await cv.firstAsyncEnumerator.MoveNextAsync())
-                            {
-                                var element = cv.firstAsyncEnumerator.Current;
-                                if (set.Add(await cv.keySelector.Invoke(element)))
-                                {
-                                    await writer.YieldAsync(element);
-                                }
-                            }
-                        }
-
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
-                    }
-                    finally
-                    {
-                        try
-                        {
-                            await cv.secondAsyncEnumerator.DisposeAsync();
-                        }
-                        finally
-                        {
-                            await cv.firstAsyncEnumerator.DisposeAsync();
-                        }
-                    }
-                });
-
-            internal static AsyncEnumerable<TSource> ExceptBy<TSource, TKeySelector, TEqualityComparer>(
-                ConfiguredAsyncEnumerable<TSource>.Enumerator firstAsyncEnumerator, AsyncEnumerator<TSource> secondAsyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
-                where TKeySelector : Internal.IFunc<TSource, TKey>
-                where TEqualityComparer : IEqualityComparer<TKey>
-                => AsyncEnumerable<TSource>.Create((firstAsyncEnumerator, secondAsyncEnumerator, keySelector, comparer), async (cv, writer, cancelationToken) =>
-                {
-                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = cv.firstAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = Internal.MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
-                    // Use the same cancelation token for both enumerators.
-                    cv.secondAsyncEnumerator._target._cancelationToken = enumerableRef._cancelationToken;
-
-                    try
-                    {
-                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(cv.comparer))
-                        {
-                            while (await cv.secondAsyncEnumerator.MoveNextAsync())
-                            {
-                                // We need to make sure we're on the configured context before invoking the key selector.
-                                await cv.firstAsyncEnumerator.SwitchToContext();
-                                set.Add(cv.keySelector.Invoke(cv.secondAsyncEnumerator.Current));
-                            }
-
-                            while (await cv.firstAsyncEnumerator.MoveNextAsync())
-                            {
-                                var element = cv.firstAsyncEnumerator.Current;
-                                if (set.Add(cv.keySelector.Invoke(element)))
-                                {
-                                    await writer.YieldAsync(element);
-                                }
-                            }
-                        }
-
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
-                    }
-                    finally
-                    {
-                        joinedCancelationSource.TryDispose();
-                        try
-                        {
-                            await cv.secondAsyncEnumerator.DisposeAsync();
-                        }
-                        finally
-                        {
-                            await cv.firstAsyncEnumerator.DisposeAsync();
-                        }
-                    }
-                });
-
-            internal static AsyncEnumerable<TSource> ExceptByAwait<TSource, TKeySelector, TEqualityComparer>(
-                ConfiguredAsyncEnumerable<TSource>.Enumerator firstAsyncEnumerator, AsyncEnumerator<TSource> secondAsyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
-                where TKeySelector : Internal.IFunc<TSource, Promise<TKey>>
-                where TEqualityComparer : IEqualityComparer<TKey>
-                => AsyncEnumerable<TSource>.Create((firstAsyncEnumerator, secondAsyncEnumerator, keySelector, comparer), async (cv, writer, cancelationToken) =>
-                {
-                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = cv.firstAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = Internal.MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
-                    // Use the same cancelation token for both enumerators.
-                    cv.secondAsyncEnumerator._target._cancelationToken = enumerableRef._cancelationToken;
-
-                    try
-                    {
-                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(cv.comparer))
-                        {
-                            while (await cv.secondAsyncEnumerator.MoveNextAsync())
-                            {
-                                // We need to make sure we're on the configured context before invoking the key selector.
-                                await cv.firstAsyncEnumerator.SwitchToContext();
-                                var key = await cv.keySelector.Invoke(cv.secondAsyncEnumerator.Current);
-                                // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer.
-                                await cv.firstAsyncEnumerator.SwitchToContext();
-                                set.Add(key);
-                            }
-
-                            while (await cv.firstAsyncEnumerator.MoveNextAsync())
-                            {
-                                var element = cv.firstAsyncEnumerator.Current;
-                                var key = await cv.keySelector.Invoke(element);
-                                // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer.
-                                await cv.firstAsyncEnumerator.SwitchToContext();
-                                if (set.Add(key))
-                                {
-                                    await writer.YieldAsync(element);
-                                }
-                            }
-                        }
-
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
-                    }
-                    finally
-                    {
-                        joinedCancelationSource.TryDispose();
-                        try
-                        {
-                            await cv.secondAsyncEnumerator.DisposeAsync();
-                        }
-                        finally
-                        {
-                            await cv.firstAsyncEnumerator.DisposeAsync();
-                        }
-                    }
-                });
+            return Internal.ExceptByHelper<TKey>.ExceptByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
     }
 #endif // CSHARP_7_3_OR_NEWER
