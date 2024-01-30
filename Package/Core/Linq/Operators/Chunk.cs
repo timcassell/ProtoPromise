@@ -101,18 +101,18 @@ namespace Proto.Promises.Linq
                             int currentChunk = chunkBuilders._count;
                             // We start with capacity 1 instead of size in case the chunk size is very large but the source only has few elements.
                             chunkBuilders.Add(new TempCollectionBuilder<TSource>(1, 1));
-                            chunkBuilders._items[currentChunk]._items[0] = _asyncEnumerator.Current;
+                            chunkBuilders[currentChunk][0] = _asyncEnumerator.Current;
                             for (int i = 1; i < _size; ++i)
                             {
                                 if (!await _asyncEnumerator.MoveNextAsync())
                                 {
-                                    await writer.YieldAsync(chunkBuilders._items[currentChunk].View);
+                                    await writer.YieldAsync(chunkBuilders[currentChunk].View);
                                     goto End;
                                 }
-                                chunkBuilders._items[currentChunk].Add(_asyncEnumerator.Current);
+                                chunkBuilders[currentChunk].Add(_asyncEnumerator.Current);
                             }
 
-                            await writer.YieldAsync(chunkBuilders._items[currentChunk].View);
+                            await writer.YieldAsync(chunkBuilders[currentChunk].View);
                         }
                     End:
 
@@ -123,7 +123,7 @@ namespace Proto.Promises.Linq
                     {
                         for (int i = 0; i < chunkBuilders._count; ++i)
                         {
-                            chunkBuilders._items[i].Dispose();
+                            chunkBuilders[i].Dispose();
                         }
                         chunkBuilders.Dispose();
                         await _asyncEnumerator.DisposeAsync();

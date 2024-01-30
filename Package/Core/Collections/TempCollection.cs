@@ -176,7 +176,7 @@ namespace Proto.Promises.Collections
             public T Current
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _target[_current]; }
+                get => _target[_current];
             }
 
             object IEnumerator.Current => Current;
@@ -265,7 +265,13 @@ namespace Proto.Promises.Collections
         internal TempCollection<T> View
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return new TempCollection<T>(this); }
+            get => new TempCollection<T>(this);
+        }
+
+        internal ref T this[int index]
+        {
+            [MethodImpl(Internal.InlineOption)]
+            get => ref _items[index];
         }
 
         internal TempCollectionBuilder(int capacity, int count = 0)
@@ -337,13 +343,13 @@ namespace Proto.Promises.Collections
         internal Span<T> Span
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return new Span<T>(_items, 0, _count); }
+            get => new Span<T>(_items, 0, _count);
         }
 
         internal ReadOnlySpan<T> ReadOnlySpan
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return new ReadOnlySpan<T>(_items, 0, _count); }
+            get => new ReadOnlySpan<T>(_items, 0, _count);
         }
     }
 #endif // CSHARP_7_3_OR_NEWER

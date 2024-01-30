@@ -144,6 +144,9 @@ namespace Proto.Promises
                 CanceledComplete,
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
             // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
             internal struct SmallFields
