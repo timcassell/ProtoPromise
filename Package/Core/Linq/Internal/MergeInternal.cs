@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Collections;
 using Proto.Promises.Linq;
 using System;
 using System.Collections.Generic;
@@ -23,13 +24,12 @@ namespace Proto.Promises
 #endif
         internal abstract class AsyncEnumerableMergerBase<TValue> : PromiseRefBase.AsyncEnumerableWithIterator<TValue>
         {
-            // TODO: optimize these collections.
-            protected readonly List<AsyncEnumerator<TValue>> _enumerators = new List<AsyncEnumerator<TValue>>();
-            protected readonly List<(object rejectContainer, Promise disposePromise)> _disposePromises = new List<(object rejectContainer, Promise disposePromise)>();
+            // These must not be readonly.
             // We queue the successful MoveNextAsync results instead of using Promise.RaceWithIndex, to avoid having to preserve each promise.
-            // This must not be readonly.
             protected SingleConsumerAsyncQueueInternal<int> _readyQueue = new SingleConsumerAsyncQueueInternal<int>(0);
-            protected int _streamWriterId;
+            protected TempCollectionBuilder<AsyncEnumerator<TValue>> _enumerators;
+            protected TempCollectionBuilder<(object rejectContainer, Promise disposePromise)> _disposePromises;
+            protected SpinLocker _locker = new SpinLocker();
 
             protected void ContinueMerge(int index)
             {
@@ -89,10 +89,11 @@ namespace Proto.Promises
             protected void DisposeEnumerator(AsyncEnumerator<TValue> enumerator, object rejectContainer)
             {
                 var tuple = (rejectContainer, enumerator.DisposeAsync());
-                lock (_disposePromises)
-                {
-                    _disposePromises.Add(tuple);
-                }
+                
+                _locker.Enter();
+                _disposePromises.Add(tuple);
+                _locker.Exit();
+
                 _readyQueue.RemoveProducer();
             }
         } // class AsyncEnumerableMerger<TValue>
@@ -186,8 +187,9 @@ namespace Proto.Promises
                 // However, before we do so, we need to hook up our own cancelation source to notify all enumerators when 1 of them has been aborted.
                 // We don't store the source directly, to reduce memory, we just store it in the _cancelationToken field and use the _ref directly.
                 _sourcesEnumerator._target._cancelationToken = _cancelationToken = CancelationSource.New(_cancelationToken).Token;
-                _streamWriterId = enumerableId;
-                var iteratorPromise = Iterate()._promise;
+                _enumerators = new TempCollectionBuilder<AsyncEnumerator<TValue>>(0);
+                _disposePromises = new TempCollectionBuilder<(object rejectContainer, Promise disposePromise)>(0);
+                var iteratorPromise = Iterate(enumerableId)._promise;
                 if (iteratorPromise._ref == null)
                 {
                     // Already complete.
@@ -204,7 +206,7 @@ namespace Proto.Promises
                 iteratorPromise._ref.HookupExistingWaiter(iteratorPromise._id, this);
             }
 
-            private async AsyncIteratorMethod Iterate()
+            private async AsyncIteratorMethod Iterate(int streamWriterId)
             {
                 var mergeSourcesPromise = MergeSources();
                 int enumeratorIndex = -1;
@@ -221,10 +223,16 @@ namespace Proto.Promises
                         enumeratorIndex = index;
 
                         // Yield the value to the consumer.
-                        await YieldAsync(_enumerators[enumeratorIndex].Current, _streamWriterId);
+                        await YieldAsync(_enumerators[enumeratorIndex].Current, streamWriterId);
 
                         ContinueMerge(enumeratorIndex);
                         enumeratorIndex = -1;
+                    }
+
+                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions, and cancelation was not requested.
+                    if (!_cancelationToken.IsCancelationRequested)
+                    {
+                        await YieldAsync(default, streamWriterId).ForLinqExtension();
                     }
                 }
                 finally
@@ -267,7 +275,7 @@ namespace Proto.Promises
                         RecordException(e, ref exceptions);
                     }
 
-                    for (int i = 0, max = _disposePromises.Count; i < max; ++i)
+                    for (int i = 0, max = _disposePromises._count; i < max; ++i)
                     {
                         var (rejectContainer, disposePromise) = _disposePromises[i];
                         try
@@ -291,8 +299,8 @@ namespace Proto.Promises
                         }
                     }
 
-                    _enumerators.Clear();
-                    _disposePromises.Clear();
+                    _enumerators.Dispose();
+                    _disposePromises.Dispose();
                     // We stored the CancelationRef we created in the token field, so we extract it to dispose here.
                     _cancelationToken._ref.TryDispose(_cancelationToken._ref.SourceId);
 
@@ -316,7 +324,7 @@ namespace Proto.Promises
                 {
                     while (await _sourcesEnumerator.MoveNextAsync())
                     {
-                        int index = _enumerators.Count;
+                        int index = _enumerators._count;
                         _readyQueue.AddProducer();
                         _enumerators.Add(_sourcesEnumerator.Current.GetAsyncEnumerator(_cancelationToken));
                         ContinueMerge(index);
@@ -425,8 +433,9 @@ namespace Proto.Promises
                 // We need to hook up our own cancelation source to notify all enumerators when 1 of them has been aborted.
                 // We don't store the source directly, to reduce memory, we just store it in the _cancelationToken field and use the _ref directly.
                 _cancelationToken = CancelationSource.New(_cancelationToken).Token;
-                _streamWriterId = enumerableId;
-                var iteratorPromise = Iterate()._promise;
+                _enumerators = new TempCollectionBuilder<AsyncEnumerator<TValue>>(0);
+                _disposePromises = new TempCollectionBuilder<(object rejectContainer, Promise disposePromise)>(0);
+                var iteratorPromise = Iterate(enumerableId)._promise;
                 if (iteratorPromise._ref == null)
                 {
                     // Already complete.
@@ -443,7 +452,7 @@ namespace Proto.Promises
                 iteratorPromise._ref.HookupExistingWaiter(iteratorPromise._id, this);
             }
 
-            private async AsyncIteratorMethod Iterate()
+            private async AsyncIteratorMethod Iterate(int streamWriterId)
             {
                 // If any rejections or exceptions occurred, we capture them all and throw them in an AggregateException.
                 List<Exception> exceptions = null;
@@ -463,10 +472,16 @@ namespace Proto.Promises
                         enumeratorIndex = index;
 
                         // Yield the value to the consumer.
-                        await YieldAsync(_enumerators[enumeratorIndex].Current, _streamWriterId);
+                        await YieldAsync(_enumerators[enumeratorIndex].Current, streamWriterId);
 
                         ContinueMerge(enumeratorIndex);
                         enumeratorIndex = -1;
+                    }
+
+                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions, and cancelation was not requested.
+                    if (!_cancelationToken.IsCancelationRequested)
+                    {
+                        await YieldAsync(default, streamWriterId).ForLinqExtension();
                     }
                 }
                 finally
@@ -499,7 +514,7 @@ namespace Proto.Promises
 
                     // Wait for all DisposeAsyncs.
                     // If any rejections occurred, we capture them all and throw them in an AggregateException.
-                    for (int i = 0, max = _disposePromises.Count; i < max; ++i)
+                    for (int i = 0, max = _disposePromises._count; i < max; ++i)
                     {
                         var (rejectContainer, disposePromise) = _disposePromises[i];
                         try
@@ -523,8 +538,8 @@ namespace Proto.Promises
                         }
                     }
 
-                    _enumerators.Clear();
-                    _disposePromises.Clear();
+                    _enumerators.Dispose();
+                    _disposePromises.Dispose();
                     // We stored the CancelationRef we created in the token field, so we extract it to dispose here.
                     _cancelationToken._ref.TryDispose(_cancelationToken._ref.SourceId);
 
@@ -550,7 +565,7 @@ namespace Proto.Promises
                     {
                         while (_sourcesEnumerator.MoveNext())
                         {
-                            int index = _enumerators.Count;
+                            int index = _enumerators._count;
                             _readyQueue.AddProducer();
                             _enumerators.Add(_sourcesEnumerator.Current.GetAsyncEnumerator(_cancelationToken));
                             ContinueMerge(index);

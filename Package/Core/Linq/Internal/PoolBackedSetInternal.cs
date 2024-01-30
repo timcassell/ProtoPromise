@@ -51,9 +51,9 @@ namespace Proto.Promises
                 Debug.Assert(!_haveRemoved, "This class is optimized for never calling Add after Remove. If your changes need to do so, undo that optimization.");
 #endif
                 var hashCode = InternalGetHashCode(value);
-                for (var i = _buckets._items[hashCode % _buckets._count] - 1; i >= 0; i = _slots._items[i]._next)
+                for (var i = _buckets[hashCode % _buckets._count] - 1; i >= 0; i = _slots[i]._next)
                 {
-                    if (_slots._items[i]._hashCode == hashCode && _comparer.Equals(_slots._items[i]._value, value))
+                    if (_slots[i]._hashCode == hashCode && _comparer.Equals(_slots[i]._value, value))
                     {
                         return false;
                     }
@@ -67,10 +67,10 @@ namespace Proto.Promises
                 var index = _count;
                 ++_count;
                 var bucket = hashCode % _buckets._count;
-                _slots._items[index]._hashCode = hashCode;
-                _slots._items[index]._value = value;
-                _slots._items[index]._next = _buckets._items[bucket] - 1;
-                _buckets._items[bucket] = index + 1;
+                _slots[index]._hashCode = hashCode;
+                _slots[index]._value = value;
+                _slots[index]._next = _buckets[bucket] - 1;
+                _buckets[bucket] = index + 1;
                 return true;
             }
 
@@ -83,22 +83,22 @@ namespace Proto.Promises
                 var hashCode = InternalGetHashCode(value);
                 var bucket = hashCode % _buckets._count;
                 var last = -1;
-                for (var i = _buckets._items[bucket] - 1; i >= 0; last = i, i = _slots._items[i]._next)
+                for (var i = _buckets[bucket] - 1; i >= 0; last = i, i = _slots[i]._next)
                 {
-                    if (_slots._items[i]._hashCode == hashCode && _comparer.Equals(_slots._items[i]._value, value))
+                    if (_slots[i]._hashCode == hashCode && _comparer.Equals(_slots[i]._value, value))
                     {
                         if (last < 0)
                         {
-                            _buckets._items[bucket] = _slots._items[i]._next + 1;
+                            _buckets[bucket] = _slots[i]._next + 1;
                         }
                         else
                         {
-                            _slots._items[last]._next = _slots._items[i]._next;
+                            _slots[last]._next = _slots[i]._next;
                         }
 
-                        _slots._items[i]._hashCode = -1;
-                        _slots._items[i]._value = default;
-                        _slots._items[i]._next = -1;
+                        _slots[i]._hashCode = -1;
+                        _slots[i]._value = default;
+                        _slots[i]._next = -1;
                         return true;
                     }
                 }
@@ -119,9 +119,9 @@ namespace Proto.Promises
                 _slots.SetCapacityAndCopy(newSize);
                 for (var i = 0; i < _count; i++)
                 {
-                    var bucket = _slots._items[i]._hashCode % newSize;
-                    _slots._items[i]._next = _buckets._items[bucket] - 1;
-                    _buckets._items[bucket] = i + 1;
+                    var bucket = _slots[i]._hashCode % newSize;
+                    _slots[i]._next = _buckets[bucket] - 1;
+                    _buckets[bucket] = i + 1;
                 }
             }
 

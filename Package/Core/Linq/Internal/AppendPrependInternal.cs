@@ -146,8 +146,8 @@ namespace Proto.Promises
                 IncrementId(enumerableId);
 
                 var prepended = new TempCollectionBuilder<TSource>(2, 2);
-                prepended._items[0] = _prepended;
-                prepended._items[1] = element;
+                prepended[0] = _prepended;
+                prepended[1] = element;
                 var enumerable = PrependNAsyncEnumerable<TSource>.GetOrCreate(_source, prepended);
                 Dispose();
                 return enumerable;
@@ -243,8 +243,8 @@ namespace Proto.Promises
                 IncrementId(enumerableId);
 
                 var appended = new TempCollectionBuilder<TSource>(2, 2);
-                appended._items[0] = _appended;
-                appended._items[1] = element;
+                appended[0] = _appended;
+                appended[1] = element;
                 var enumerable = AppendNAsyncEnumerable<TSource>.GetOrCreate(_source, appended);
                 Dispose();
                 return enumerable;
@@ -326,10 +326,10 @@ namespace Proto.Promises
                 IncrementId(enumerableId);
 
                 var prepended = new TempCollectionBuilder<TSource>(2, 2);
-                prepended._items[0] = _prepended;
-                prepended._items[1] = element;
+                prepended[0] = _prepended;
+                prepended[1] = element;
                 var appended = new TempCollectionBuilder<TSource>(1, 1);
-                appended._items[0] = _appended;
+                appended[0] = _appended;
                 var enumerable = AppendPrependNAsyncEnumerable<TSource>.GetOrCreate(_source, prepended, appended);
                 Dispose();
                 return enumerable;
@@ -340,10 +340,10 @@ namespace Proto.Promises
                 IncrementId(enumerableId);
 
                 var prepended = new TempCollectionBuilder<TSource>(1, 1);
-                prepended._items[0] = _prepended;
+                prepended[0] = _prepended;
                 var appended = new TempCollectionBuilder<TSource>(2, 2);
-                appended._items[0] = _appended;
-                appended._items[1] = element;
+                appended[0] = _appended;
+                appended[1] = element;
                 var enumerable = AppendPrependNAsyncEnumerable<TSource>.GetOrCreate(_source, prepended, appended);
                 Dispose();
                 return enumerable;
@@ -408,7 +408,7 @@ namespace Proto.Promises
                 {
                     for (int i = _prepended._count - 1; i >= 0; --i)
                     {
-                        await writer.YieldAsync(_prepended._items[i]);
+                        await writer.YieldAsync(_prepended[i]);
                     }
                     while (await _source.MoveNextAsync())
                     {
@@ -439,7 +439,7 @@ namespace Proto.Promises
                 IncrementId(enumerableId);
 
                 var appended = new TempCollectionBuilder<TSource>(1, 1);
-                appended._items[0] = element;
+                appended[0] = element;
                 var enumerable = AppendPrependNAsyncEnumerable<TSource>.GetOrCreate(_source, _prepended, appended);
                 RepoolWithoutDispose();
                 return enumerable;
@@ -508,7 +508,7 @@ namespace Proto.Promises
                     }
                     for (int i = 0; i < _appended._count; ++i)
                     {
-                        await writer.YieldAsync(_appended._items[i]);
+                        await writer.YieldAsync(_appended[i]);
                     }
 
                     // We wait for this enumerator to be disposed in case the source contains temp collections.
@@ -527,7 +527,7 @@ namespace Proto.Promises
                 IncrementId(enumerableId);
 
                 var prepended = new TempCollectionBuilder<TSource>(1, 1);
-                prepended._items[0] = element;
+                prepended[0] = element;
                 var enumerable = AppendPrependNAsyncEnumerable<TSource>.GetOrCreate(_source, prepended, _appended);
                 RepoolWithoutDispose();
                 return enumerable;
@@ -596,7 +596,7 @@ namespace Proto.Promises
                 {
                     for (int i = _prepended._count - 1; i >= 0; --i)
                     {
-                        await writer.YieldAsync(_prepended._items[i]);
+                        await writer.YieldAsync(_prepended[i]);
                     }
                     while (await _source.MoveNextAsync())
                     {
@@ -604,7 +604,7 @@ namespace Proto.Promises
                     }
                     for (int i = 0; i < _appended._count; ++i)
                     {
-                        await writer.YieldAsync(_appended._items[i]);
+                        await writer.YieldAsync(_appended[i]);
                     }
 
                     // We wait for this enumerator to be disposed in case the source contains temp collections.

@@ -59,7 +59,7 @@ namespace Proto.Promises
 
             private Grouping<TKey, TElement> GetGrouping(TKey key, int hashCode)
             {
-                for (var g = _groupings._items[hashCode % _groupings._count]; g != null; g = g._hashNext)
+                for (var g = _groupings[hashCode % _groupings._count]; g != null; g = g._hashNext)
                 {
                     if (g._hashCode == hashCode && _comparer.Equals(g._key, key))
                     {
@@ -86,8 +86,8 @@ namespace Proto.Promises
                 }
 
                 var index = hashCode % _groupings._count;
-                var g = Grouping<TKey, TElement>.GetOrCreate(key, hashCode, _groupings._items[index], willBeDisposed);
-                _groupings._items[index] = g;
+                var g = Grouping<TKey, TElement>.GetOrCreate(key, hashCode, _groupings[index], willBeDisposed);
+                _groupings[index] = g;
                 if (_lastGrouping == null)
                 {
                     g._nextGrouping = g;
@@ -119,8 +119,8 @@ namespace Proto.Promises
                 {
                     g = g._nextGrouping;
                     var index = g._hashCode % newSize;
-                    g._hashNext = _groupings._items[index];
-                    _groupings._items[index] = g;
+                    g._hashNext = _groupings[index];
+                    _groupings[index] = g;
                 } while (g != _lastGrouping);
             }
 
