@@ -607,6 +607,61 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.AreEqual(0, count);
             Assert.True(rejected);
         }
+
+        [Test]
+        public void AsyncEnumerableCreate_MoveNextAsyncAfterComplete()
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerator = AsyncEnumerable.Create<int>(async (writer, _) =>
+                {
+                    await writer.YieldAsync(0);
+                    await writer.YieldAsync(1);
+                }).GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(1, asyncEnumerator.Current);
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncEnumerableRange_MoveNextAsyncAfterComplete()
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerator = AsyncEnumerable.Range(0, 2).GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(1, asyncEnumerator.Current);
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncEnumerableRepeat_MoveNextAsyncAfterComplete()
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerator = AsyncEnumerable.Repeat(42, 2).GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(42, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(42, asyncEnumerator.Current);
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
     }
 }
 

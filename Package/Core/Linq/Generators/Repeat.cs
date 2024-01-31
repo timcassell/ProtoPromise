@@ -100,7 +100,12 @@ namespace Proto.Promises
             {
                 unchecked
                 {
-                    return Promise.Resolved(--_count >= 0);
+                    // Make sure when this returns false, subsequent calls will also return false.
+                    bool hasValue = _count != 0;
+                    // JIT optimizes this to be branchless.
+                    int decrement = hasValue ? 1 : 0;
+                    _count -= decrement;
+                    return Promise.Resolved(hasValue);
                 }
             }
 
