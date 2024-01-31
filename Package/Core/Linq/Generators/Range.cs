@@ -38,7 +38,7 @@ namespace Proto.Promises.Linq
                 ? Empty<int>()
 #if PROMISE_DEBUG
                 // In DEBUG mode we use the Create function so its proper use will be verified.
-                : AsyncEnumerable<int>.Create((start, start + count), async (cv, writer, cancelationToken) =>
+                : AsyncEnumerable<int>.Create((start, unchecked(start + count)), async (cv, writer, cancelationToken) =>
                 {
                     while (cv.start != cv.Item2)
                     {
@@ -50,7 +50,7 @@ namespace Proto.Promises.Linq
                     }
                 });
 #else
-                : new AsyncEnumerable<int>(Internal.AsyncEnumerableRange.GetOrCreate(start, start + count));
+                : new AsyncEnumerable<int>(Internal.AsyncEnumerableRange.GetOrCreate(start, count));
 #endif
         }
     }
@@ -78,13 +78,13 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncEnumerableRange GetOrCreate(int start, int end)
+            internal static AsyncEnumerableRange GetOrCreate(int start, int count)
             {
                 var enumerable = GetOrCreate();
                 enumerable.Reset();
-                enumerable._end = end;
                 unchecked
                 {
+                    enumerable._end = start + count - 1;
                     // Subtract 1 so that we can implement MoveNextAsync branchlessly.
                     enumerable._current = start - 1;
                 }
@@ -97,7 +97,12 @@ namespace Proto.Promises
             {
                 unchecked
                 {
-                    return Promise.Resolved(++_current != _end);
+                    // Make sure when this returns false, subsequent calls will also return false.
+                    bool hasValue = _current != _end;
+                    // JIT optimizes this to be branchless.
+                    int increment = hasValue ? 1 : 0;
+                    _current += increment;
+                    return Promise.Resolved(hasValue);
                 }
             }
 
