@@ -130,10 +130,20 @@ namespace Proto.Promises
             {
                 if (Interlocked.CompareExchange(ref _id, id + 1, id) != id)
                 {
-                    throw new InvalidOperationException("OrderedAsyncEnumerable instance is not valid. OrderedAsyncEnumerable may only be used once.", GetFormattedStacktrace(3));
+                    ThrowInvalidAsyncEnumerable(3);
                 }
             }
-            
+
+            public AsyncEnumerable<TSource> GetSelfWithIncrementedId(int id)
+            {
+                int newId = id + 1;
+                if (Interlocked.CompareExchange(ref id, newId, id) != id)
+                {
+                    ThrowInvalidAsyncEnumerable(2);
+                }
+                return new AsyncEnumerable<TSource>(this, newId);
+            }
+
             public AsyncEnumerator<TSource> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
             {
                 IncrementId(id);
