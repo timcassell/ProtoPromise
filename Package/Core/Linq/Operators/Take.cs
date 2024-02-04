@@ -14,15 +14,15 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <param name="source">The sequence to take elements from.</param>
-        /// <param name="count">The number of elements to return.</param>
-        /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the specified number of elements from the start of the input sequence.</returns>
+        /// <param name="count">The number of elements to take from the start of the source sequence.</param>
+        /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the specified number of elements from the start of the source sequence.</returns>
         public static AsyncEnumerable<TSource> Take<TSource>(this AsyncEnumerable<TSource> source, int count)
         {
             if (count <= 0)
             {
                 // No elements will be yielded, so we can simply return an empty AsyncEnumerable.
                 // But we have to dispose the source, so we need to do it with a special empty, instead of AsyncEnumerable<TSource>.Empty().
-                return Internal.EmptyHelper.EmptyWithDispose(source.GetAsyncEnumerator());
+                return Internal.EmptyHelper.EmptyWithDispose(source);
             }
 
             if (source._target is Internal.AsyncEnumerablePartition<TSource> partition)
@@ -31,6 +31,31 @@ namespace Proto.Promises.Linq
             }
 
             var enumerable = Internal.AsyncEnumerablePartition<TSource>.GetOrCreate(source.GetAsyncEnumerator(), 0, count - 1);
+            return new AsyncEnumerable<TSource>(enumerable);
+        }
+
+        /// <summary>
+        /// Returns a specified number of contiguous elements from the end of an async-enumerable sequence.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <param name="source">The sequence to take elements from.</param>
+        /// <param name="count">The number of elements to take from the end of the source sequence.</param>
+        /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the specified number of elements from the end of the source sequence.</returns>
+        public static AsyncEnumerable<TSource> TakeLast<TSource>(this AsyncEnumerable<TSource> source, int count)
+        {
+            if (count <= 0)
+            {
+                // No elements will be yielded, so we can simply return an empty AsyncEnumerable.
+                // But we have to dispose the source, so we need to do it with a special empty, instead of AsyncEnumerable<TSource>.Empty().
+                return Internal.EmptyHelper.EmptyWithDispose(source);
+            }
+
+            if (source._target is Internal.AsyncEnumerablePartitionFromLast<TSource> partition)
+            {
+                return partition.TakeLast(source._id, count);
+            }
+
+            var enumerable = Internal.AsyncEnumerablePartitionFromLast<TSource>.GetOrCreate(source.GetAsyncEnumerator(), 0, count - 1);
             return new AsyncEnumerable<TSource>(enumerable);
         }
     }

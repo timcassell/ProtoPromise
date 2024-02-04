@@ -609,6 +609,18 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
+        public void AsyncEnumerableRejected_DisposedWithoutEnumerate_Throws()
+        {
+            Promise.Run(async () =>
+            {
+                var ex = new Exception("Bang!");
+                var asyncEnumerator = AsyncEnumerable<int>.Rejected(ex).GetAsyncEnumerator();
+                await TestHelper.AssertThrowsAsync(() => asyncEnumerator.DisposeAsync(), ex);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
         public void AsyncEnumerableCreate_MoveNextAsyncAfterComplete()
         {
             Promise.Run(async () =>

@@ -96,9 +96,7 @@ namespace Proto.Promises
                 private readonly AsyncEnumerator<TSource> _source;
 
                 internal EmptyIterator(AsyncEnumerator<TSource> source)
-                {
-                    _source = source;
-                }
+                    => _source = source;
 
                 public Promise DisposeAsyncWithoutStart()
                     => _source.DisposeAsync();
@@ -108,8 +106,16 @@ namespace Proto.Promises
                     => new AsyncIteratorMethod(_source.DisposeAsync());
             }
 
-            internal static AsyncEnumerable<TSource> EmptyWithDispose<TSource>(AsyncEnumerator<TSource> enumerator)
-                => AsyncEnumerable<TSource>.Create(new EmptyIterator<TSource>(enumerator));
+            internal static AsyncEnumerable<TSource> EmptyWithDispose<TSource>(AsyncEnumerable<TSource> source)
+            {
+                if (source._target is AsyncEnumerableCreate<TSource, EmptyIterator<TSource>> emptyEnumerable)
+                {
+                    return emptyEnumerable.GetSelfWithIncrementedId(source._id);
+                }
+
+                var enumerable = AsyncEnumerableCreate<TSource, EmptyIterator<TSource>>.GetOrCreate(new EmptyIterator<TSource>(source.GetAsyncEnumerator()));
+                return new AsyncEnumerable<TSource>(enumerable);
+            }
         }
     }
 #endif // CSHARP_7_3_OR_NEWER
