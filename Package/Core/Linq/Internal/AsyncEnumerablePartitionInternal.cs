@@ -9,8 +9,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-#pragma warning disable IDE0090 // Use 'new(...)'
-
 namespace Proto.Promises
 {
 #if CSHARP_7_3_OR_NEWER
@@ -85,9 +83,6 @@ namespace Proto.Promises
 
             protected override void Start(int enumerableId)
             {
-                // The enumerator was retrieved without a cancelation token when the original function was called.
-                // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                _source._target._cancelationToken = _cancelationToken;
                 var iteratorPromise = WillYieldNothing
                     // If we're not going to yield any elements, we just dispose the source without doing extra work.
                     ? _source.DisposeAsync()
@@ -110,6 +105,10 @@ namespace Proto.Promises
 
             private async AsyncIteratorMethod Iterate(int streamWriterId)
             {
+                // The enumerator was retrieved without a cancelation token when the original function was called.
+                // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                _source._target._cancelationToken = _cancelationToken;
+
                 try
                 {
                     int index = 0;
@@ -306,9 +305,6 @@ namespace Proto.Promises
 
             protected override void Start(int enumerableId)
             {
-                // The enumerator was retrieved without a cancelation token when the original function was called.
-                // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                _source._target._cancelationToken = _cancelationToken;
                 var iteratorPromise = WillYieldNothing
                     // If we're not going to yield any elements, we just dispose the source without doing extra work.
                     ? _source.DisposeAsync()
@@ -331,6 +327,10 @@ namespace Proto.Promises
 
             private async AsyncIteratorMethod Iterate(int streamWriterId)
             {
+                // The enumerator was retrieved without a cancelation token when the original function was called.
+                // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                _source._target._cancelationToken = _cancelationToken;
+
                 try
                 {
                     // Make sure at least 1 element exists before creating the queue.
@@ -508,6 +508,10 @@ namespace Proto.Promises
 
             public async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
             {
+                // The enumerator was retrieved without a cancelation token when the original function was called.
+                // We need to propagate the token that was passed in, so we assign it before starting iteration.
+                _source._target._cancelationToken = cancelationToken;
+
                 try
                 {
                     // Make sure at least 1 element exists before creating the queue.

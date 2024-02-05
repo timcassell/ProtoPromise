@@ -209,8 +209,117 @@ namespace ProtoPromiseTests.APIs.Linq
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
+        [Test]
+        public void Skip_Simple_Cancel()
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    foreach (var x in new[] { -2, -1, 0, 1, 2, 3 })
+                    {
+                        cancelationToken.ThrowIfCancelationRequested();
+                        await writer.YieldAsync(x);
+                    }
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var asyncEnumerator = asyncEnumerable.Skip(2).GetAsyncEnumerator(cancelationSource.Token);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(0, asyncEnumerator.Current);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(1, asyncEnumerator.Current);
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void SkipLast_Cancel()
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    foreach (var x in new[] { -2, -1, 0, 1, 2, 3 })
+                    {
+                        cancelationToken.ThrowIfCancelationRequested();
+                        await writer.YieldAsync(x);
+                    }
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var asyncEnumerator = asyncEnumerable.SkipLast(2).GetAsyncEnumerator(cancelationSource.Token);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(-2, asyncEnumerator.Current);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(-1, asyncEnumerator.Current);
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void Take_Simple_Cancel()
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    foreach (var x in new[] { -2, -1, 0, 1, 2, 3 })
+                    {
+                        cancelationToken.ThrowIfCancelationRequested();
+                        await writer.YieldAsync(x);
+                    }
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var asyncEnumerator = asyncEnumerable.Take(4).GetAsyncEnumerator(cancelationSource.Token);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(-2, asyncEnumerator.Current);
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(-1, asyncEnumerator.Current);
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void TakeLast_Simple_Cancel()
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    foreach (var x in new[] { -2, -1, 0, 1, 2, 3 })
+                    {
+                        cancelationToken.ThrowIfCancelationRequested();
+                        await writer.YieldAsync(x);
+                    }
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var asyncEnumerator = asyncEnumerable.TakeLast(4).GetAsyncEnumerator(cancelationSource.Token);
+                    // TakeLast results are queued before they are yielded, so we need to cancel before starting iteration.
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
 #if NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP3_0_OR_GREATER // System.Range is available in netcorapp3.0 and netstandard2.1.
-        public static IEnumerable<TestCaseData> EmptyRangeArgs()
+        public static IEnumerable<TestCaseData> TakeRangeEmptyArgs()
         {
             yield return new TestCaseData(0..0);
             yield return new TestCaseData(0..5);
@@ -219,7 +328,7 @@ namespace ProtoPromiseTests.APIs.Linq
             yield return new TestCaseData(^5..^0);
         }
 
-        [Test, TestCaseSource(nameof(EmptyRangeArgs))]
+        [Test, TestCaseSource(nameof(TakeRangeEmptyArgs))]
         public void Take_Range_EmptySource(Range range)
         {
             Promise.Run(async () =>
@@ -232,7 +341,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
-        [Test, TestCaseSource(nameof(EmptyRangeArgs))]
+        [Test, TestCaseSource(nameof(TakeRangeEmptyArgs))]
         public void Take_Range_SourceThrows(Range range)
         {
             Promise.Run(async () =>
@@ -241,6 +350,46 @@ namespace ProtoPromiseTests.APIs.Linq
                 var asyncEnumerator = AsyncEnumerable<int>.Rejected(ex).Take(range).GetAsyncEnumerator();
                 await TestHelper.AssertThrowsAsync(() => asyncEnumerator.MoveNextAsync(), ex);
                 await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        public static IEnumerable<TestCaseData> TakeRangeCancelArgs()
+        {
+            yield return new TestCaseData(1..5);
+            yield return new TestCaseData(1..^2);
+            yield return new TestCaseData(^5..5);
+            yield return new TestCaseData(^5..^2);
+        }
+
+        [Test, TestCaseSource(nameof(TakeRangeCancelArgs))]
+        public void Take_Range_Cancel(Range range)
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerable = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+                {
+                    foreach (var x in new[] { -2, -1, 0, 1, 2, 3 })
+                    {
+                        cancelationToken.ThrowIfCancelationRequested();
+                        await writer.YieldAsync(x);
+                    }
+                });
+                using (var cancelationSource = CancelationSource.New())
+                {
+                    var asyncEnumerator = asyncEnumerable.Take(range).GetAsyncEnumerator(cancelationSource.Token);
+                    // If the results will be queued before yielded, we need to cancel before starting iteration.
+                    if (!range.Start.IsFromEnd)
+                    {
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(-1, asyncEnumerator.Current);
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(0, asyncEnumerator.Current);
+                    }
+                    cancelationSource.Cancel();
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                    await asyncEnumerator.DisposeAsync();
+                }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
