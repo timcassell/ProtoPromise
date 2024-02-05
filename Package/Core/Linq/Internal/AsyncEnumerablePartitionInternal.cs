@@ -485,6 +485,77 @@ namespace Proto.Promises
                 }
             }
         } // class AsyncEnumerablePartitionFromLast<TSource>
+
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct TakeRangeIterator<TSource> : IAsyncIterator<TSource>
+        {
+            private readonly AsyncEnumerator<TSource> _source;
+            private readonly int _startFromEndIndex;
+            private readonly int _endFromStartIndex;
+
+            internal TakeRangeIterator(AsyncEnumerator<TSource> source, int startFromEndIndex, int endFromStartIndex)
+            {
+                _source = source;
+                _startFromEndIndex = startFromEndIndex;
+                _endFromStartIndex = endFromStartIndex;
+            }
+
+            public Promise DisposeAsyncWithoutStart()
+                => _source.DisposeAsync();
+
+            public async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+            {
+                try
+                {
+                    // Make sure at least 1 element exists before creating the queue.
+                    if (!await _source.MoveNextAsync())
+                    {
+                        return;
+                    }
+
+                    var queue = new PoolBackedQueue<TSource>(1);
+                    queue.Enqueue(_source.Current);
+                    int count = 1;
+
+                    while (await _source.MoveNextAsync())
+                    {
+                        if (count < _startFromEndIndex)
+                        {
+                            queue.Enqueue(_source.Current);
+                            ++count;
+                        }
+                        else
+                        {
+                            do
+                            {
+                                queue.Dequeue();
+                                queue.Enqueue(_source.Current);
+                                checked { ++count; }
+                            } while (await _source.MoveNextAsync());
+                            break;
+                        }
+                    }
+
+                    int startIndex = System.Math.Max(0, count - _startFromEndIndex);
+                    int endIndex = System.Math.Min(count, _endFromStartIndex);
+
+                    for (; startIndex < endIndex; ++startIndex)
+                    {
+                        await writer.YieldAsync(queue.Dequeue());
+                    }
+
+                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
+                    await writer.YieldAsync(default).ForLinqExtension();
+                }
+                finally
+                {
+                    await _source.DisposeAsync();
+                }
+            }
+        }
     } // class Internal
 #endif
 } // namespace Proto.Promises

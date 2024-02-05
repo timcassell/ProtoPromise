@@ -12,10 +12,10 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Bypasses a specified number of elements in an async-enumerable sequence and then returns the remaining elements.
         /// </summary>
-        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TSource">The type of the elements in the <paramref name="source"/> sequence.</typeparam>
         /// <param name="source">The sequence to take elements from.</param>
         /// <param name="count">The number of elements to skip before returning the remaining elements.</param>
-        /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the elements that occur after the specified index in the input sequence.</returns>
+        /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the elements that occur after the specified index in the <paramref name="source"/> sequence.</returns>
         public static AsyncEnumerable<TSource> Skip<TSource>(this AsyncEnumerable<TSource> source, int count)
         {
             if (count <= 0)
@@ -41,10 +41,10 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Bypasses a specified number of elements at the end of an async-enumerable sequence.
         /// </summary>
-        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
+        /// <typeparam name="TSource">The type of the elements in the <paramref name="source"/> sequence.</typeparam>
         /// <param name="source">Source sequence.</param>
-        /// <param name="count">The number of elements to bypass at the end of the source sequence.</param>
-        /// <returns>An <see cref="AsyncEnumerable{T}"/> containing the source sequence's elements except for the bypassed ones at the end.</returns>
+        /// <param name="count">The number of elements to bypass at the end of the <paramref name="source"/> sequence.</param>
+        /// <returns>An <see cref="AsyncEnumerable{T}"/> containing the <paramref name="source"/> sequence's elements except for the bypassed ones at the end.</returns>
         public static AsyncEnumerable<TSource> SkipLast<TSource>(this AsyncEnumerable<TSource> source, int count)
         {
             if (count <= 0)

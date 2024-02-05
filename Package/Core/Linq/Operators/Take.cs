@@ -12,10 +12,10 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Returns a specified number of contiguous elements from the start of an async-enumerable sequence.
         /// </summary>
-        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TSource">The type of the elements in the <paramref name="source"/> sequence.</typeparam>
         /// <param name="source">The sequence to take elements from.</param>
-        /// <param name="count">The number of elements to take from the start of the source sequence.</param>
-        /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the specified number of elements from the start of the source sequence.</returns>
+        /// <param name="count">The number of elements to take from the start of the <paramref name="source"/> sequence.</param>
+        /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the specified number of elements from the start of the <paramref name="source"/> sequence.</returns>
         public static AsyncEnumerable<TSource> Take<TSource>(this AsyncEnumerable<TSource> source, int count)
         {
             if (count <= 0)
@@ -37,10 +37,10 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Returns a specified number of contiguous elements from the end of an async-enumerable sequence.
         /// </summary>
-        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TSource">The type of the elements in the <paramref name="source"/> sequence.</typeparam>
         /// <param name="source">The sequence to take elements from.</param>
-        /// <param name="count">The number of elements to take from the end of the source sequence.</param>
-        /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the specified number of elements from the end of the source sequence.</returns>
+        /// <param name="count">The number of elements to take from the end of the <paramref name="source"/> sequence.</param>
+        /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the specified number of elements from the end of the <paramref name="source"/> sequence.</returns>
         public static AsyncEnumerable<TSource> TakeLast<TSource>(this AsyncEnumerable<TSource> source, int count)
         {
             if (count <= 0)
@@ -58,6 +58,54 @@ namespace Proto.Promises.Linq
             var enumerable = Internal.AsyncEnumerablePartitionFromLast<TSource>.GetOrCreate(source.GetAsyncEnumerator(), 0, count - 1);
             return new AsyncEnumerable<TSource>(enumerable);
         }
+
+#if NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP3_0_OR_GREATER // System.Range is available in netcorapp3.0 and netstandard2.1.
+        /// <summary>
+        /// Returns a specified range of contiguous elements from an async-enumerable sequence.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements in the <paramref name="source"/> sequence.</typeparam>
+        /// <param name="source">The sequence to take elements from.</param>
+        /// <param name="range">The range of elements to return, which has start and end indexes either from the beginning or the end of the <paramref name="source"/> sequence.</param>
+        /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the specified range of elements from the <paramref name="source"/> sequence.</returns>
+        public static AsyncEnumerable<TSource> Take<TSource>(this AsyncEnumerable<TSource> source, System.Range range)
+        {
+            var start = range.Start;
+            var end = range.End;
+            bool isStartIndexFromEnd = start.IsFromEnd;
+            bool isEndIndexFromEnd = end.IsFromEnd;
+            int startIndex = start.Value;
+            int endIndex = end.Value;
+
+            if (isStartIndexFromEnd)
+            {
+                if (startIndex == 0 | (isEndIndexFromEnd & endIndex >= startIndex))
+                {
+                    return Internal.EmptyHelper.EmptyWithDispose(source);
+                }
+
+                if (isEndIndexFromEnd)
+                {
+                    // Start and end from end.
+                    return source.TakeLast(startIndex).SkipLast(endIndex);
+                }
+
+                // Start from end and end from start.
+                return AsyncEnumerable<TSource>.Create(new Internal.TakeRangeIterator<TSource>(source.GetAsyncEnumerator(), startIndex, endIndex));
+            }
+
+            if (!isEndIndexFromEnd & startIndex >= endIndex)
+            {
+                return Internal.EmptyHelper.EmptyWithDispose(source);
+            }
+
+            source = source.Skip(startIndex);
+            return isEndIndexFromEnd
+                // Start from start and end from end.
+                ? source.SkipLast(endIndex)
+                // Start and end from start.
+                : source.Take(endIndex - startIndex);
+        }
+#endif // NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP3_0_OR_GREATER
     }
 #endif // CSHARP_7_3_OR_NEWER
 }

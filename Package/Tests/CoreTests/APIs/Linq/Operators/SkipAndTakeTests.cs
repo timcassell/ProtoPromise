@@ -208,6 +208,119 @@ namespace ProtoPromiseTests.APIs.Linq
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
+
+#if NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP3_0_OR_GREATER // System.Range is available in netcorapp3.0 and netstandard2.1.
+        public static IEnumerable<TestCaseData> EmptyRangeArgs()
+        {
+            yield return new TestCaseData(0..0);
+            yield return new TestCaseData(0..5);
+            yield return new TestCaseData(^5..5);
+            yield return new TestCaseData(0..^0);
+            yield return new TestCaseData(^5..^0);
+        }
+
+        [Test, TestCaseSource(nameof(EmptyRangeArgs))]
+        public void Take_Range_EmptySource(Range range)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = new int[0];
+                var asyncEnumerator = xs.ToAsyncEnumerable().Take(range).GetAsyncEnumerator();
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test, TestCaseSource(nameof(EmptyRangeArgs))]
+        public void Take_Range_SourceThrows(Range range)
+        {
+            Promise.Run(async () =>
+            {
+                var ex = new Exception("Bang");
+                var asyncEnumerator = AsyncEnumerable<int>.Rejected(ex).Take(range).GetAsyncEnumerator();
+                await TestHelper.AssertThrowsAsync(() => asyncEnumerator.MoveNextAsync(), ex);
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+#endif // NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP3_0_OR_GREATER
+
+#if NET6_0_OR_GREATER // System.Linq's Take(Range) was added in net6.0
+        public static IEnumerable<TestCaseData> TakeRangeArgs1()
+        {
+            yield return new TestCaseData(0..4);
+            yield return new TestCaseData(2..4);
+            yield return new TestCaseData(4..0);
+            yield return new TestCaseData(0..^0);
+            yield return new TestCaseData(0..^5);
+            yield return new TestCaseData(^0..^5);
+            yield return new TestCaseData(^5..^0);
+            yield return new TestCaseData(^5..^2);
+            yield return new TestCaseData(^5..0);
+            yield return new TestCaseData(^5..4);
+        }
+
+        [Test, TestCaseSource(nameof(TakeRangeArgs1))]
+        public void Take_Range_1(Range range)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = new[] { -2, -1, 0, 1, 2, 3 };
+                var asyncEnumerator = xs.ToAsyncEnumerable().Take(range).GetAsyncEnumerator();
+                foreach (var x in xs.Take(range))
+                {
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(x, asyncEnumerator.Current);
+                }
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        public static IEnumerable<TestCaseData> TakeRangeArgs2()
+        {
+            IEnumerable<Range> GetSmallRangeArgs()
+            {
+                yield return 2..1;
+                yield return 0..2;
+                yield return 2..5;
+                yield return ^2..^0;
+                yield return ^5..^2;
+                yield return ^2..2;
+                yield return 0..^0;
+                yield return 0..^2;
+            }
+
+            foreach (var range1 in GetSmallRangeArgs())
+            {
+                foreach (var range2 in GetSmallRangeArgs())
+                {
+                    yield return new TestCaseData(range1, range2);
+                }
+            }
+        }
+
+
+        [Test, TestCaseSource(nameof(TakeRangeArgs2))]
+        public void Take_Range_2(Range range1, Range range2)
+        {
+            Promise.Run(async () =>
+            {
+                var xs = new[] { -2, -1, 0, 1, 2, 3 };
+                var asyncEnumerator = xs.ToAsyncEnumerable().Take(range1).Take(range2).GetAsyncEnumerator();
+                foreach (var x in xs.Take(range1).Take(range2))
+                {
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(x, asyncEnumerator.Current);
+                }
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+#endif // NET6_0_OR_GREATER
     }
 }
 
