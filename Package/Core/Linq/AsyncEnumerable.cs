@@ -54,7 +54,14 @@ namespace Proto.Promises.Linq
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public AsyncEnumerator<T> GetAsyncEnumerator(CancelationToken cancelationToken)
-            => _target.GetAsyncEnumerator(_id, cancelationToken);
+        {
+            var target = _target;
+            if (target == null)
+            {
+                Internal.ThrowInvalidAsyncEnumerable(1);
+            }
+            return target.GetAsyncEnumerator(_id, cancelationToken);
+        }
 
         /// <summary>
         /// Returns an enumerator that iterates asynchronously through the async-enumerable sequence.

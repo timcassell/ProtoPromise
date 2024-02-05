@@ -72,6 +72,9 @@ namespace Proto.Promises
                 // Do nothing, just return a resolved promise.
                 => Promise.Resolved();
 
+            public override Linq.AsyncEnumerable<T> GetSelfWithIncrementedId(int id)
+                => new Linq.AsyncEnumerable<T>(this, id);
+
             internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
         }
     }

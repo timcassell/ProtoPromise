@@ -6,8 +6,8 @@
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
-using System.Runtime.CompilerServices;
-using System.Threading;
+using Proto.Promises.Linq;
+using System.Diagnostics;
 
 namespace Proto.Promises.Linq
 {
@@ -28,15 +28,39 @@ namespace Proto.Promises.Linq
     partial struct AsyncEnumerable<T>
     {
         /// <summary>
-        /// Generates an async-enumerable sequence that will be immediately rejected when iterated.
+        /// Generates an async-enumerable sequence that will be immediately rejected with the provided reason when iterated.
         /// </summary>
         /// <typeparam name="TReject">The type of the reject reason.</typeparam>
         /// <param name="reason">The reason that will be used to reject the async-enumerable sequence.</param>
         /// <returns>An async-enumerable sequence that will be immediately rejected when iterated.</returns>
         public static AsyncEnumerable<T> Rejected<TReject>(TReject reason)
+            => Create(new Internal.RejectedIterator<T, TReject>(reason));
+    }
+#endif // CSHARP_7_3_OR_NEWER
+}
+
+namespace Proto.Promises
+{
+#if CSHARP_7_3_OR_NEWER
+    partial class Internal
+    {
+        // Special iterator to reject even if the enumerator is disposed without starting.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct RejectedIterator<TSource, TReject> : IAsyncIterator<TSource>
         {
-            // We always use the Create function, even in RELEASE mode, because the performance of Reject is unimportant.
-            return Create(reason, async (r, writer, cancelationToken) => await Promise.Rejected(r));
+            private readonly TReject _reason;
+
+            internal RejectedIterator(TReject reason)
+                => _reason = reason;
+
+            public Promise DisposeAsyncWithoutStart()
+                => Promise.Rejected(_reason);
+
+            // We're only using this to reject. No elements will be yielded, so we don't need an async state machine.
+            public AsyncIteratorMethod Start(AsyncStreamWriter<TSource> streamWriter, CancelationToken cancelationToken)
+                => new AsyncIteratorMethod(Promise.Rejected(_reason));
         }
     }
 #endif // CSHARP_7_3_OR_NEWER

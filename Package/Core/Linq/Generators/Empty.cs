@@ -4,6 +4,9 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Linq;
+using System.Diagnostics;
+
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
@@ -42,9 +45,13 @@ namespace Proto.Promises.Linq
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER && !PROMISE_DEBUG
+#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
+#if !PROMISE_DEBUG
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal sealed class AsyncEnumerableEmptySentinel<T> : PromiseRefBase.AsyncEnumerableBase<T>
         {
             internal static readonly AsyncEnumerableEmptySentinel<T> s_instance;
@@ -57,9 +64,9 @@ namespace Proto.Promises
 
             private AsyncEnumerableEmptySentinel() { }
 
-            public override Linq.AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
+            public override AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken)
                 // Don't do any validation, ignore the cancelationToken, just return the enumerator.
-                => new Linq.AsyncEnumerator<T>(this, id);
+                => new AsyncEnumerator<T>(this, id);
 
             internal override Promise<bool> MoveNextAsync(int id)
                 // It's empty, always return false.
@@ -69,8 +76,47 @@ namespace Proto.Promises
                 // Do nothing, just return a resolved promise.
                 => Promise.Resolved();
 
+            public override AsyncEnumerable<T> GetSelfWithIncrementedId(int id)
+                => new AsyncEnumerable<T>(this, id);
+
             internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
         }
+#endif // !PROMISE_DEBUG
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal static class EmptyHelper
+        {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private readonly struct EmptyIterator<TSource> : IAsyncIterator<TSource>
+            {
+                private readonly AsyncEnumerator<TSource> _source;
+
+                internal EmptyIterator(AsyncEnumerator<TSource> source)
+                    => _source = source;
+
+                public Promise DisposeAsyncWithoutStart()
+                    => _source.DisposeAsync();
+
+                // We're only using this to dispose the source. No elements will be yielded, so we don't need an async state machine.
+                public AsyncIteratorMethod Start(AsyncStreamWriter<TSource> streamWriter, CancelationToken cancelationToken)
+                    => new AsyncIteratorMethod(_source.DisposeAsync());
+            }
+
+            internal static AsyncEnumerable<TSource> EmptyWithDispose<TSource>(AsyncEnumerable<TSource> source)
+            {
+                if (source._target is AsyncEnumerableCreate<TSource, EmptyIterator<TSource>> emptyEnumerable)
+                {
+                    return emptyEnumerable.GetSelfWithIncrementedId(source._id);
+                }
+
+                var enumerable = AsyncEnumerableCreate<TSource, EmptyIterator<TSource>>.GetOrCreate(new EmptyIterator<TSource>(source.GetAsyncEnumerator()));
+                return new AsyncEnumerable<TSource>(enumerable);
+            }
+        }
     }
-#endif // CSHARP_7_3_OR_NEWER && !PROMISE_DEBUG
+#endif // CSHARP_7_3_OR_NEWER
 }

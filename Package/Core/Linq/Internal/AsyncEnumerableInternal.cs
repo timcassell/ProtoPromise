@@ -20,6 +20,8 @@ namespace Proto.Promises
         {
             AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken);
             bool GetCanBeEnumerated(int id);
+            // Used for Linq extensions that can return the same instance without allocation.
+            AsyncEnumerable<T> GetSelfWithIncrementedId(int id);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -97,6 +99,16 @@ namespace Proto.Promises
                     get { return _enumerableId; }
                 }
 
+                public virtual AsyncEnumerable<T> GetSelfWithIncrementedId(int id)
+                {
+                    int newId = id + 1;
+                    if (Interlocked.CompareExchange(ref _enumerableId, newId, id) != id)
+                    {
+                        ThrowInvalidAsyncEnumerable(2);
+                    }
+                    return new AsyncEnumerable<T>(this, newId);
+                }
+
                 [MethodImpl(InlineOption)]
                 new protected void Reset()
                 {
@@ -156,6 +168,17 @@ namespace Proto.Promises
 
                 internal abstract Promise<bool> MoveNextAsync(int id);
                 internal abstract Promise DisposeAsync(int id);
+
+                [MethodImpl(InlineOption)]
+                protected void SetStateForDisposeWithoutStart()
+                {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    // Base Dispose checks the state in DEBUG mode.
+                    State = Promise.State.Resolved;
+#endif
+                    // This is never used as a backing reference for Promises, so we need to suppress the UnobservedPromiseException from the base finalizer.
+                    WasAwaitedOrForgotten = true;
+                }
             } // class AsyncEnumerableBase<T>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -263,9 +286,6 @@ namespace Proto.Promises
                     if (iteratorPromise == null)
                     {
                         // DisposeAsync was called before MoveNextAsync, the async iterator function never started.
-                        State = Promise.State.Resolved;
-                        // This is never used as a backing reference for Promises, so we need to suppress the UnobservedPromiseException from the base finalizer.
-                        WasAwaitedOrForgotten = true;
                         return DisposeAsyncWithoutStart();
                     }
 
@@ -419,11 +439,18 @@ namespace Proto.Promises
 
             protected override Promise DisposeAsyncWithoutStart()
             {
+                SetStateForDisposeWithoutStart();
                 var iterator = _iterator;
                 DisposeAndReturnToPool();
                 return iterator.DisposeAsyncWithoutStart();
             }
         } // class AsyncEnumerableCreate<TValue, TIterator>
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void ThrowInvalidAsyncEnumerable(int skipFrames)
+        {
+            throw new InvalidOperationException("AsyncEnumerable instance is not valid. AsyncEnumerable may only be used once.", GetFormattedStacktrace(skipFrames + 1));
+        }
     } // class Internal
 #endif
 } // namespace Proto.Promises
