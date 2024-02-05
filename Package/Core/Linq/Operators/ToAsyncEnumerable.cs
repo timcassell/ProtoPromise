@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+#pragma warning disable IDE0063 // Use simple 'using' statement
+
 namespace Proto.Promises.Linq
 {
 #if CSHARP_7_3_OR_NEWER
@@ -50,16 +52,33 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(source, nameof(source), 1);
 
-            return AsyncEnumerable<T>.Create(source, async (_source, writer, cancelationToken) =>
+            return AsyncEnumerable<T>.Create(new EnumeratorIterator<T, TEnumerator>(source));
+        }
+
+        private readonly struct EnumeratorIterator<TSource, TEnumerator> : IAsyncIterator<TSource>
+            where TEnumerator : IEnumerator<TSource>
+        {
+            private readonly TEnumerator _enumerator;
+
+            internal EnumeratorIterator(TEnumerator enumerator)
+                => _enumerator = enumerator;
+
+            public Promise DisposeAsyncWithoutStart()
             {
-                using (_source)
+                _enumerator.Dispose();
+                return Promise.Resolved();
+            }
+
+            public async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
+            {
+                using (var source = _enumerator)
                 {
-                    while (_source.MoveNext())
+                    while (source.MoveNext())
                     {
-                        await writer.YieldAsync(_source.Current);
+                        await writer.YieldAsync(source.Current);
                     }
                 }
-            });
+            }
         }
 
         /// <summary>
