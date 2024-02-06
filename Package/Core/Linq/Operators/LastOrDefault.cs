@@ -15,13 +15,14 @@ namespace Proto.Promises.Linq
     partial class AsyncEnumerable
     {
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence, or a default value if no element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence, or a default value if no element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">The sequence to return the first element of.</param>
+        /// <param name="source">The sequence to return the last element of.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
-        /// <returns>A <see cref="Promise{T}"/> resulting in the first element, or a default value if <paramref name="source"/> is empty.</returns>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, CancelationToken cancelationToken = default)
+        /// <returns>A <see cref="Promise{T}"/> resulting in the last element, or a default value if <paramref name="source"/> is empty.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty.</exception>
+        public static Promise<TSource> LastOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, CancelationToken cancelationToken = default)
         {
             return Core(source.GetAsyncEnumerator(cancelationToken));
 
@@ -29,9 +30,17 @@ namespace Proto.Promises.Linq
             {
                 try
                 {
-                    return await asyncEnumerator.MoveNextAsync()
-                        ? asyncEnumerator.Current
-                        : default;
+                    if (!await asyncEnumerator.MoveNextAsync())
+                    {
+                        return default;
+                    }
+
+                    TSource last;
+                    do
+                    {
+                        last = asyncEnumerator.Current;
+                    } while (await asyncEnumerator.MoveNextAsync());
+                    return last;
                 }
                 finally
                 {
@@ -41,14 +50,15 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence, or a specified default value if no element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence, or a specified default value if no element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">The sequence to return the first element of.</param>
+        /// <param name="source">The sequence to return the last element of.</param>
         /// <param name="defaultValue">The default value to return if the sequence is empty.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
-        /// <returns>A <see cref="Promise{T}"/> resulting in the first element, or <paramref name="defaultValue"/> if <paramref name="source"/> is empty.</returns>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, TSource defaultValue, CancelationToken cancelationToken = default)
+        /// <returns>A <see cref="Promise{T}"/> resulting in the last element, or <paramref name="defaultValue"/> if <paramref name="source"/> is empty.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty.</exception>
+        public static Promise<TSource> LastOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, TSource defaultValue, CancelationToken cancelationToken = default)
         {
             return Core(source.GetAsyncEnumerator(cancelationToken), defaultValue);
 
@@ -56,9 +66,17 @@ namespace Proto.Promises.Linq
             {
                 try
                 {
-                    return await asyncEnumerator.MoveNextAsync()
-                        ? asyncEnumerator.Current
-                        : d;
+                    if (!await asyncEnumerator.MoveNextAsync())
+                    {
+                        return d;
+                    }
+
+                    TSource last;
+                    do
+                    {
+                        last = asyncEnumerator.Current;
+                    } while (await asyncEnumerator.MoveNextAsync());
+                    return last;
                 }
                 finally
                 {
@@ -68,59 +86,63 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">The sequence to return the first element of.</param>
+        /// <param name="source">The sequence to return the last element of.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or a default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate, CancelationToken cancelationToken = default)
+        public static Promise<TSource> LastOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return LastOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="source">The sequence to return the first element of.</param>
+        /// <param name="source">The sequence to return the last element of.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or a default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate, CancelationToken cancelationToken = default)
+        public static Promise<TSource> LastOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return LastOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
         }
 
-        private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
+        private static async Promise<TSource> LastOrDefaultAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
             where TPredicate : Internal.IFunc<TSource, bool>
         {
             try
             {
+                TSource last = default;
+                bool hasLast = false;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
                     var item = asyncEnumerator.Current;
                     if (predicate.Invoke(item))
                     {
-                        return item;
+                        hasLast = true;
+                        last = item;
                     }
                 }
-                return default;
+
+                return hasLast ? last : default;
             }
             finally
             {
@@ -129,59 +151,63 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">The sequence to return the first element of.</param>
+        /// <param name="source">The sequence to return the last element of.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or a default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
+        public static Promise<TSource> LastOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return LastOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="source">The sequence to return the first element of.</param>
+        /// <param name="source">The sequence to return the last element of.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or a default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
+        public static Promise<TSource> LastOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return LastOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
         }
 
-        private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
+        private static async Promise<TSource> LastOrDefaultAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
             where TPredicate : Internal.IFunc<TSource, Promise<bool>>
         {
             try
             {
+                TSource last = default;
+                bool hasLast = false;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
                     var item = asyncEnumerator.Current;
                     if (await predicate.Invoke(item))
                     {
-                        return item;
+                        hasLast = true;
+                        last = item;
                     }
                 }
-                return default;
+
+                return hasLast ? last : default;
             }
             finally
             {
@@ -190,57 +216,61 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
-        /// <param name="configuredSource">The sequence to return the first element of.</param>
+        /// <param name="configuredSource">The sequence to return the last element of.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or a default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate)
+        public static Promise<TSource> LastOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return LastOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="configuredSource">The sequence to return the first element of.</param>
+        /// <param name="configuredSource">The sequence to return the last element of.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or a default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
+        public static Promise<TSource> LastOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return LastOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
         }
 
-        private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
+        private static async Promise<TSource> LastOrDefaultAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
             where TPredicate : Internal.IFunc<TSource, bool>
         {
             try
             {
+                TSource last = default;
+                bool hasLast = false;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
                     var item = asyncEnumerator.Current;
                     if (predicate.Invoke(item))
                     {
-                        return item;
+                        hasLast = true;
+                        last = item;
                     }
                 }
-                return default;
+
+                return hasLast ? last : default;
             }
             finally
             {
@@ -249,57 +279,61 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
-        /// <param name="configuredSource">The sequence to return the first element of.</param>
+        /// <param name="configuredSource">The sequence to return the last element of.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or a default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
+        public static Promise<TSource> LastOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return LastOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="configuredSource">The sequence to return the first element of.</param>
+        /// <param name="configuredSource">The sequence to return the last element of.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or a default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
+        public static Promise<TSource> LastOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return LastOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
         }
 
-        private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
+        private static async Promise<TSource> LastOrDefaultAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
             where TPredicate : Internal.IFunc<TSource, Promise<bool>>
         {
             try
             {
+                TSource last = default;
+                bool hasLast = false;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
                     var item = asyncEnumerator.Current;
                     if (await predicate.Invoke(item))
                     {
-                        return item;
+                        hasLast = true;
+                        last = item;
                     }
                 }
-                return default;
+
+                return hasLast ? last : default;
             }
             finally
             {
@@ -308,61 +342,65 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">The sequence to return the first element of.</param>
+        /// <param name="source">The sequence to return the last element of.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <param name="defaultValue">The default value to return if the sequence is empty or no element passes the test specified by <paramref name="predicate"/>.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or the specified default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
+        public static Promise<TSource> LastOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
+            return LastOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="source">The sequence to return the first element of.</param>
+        /// <param name="source">The sequence to return the last element of.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <param name="defaultValue">The default value to return if the sequence is empty or no element passes the test specified by <paramref name="predicate"/>.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or the specified default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
+        public static Promise<TSource> LastOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
+            return LastOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
 
-        private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, TSource d)
+        private static async Promise<TSource> LastOrDefaultAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, TSource d)
             where TPredicate : Internal.IFunc<TSource, bool>
         {
             try
             {
+                TSource last = default;
+                bool hasLast = false;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
                     var item = asyncEnumerator.Current;
                     if (predicate.Invoke(item))
                     {
-                        return item;
+                        hasLast = true;
+                        last = item;
                     }
                 }
-                return d;
+
+                return hasLast ? last : d;
             }
             finally
             {
@@ -371,61 +409,65 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">The sequence to return the first element of.</param>
+        /// <param name="source">The sequence to return the last element of.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <param name="defaultValue">The default value to return if the sequence is empty or no element passes the test specified by <paramref name="predicate"/>.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or the specified default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
+        public static Promise<TSource> LastOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
+            return LastOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="source">The sequence to return the first element of.</param>
+        /// <param name="source">The sequence to return the last element of.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <param name="defaultValue">The default value to return if the sequence is empty or no element passes the test specified by <paramref name="predicate"/>.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or the specified default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
+        public static Promise<TSource> LastOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
+            return LastOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
 
-        private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, TSource d)
+        private static async Promise<TSource> LastOrDefaultAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, TSource d)
             where TPredicate : Internal.IFunc<TSource, Promise<bool>>
         {
             try
             {
+                TSource last = default;
+                bool hasLast = false;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
                     var item = asyncEnumerator.Current;
                     if (await predicate.Invoke(item))
                     {
-                        return item;
+                        hasLast = true;
+                        last = item;
                     }
                 }
-                return d;
+
+                return hasLast ? last : d;
             }
             finally
             {
@@ -434,59 +476,63 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
-        /// <param name="configuredSource">The sequence to return the first element of.</param>
+        /// <param name="configuredSource">The sequence to return the last element of.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <param name="defaultValue">The default value to return if the sequence is empty or no element passes the test specified by <paramref name="predicate"/>.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or the specified default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate, TSource defaultValue)
+        public static Promise<TSource> LastOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate, TSource defaultValue)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
+            return LastOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="configuredSource">The sequence to return the first element of.</param>
+        /// <param name="configuredSource">The sequence to return the last element of.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <param name="defaultValue">The default value to return if the sequence is empty or no element passes the test specified by <paramref name="predicate"/>.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or the specified default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate, TSource defaultValue)
+        public static Promise<TSource> LastOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate, TSource defaultValue)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
+            return LastOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
 
-        private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, TSource d)
+        private static async Promise<TSource> LastOrDefaultAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, TSource d)
             where TPredicate : Internal.IFunc<TSource, bool>
         {
             try
             {
+                TSource last = default;
+                bool hasLast = false;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
                     var item = asyncEnumerator.Current;
                     if (predicate.Invoke(item))
                     {
-                        return item;
+                        hasLast = true;
+                        last = item;
                     }
                 }
-                return d;
+
+                return hasLast ? last : d;
             }
             finally
             {
@@ -495,59 +541,63 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
-        /// <param name="configuredSource">The sequence to return the first element of.</param>
+        /// <param name="configuredSource">The sequence to return the last element of.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <param name="defaultValue">The default value to return if the sequence is empty or no element passes the test specified by <paramref name="predicate"/>.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or the specified default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate, TSource defaultValue)
+        public static Promise<TSource> LastOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate, TSource defaultValue)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
+            return LastOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
         }
 
         /// <summary>
-        /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
+        /// Asynchronously returns the last element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="configuredSource"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the <paramref name="captureValue"/>.</typeparam>
-        /// <param name="configuredSource">The sequence to return the first element of.</param>
+        /// <param name="configuredSource">The sequence to return the last element of.</param>
         /// <param name="captureValue">The extra value that will be passed to the <paramref name="predicate"/>.</param>
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <param name="defaultValue">The default value to return if the sequence is empty or no element passes the test specified by <paramref name="predicate"/>.</param>
         /// <returns>
-        /// A <see cref="Promise{T}"/> resulting in the first element in the sequence that passes the test in the specified predicate function,
+        /// A <see cref="Promise{T}"/> resulting in the last element in the sequence that passes the test in the specified predicate function,
         /// or the specified default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, TSource defaultValue)
+        public static Promise<TSource> LastOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, TSource defaultValue)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
+            return LastOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
 
-        private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, TSource d)
+        private static async Promise<TSource> LastOrDefaultAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, TSource d)
             where TPredicate : Internal.IFunc<TSource, Promise<bool>>
         {
             try
             {
+                TSource last = default;
+                bool hasLast = false;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
                     var item = asyncEnumerator.Current;
                     if (await predicate.Invoke(item))
                     {
-                        return item;
+                        hasLast = true;
+                        last = item;
                     }
                 }
-                return d;
+
+                return hasLast ? last : d;
             }
             finally
             {
