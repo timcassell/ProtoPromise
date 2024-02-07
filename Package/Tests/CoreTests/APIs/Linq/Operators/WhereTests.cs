@@ -23,18 +23,19 @@ using System.Threading;
 
 namespace ProtoPromiseTests.APIs.Linq
 {
-    public static class SelectHelper
+    public static class WhereHelper
     {
         // We test all the different overloads.
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source,
+        public static AsyncEnumerable<TSource> Where<TSource>(this AsyncEnumerable<TSource> source,
             bool configured,
             bool async,
-            Func<TSource, TResult> selector, bool captureValue,
+            bool captureValue,
+            Func<TSource, bool> predicate,
             CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return Select(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, selector, captureValue);
+                return Where(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, captureValue, predicate);
             }
 
             const string capturedValue = "capturedValue";
@@ -42,63 +43,65 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.Select(async x => selector(x))
-                    : source.Select(selector);
+                    ? source.Where(async x => predicate(x))
+                    : source.Where(predicate);
             }
             else
             {
                 return async
-                    ? source.Select(capturedValue, async (cv, x) =>
+                    ? source.Where(capturedValue, async (cv, x) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
-                        return selector(x);
+                        return predicate(x);
                     })
-                    : source.Select(capturedValue, (cv, x) =>
+                    : source.Where(capturedValue, (cv, x) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
-                        return selector(x);
+                        return predicate(x);
                     });
             }
         }
 
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> source,
+        public static AsyncEnumerable<TSource> Where<TSource>(this in ConfiguredAsyncEnumerable<TSource> source,
             bool async,
-            Func<TSource, TResult> selector, bool captureValue)
+            bool captureValue,
+            Func<TSource, bool> predicate)
         {
             const string capturedValue = "capturedValue";
 
             if (!captureValue)
             {
                 return async
-                    ? source.Select(async x => selector(x))
-                    : source.Select(selector);
+                    ? source.Where(async x => predicate(x))
+                    : source.Where(predicate);
             }
             else
             {
                 return async
-                    ? source.Select(capturedValue, async (cv, x) =>
+                    ? source.Where(capturedValue, async (cv, x) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
-                        return selector(x);
+                        return predicate(x);
                     })
-                    : source.Select(capturedValue, (cv, x) =>
+                    : source.Where(capturedValue, (cv, x) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
-                        return selector(x);
+                        return predicate(x);
                     });
             }
         }
 
         // We test all the different overloads.
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source,
+        public static AsyncEnumerable<TSource> Where<TSource>(this AsyncEnumerable<TSource> source,
             bool configured,
             bool async,
-            Func<TSource, int, TResult> selector, bool captureValue,
+            bool captureValue,
+            Func<TSource, int, bool> predicate,
             CancelationToken configuredCancelationToken = default)
         {
             if (configured)
             {
-                return Select(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, selector, captureValue);
+                return Where(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, captureValue, predicate);
             }
 
             const string capturedValue = "capturedValue";
@@ -106,55 +109,56 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.Select(async (x, i) => selector(x, i))
-                    : source.Select(selector);
+                    ? source.Where(async (x, i) => predicate(x, i))
+                    : source.Where(predicate);
             }
             else
             {
                 return async
-                    ? source.Select(capturedValue, async (cv, x, i) =>
+                    ? source.Where(capturedValue, async (cv, x, i) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
-                        return selector(x, i);
+                        return predicate(x, i);
                     })
-                    : source.Select(capturedValue, (cv, x, i) =>
+                    : source.Where(capturedValue, (cv, x, i) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
-                        return selector(x, i);
+                        return predicate(x, i);
                     });
             }
         }
 
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> source,
+        public static AsyncEnumerable<TSource> Where<TSource>(this in ConfiguredAsyncEnumerable<TSource> source,
             bool async,
-            Func<TSource, int, TResult> selector, bool captureValue)
+            bool captureValue,
+            Func<TSource, int, bool> predicate)
         {
             const string capturedValue = "capturedValue";
 
             if (!captureValue)
             {
                 return async
-                    ? source.Select(async (x, i) => selector(x, i))
-                    : source.Select(selector);
+                    ? source.Where(async (x, i) => predicate(x, i))
+                    : source.Where(predicate);
             }
             else
             {
                 return async
-                    ? source.Select(capturedValue, async (cv, x, i) =>
+                    ? source.Where(capturedValue, async (cv, x, i) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
-                        return selector(x, i);
+                        return predicate(x, i);
                     })
-                    : source.Select(capturedValue, (cv, x, i) =>
+                    : source.Where(capturedValue, (cv, x, i) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
-                        return selector(x, i);
+                        return predicate(x, i);
                     });
             }
         }
     }
 
-    public class SelectTests
+    public class WhereTests
     {
         [SetUp]
         public void Setup()
@@ -170,41 +174,41 @@ namespace ProtoPromiseTests.APIs.Linq
 
 #if PROMISE_DEBUG
         [Test]
-        public void Select_NullArgumentThrows()
+        public void Where_NullArgumentThrows()
         {
             var enumerable = AsyncEnumerable.Return(42);
             var captureValue = "captureValue";
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.Select(default(Func<int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.Select(default(Func<int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.Where(default(Func<int, bool>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.Where(default(Func<int, Promise<bool>>)));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.Select(captureValue, default(Func<string, int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.Select(captureValue, default(Func<string, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.Where(captureValue, default(Func<string, int, bool>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.Where(captureValue, default(Func<string, int, Promise<bool>>)));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Select(default(Func<int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Select(default(Func<int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Where(default(Func<int, bool>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Where(default(Func<int, Promise<bool>>)));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Select(captureValue, default(Func<string, int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Select(captureValue, default(Func<string, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Where(captureValue, default(Func<string, int, bool>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Where(captureValue, default(Func<string, int, Promise<bool>>)));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.Select(default(Func<int, int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.Select(default(Func<int, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.Where(default(Func<int, int, bool>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.Where(default(Func<int, int, Promise<bool>>)));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.Select(captureValue, default(Func<string, int, int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.Select(captureValue, default(Func<string, int, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.Where(captureValue, default(Func<string, int, int, bool>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.Where(captureValue, default(Func<string, int, int, Promise<bool>>)));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Select(default(Func<int, int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Select(default(Func<int, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Where(default(Func<int, int, bool>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Where(default(Func<int, int, Promise<bool>>)));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Select(captureValue, default(Func<string, int, int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Select(captureValue, default(Func<string, int, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Where(captureValue, default(Func<string, int, int, bool>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).Where(captureValue, default(Func<string, int, int, Promise<bool>>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
 #endif //PROMISE_DEBUG
 
         [Test]
-        public void Select_Empty(
+        public void Where_Empty(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureValue)
@@ -212,7 +216,7 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var asyncEnumerator = AsyncEnumerable.Empty<int>()
-                    .Select(configured, async, x => x, captureValue)
+                    .Where(configured, async, captureValue, x => true)
                     .GetAsyncEnumerator();
                 Assert.False(await asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
@@ -221,7 +225,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void Select_Simple(
+        public void Where_Simple(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureValue)
@@ -229,14 +233,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var asyncEnumerator = new[] { 0, 1, 2 }.ToAsyncEnumerable()
-                    .Select(configured, async, x => (char) ('a' + x), captureValue)
+                    .Where(configured, async, captureValue, x => x != 1)
                     .GetAsyncEnumerator();
                 Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual('a', asyncEnumerator.Current);
+                Assert.AreEqual(0, asyncEnumerator.Current);
                 Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual('b', asyncEnumerator.Current);
-                Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual('c', asyncEnumerator.Current);
+                Assert.AreEqual(2, asyncEnumerator.Current);
                 Assert.False(await asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
             }, SynchronizationOption.Synchronous)
@@ -244,7 +246,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void Select_Indexed(
+        public void Where_Indexed(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureValue)
@@ -252,14 +254,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var asyncEnumerator = new[] { 8, 5, 7 }.ToAsyncEnumerable()
-                    .Select(configured, async, (x, i) => (char) ('a' + i), captureValue)
+                    .Where(configured, async, captureValue, (x, i) => i != 1)
                     .GetAsyncEnumerator();
                 Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual('a', asyncEnumerator.Current);
+                Assert.AreEqual(8, asyncEnumerator.Current);
                 Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual('b', asyncEnumerator.Current);
-                Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual('c', asyncEnumerator.Current);
+                Assert.AreEqual(7, asyncEnumerator.Current);
                 Assert.False(await asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
             }, SynchronizationOption.Synchronous)
@@ -267,7 +267,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void Select_Throws_Selector(
+        public void Where_Throws(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureValue)
@@ -275,8 +275,7 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var asyncEnumerator = new[] { 0, 1, 2 }.ToAsyncEnumerable()
-                    // IL2CPP crashes on integer divide by zero, so throw the exception manually instead.
-                    .Select(configured, async, x => { if (x == 0) throw new DivideByZeroException(); return 1 / x; }, captureValue)
+                    .Where(configured, async, captureValue, x => { if (x == 0) throw new DivideByZeroException(); return true; })
                     .GetAsyncEnumerator();
                 await TestHelper.AssertThrowsAsync<DivideByZeroException>(() => asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
@@ -285,7 +284,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void Select_Indexed_Throws_Selector(
+        public void Where_Indexed_Throws(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureValue)
@@ -293,8 +292,7 @@ namespace ProtoPromiseTests.APIs.Linq
             Promise.Run(async () =>
             {
                 var asyncEnumerator = new[] { 8, 5, 7 }.ToAsyncEnumerable()
-                    // IL2CPP crashes on integer divide by zero, so throw the exception manually instead.
-                    .Select(configured, async, (x, i) => { if (i == 0) throw new DivideByZeroException(); return 1 / i; }, captureValue)
+                    .Where(configured, async, captureValue, (x, i) => { if (i == 0) throw new DivideByZeroException(); return true; })
                     .GetAsyncEnumerator();
                 await TestHelper.AssertThrowsAsync<DivideByZeroException>(() => asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
@@ -303,56 +301,26 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void Select_Select(
+        public void Where_Where(
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureValue)
         {
             Promise.Run(async () =>
             {
-                var asyncEnumerator = new[] { 0, 1, 2 }.ToAsyncEnumerable()
-                    .Select(configured, async, i => i + 3, captureValue)
-                    .Select(configured, async, x => (char) ('a' + x), captureValue)
+                var asyncEnumerator = new[] { 0, 1, 2, 3, 4, 5 }.ToAsyncEnumerable()
+                    .Where(configured, async, captureValue, x => x % 2 == 0)
+                    .Where(configured, async, captureValue, x => x != 2)
                     .GetAsyncEnumerator();
                 Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual('d', asyncEnumerator.Current);
+                Assert.AreEqual(0, asyncEnumerator.Current);
                 Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual('e', asyncEnumerator.Current);
-                Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual('f', asyncEnumerator.Current);
+                Assert.AreEqual(4, asyncEnumerator.Current);
                 Assert.False(await asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
-
-        // TODO: add these tests when Count and ToList and ToArray extensions are added.
-        //[Test]
-        //public void Select_IList_Count()
-        //{
-        //    var xs = ToAsyncEnumerableIList(new[] { 1, 2, 3, 4, 5 });
-        //    var ys = xs.Select(x => x * 2);
-
-        //    Assert.Equal(5, await ys.CountAsync());
-        //}
-
-        //[Test]
-        //public void Select_IList_ToList()
-        //{
-        //    var xs = ToAsyncEnumerableIList(new[] { 1, 2, 3, 4, 5 });
-        //    var ys = xs.Select(x => x * 2);
-
-        //    Assert.Equal(new[] { 2, 4, 6, 8, 10 }, await ys.ToListAsync());
-        //}
-
-        //[Test]
-        //public void Select_IList_ToArray()
-        //{
-        //    var xs = ToAsyncEnumerableIList(new[] { 1, 2, 3, 4, 5 });
-        //    var ys = xs.Select(x => x * 2);
-
-        //    Assert.Equal(new[] { 2, 4, 6, 8, 10 }, await ys.ToArrayAsync());
-        //}
 
         public enum ConfiguredType
         {
@@ -362,7 +330,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void Select_Cancel(
+        public void Where_Cancel(
             [Values] ConfiguredType configuredType,
             [Values] bool async,
             [Values] bool captureValue,
@@ -384,13 +352,13 @@ namespace ProtoPromiseTests.APIs.Linq
                     using (var enumeratorCancelationSource = CancelationSource.New())
                     {
                         var asyncEnumerator = xs
-                            .Select(configuredType != ConfiguredType.NotConfigured, async, x => (char) ('a' + x), captureValue,
+                            .Where(configuredType != ConfiguredType.NotConfigured, captureValue, async, x => true,
                                 configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
                             .GetAsyncEnumerator(enumeratorCancelationSource.Token);
                         Assert.True(await asyncEnumerator.MoveNextAsync());
-                        Assert.AreEqual('a', asyncEnumerator.Current);
+                        Assert.AreEqual(0, asyncEnumerator.Current);
                         Assert.True(await asyncEnumerator.MoveNextAsync());
-                        Assert.AreEqual('b', asyncEnumerator.Current);
+                        Assert.AreEqual(1, asyncEnumerator.Current);
                         configuredCancelationSource.Cancel();
                         enumeratorCancelationSource.Cancel();
                         if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
