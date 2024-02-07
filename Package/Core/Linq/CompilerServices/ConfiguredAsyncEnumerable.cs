@@ -15,7 +15,7 @@ namespace Proto.Promises.CompilerServices
     public readonly struct ConfiguredAsyncEnumerable<T>
     {
         internal readonly AsyncEnumerable<T> _enumerable;
-        private readonly CancelationToken _cancelationToken;
+        internal readonly CancelationToken _cancelationToken;
         private readonly SynchronizationContext _synchronizationContext;
         private readonly Internal.SynchronizationOption _synchronizationOption;
         private readonly bool _forceAsync;
