@@ -70,7 +70,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="selector"/>.</typeparam>
         /// <param name="source">A sequence of elements to invoke a transform function on.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="selector"/>.</param>
-        /// <param name="selector">An asynchronous transform to apply to each source element.</param>
+        /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<TResult>> selector)
@@ -138,7 +138,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="selector"/>.</typeparam>
         /// <param name="configuredSource">A configured sequence of elements to invoke a transform function on.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="selector"/>.</param>
-        /// <param name="selector">An asynchronous transform to apply to each source element.</param>
+        /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<TResult>> selector)
@@ -206,7 +206,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="selector"/>.</typeparam>
         /// <param name="source">A sequence of elements to invoke a transform function on.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="selector"/>.</param>
-        /// <param name="selector">An asynchronous transform to apply to each source element.</param>
+        /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, int, Promise<TResult>> selector)
@@ -274,7 +274,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="selector"/>.</typeparam>
         /// <param name="configuredSource">A configured sequence of elements to invoke a transform function on.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="selector"/>.</param>
-        /// <param name="selector">An asynchronous transform to apply to each source element.</param>
+        /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, Promise<TResult>> selector)
