@@ -296,7 +296,7 @@ namespace Proto.Promises.Linq
 
         #region WithResultSelector
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -322,7 +322,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -350,7 +350,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -376,7 +376,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -404,7 +404,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -430,7 +430,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -458,7 +458,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -484,7 +484,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -512,7 +512,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -539,7 +539,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -568,7 +568,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -595,7 +595,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -624,7 +624,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -651,7 +651,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -680,7 +680,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -707,7 +707,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -736,7 +736,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -764,7 +764,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -794,7 +794,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -822,7 +822,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -852,7 +852,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -880,7 +880,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -910,7 +910,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -938,7 +938,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TCollection">The type of the intermediate elements collected by <paramref name="collectionSelector"/>.</typeparam>
@@ -968,7 +968,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -997,7 +997,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -1028,7 +1028,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -1057,7 +1057,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of an async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -1088,7 +1088,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -1117,7 +1117,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -1148,7 +1148,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
@@ -1177,7 +1177,7 @@ namespace Proto.Promises.Linq
         }
 
         /// <summary>
-        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/> and flattens the resulting sequences into one sequence.
+        /// Projects each element of a configured async-enumerable sequence to an <see cref="AsyncEnumerable{T}"/>, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
         /// The index of each source element is used in the intermediate projected form of that element.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
