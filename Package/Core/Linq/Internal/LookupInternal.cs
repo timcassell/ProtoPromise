@@ -12,6 +12,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 #pragma warning disable IDE0251 // Make member 'readonly'
 
@@ -103,6 +104,7 @@ namespace Proto.Promises
                 return g;
             }
 
+            [MethodImpl(InlineOption)]
             private int InternalGetHashCode(TKey key)
             {
                 // Handle comparer implementations that throw when passed null
