@@ -283,12 +283,13 @@ namespace ProtoPromiseTests.APIs.Linq
         public void CountBy_Throws_Source(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureKey)
+            [Values] bool captureKey,
+            [Values] bool withComparer)
         {
             Promise.Run(async () =>
             {
                 var ex = new Exception("Bang!");
-                var e = CountBy(AsyncEnumerable<int>.Rejected(ex), configured, async, captureKey, x => x).GetAsyncEnumerator();
+                var e = CountBy(AsyncEnumerable<int>.Rejected(ex), configured, async, captureKey, x => x, equalityComparer: GetDefaultOrNullComparer<int>(withComparer)).GetAsyncEnumerator();
                 await TestHelper.AssertThrowsAsync(() => e.MoveNextAsync(), ex);
                 await e.DisposeAsync();
             }, SynchronizationOption.Synchronous)

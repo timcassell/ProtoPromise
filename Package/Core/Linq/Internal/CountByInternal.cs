@@ -21,7 +21,7 @@ namespace Proto.Promises
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         // Similar to LookupImpl, but we care about key-value instead of key-group.
-        internal struct PreservedEnumerationDictionary<TKey, TValue, TEqualityComparer> : IDisposable
+        internal struct LookupSingleValue<TKey, TValue, TEqualityComparer> : IDisposable
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             private readonly TEqualityComparer _comparer;
@@ -30,7 +30,7 @@ namespace Proto.Promises
             private TempCollectionBuilder<Node> _nodes;
             private int _count;
 
-            internal PreservedEnumerationDictionary(TEqualityComparer comparer)
+            internal LookupSingleValue(TEqualityComparer comparer)
             {
                 _comparer = comparer;
                 _lastNode = null;
@@ -39,10 +39,6 @@ namespace Proto.Promises
                 _nodes = new TempCollectionBuilder<Node>(15, 15);
                 _count = 0;
             }
-
-            [MethodImpl(InlineOption)]
-            internal ref TValue GetOrCreateEntry(TKey key)
-                => ref GetOrCreateNode(key)._value;
 
             private Node GetNode(TKey key, int hashCode)
             {
@@ -53,17 +49,17 @@ namespace Proto.Promises
                         return node;
                     }
                 }
-
                 return null;
             }
 
-            private Node GetOrCreateNode(TKey key)
+            internal Node GetOrCreateNode(TKey key, out bool exists)
             {
                 var hashCode = InternalGetHashCode(key);
 
                 var node = GetNode(key, hashCode);
                 if (node != null)
                 {
+                    exists = true;
                     return node;
                 }
 
@@ -87,6 +83,7 @@ namespace Proto.Promises
 
                 _lastNode = node;
                 ++_count;
+                exists = false;
                 return node;
             }
 
@@ -222,7 +219,7 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    PreservedEnumerationDictionary<TKey, int, TEqualityComparer> dict = default;
+                    LookupSingleValue<TKey, int, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -231,11 +228,11 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new PreservedEnumerationDictionary<TKey, int, TEqualityComparer>(_comparer);
+                        dict = new LookupSingleValue<TKey, int, TEqualityComparer>(_comparer);
                         do
                         {
                             var key = _keySelector.Invoke(_asyncEnumerator.Current);
-                            ++dict.GetOrCreateEntry(key);
+                            ++dict.GetOrCreateNode(key, out _)._value;
                         } while (await _asyncEnumerator.MoveNextAsync());
 
                         // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
@@ -290,7 +287,7 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    PreservedEnumerationDictionary<TKey, int, TEqualityComparer> dict = default;
+                    LookupSingleValue<TKey, int, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -299,11 +296,11 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new PreservedEnumerationDictionary<TKey, int, TEqualityComparer>(_comparer);
+                        dict = new LookupSingleValue<TKey, int, TEqualityComparer>(_comparer);
                         do
                         {
                             var key = await _keySelector.Invoke(_asyncEnumerator.Current);
-                            ++dict.GetOrCreateEntry(key);
+                            ++dict.GetOrCreateNode(key, out _)._value;
                         } while (await _asyncEnumerator.MoveNextAsync());
 
                         // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
@@ -358,7 +355,7 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    PreservedEnumerationDictionary<TKey, int, TEqualityComparer> dict = default;
+                    LookupSingleValue<TKey, int, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -367,11 +364,11 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new PreservedEnumerationDictionary<TKey, int, TEqualityComparer>(_comparer);
+                        dict = new LookupSingleValue<TKey, int, TEqualityComparer>(_comparer);
                         do
                         {
                             var key = _keySelector.Invoke(_configuredAsyncEnumerator.Current);
-                            ++dict.GetOrCreateEntry(key);
+                            ++dict.GetOrCreateNode(key, out _)._value;
                         } while (await _configuredAsyncEnumerator.MoveNextAsync());
 
                         // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
@@ -428,7 +425,7 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    PreservedEnumerationDictionary<TKey, int, TEqualityComparer> dict = default;
+                    LookupSingleValue<TKey, int, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -437,13 +434,13 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new PreservedEnumerationDictionary<TKey, int, TEqualityComparer>(_comparer);
+                        dict = new LookupSingleValue<TKey, int, TEqualityComparer>(_comparer);
                         do
                         {
                             var key = await _keySelector.Invoke(_configuredAsyncEnumerator.Current);
                             // The async selector function could have switched context, make sure we're on the configured context before invoking the comparer.
                             await _configuredAsyncEnumerator.SwitchToContext();
-                            ++dict.GetOrCreateEntry(key);
+                            ++dict.GetOrCreateNode(key, out _)._value;
                         } while (await _configuredAsyncEnumerator.MoveNextAsync());
 
                         // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
