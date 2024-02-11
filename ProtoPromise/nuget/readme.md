@@ -2,14 +2,15 @@ Robust and efficient library for management of asynchronous operations.
 
 - Allocation-free async operations
 - Cancelable operations with custom allocation-free CancelationToken/Source
-- Progress with universal automatic or manual normalization
-- Full causality traces
-- Interoperable with Tasks and Unity's Coroutines
+- Allocation-free async iterators with async Linq
+- Progress with enforced normalization
+- async/await support and .Then API
 - Thread safe
-- .Then API and async/await
+- Full causality traces
 - Easily switch to foreground or background context
 - Combine async operations
 - Circular await detection
+- Interoperable with Tasks
 - CLS compliant
 
 This library was built to work in all C#/.Net ecosystems, including Unity, Mono, .Net Framework, .Net Core, UI frameworks, and AOT compilation. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.

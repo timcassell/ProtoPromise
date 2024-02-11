@@ -9,14 +9,15 @@ Robust and efficient library for management of asynchronous operations.
 
 - Allocation-free async operations
 - Cancelable operations with custom allocation-free CancelationToken/Source
-- Progress with universal automatic or manual normalization
-- Full causality traces
-- Interoperable with Tasks and Unity's Coroutines
+- Allocation-free async iterators with async Linq
+- Progress with enforced normalization
+- async/await support and .Then API
 - Thread safe
-- .Then API and async/await
+- Full causality traces
 - Easily switch to foreground or background context
 - Combine async operations
 - Circular await detection
+- Interoperable with Tasks and Unity's Coroutines
 - CLS compliant
 
 This library was built to work in all C#/.Net ecosystems (.Net 3.5 or newer), including Unity (5.5 or newer), Mono, .Net Framework, .Net Core, UI frameworks, and AOT compilation. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.
@@ -45,12 +46,15 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-### v2.6.1 - October 21, 2023
+## v2.7.0 - February 11, 2024
 
-- Fixed compilation error in RELEASE mode in Unity 2020.1 or newer.
-- Fixed `PromiseYielder.WaitOneFrame().ToPromise()` waits an extra frame in Unity versions older than 2021.2.
-- `netstandard2.0` package no longer breaks `netcoreapp3.0` and older build targets.
-- Fixed spin waits for some synchronous operations.
+- Added `AsyncEnumerable<T>` allocation-free async iterators (requires C# 7.3 or newer).
+- Added allocation-free async Linq extensions for `AsyncEnumerable<T>`.
+- Added new `Progress` APIs.
+- Added `Promise.Finally` overloads accepting `Func<Promise>` delegates to support `DisposeAsync`.
+- Added `PromiseYielder.{WaitForUpdate, WaitForLateUpdate}` APIs.
+- Improved performance of `async Promise` functions in netstandard2.1 and Unity 2021.2 or newer.
+- Deprecated old progress APIs (`Deferred.ReportProgress`, `Promise.Progress`, `Promise.AwaitWithProgress`).
 
 See [ChangeLog](../Package/CHANGELOG.md) for the full changelog.
 
@@ -87,6 +91,8 @@ See [ChangeLog](../Package/CHANGELOG.md) for the full changelog.
     - [Finally](#finally)
     - [ContinueWith](#continuewith)
 - [Helper Types](#helper-types)
+- [Async Iterators](#async-iterators)
+- [Async Linq](#async-linq)
 - [Advanced](#advanced)
     - [Configuration](#configuration)
         - [Compiler Options](#compiler-options)
@@ -494,23 +500,11 @@ This is useful if the operation actually completes synchronously but you still n
 
 ## Progress reporting
 
-Promises can additionally report their progress towards completion, allowing the implementor to give the user feedback on the asynchronous operation.
-
-Promises report their progress as a value from `0` to `1`. You can register a progress listener like so:
-
-```cs
-promise
-    .Progress(progress =>
-    {
-        progressBar.SetProgress(progress);
-        progressText.SetText( ((int) (progress * 100f)).ToString() + "%" );
-    })
-```
-
-Progress can be reported through the deferred, and if it is reported, progress *must* be reported between 0 and 1 inclusive:
+Asynchronous operations can optionally report their progress towards completion, allowing the implementor to give the user feedback on the status of the async operation.
+Progress is reported as a value between `0` and `1` inclusive. All you need to do is accept a `ProgressToken` parameter, and report the progress to the token.
 
 ```cs
-Promise WaitForSeconds(float seconds)
+Promise WaitForSeconds(double seconds, ProgressToken progressToken = default) // Optional progress token
 {
     var deferred = Promise.NewDeferred();
     StartCoroutine(_Countup());
@@ -518,51 +512,60 @@ Promise WaitForSeconds(float seconds)
     
     IEnumerator _Countup()
     {
-        for (float current = 0f; current < seconds; current += Time.deltaTime)
+        for (double current = 0; current < seconds; current += Time.deltaTime)
         {
+            progressToken.Report(current / seconds); // Report the progress, normalized between 0 and 1.
             yield return null;
-            deferred.ReportProgress(current / seconds); // Report the progress, normalized between 0 and 1.
         }
+        progressToken.Report(1);
         deferred.Resolve();
     }
 }
 ```
 
-Reporting progress to a deferred is entirely optional, but even if progress is never reported through the deferred, it will always be reported as `1` after the promise is resolved.
-
-Progress will always be automatically normalized from the `.Then` API, no matter how long the promise chain is.
+To listen for the progress, you first create a `Progress` instance, then pass token into the async function. In C# 8 you can use `await using`. If `await using` is not available in your language version, you will need to call `DisposeAsync` on the progress instance after the operation is complete.
 
 ```cs
-Download("google.com")                      // <---- This will report 0.0f - 0.25f
-    .Then(() => WaitForSeconds(1f))         // <---- This will report 0.25f - 0.5f
-    .Then(() => Download("bing.com"))       // <---- This will report 0.5f - 0.75f
-    .Then(() => WaitForSeconds(1f))         // <---- This will report 0.75f - 1.0f
-    .Progress(progressBar.SetProgress)
-    .Then(() => Console.Log("Downloads and extra waits complete."))
-    .Forget();
-```
-
-Progress must be manually normalized in an `async Promise` function via the `.AwaitWithProgress` API.
-
-```cs
+// C# 8 with `await using`
 async Promise Func()
 {
-    await Download("google.com").AwaitWithProgress(0f, 0.25f);      // <---- This will report 0.0f - 0.25f
-    await WaitForSeconds(1f).AwaitWithProgress(0.25f, 0.5f);        // <---- This will report 0.25f - 0.5f
-    await Download("bing.com").AwaitWithProgress(0.5f, 0.75f);      // <---- This will report 0.5f - 0.75f
-    await WaitForSeconds(1f).AwaitWithProgress(0.75f, 1f);          // <---- This will report 0.75f - 1.0f
+    await using var progress = Progress.New(value => OnProgress(value));
+    await WaitForSeconds(1, progress.Token);
+}
+
+// With .Finally
+Promise Func()
+{
+    var progress = Progress.New(value => OnProgress(value));
+    return WaitForSeconds(1, progress.Token)
+        .Finally(progress, p => p.DisposeAsync());
 }
 ```
 
-or
+You can split the progress over multiple async operations, so all operations will be normalized into the `0` to `1` range:
 
 ```cs
 async Promise Func()
 {
-    await Download("google.com").AwaitWithProgress(0.25f);      // <---- This will report 0.0f - 0.25f
-    await WaitForSeconds(1f).AwaitWithProgress(0.5f);           // <---- This will report 0.25f - 0.5f
-    await Download("bing.com").AwaitWithProgress(0.75f);        // <---- This will report 0.5f - 0.75f
-    await WaitForSeconds(1f).AwaitWithProgress(1f);             // <---- This will report 0.75f - 1.0f
+    await using var progress = Progress.New(value => OnProgress(value));
+    await WaitForSeconds(1, progress.Token.Slice(0, 0.5));
+    await WaitForSeconds(1, progress.Token.Slice(0.5, 1));
+}
+```
+
+Progress tokens are infinitely sliceable (until you reach the epsilon limit of `double`), so you can keep slicing them for recursive async functions and continue to have the progress reported properly between `0` and `1`.
+
+If you need to include the progress from async operations that are combined via `Promise.Race/First` or `Promise.All/Merge`, you can create a `Progress.RaceBuilder` or `Progress.MergeBuilder` to handle it.
+
+```
+async Promise Func()
+{
+    await using var progress = Progress.New(value => OnProgress(value));
+    using var progressRacer = Progress.NewRaceBuilder(progress.Token);
+    await Promise.Race(
+        WaitForSeconds(1, progressRacer.NewToken())
+        WaitForSeconds(2, progressRacer.NewToken())
+    );
 }
 ```
 
@@ -591,8 +594,6 @@ Promise.All(Download("http://www.google.com"), Download("http://www.bing.com")) 
         }
     })
 ```
-
-Progress from an All promise will be normalized from all of the input promises.
 
 ### Merge
 
@@ -646,8 +647,6 @@ Promise.Race(Download("http://www.google.com"), Download("http://www.bing.com"))
     .Then(html => Console.Log(html))                        // Both pages are downloaded, but only
                                                             // log the first one downloaded.
 ```
-
-Progress from a Race promise will be the maximum of those reported by all the input promises.
 
 ### First
 
@@ -722,11 +721,10 @@ await PromiseYielder.WaitUntil(() => cond);
 await PromiseYielder.WaitWhile(() => cond);
 ```
 
-You can also implement your own custom await instructions by implementing `IAwaitInstruction` or `IAwaitWithProgressInstruction`. You can even implement them using a struct to eliminate allocations!
+You can also implement your own custom await instructions by implementing `IAwaitInstruction`. You can even implement them using a struct to eliminate allocations!
 `IsCompleted` will be called once per frame until it returns `true`. The async function will not continue until such time.
 
 You may optionally append `.WithCancelation(cancelationToken)` to attach a cancelation token to the yield instruction.
-If the yield instruction implements `IAwaitWithProgressInstruction`, you can report the progress to the `async Promise` function by appending `.AwaitWithProgress(minProgress, maxProgress, cancelationToken)`.
 These can all be converted to `Promise` via the `ToPromise()` extension method.
 
 ## Additional Information
@@ -789,6 +787,72 @@ lazy = new AsyncLazy<int>(async () =>
 int value = await lazy;
 ```
 
+## Async Iterators
+
+C# 8 added async iterators feature (also known as async streams). It looks like this:
+
+```cs
+public async IAsyncEnumerable<int> MyEveryUpdate([EnumeratorCancellation] CancellationToken cancelationToken = default)
+{
+    var frameCount = 0;
+    await PromiseYielder.WaitForUpdate();
+    while (!cancelationToken.IsCancellationRequested)
+    {
+        yield return frameCount++;
+        await PromiseYielder.WaitForUpdate();
+    }
+}
+```
+
+While the syntax is nice, it's not as efficient as it could be. Every time the function is called, a new object is allocated for the `IAsyncEnumerable<int>`.
+Instead, you can use `AsyncEnumerable<T>` (in the `Proto.Promises.Linq` namespace).
+
+```cs
+public async AsyncEnumerable<int> MyEveryUpdate() => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+{
+    var frameCount = 0;
+    await PromiseYielder.WaitForUpdate();
+    while (!cancelationToken.IsCancelationRequested)
+    {
+        // yield return frameCount++;
+        await writer.YieldAsync(frameCount++);
+        await PromiseYielder.WaitForUpdate();
+    }
+}
+```
+
+This doesn't have as nice syntax as the C# language feature (because the language doesn't support custom async iterators), but it will not allocate garbage, as long as object pooling is enabled.
+
+You can consume async iterators like this in C# 8+:
+
+```cs
+await foreach (var frame in MyEveryUpdate().WithCancellation(cancelationToken))
+{
+    Debug.Log($"Update() {frame}");
+}
+```
+
+Or like this in C# 7:
+
+```cs
+await MyEveryUpdate().ForEachAsync(frame =>
+{
+    Debug.Log($"Update() {frame}");
+}, cancelationToken);
+```
+
+This feature is only available in netstandard2.0+, net47+, Unity 2018.3+ (with Net4.x compatibility).
+
+## Async Linq
+
+Linq extensions exist for `AsyncEnumerable<T>` to filter and transform the results, just like regular `System.Linq` (`.Where`, `.Select`, `.GroupBy`, etc). All the same extensions were implemented with async support, so you can use the same extensions as you would on `IEnumerable<T>`. You can choose to use synchronous or asynchronous filter/transform functions, and optionally pass in a capture value to avoid closure allocations.
+
+```cs
+public async AsyncEnumerable<int> MyEveryXUpdate(int skipFrameCount)
+    => MyEveryUpdate()
+        .Where(skipFrameCount + 1, (cv, frame) => frame % cv == 0)
+```
+
 ## Advanced
 
 ## Configuration
@@ -808,9 +872,6 @@ If you are in DEBUG mode, you can configure when additional stacktraces will be 
 ### Compiler Options
 
 If you're compiling from source (not from dll), you can configure some compilation options.
-
-Progress can be disabled if you don't intend to use it and want to save a little memory/cpu cycles.
-You can disable progress by adding `PROTO_PROMISE_PROGRESS_DISABLE` to your compiler symbols.
 
 By default, debug options are tied to the `DEBUG` compiler symbol, which is defined by default in the Unity Editor and not defined in release builds. You can override that by defining `PROTO_PROMISE_DEBUG_ENABLE` to force debugging on in release builds, or `PROTO_PROMISE_DEBUG_DISABLE` to force debugging off in debug builds (or in the Unity Editor). If both symbols are defined, `ENABLE` takes precedence.
 
@@ -990,8 +1051,6 @@ public Promise<string> Download(string url, int maxRetries = 0)
 }
 ```
 
-Even though the recursion can go extremely deep or shallow, the promise's progress will still be normalized between 0 and 1. Though, a caveat to this is if the first attempt succeeds, the progress will go up to 0.5, then immediately jump to 1. Otherwise you might notice it behave like 0.5, 0.75, 0.875, 0.9375, ...
-
 This can also be done with async functions.
 
 ```cs
@@ -999,7 +1058,7 @@ public async Promise<string> Download(string url, int maxRetries = 0)
 {
     try
     {
-        return await Download(url).AwaitWithProgress(0f, 1f);
+        return await Download(url);
     }
     catch
     {
@@ -1008,7 +1067,7 @@ public async Promise<string> Download(string url, int maxRetries = 0)
             throw; // Rethrow the rejection without processing it so that the caller can catch it.
         }
         Console.Log($"There was an error downloading {url}, retrying..."); 
-        return await Download(url, maxRetries - 1).AwaitWithProgress(0f, 1f);
+        return await Download(url, maxRetries - 1);
     }
 }
 ```
@@ -1024,7 +1083,7 @@ public async Promise<string> Download(string url, int maxRetries = 0)
 Retry:
     try
     {
-        return await Download(url).AwaitWithProgress(0f, 1f);
+        return await Download(url);
     }
     catch
     {
@@ -1077,7 +1136,7 @@ See [Understanding Then](#understanding-then) for information on all the differe
 
 ### Suppress Throws
 
-Normally when you await a promise in an `async Promise` function, it will throw if it was canceled or rejected. You can suppress that and manually check the state and rethrow if you need to. Use `AwaitNoThrow()` or `AwaitWithProgressNoThrow(minProgress, maxProgress)`. The awaited result will be `Promise.ResultContainer` or `Promise<T>.ResultContainer` that wraps the state and result or reject reason of the promise.
+Normally when you await a promise in an `async Promise` function, it will throw if it was canceled or rejected. You can suppress that and manually check the state and rethrow if you need to. Use `promise.AwaitNoThrow()`. The awaited result will be `Promise.ResultContainer` or `Promise<T>.ResultContainer` that wraps the state and result or reject reason of the promise.
 
 ```cs
 var resultContainer = await promise.AwaitNoThrow();
@@ -1137,7 +1196,7 @@ If your application uses multiple `SynchronizationContext`s, instead of using `S
 
 For context switching optimized for async/await, use `Promise.SwitchToForegroundAwait`, `Promise.SwitchToBackgroundAwait`, and `Promise.SwitchToContextAwait`. These functions return custom awaiters that avoid the overhead of `Promise`.
 
-Other APIs that allow you to pass `SynchronizationOption` or `SynchronizationContext` to configure the context that the callback executes on are `Promise.Progress` (default `Foreground`), `Promise.New` (default `Synchronous`), and `Promise.Run` (default `Background`).
+Other APIs that allow you to pass `SynchronizationOption` or `SynchronizationContext` to configure the context that the callback executes on are `Progress.New` (default `Foreground`), `Promise.New` (default `Synchronous`), and `Promise.Run` (default `Background`).
 
 ### AsyncLocal Support
 
@@ -1252,8 +1311,6 @@ Note: `AsyncMonitor` is only available in .Net Standard 2.1 (or Unity 2021.2) or
 
 Similar to `System.Threading.ReaderWriterLockSlim`, except, just like `AsyncLock`, recursion is not supported. Also, unlike `ReaderWriterLockSlim`, this is a balanced reader/writer lock. That means readers and writers take turns so that no one will get starved out.
 
-Note: `AsyncReaderWriterLock` is only available in .Net Standard 2.1 (or Unity 2021.2) or newer platforms.
-
 ```cs
 private readonly AsyncReaderWriterLock _rwl = new AsyncReaderWriterLock();
 
@@ -1270,6 +1327,8 @@ public async Promise DoStuffAsync()
     }
 }
 ```
+
+Note: `AsyncReaderWriterLock` is only available in .Net Standard 2.1 (or Unity 2021.2) or newer platforms.
 
 #### AsyncManualResetEvent
 

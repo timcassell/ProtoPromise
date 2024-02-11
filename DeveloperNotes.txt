@@ -18,7 +18,7 @@ Edit `Packages/README.md` to remove the `## Package Installation` and `## Latest
 
 For Unity Asset Store package upload:
 
-1. Open `ProtoPromise_Unity` project in Unity 2019.4
+1. Open `ProtoPromise_Unity` project in Unity 2019.4.0
 2. Install "Asset Store Publishing Tools" asset from the Unity Asset Store
 3. Add scripting define symbol `UNITY_ASTOOLS_EXPERIMENTAL`
 4. Asset Store Tools > Asset Store Uploader
@@ -29,6 +29,17 @@ For Unity Asset Store package upload:
 Unity version may need to be updated to use the earliest version that the Asset Store Tools supports.
 
 Revert changes to `Packages/README.md`.
+
+
+For the ProtoPromise.Analyzer package, if changes were made:
+
+- Move rules from `AnalyzerReleases.Unshipped.md` to `AnalyzerReleases.Shipped.md`
+- Build in Release
+- Add `ProtoPromise.Analyzer.dll` to Unity project under `Plugins/ProtoPromise/Analyzers`
+- Open Unity in 2020.2 and add the label `RoslynAnalyzer` to the dll
+- Create a unitypackage from the dll and name it `ProtoPromise.Analyzer.unitypackage`
+- Upload `ProtoPromise.Analyzer.unitypackage` with the release on GitHub
+- Run the `Publish analyzer nuget package` workflow on GitHub with the new version.
 
 
 For Debugging:
