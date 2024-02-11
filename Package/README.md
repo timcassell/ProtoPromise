@@ -525,7 +525,7 @@ Promise WaitForSeconds(double seconds, ProgressToken progressToken = default) //
 }
 ```
 
-To listen for the progress, you first create a `Progress` instance, then pass token into the async function. In C# 8 you can use `await using`. If `await using` is not available in your language version, you will need to call `DisposeAsync` on the progress instance after the operation is complete.
+To listen for the progress, you first create a `Progress` instance, then pass its `Token` into the async function. In C# 8 you can use `await using`. If `await using` is not available in your language version, you will need to call `DisposeAsync` on the progress instance after the operation is complete.
 
 ```cs
 // C# 8 with `await using`
@@ -828,7 +828,7 @@ This doesn't have as nice syntax as the C# language feature (because the languag
 You can consume async iterators like this in C# 8+:
 
 ```cs
-await foreach (var frame in MyEveryUpdate().WithCancellation(cancelationToken))
+await foreach (var frame in MyEveryUpdate().WithCancelation(cancelationToken))
 {
     Debug.Log($"Update() {frame}");
 }
@@ -1130,7 +1130,7 @@ public Promise<string> Download(string url, int maxRetries = 0)
 }
 ```
 
-When the C# compiler sees a lamda expression that does not capture/close any variables, it will cache the delegate statically, so there is only one instance in the program, and no extra memory will be allocated every time it's used.
+When the C# compiler sees a lambda expression that does not capture/close any variables, it will cache the delegate statically, so there is only one instance in the program, and no extra memory will be allocated every time it's used.
 
 Note: Visual Studio will tell you what variables are captured/closed if you hover the `=>`. You can use that information to optimize your delegates. In C# 9 and later, you can use the `static` modifier on your lambdas so that the compiler will not let you accidentally capture variables the expensive way.
 
