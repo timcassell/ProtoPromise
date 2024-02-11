@@ -32,8 +32,3 @@ jobs:
         run: dotnet nuget push ./ProtoPromise.Analyzer/ProtoPromise.Analyzer/bin/Release/ProtoPromise.Analyzer.${{ github.event.inputs.version }}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-
-      - name: Push Unity Helpers
-        run: dotnet nuget push ProtoPromiseUnityHelpers.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
