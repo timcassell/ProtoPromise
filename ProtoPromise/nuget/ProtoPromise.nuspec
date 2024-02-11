@@ -27,19 +27,28 @@
         <dependency id="System.Buffers" version="4.5.1" exclude="Build,Analyzers" />
         <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
         <dependency id="System.Threading.Tasks.Extensions" version="4.5.4" exclude="Build,Analyzers" />
+        <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
       </group>
       <group targetFramework="netstandard2.0">
         <dependency id="Microsoft.Bcl.AsyncInterfaces" version="5.0.0" exclude="Build,Analyzers" />
         <dependency id="System.Buffers" version="4.5.1" exclude="Build,Analyzers" />
         <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
         <dependency id="System.Threading.Tasks.Extensions" version="4.5.4" exclude="Build,Analyzers" />
+        <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
       </group>
-      <group targetFramework="netstandard2.1" />
+      <group targetFramework="netstandard2.1">
+        <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
+      </group>
       <group targetFramework="netcoreapp2.1">
         <dependency id="Microsoft.Bcl.AsyncInterfaces" version="5.0.0" exclude="Build,Analyzers" />
+        <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
       </group>
-      <group targetFramework="net5.0" />
-      <group targetFramework="net6.0" />
+      <group targetFramework="net5.0">
+        <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
+      </group>
+      <group targetFramework="net6.0">
+        <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
+      </group>
     </dependencies>
 
     <readme>readme.md</readme>
