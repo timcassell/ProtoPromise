@@ -116,6 +116,8 @@ See [ChangeLog](../Package/CHANGELOG.md) for the full changelog.
 
 ### Unity
 
+<b>*Highly Recommended*</b> If you are using Unity 2020.2 or newer, you should also install the `ProtoPromise.Analyzer` package. It requires `Microsoft.CodeAnalysis.CSharp` to be installed (I recommend using https://github.com/xoofx/UnityNuGet to install it if you don't already have it installed). Go to the latest [release](https://github.com/timcassell/ProtoPromise/releases) and download `ProtoPromise.Analyzer.unitypackage` and import it into your project.
+
 #### Unity Package Manager
 
 ##### OpenUPM registry (recommended)
@@ -153,7 +155,7 @@ Add to your assets from the Asset Store at https://assetstore.unity.com/packages
 
 #### Download unitypackage from GitHub
 
-Go to the latest [release](https://github.com/timcassell/ProtoPromise/releases) and download the unitypackage. Import the unitypackage into your Unity project.
+Go to the latest [release](https://github.com/timcassell/ProtoPromise/releases) and download `ProtoPromise.unitypackage`. Import the unitypackage into your Unity project.
 
 ### Nuget
 
