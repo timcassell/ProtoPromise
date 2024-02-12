@@ -7,11 +7,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
@@ -184,7 +179,7 @@ namespace Proto.Promises
             var promise = PromiseRefBase.PromiseParallelForEach<ForLoopEnumerator, TParallelBody, int>.GetOrCreate(
                 new ForLoopEnumerator(fromIndex, toIndex), body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
             promise.MaybeLaunchWorker(true);
-            return new Promise(promise, promise.Id, 0);
+            return new Promise(promise, promise.Id);
         }
 
         internal static Promise ParallelForEach<TEnumerator, TParallelBody, TSource>(TEnumerator enumerator, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
@@ -211,7 +206,7 @@ namespace Proto.Promises
             var promise = PromiseRefBase.PromiseParallelForEach<GenericEnumerator<TEnumerator, TSource>, TParallelBody, TSource>.GetOrCreate(
                 new GenericEnumerator<TEnumerator, TSource>(enumerator), body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
             promise.MaybeLaunchWorker(true);
-            return new Promise(promise, promise.Id, 0);
+            return new Promise(promise, promise.Id);
         }
 
         partial class PromiseRefBase

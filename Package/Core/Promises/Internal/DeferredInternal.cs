@@ -1,7 +1,7 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
+#undef PROMISE_DEBUG
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
@@ -22,9 +22,6 @@ namespace Proto.Promises
             bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId);
             void RejectDirect(IRejectContainer reasonContainer);
             void CancelDirect();
-#if PROMISE_PROGRESS
-            bool TryReportProgress(int deferredId, float progress);
-#endif
         }
 
         internal static class DeferredPromiseHelper
@@ -37,16 +34,6 @@ namespace Proto.Promises
             internal static bool TryIncrementDeferredIdAndUnregisterCancelation(IDeferredPromise _this, int deferredId)
             {
                 return _this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId);
-            }
-
-            internal static bool TryReportProgress(IDeferredPromise _this, int deferredId, float progress)
-            {
-                ValidateProgressValue(progress, "progress", 1);
-#if !PROMISE_PROGRESS
-                return GetIsValidAndPending(_this, deferredId);
-#else
-                return _this != null && _this.TryReportProgress(deferredId, progress);
-#endif
             }
         }
 

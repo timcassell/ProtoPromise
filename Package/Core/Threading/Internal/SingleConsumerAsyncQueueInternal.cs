@@ -58,7 +58,7 @@ namespace Proto.Promises
                 }
                 _smallValues._locker.Exit();
 
-                return new Promise<(bool, T)>(promise, promise.Id, 0);
+                return new Promise<(bool, T)>(promise, promise.Id);
             }
 
             internal void Enqueue(T value)

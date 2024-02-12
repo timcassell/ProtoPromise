@@ -3,18 +3,12 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable CA1507 // Use nameof to express symbol names
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -48,7 +42,7 @@ namespace Proto.Promises
             var promise = PromiseRefBase.PromiseParallelForEachAsync<TParallelBody, TSource>.GetOrCreate(
                 enumerable, body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
             promise.MaybeLaunchWorker(true);
-            return new Promise(promise, promise.Id, 0);
+            return new Promise(promise, promise.Id);
         }
 
         partial class PromiseRefBase
@@ -503,7 +497,7 @@ namespace Proto.Promises
                     // Instead, we use a more traditional ContinueWith. But we use it directly with IDelegateContinue to avoid creating a delegate.
 
                     // TODO: We could use a PromisePassThrough instead of PromiseContinue to reduce memory.
-                    var continuePromise = PromiseContinue<VoidResult, IDelegateContinue>.GetOrCreate(this, disposePromise.Depth);
+                    var continuePromise = PromiseContinue<VoidResult, IDelegateContinue>.GetOrCreate(this);
                     AddPending(continuePromise);
                     disposePromise._ref.HookupNewPromise(disposePromise._id, continuePromise);
                     continuePromise.Forget(continuePromise.Id);

@@ -7,11 +7,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
@@ -85,10 +80,10 @@ namespace Proto.Promises
                 internal override void MaybeReportUnhandledAndDispose(object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
                 internal override void Forget(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
+                internal override PromiseRefBase GetDuplicate(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsCompleted(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsValid(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetPreserved(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
+                internal override PromiseRefBase GetPreserved(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId) { throw new System.InvalidOperationException(); }
             }
 
@@ -115,10 +110,6 @@ namespace Proto.Promises
                     // If waiter is not this, it means the handler was awaited before it was set complete on another thread, so we need to handle it here.
                     if (waiter != this)
                     {
-#if PROMISE_PROGRESS
-                        // Exchange waiter to read latest and set to InvalidAwaitSentinel to solve race condition with progress.
-                        waiter = handler.ExchangeWaiter(InvalidAwaitSentinel.s_instance);
-#endif
                         waiter.Handle(handler, rejectContainer, state);
                     }
                     else
@@ -131,10 +122,10 @@ namespace Proto.Promises
                 internal override void MaybeReportUnhandledAndDispose(object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
                 internal override void Forget(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
+                internal override PromiseRefBase GetDuplicate(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsCompleted(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsValid(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetPreserved(short promiseId, ushort depth) { throw new System.InvalidOperationException(); }
+                internal override PromiseRefBase GetPreserved(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId) { throw new System.InvalidOperationException(); }
             }
 
@@ -175,13 +166,13 @@ namespace Proto.Promises
                     return true;
                 }
 
-                internal override PromiseRef<TResult> GetDuplicateT(short promiseId, ushort depth)
+                internal override PromiseRef<TResult> GetDuplicateT(short promiseId)
                 {
                     ValidateId(promiseId, this, 2);
                     return this;
                 }
 
-                internal override PromiseRefBase GetDuplicate(short promiseId, ushort depth)
+                internal override PromiseRefBase GetDuplicate(short promiseId)
                 {
                     return this;
                 }

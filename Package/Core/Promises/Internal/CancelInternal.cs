@@ -7,11 +7,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 
@@ -96,10 +91,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolve<TResult, TResolver> GetOrCreate(TResolver resolver, ushort depth)
+                internal static CancelablePromiseResolve<TResult, TResolver> GetOrCreate(TResolver resolver)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset(depth);
+                    promise.Reset();
                     promise._resolver = resolver;
                     promise._cancelationHelper.Reset();
                     return promise;
@@ -166,10 +161,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolvePromise<TResult, TResolver> GetOrCreate(TResolver resolver, ushort depth)
+                internal static CancelablePromiseResolvePromise<TResult, TResolver> GetOrCreate(TResolver resolver)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset(depth);
+                    promise.Reset();
                     promise._resolver = resolver;
                     promise._cancelationHelper.Reset();
                     return promise;
@@ -245,10 +240,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolveReject<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, ushort depth)
+                internal static CancelablePromiseResolveReject<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset(depth);
+                    promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     promise._cancelationHelper.Reset();
@@ -327,10 +322,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter, ushort depth)
+                internal static CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset(depth);
+                    promise.Reset();
                     promise._resolver = resolver;
                     promise._rejecter = rejecter;
                     promise._cancelationHelper.Reset();
@@ -415,10 +410,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseContinue<TResult, TContinuer> GetOrCreate(TContinuer continuer, ushort depth)
+                internal static CancelablePromiseContinue<TResult, TContinuer> GetOrCreate(TContinuer continuer)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset(depth);
+                    promise.Reset();
                     promise._continuer = continuer;
                     promise._cancelationHelper.Reset();
                     return promise;
@@ -479,10 +474,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseContinuePromise<TResult, TContinuer> GetOrCreate(TContinuer continuer, ushort depth)
+                internal static CancelablePromiseContinuePromise<TResult, TContinuer> GetOrCreate(TContinuer continuer)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset(depth);
+                    promise.Reset();
                     promise._continuer = continuer;
                     promise._cancelationHelper.Reset();
                     return promise;
@@ -552,10 +547,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseCancel<TResult, TCanceler> GetOrCreate(TCanceler canceler, ushort depth)
+                internal static CancelablePromiseCancel<TResult, TCanceler> GetOrCreate(TCanceler canceler)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset(depth);
+                    promise.Reset();
                     promise._canceler = canceler;
                     promise._cancelationHelper.Reset();
                     return promise;
@@ -622,10 +617,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseCancelPromise<TResult, TCanceler> GetOrCreate(TCanceler canceler, ushort depth)
+                internal static CancelablePromiseCancelPromise<TResult, TCanceler> GetOrCreate(TCanceler canceler)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset(depth);
+                    promise.Reset();
                     promise._canceler = canceler;
                     promise._cancelationHelper.Reset();
                     return promise;

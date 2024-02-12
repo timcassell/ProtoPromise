@@ -7,15 +7,9 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
-#pragma warning disable CS0618 // Type or member is obsolete
 
 using NUnit.Framework;
 using Proto.Promises;
@@ -306,7 +300,9 @@ namespace ProtoPromiseTests
             if (completeType == CompleteType.CancelFromToken)
             {
                 cancelationSource = CancelationSource.New();
+#pragma warning disable CS0618 // Type or member is obsolete
                 return Promise.NewDeferred(cancelationSource.Token);
+#pragma warning restore CS0618 // Type or member is obsolete
             }
             cancelationSource = default(CancelationSource);
             return Promise.NewDeferred();
@@ -317,7 +313,9 @@ namespace ProtoPromiseTests
             if (completeType == CompleteType.CancelFromToken)
             {
                 cancelationSource = CancelationSource.New();
+#pragma warning disable CS0618 // Type or member is obsolete
                 return Promise<T>.NewDeferred(cancelationSource.Token);
+#pragma warning restore CS0618 // Type or member is obsolete
             }
             cancelationSource = default(CancelationSource);
             return Promise<T>.NewDeferred();
@@ -387,26 +385,6 @@ namespace ProtoPromiseTests
             return promise.Then(v => v, cancelationToken);
         }
 
-        public static Promise SubscribeProgress(this Promise promise, ProgressHelper progressHelper, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return progressHelper.Subscribe(promise, cancelationToken);
-        }
-
-        public static Promise<T> SubscribeProgress<T>(this Promise<T> promise, ProgressHelper progressHelper, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return progressHelper.Subscribe(promise, cancelationToken);
-        }
-
-        public static Promise SubscribeProgressAndAssert(this Promise promise, ProgressHelper progressHelper, float expectedValue, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
-        {
-            return progressHelper.SubscribeAndAssertCurrentProgress(promise, expectedValue, cancelationToken, timeout);
-        }
-
-        public static Promise<T> SubscribeProgressAndAssert<T>(this Promise<T> promise, ProgressHelper progressHelper, float expectedValue, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
-        {
-            return progressHelper.SubscribeAndAssertCurrentProgress(promise, expectedValue, cancelationToken, timeout);
-        }
-
         public static Promise ConfigureAwait(this Promise promise, ConfigureAwaitType configureType, bool forceAsync = false, CancelationToken cancelationToken = default(CancelationToken))
         {
             if (configureType == ConfigureAwaitType.None)
@@ -435,18 +413,18 @@ namespace ProtoPromiseTests
 
         public static void WaitWithTimeout(this Promise promise, TimeSpan timeout)
         {
-            if (!promise.Wait(timeout))
+            if (!promise.TryWait(timeout))
             {
-                throw new TimeoutException("Promise.Wait timed out after " + timeout);
+                throw new TimeoutException("Promise.TryWait timed out after " + timeout);
             }
         }
 
         public static T WaitWithTimeout<T>(this Promise<T> promise, TimeSpan timeout)
         {
             T result;
-            if (!promise.WaitForResult(timeout, out result))
+            if (!promise.TryWaitForResult(timeout, out result))
             {
-                throw new TimeoutException("Promise.Wait timed out after " + timeout);
+                throw new TimeoutException("Promise.TryWaitForResult timed out after " + timeout);
             }
             return result;
         }
@@ -517,13 +495,11 @@ namespace ProtoPromiseTests
             throw new Exception("Unexpected callback contexts, expectedContext: " + expectedContext + ", invokeContext: " + invokeContext);
         }
 
-        public static readonly float progressEpsilon = Promise.Config.ProgressPrecision;
+        // The distance between 1 and the largest value smaller than 1.
+        public static readonly float progressEpsilon = 1f - 0.99999994f;
 
         public const int callbacksMultiplier = 3
 #if CSHARP_7_3_OR_NEWER
-            + 1
-#endif
-#if PROMISE_PROGRESS
             + 1
 #endif
             ;
@@ -603,9 +579,6 @@ namespace ProtoPromiseTests
 #if CSHARP_7_3_OR_NEWER
             yield return Await(preservedPromise);
 #endif
-#if PROMISE_PROGRESS
-            yield return preservedPromise.Progress(v => { }, SynchronizationOption.Synchronous);
-#endif
         }
 
         public static IEnumerable<Promise<T>> GetTestablePromises<T>(Promise<T> preservedPromise)
@@ -634,9 +607,6 @@ namespace ProtoPromiseTests
             yield return deferred.Promise;
 #if CSHARP_7_3_OR_NEWER
             yield return Await(preservedPromise);
-#endif
-#if PROMISE_PROGRESS
-            yield return preservedPromise.Progress(v => { }, SynchronizationOption.Synchronous);
 #endif
         }
 

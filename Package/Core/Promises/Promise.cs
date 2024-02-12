@@ -8,12 +8,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-// define PROTO_PROMISE_PROGRESS_DISABLE to disable progress reports on promises.
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0031 // Use null propagation
@@ -95,8 +89,8 @@ namespace Proto.Promises
             {
                 return this;
             }
-            var newPromise = r.GetPreserved(_id, Depth);
-            return new Promise(newPromise, newPromise.Id, newPromise.Depth);
+            var newPromise = r.GetPreserved(_id);
+            return new Promise(newPromise, newPromise.Id);
         }
 
         /// <summary>
@@ -245,106 +239,6 @@ namespace Proto.Promises
         {
             ValidateOperation(1);
             return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, cancelationToken);
-        }
-
-        /// <summary>
-        /// Add a progress listener. Returns a new <see cref="Promise"/>.
-        /// 
-        /// <para/>If/when this is resolved, <paramref name="progressListener"/> will be invoked with 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
-        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// </summary>
-        /// <param name="progressListener">Will be reported with progress that is normalized between 0 and 1 on the context of the provided option.</param>
-        /// <param name="invokeOption">Indicates on which context <paramref name="progressListener"/> will be reported.</param>
-        /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
-        /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.5. Make it internal instead of public so the unit tests can still use it.
-        internal
-#else
-        public
-#endif
-            Promise Progress<TProgress>(TProgress progressListener, SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken), bool forceAsync = false)
-            where TProgress : IProgress<float>
-        {
-            ValidateArgument(progressListener, "progressListener", 1);
-
-#if !PROMISE_PROGRESS
-            return Duplicate();
-#else
-            ValidateOperation(1);
-
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddProgress(this, progressListener, (Internal.SynchronizationOption) invokeOption, null, forceAsync, cancelationToken);
-#endif
-        }
-
-        /// <summary>
-        /// Add a progress listener. Returns a new <see cref="Promise"/>.
-        /// 
-        /// <para/>If/when this is resolved, <paramref name="progressListener"/> will be invoked with 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
-        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// </summary>
-        /// <param name="progressListener">Will be reported with progress that is normalized between 0 and 1 on the context of the provided option.</param>
-        /// <param name="invokeContext">The context on which <paramref name="progressListener"/> will be reported. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
-        /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously.</param>
-        /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.5. Make it internal instead of public so the unit tests can still use it.
-        internal
-#else
-        public
-#endif
-            Promise Progress<TProgress>(TProgress progressListener, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken), bool forceAsync = false)
-            where TProgress : IProgress<float>
-        {
-            ValidateArgument(progressListener, "progressListener", 1);
-
-#if !PROMISE_PROGRESS
-            return Duplicate();
-#else
-            ValidateOperation(1);
-
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddProgress(this, progressListener, Internal.SynchronizationOption.Explicit, invokeContext, forceAsync, cancelationToken);
-#endif
-        }
-
-        /// <summary>
-        /// Add a progress listener. Returns a new <see cref="Promise"/>.
-        /// 
-        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
-        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// </summary>
-        /// <param name="onProgress">Will be invoked with progress that is normalized between 0 and 1 on the context of the provided option.</param>
-        /// <param name="invokeOption">Indicates on which context <paramref name="onProgress"/> will be invoked.</param>
-        /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously. If <paramref name="invokeOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
-        /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-        public Promise Progress(Action<float> onProgress, SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken), bool forceAsync = false)
-        {
-            ValidateArgument(onProgress, "onProgress", 1);
-
-            return Progress(new Internal.PromiseRefBase.DelegateProgress(onProgress), invokeOption, cancelationToken, forceAsync);
-        }
-
-        /// <summary>
-        /// Add a progress listener. Returns a new <see cref="Promise"/>.
-        /// 
-        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
-        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// </summary>
-        /// <param name="onProgress">Will be invoked with progress that is normalized between 0 and 1 on the context of the provided option.</param>
-        /// <param name="invokeContext">The context on which <paramref name="onProgress"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
-        /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously.</param>
-        /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-        public Promise Progress(Action<float> onProgress, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken), bool forceAsync = false)
-        {
-            ValidateArgument(onProgress, "onProgress", 1);
-
-            return Progress(new Internal.PromiseRefBase.DelegateProgress(onProgress), invokeContext, cancelationToken, forceAsync);
         }
 
         /// <summary>
@@ -956,50 +850,6 @@ namespace Proto.Promises
         #endregion
 
         // Capture values below.
-
-        /// <summary>
-        /// Capture a value and add a progress listener. Returns a new <see cref="Promise"/>.
-        /// <para/><paramref name="onProgress"/> will be invoked  that is normalized between 0 and 1 on the context of the provided option.
-        /// 
-        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
-        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, <paramref name="onProgress"/> will stop being invoked.
-        /// </summary>
-        /// <param name="progressCaptureValue">The value that will be passed to <paramref name="onProgress"/>.</param>
-        /// <param name="onProgress">Will be invoked with with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 on the context of the provided option.</param>
-        /// <param name="invokeOption">Indicates on which context <paramref name="onProgress"/> will be invoked.</param>
-        /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously.</param>
-        /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-        public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress,
-            SynchronizationOption invokeOption = SynchronizationOption.Foreground, CancelationToken cancelationToken = default(CancelationToken), bool forceAsync = false)
-        {
-            ValidateArgument(onProgress, "onProgress", 1);
-
-            return Progress(new Internal.PromiseRefBase.DelegateCaptureProgress<TCaptureProgress>(progressCaptureValue, onProgress), invokeOption, cancelationToken, forceAsync);
-        }
-
-        /// <summary>
-        /// Capture a value and add a progress listener. Returns a new <see cref="Promise"/>.
-        /// 
-        /// <para/>If/when this is resolved, <paramref name="onProgress"/> will be invoked with <paramref name="progressCaptureValue"/> and 1.0, then the new <see cref="Promise"/> will be resolved when it returns.
-        /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// </summary>
-        /// <param name="progressCaptureValue">The value that will be passed to <paramref name="onProgress"/>.</param>
-        /// <param name="onProgress">Will be invoked with with <paramref name="progressCaptureValue"/> and progress that is normalized between 0 and 1 on the context of the provided option.</param>
-        /// <param name="invokeContext">The context on which <paramref name="onProgress"/> will be invoked. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
-        /// <param name="forceAsync">If true, forces progress invoke to happen asynchronously.</param>
-        /// <param name="cancelationToken">If canceled while this is pending, progress will stop being reported. This will not cancel the returned <see cref="Promise"/>.</param>
-        [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-        public Promise Progress<TCaptureProgress>(TCaptureProgress progressCaptureValue, Action<TCaptureProgress, float> onProgress, SynchronizationContext invokeContext, CancelationToken cancelationToken = default(CancelationToken), bool forceAsync = false)
-        {
-            ValidateArgument(onProgress, "onProgress", 1);
-
-            return Progress(new Internal.PromiseRefBase.DelegateCaptureProgress<TCaptureProgress>(progressCaptureValue, onProgress), invokeContext, cancelationToken, forceAsync);
-        }
 
         /// <summary>
         /// Capture a value and add a finally callback. Returns a new <see cref="Promise"/>.

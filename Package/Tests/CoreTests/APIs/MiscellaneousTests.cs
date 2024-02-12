@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-# endif
 
 using NUnit.Framework;
 using Proto.Promises;
@@ -55,10 +50,6 @@ namespace ProtoPromiseTests.APIs
             Assert.Throws<InvalidOperationException>(() => promise.Forget());
             Assert.Throws<InvalidOperationException>(() => promise.Duplicate());
 
-#if PROMISE_PROGRESS
-            Assert.Throws<InvalidOperationException>(() => promise.Progress(v => { }));
-            Assert.Throws<InvalidOperationException>(() => promise.Progress(1, (cv, v) => { }));
-#endif
             Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(() => { }));
             Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(1, cv => { }));
 
@@ -186,10 +177,6 @@ namespace ProtoPromiseTests.APIs
             Assert.Throws<InvalidOperationException>(() => promise.Forget());
             Assert.Throws<InvalidOperationException>(() => promise.Duplicate());
 
-#if PROMISE_PROGRESS
-            Assert.Throws<InvalidOperationException>(() => promise.Progress(v => { }));
-            Assert.Throws<InvalidOperationException>(() => promise.Progress(1, (cv, v) => { }));
-#endif
             Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(() => { }));
             Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(1, cv => { }));
 
@@ -1454,12 +1441,9 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
 
-#pragma warning disable CS0618 // Type or member is obsolete
             promise
-                .Progress(v => { }, SynchronizationOption.Synchronous)
                 .Then(() => { })
                 .Forget();
-#pragma warning restore CS0618 // Type or member is obsolete
 
             deferred.Resolve();
             promise.Forget();

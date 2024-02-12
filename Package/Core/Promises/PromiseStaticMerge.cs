@@ -25,20 +25,18 @@ namespace Proto.Promises
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(maxDepth);
+                return Resolved();
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount, completedProgress, maxDepth);
-            return new Promise(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount);
+            return new Promise(promise, promise.Id);
         }
 
         /// <summary>
@@ -49,22 +47,20 @@ namespace Proto.Promises
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref passThroughs, 2, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(maxDepth);
+                return Resolved();
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount, completedProgress, maxDepth);
-            return new Promise(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount);
+            return new Promise(promise, promise.Id);
         }
 
         /// <summary>
@@ -75,24 +71,22 @@ namespace Proto.Promises
         {
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise4, ref passThroughs, 3, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(maxDepth);
+                return Resolved();
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount, completedProgress, maxDepth);
-            return new Promise(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount);
+            return new Promise(promise, promise.Id);
         }
 
         /// <summary>
@@ -125,23 +119,21 @@ namespace Proto.Promises
             {
                 var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
                 int pendingCount = 0;
-                ulong completedProgress = 0;
-                ushort maxDepth = 0;
 
                 int index = -1;
                 while (promises.MoveNext())
                 {
                     var p = promises.Current;
                     ValidateElement(p, "promises", 1);
-                    Internal.PrepareForMerge(p, ref passThroughs, ++index, ref pendingCount, ref completedProgress, ref maxDepth);
+                    Internal.PrepareForMerge(p, ref passThroughs, ++index, ref pendingCount);
                 }
 
                 if (pendingCount == 0)
                 {
-                    return Internal.CreateResolved(maxDepth);
+                    return Resolved();
                 }
-                var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount, completedProgress, maxDepth);
-                return new Promise(promise, promise.Id, maxDepth);
+                var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount);
+                return new Promise(promise, promise.Id);
             }
         }
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
@@ -227,20 +219,18 @@ namespace Proto.Promises
             T1 value = default(T1);
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetOne<T1>());
-            return new Promise<T1>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetOne<T1>());
+            return new Promise<T1>(promise, promise.Id);
         }
 
         private static partial class MergeResultFuncs
@@ -292,20 +282,18 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetTwo<T1, T2>());
-            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetTwo<T1, T2>());
+            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id);
         }
 
         /// <summary>
@@ -317,22 +305,20 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref passThroughs, 2, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetTwo<T1, T2>());
-            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetTwo<T1, T2>());
+            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id);
         }
 
         private static partial class MergeResultFuncs
@@ -387,22 +373,20 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2, T3>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetThree<T1, T2, T3>());
-            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetThree<T1, T2, T3>());
+            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id);
         }
 
         /// <summary>
@@ -414,24 +398,22 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2, T3>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise4, ref passThroughs, 3, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetThree<T1, T2, T3>());
-            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetThree<T1, T2, T3>());
+            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id);
         }
 
         private static partial class MergeResultFuncs
@@ -489,24 +471,22 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2, T3, T4>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
-            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
+            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id);
         }
 
         /// <summary>
@@ -518,26 +498,24 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2, T3, T4>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
             ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref passThroughs, 4, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise5, ref passThroughs, 4, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
-            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
+            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id);
         }
 
         private static partial class MergeResultFuncs
@@ -598,26 +576,24 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2, T3, T4, T5>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
             ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id);
         }
 
         /// <summary>
@@ -629,28 +605,26 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2, T3, T4, T5>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
             ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
             ValidateArgument(promise6, "promise6", 1);
-            Internal.PrepareForMerge(promise6, ref passThroughs, 5, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise6, ref passThroughs, 5, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id);
         }
 
         private static partial class MergeResultFuncs
@@ -714,28 +688,26 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
             ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
             ValidateArgument(promise6, "promise6", 1);
-            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id);
         }
 
         /// <summary>
@@ -747,30 +719,28 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
             ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
             ValidateArgument(promise6, "promise6", 1);
-            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount);
             ValidateArgument(promise7, "promise7", 1);
-            Internal.PrepareForMerge(promise7, ref passThroughs, 6, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise7, ref passThroughs, 6, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id);
         }
 
         private static partial class MergeResultFuncs
@@ -837,30 +807,28 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6, T7>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
             ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
             ValidateArgument(promise6, "promise6", 1);
-            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount);
             ValidateArgument(promise7, "promise7", 1);
-            Internal.PrepareForMerge(promise7, ref value.Item7, ref passThroughs, 6, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise7, ref value.Item7, ref passThroughs, 6, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id);
         }
 
         /// <summary>
@@ -872,32 +840,30 @@ namespace Proto.Promises
             var value = new ValueTuple<T1, T2, T3, T4, T5, T6, T7>();
             var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
             int pendingCount = 0;
-            ulong completedProgress = 0;
-            ushort maxDepth = 0;
 
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
             ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
             ValidateArgument(promise6, "promise6", 1);
-            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount);
             ValidateArgument(promise7, "promise7", 1);
-            Internal.PrepareForMerge(promise7, ref value.Item7, ref passThroughs, 6, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise7, ref value.Item7, ref passThroughs, 6, ref pendingCount);
             ValidateArgument(promise8, "promise8", 1);
-            Internal.PrepareForMerge(promise8, ref passThroughs, 7, ref pendingCount, ref completedProgress, ref maxDepth);
+            Internal.PrepareForMerge(promise8, ref passThroughs, 7, ref pendingCount);
 
             if (pendingCount == 0)
             {
-                return Internal.CreateResolved(value, maxDepth);
+                return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, completedProgress, maxDepth, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id, maxDepth);
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
+            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id);
         }
     }
 }

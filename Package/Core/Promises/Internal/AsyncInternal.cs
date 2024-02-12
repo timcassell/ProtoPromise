@@ -7,11 +7,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 // Fix for IL2CPP compile bug. https://issuetracker.unity3d.com/issues/il2cpp-incorrect-results-when-calling-a-method-from-outside-class-in-a-struct
 // Unity fixed in 2020.3.20f1 and 2021.1.24f1, but it's simpler to just check for 2021.2 or newer.
@@ -22,7 +17,6 @@
 #define OPTIMIZED_ASYNC_MODE
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0038 // Use pattern matching
 #pragma warning disable IDE0074 // Use compound assignment
@@ -52,25 +46,6 @@ namespace Proto.Promises
                 _previous = awaiter;
 #endif
                 awaiter.HookupExistingWaiter(promiseId, this);
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void HookupAwaiterWithProgress(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress, ref AsyncPromiseFields asyncFields)
-            {
-#if !PROMISE_PROGRESS
-                HookupAwaiter(awaiter, promiseId);
-#else
-                ValidateAwait(awaiter, promiseId);
-
-                HandleablePromiseBase previousWaiter;
-                PromiseRefBase promiseSingleAwait = awaiter.AddWaiter(promiseId, this, out previousWaiter);
-                if (previousWaiter != PendingAwaitSentinel.s_instance)
-                {
-                    awaiter.VerifyAndHandleWaiter(this, promiseSingleAwait);
-                    return;
-                }
-                SetPreviousAndMaybeHookupAsyncProgress(awaiter, minProgress, maxProgress, ref asyncFields);
-#endif
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -158,7 +133,7 @@ namespace Proto.Promises
                     // These checks and cast are eliminated by the JIT.
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
-                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref, ref _ref._fields);
+                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
                     }
                     else
                     {
@@ -166,7 +141,7 @@ namespace Proto.Promises
                     }
 #else
                     // Unity does not optimize the pattern, so we have to call through AwaitOverrider to avoid boxing allocations.
-                    AwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext, ref _ref._fields);
+                    AwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext);
 #endif
                 }
 
@@ -180,7 +155,7 @@ namespace Proto.Promises
                     // These checks and cast are eliminated by the JIT.
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
-                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref, ref _ref._fields);
+                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
                     }
                     else
                     {
@@ -188,7 +163,7 @@ namespace Proto.Promises
                     }
 #else
                     // Unity does not optimize the pattern, so we have to call through CriticalAwaitOverrider to avoid boxing allocations.
-                    CriticalAwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext, ref _ref._fields);
+                    CriticalAwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext);
 #endif
                 }
 
@@ -276,9 +251,9 @@ namespace Proto.Promises
                             try
 #endif
                             {
-                                if (_owner._fields._executionContext != null)
+                                if (_owner._executionContext != null)
                                 {
-                                    ExecutionContext.Run(_owner._fields._executionContext, s_executionContextCallback, this);
+                                    ExecutionContext.Run(_owner._executionContext, s_executionContextCallback, this);
                                 }
                                 else
                                 {
@@ -306,7 +281,7 @@ namespace Proto.Promises
                     }
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
-                        _ref._fields._executionContext = ExecutionContext.Capture();
+                        _ref._executionContext = ExecutionContext.Capture();
                     }
                 }
 
@@ -318,7 +293,7 @@ namespace Proto.Promises
                         _continuer.Dispose();
                         _continuer = null;
                     }
-                    _fields._executionContext = null;
+                    _executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -369,7 +344,7 @@ namespace Proto.Promises
                     {
                         Dispose();
                         _stateMachine = default(TStateMachine);
-                        _fields._executionContext = null;
+                        _executionContext = null;
                         ObjectPool.MaybeRepool(this);
                     }
 
@@ -381,9 +356,9 @@ namespace Proto.Promises
                     [MethodImpl(InlineOption)]
                     private void ContinueMethod()
                     {
-                        if (_fields._executionContext != null)
+                        if (_executionContext != null)
                         {
-                            ExecutionContext.Run(_fields._executionContext, s_executionContextCallback, this);
+                            ExecutionContext.Run(_executionContext, s_executionContextCallback, this);
                         }
                         else
                         {
@@ -417,14 +392,14 @@ namespace Proto.Promises
                     }
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
-                        _ref._fields._executionContext = ExecutionContext.Capture();
+                        _ref._executionContext = ExecutionContext.Capture();
                     }
                 }
 
                 internal override void MaybeDispose()
                 {
                     Dispose();
-                    _fields._executionContext = null;
+                    _executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
             }

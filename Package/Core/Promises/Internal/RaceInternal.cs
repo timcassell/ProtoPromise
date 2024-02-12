@@ -44,10 +44,10 @@ namespace Proto.Promises
                         : obj.UnsafeAs<RacePromise<TResult>>();
                 }
 
-                internal static RacePromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                internal static RacePromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits)
                 {
                     var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    promise.Setup(promisePassThroughs, pendingAwaits);
                     return promise;
                 }
 
@@ -96,10 +96,10 @@ namespace Proto.Promises
                         : obj.UnsafeAs<RacePromiseWithIndexVoid>();
                 }
 
-                new internal static RacePromiseWithIndexVoid GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                new internal static RacePromiseWithIndexVoid GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits)
                 {
                     var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    promise.Setup(promisePassThroughs, pendingAwaits);
                     return promise;
                 }
 
@@ -148,10 +148,10 @@ namespace Proto.Promises
                         : obj.UnsafeAs<RacePromiseWithIndex<TResult>>();
                 }
 
-                new internal static RacePromiseWithIndex<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                new internal static RacePromiseWithIndex<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits)
                 {
                     var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    promise.Setup(promisePassThroughs, pendingAwaits);
                     return promise;
                 }
 
@@ -200,10 +200,10 @@ namespace Proto.Promises
                         : obj.UnsafeAs<FirstPromise<TResult>>();
                 }
 
-                new internal static FirstPromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                new internal static FirstPromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits)
                 {
                     var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    promise.Setup(promisePassThroughs, pendingAwaits);
                     return promise;
                 }
 
@@ -256,10 +256,10 @@ namespace Proto.Promises
                         : obj.UnsafeAs<FirstPromiseWithIndexVoid>();
                 }
 
-                new internal static FirstPromiseWithIndexVoid GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                new internal static FirstPromiseWithIndexVoid GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits)
                 {
                     var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    promise.Setup(promisePassThroughs, pendingAwaits);
                     return promise;
                 }
 
@@ -312,10 +312,10 @@ namespace Proto.Promises
                         : obj.UnsafeAs<FirstPromiseWithIndex<TResult>>();
                 }
 
-                new internal static FirstPromiseWithIndex<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                new internal static FirstPromiseWithIndex<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits)
                 {
                     var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    promise.Setup(promisePassThroughs, pendingAwaits);
                     return promise;
                 }
 

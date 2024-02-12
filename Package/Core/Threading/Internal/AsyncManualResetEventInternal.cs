@@ -7,11 +7,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0090 // Use 'new(...)'
@@ -132,7 +127,7 @@ namespace Proto.Promises
                     promise = AsyncManualResetEventPromise.GetOrCreate(this, CaptureContext());
                     _waiters.Enqueue(promise);
                 }
-                return new Promise(promise, promise.Id, 0);
+                return new Promise(promise, promise.Id);
             }
 
             internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
@@ -156,7 +151,7 @@ namespace Proto.Promises
                     _waiters.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<bool>(promise, promise.Id, 0);
+                return new Promise<bool>(promise, promise.Id);
             }
 
             internal void Wait()

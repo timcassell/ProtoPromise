@@ -4,7 +4,7 @@
     <TargetFrameworks>net6.0;net472</TargetFrameworks>
     <IsPackable>false</IsPackable>
     <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER</DefineConstants>
-    <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
+    <Configurations>Release;Debug</Configurations>
     <LangVersion>9</LangVersion>
     <!-- Set from command line -->
     <DeveloperMode>false</DeveloperMode>
@@ -16,17 +16,6 @@
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RunAnalyzers>false</RunAnalyzers>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoProgress|AnyCPU'">
-    <DefineConstants>$(DefineConstants);RELEASE;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
-    <DebugSymbols>false</DebugSymbols>
-    <DebugType>portable</DebugType>
-    <Optimize>true</Optimize>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_NoProgress|AnyCPU'">
-    <DefineConstants>$(DefineConstants);DEBUG;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(DeveloperMode)'=='true'">

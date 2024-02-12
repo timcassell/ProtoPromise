@@ -2,15 +2,14 @@
 #define NET_LEGACY
 #endif
 
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
+#undef PROMISE_DEBUG
 #endif
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace Proto.Promises
 {
@@ -40,25 +39,6 @@ namespace Proto.Promises
             internal virtual void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
             // For Merge/Race promises
             internal virtual void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index) { throw new System.InvalidOperationException(); }
-#if PROMISE_PROGRESS
-            internal virtual bool TryReportProgress(PromiseRefBase reporter, double progress, int deferredId, ref PromiseRefBase.DeferredIdAndProgress idAndProgress)
-            {
-                // Do nothing, just return whether the id matches. This is overridden by actual progress listeners.
-                return deferredId == idAndProgress._id;
-            }
-            internal virtual void MaybeReportProgress(ref ProgressReportValues progressReportValues)
-            {
-                // Just exit the lock and set to null to break the loop, do nothing else. This is overridden by actual progress listeners.
-                Monitor.Exit(progressReportValues._lockedObject);
-                progressReportValues._progressListener = null;
-            }
-            internal virtual void MaybeHookupProgressToAwaited(PromiseRefBase current, PromiseRefBase awaited,
-                // We pass by reference so that we will know the values will be settled once the lock is entered on the progress listener.
-                ref PromiseRefBase.ProgressRange userProgressRange, ref PromiseRefBase.ProgressRange listenerProgressRange)
-            {
-                // Do nothing. This is overridden by actual progress listeners.
-            }
-#endif
         }
 
         partial class PromiseRefBase

@@ -1,9 +1,9 @@
 ﻿#if !UNITY_WEBGL
 
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
+#undef PROMISE_DEBUG
 #endif
 
 using NUnit.Framework;
@@ -27,94 +27,6 @@ namespace ProtoPromiseTests.Concurrency
         {
             TestHelper.Cleanup();
         }
-
-#if PROMISE_PROGRESS
-        [Test]
-        public void DeferredReportProgressMayBeCalledConcurrently_void(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred = default(Promise.Deferred);
-
-            var progressHelper = default(ProgressHelper);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(true,
-                // Setup
-                () =>
-                {
-                    deferred = Promise.NewDeferred();
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
-
-                    deferred.Promise
-                        .SubscribeProgressAndAssert(progressHelper, 0f)
-                        .Forget();
-
-                    progressHelper.MaybeEnterLock();
-                    progressHelper.PrepareForInvoke();
-                },
-                // Teardown
-                () =>
-                {
-                    // Each progress is reported concurrently, so we can't know which stuck.
-                    // Just check to make sure any of them stuck, so it should be >= min and <= max.
-                    var progress1 = progressHelper.GetCurrentProgress(true, true);
-                    progressHelper.MaybeExitLock();
-                    Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
-                    Assert.LessOrEqual(progress1, 0.4f);
-
-                    deferred.Resolve();
-                },
-                // Parallel Actions
-                () => deferred.ReportProgress(0.2f),
-                () => deferred.ReportProgress(0.3f),
-                () => deferred.ReportProgress(0.4f)
-            );
-        }
-
-        [Test]
-        public void DeferredReportProgressMayBeCalledConcurrently_T(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred = default(Promise<int>.Deferred);
-
-            var progressHelper = default(ProgressHelper);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(true,
-                // Setup
-                () =>
-                {
-                    deferred = Promise.NewDeferred<int>();
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
-
-                    deferred.Promise
-                        .SubscribeProgressAndAssert(progressHelper, 0f)
-                        .Forget();
-
-                    progressHelper.MaybeEnterLock();
-                    progressHelper.PrepareForInvoke();
-                },
-                // Teardown
-                () =>
-                {
-                    // Each progress is reported concurrently, so we can't know which stuck.
-                    // Just check to make sure any of them stuck, so it should be >= min and <= max.
-                    var progress1 = progressHelper.GetCurrentProgress(true, true);
-                    progressHelper.MaybeExitLock();
-                    Assert.Greater(progress1, 0.2f - TestHelper.progressEpsilon);
-                    Assert.LessOrEqual(progress1, 0.4f);
-
-                    deferred.Resolve(1);
-                },
-                // Parallel Actions
-                () => deferred.ReportProgress(0.2f),
-                () => deferred.ReportProgress(0.3f),
-                () => deferred.ReportProgress(0.4f)
-            );
-        }
-#endif
 
         [Test]
         public void DeferredResolveMayNotBeCalledConcurrently_void()
@@ -253,94 +165,6 @@ namespace ProtoPromiseTests.Concurrency
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
             Assert.AreEqual(1, invokedCount);
         }
-
-#if PROMISE_PROGRESS
-        [Test]
-        public void DeferredMayReportProgressAndPromiseMaySubscribeProgressConcurrently_void(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            float expected = 0.1f;
-            var deferred = default(Promise.Deferred);
-            var promise = default(Promise);
-
-            var progressHelper = default(ProgressHelper);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
-                {
-                    deferred = Promise.NewDeferred();
-                    promise = deferred.Promise;
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
-                    progressHelper.MaybeEnterLock();
-                },
-                // Teardown
-                () =>
-                {
-                    var progress = progressHelper.GetCurrentProgress(true, true);
-                    progressHelper.MaybeExitLock();
-                    // Race condition could report 0 instead of expected from background threads.
-                    if (progress < expected * 0.5f)
-                    {
-                        Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-                    }
-                    else
-                    {
-                        Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
-                    }
-                    deferred.Resolve();
-                },
-                // Parallel Actions
-                () => deferred.ReportProgress(expected),
-                () => promise.SubscribeProgress(progressHelper).Forget()
-            );
-        }
-
-        [Test]
-        public void DeferredMayReportProgressAndPromiseMaySubscribeProgressConcurrently_T(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            float expected = 0.1f;
-            var deferred = default(Promise<int>.Deferred);
-            var promise = default(Promise);
-
-            var progressHelper = default(ProgressHelper);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsWithOffsets(false,
-                // Setup
-                () =>
-                {
-                    deferred = Promise.NewDeferred<int>();
-                    promise = deferred.Promise;
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
-                    progressHelper.MaybeEnterLock();
-                },
-                // Teardown
-                () =>
-                {
-                    var progress = progressHelper.GetCurrentProgress(true, true);
-                    progressHelper.MaybeExitLock();
-                    // Race condition could report 0 instead of expected from background threads.
-                    if (progress < expected * 0.5f)
-                    {
-                        Assert.AreEqual(0f, progress, TestHelper.progressEpsilon);
-                    }
-                    else
-                    {
-                        Assert.AreEqual(expected, progress, TestHelper.progressEpsilon);
-                    }
-                    deferred.Resolve(1);
-                },
-                // Parallel Actions
-                () => deferred.ReportProgress(expected),
-                () => promise.SubscribeProgress(progressHelper).Forget()
-            );
-        }
-#endif
 
         [Test]
         public void DeferredMayBeResolvedAndPromiseAwaitedConcurrently_void()

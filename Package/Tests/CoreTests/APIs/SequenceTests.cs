@@ -1,7 +1,7 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
+#undef PROMISE_DEBUG
 #endif
 
 using NUnit.Framework;
@@ -404,116 +404,5 @@ namespace ProtoPromiseTests.APIs
 
             cancelationSource.Dispose();
         }
-
-#if PROMISE_PROGRESS
-        [Test]
-        public void SequenceProgressIsNormalized(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-            var deferred3 = Promise.NewDeferred();
-            var deferred4 = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.Sequence(
-                () => deferred1.Promise,
-                () => deferred2.Promise,
-                () => deferred3.Promise,
-                () => deferred4.Promise
-            )
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
-            progressHelper.ResolveAndAssertResult(deferred1, 1f / 4f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 4f);
-            progressHelper.ResolveAndAssertResult(deferred2, 2f / 4f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 2.5f / 4f);
-            progressHelper.ResolveAndAssertResult(deferred3, 3f / 4f);
-            
-            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 3.5f / 4f);
-            progressHelper.ResolveAndAssertResult(deferred4, 4f / 4f);
-        }
-
-        [Test]
-        public void SequenceProgressIsNoLongerReportedFromRejected(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-            var deferred3 = Promise.NewDeferred();
-            var deferred4 = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.Sequence(
-                () => deferred1.Promise,
-                () => deferred2.Promise,
-                () => deferred3.Promise,
-                () => deferred4.Promise
-            )
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Catch(() => { })
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
-            progressHelper.ResolveAndAssertResult(deferred1, 1f / 4f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 4f);
-            progressHelper.RejectAndAssertResult(deferred2, "Reject", 1.5f / 4f, false);
-
-            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 1.5f / 4f, false);
-            progressHelper.ResolveAndAssertResult(deferred3, 1.5f / 4f, false);
-
-            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 1.5f / 4f, false);
-            progressHelper.ResolveAndAssertResult(deferred4, 1.5f / 4f, false);
-
-            deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the rejection.
-            deferred4.Promise.Forget(); // Need to forget this promise because it was never awaited due to the rejection.
-        }
-
-        [Test]
-        public void SequenceProgressIsNoLongerReportedFromCanceled(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred();
-            var cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred();
-            cancelationSource.Token.Register(deferred2);
-            var deferred3 = Promise.NewDeferred();
-            var deferred4 = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.Sequence(
-                () => deferred1.Promise,
-                () => deferred2.Promise,
-                () => deferred3.Promise,
-                () => deferred4.Promise
-            )
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 4f);
-            progressHelper.ResolveAndAssertResult(deferred1, 1f / 4f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.5f, 1.5f / 4f);
-            progressHelper.CancelAndAssertResult(cancelationSource, 1.5f / 4f, false);
-
-            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 1.5f / 4f, false);
-            progressHelper.ResolveAndAssertResult(deferred3, 1.5f / 4f, false);
-
-            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 1.5f / 4f, false);
-            progressHelper.ResolveAndAssertResult(deferred4, 1.5f / 4f, false);
-
-            cancelationSource.Dispose();
-            deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
-            deferred4.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
-        }
-#endif
     }
 }

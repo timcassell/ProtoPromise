@@ -1,8 +1,8 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
-# endif
+#undef PROMISE_DEBUG
+#endif
 
 using NUnit.Framework;
 using Proto.Promises;

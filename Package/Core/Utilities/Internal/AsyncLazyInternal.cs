@@ -7,11 +7,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0250 // Make struct 'readonly'
 #pragma warning disable IDE0251 // Make member 'readonly'
@@ -116,7 +111,7 @@ namespace Proto.Promises
             {
                 var promise = GetOrCreate();
                 promise._owner = owner;
-                promise.Reset(0);
+                promise.Reset();
                 return promise;
             }
 
@@ -145,7 +140,7 @@ namespace Proto.Promises
                     lazyPromise = GetOrCreate(owner);
                     lazyFields._lazyPromise = lazyPromise;
                     // Same thing as Promise.Preserve(), but more direct.
-                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreate(0);
+                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreate();
                     lazyPromise.HookupNewPromise(lazyPromise.Id, preservedPromise);
                     // Exit the lock before invoking the factory.
                 }
@@ -221,7 +216,7 @@ namespace Proto.Promises
             {
                 var promise = GetOrCreate();
                 promise._owner = owner;
-                promise.Reset(0);
+                promise.Reset();
                 return promise;
             }
 
@@ -255,7 +250,7 @@ namespace Proto.Promises
                     // Same thing as Progress.NewMultiHandler(), but more direct.
                     lazyPromise._progressHandler = Internal.ProgressMultiHandler.GetOrCreate();
                     // Same thing as Promise.Preserve(), but more direct.
-                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreate(0);
+                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreate();
                     lazyPromise.HookupNewPromise(lazyPromise.Id, preservedPromise);
                     // Exit the lock before invoking the factory.
                 }
@@ -335,8 +330,8 @@ namespace Proto.Promises
                 {
                     // Same thing as Promise.Duplicate(), but more direct.
                     var p = preservedPromise;
-                    var duplicate = p.GetDuplicateT(p.Id, 0);
-                    return new Promise<TResult>(duplicate, duplicate.Id, 0);
+                    var duplicate = p.GetDuplicateT(p.Id);
+                    return new Promise<TResult>(duplicate, duplicate.Id);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -399,7 +394,7 @@ namespace Proto.Promises
                     [MethodImpl(InlineOption)]
                     void IWaitForCompleteHandler.HandleHookup(PromiseRefBase handler)
                     {
-                        var rejectContainer = handler._rejectContainerOrPreviousOrLink;
+                        var rejectContainer = handler._rejectContainer;
                         var state = handler.State;
                         _owner._result = handler.GetResult<TResult>();
                         handler.MaybeDispose();
