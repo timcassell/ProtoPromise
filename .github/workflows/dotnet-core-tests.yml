@@ -40,10 +40,6 @@ jobs:
               config: Debug,
               objectPooling: { name: Pool_Enabled }
             }
-          - {
-              config: Debug_NoProgress,
-              objectPooling: { name: Pool_Enabled }
-            }
 
     steps:
       - name: Checkout
