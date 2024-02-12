@@ -2280,7 +2280,7 @@ namespace Proto.Promises
     }
 
     // Inherited from Promise (must copy since structs cannot inherit).
-    // Did not copy Progress, Finally, or ContinueWith.
+    // Did not copy Finally or ContinueWith.
     partial struct Promise<T>
     {
         /// <summary>

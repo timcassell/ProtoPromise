@@ -42,34 +42,12 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal partial struct DeferredIdAndProgress
-            {
-                [MethodImpl(InlineOption)]
-                internal bool TryIncrementId(int deferredId)
-                {
-                    unchecked
-                    {
-                        return Interlocked.CompareExchange(ref _id, deferredId + 1, deferredId) == deferredId;
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void IncrementId()
-                {
-                    // Used when canceled from the token.
-                    Interlocked.Increment(ref _id);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
             internal abstract partial class DeferredPromiseBase<TResult> : PromiseSingleAwait<TResult>, IDeferredPromise
             {
                 public int DeferredId
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _idAndProgress._id; }
+                    get { return _deferredId; }
                 }
 
                 protected DeferredPromiseBase() { }
@@ -91,11 +69,10 @@ namespace Proto.Promises
                     }
                 }
 
-
                 [MethodImpl(InlineOption)]
                 public virtual bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId)
                 {
-                    bool success = _idAndProgress.TryIncrementId(deferredId);
+                    bool success = Interlocked.CompareExchange(ref _deferredId, unchecked(deferredId + 1), deferredId) == deferredId;
                     MaybeThrowIfInPool(this, success);
                     return success;
                 }
@@ -236,7 +213,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     // A simple increment is sufficient.
                     // If the CancelationSource was canceled before the Deferred was completed, even if the Deferred was completed before the cancelation was invoked, the cancelation takes precedence.
-                    _idAndProgress.IncrementId();
+                    Interlocked.Increment(ref _deferredId);
                     CancelDirect();
                 }
             }

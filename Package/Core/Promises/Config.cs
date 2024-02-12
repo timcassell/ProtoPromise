@@ -35,7 +35,7 @@ namespace Proto.Promises
             /// </summary>
             Rejections,
             /// <summary>
-            /// Track causality when Deferred.Reject is called and every time a promise is created or a delegate is added to a promise (i.e. with .Then or .Progress).
+            /// Track causality when Deferred.Reject is called and every time a promise is created or a delegate is added to a promise (i.e. with .Then).
             /// <para/>
             /// NOTE: This can be extremely expensive, so you should only enable this if you ran into an error and you are not sure where it came from.
             /// </summary>

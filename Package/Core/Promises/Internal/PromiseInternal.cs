@@ -892,7 +892,6 @@ namespace Proto.Promises
                     handler.SetCompletionState(rejectContainer, state);
                     handler.SuppressRejection = true;
                     _result = handler.GetResult<TResult>();
-                    // It's okay for us to set the completion state here since this type is never registered to the progress listener (we create a passthrough instead).
                     SetCompletionState(rejectContainer, state);
                     handler.MaybeDispose();
 
@@ -900,7 +899,6 @@ namespace Proto.Promises
                     lock (this)
                     {
                         branches = _nextBranches;
-                        // Remove the branches so progress won't try to hook up.
                         _nextBranches = default(ValueList<HandleablePromiseBase>);
                     }
                     for (int i = 0, max = branches.Count; i < max; ++i)

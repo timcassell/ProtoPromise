@@ -665,7 +665,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test, TestCaseSource("GetArgs_RunAdopt")]
-        public void PromiseRunIsInvokedAndCompletedAndProgressReportedProperly_adopt_void(
+        public void PromiseRunIsInvokedAndCompletedProperly_adopt_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
             CompleteType completeType,
@@ -739,7 +739,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test, TestCaseSource("GetArgs_RunAdopt")]
-        public void PromiseRunIsInvokedAndCompletedAndProgressReportedProperly_adopt_capture_void(
+        public void PromiseRunIsInvokedAndCompletedProperly_adopt_capture_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
             CompleteType completeType,
@@ -815,7 +815,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test, TestCaseSource("GetArgs_RunAdopt")]
-        public void PromiseRunIsInvokedAndCompletedAndProgressReportedProperly_adopt_T(
+        public void PromiseRunIsInvokedAndCompletedProperly_adopt_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
             CompleteType completeType,
@@ -891,7 +891,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test, TestCaseSource("GetArgs_RunAdopt")]
-        public void PromiseRunIsInvokedAndCompletedAndProgressReportedProperly_adopt_capture_T(
+        public void PromiseRunIsInvokedAndCompletedProperly_adopt_capture_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
             CompleteType completeType,

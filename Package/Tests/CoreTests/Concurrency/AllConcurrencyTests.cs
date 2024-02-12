@@ -39,7 +39,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_void0(
+        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToAllConcurrently_void0(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
             [Values] CompleteType completeType1)
@@ -86,7 +86,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_void1(
+        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToAllConcurrently_void1(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
             [Values] CompleteType completeType1,
@@ -140,7 +140,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_void2(
+        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToAllConcurrently_void2(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
             [Values] CompleteType completeType1,
@@ -201,7 +201,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_void3(
+        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToAllConcurrently_void3(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
             [Values] CompleteType completeType1,
@@ -264,7 +264,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_T0(
+        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToAllConcurrently_T0(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
             [Values] CompleteType completeType1)
@@ -312,7 +312,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_T1(
+        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToAllConcurrently_T1(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
             [Values] CompleteType completeType1,
@@ -367,7 +367,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_T2(
+        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToAllConcurrently_T2(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
             [Values] CompleteType completeType1,
@@ -429,7 +429,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedAndProgressReportedWhileTheirPromisesArePassedToAllOrProgressSubscribedConcurrently_T3(
+        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToAllConcurrently_T3(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
             [Values] CompleteType completeType1,

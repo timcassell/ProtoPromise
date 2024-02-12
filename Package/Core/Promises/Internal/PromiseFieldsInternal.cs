@@ -164,6 +164,7 @@ namespace Proto.Promises
             {
                 private SynchronizationContext _synchronizationContext;
                 internal CancelationHelper _cancelationHelper;
+                // TODO: progress was removed, so we probably don't need this anymore, and can store it directly in _rejectContainer.
                 // We have to store previous reject container in a separate field so we won't break the registered progress promises chain until this is invoked on the synchronization context.
                 volatile private object _tempRejectContainer;
                 private int _isScheduling; // Flag used so that only Cancel() or Handle() will schedule the continuation. Int for Interlocked.
@@ -189,6 +190,7 @@ namespace Proto.Promises
 
             partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
             {
+                // TODO: we can replace ValueList with TempCollectionBuilder.
                 internal ValueList<HandleablePromiseBase> _nextBranches = new ValueList<HandleablePromiseBase>(8);
                 private int _retainCounter;
             }
@@ -197,29 +199,9 @@ namespace Proto.Promises
             {
             }
 
-            [StructLayout(LayoutKind.Explicit)]
-            partial struct DeferredIdAndProgress
-            {
-                // _interlocker overlaps both fields so that we can use Interlocked to CompareExchange both fields at the same time.
-                [FieldOffset(0)]
-                internal int _id;
-                [FieldOffset(4)]
-                internal float _currentProgress;
-                [FieldOffset(0)]
-                private long _interlocker;
-
-                [MethodImpl(InlineOption)]
-                internal DeferredIdAndProgress(int initialId)
-                {
-                    _interlocker = 0;
-                    _id = initialId;
-                    _currentProgress = 0f;
-                }
-            }
-
             partial class DeferredPromiseBase<TResult> : PromiseSingleAwait<TResult>, IDeferredPromise
             {
-                protected DeferredIdAndProgress _idAndProgress = new DeferredIdAndProgress(1); // Start with Id 1 instead of 0 to reduce risk of false positives.
+                protected int _deferredId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
             }
 
 #region Non-cancelable Promises
@@ -379,6 +361,7 @@ namespace Proto.Promises
             {
                 protected int _waitCount;
                 protected int _retainCounter;
+                // TODO: progress was removed, we probably don't need to store the passthroughs anymore.
                 // We store the passthroughs for lazy progress subscribe.
                 // The passthroughs will be released when this has fully released if a progress listener did not do it already.
                 protected ValueLinkedStack<PromisePassThrough> _passThroughs;
