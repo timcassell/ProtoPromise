@@ -4,10 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
-
 using System;
-using System.ComponentModel;
 using System.Diagnostics;
 
 namespace Proto.Promises
@@ -188,18 +185,6 @@ namespace Proto.Promises
         public static bool operator !=(CancelationSource c1, CancelationSource c2)
         {
             return !(c1 == c2);
-        }
-
-        [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public bool TryCancel<TCancel>(TCancel reason)
-        {
-            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
-        }
-
-        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public void Cancel<TCancel>(TCancel reason)
-        {
-            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
         }
     }
 }

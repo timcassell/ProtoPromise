@@ -1,11 +1,4 @@
-﻿#pragma warning disable IDE0031 // Use null propagation
-#pragma warning disable IDE1005 // Delegate invocation can be simplified.
-#pragma warning disable CA1041 // Provide ObsoleteAttribute message
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
-
-using System;
-using System.ComponentModel;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -21,24 +14,6 @@ namespace Proto.Promises
 #endif
         public static class Manager
         {
-            [Obsolete("Promise.Manager.HandleCompletes is no longer valid. Set Promise.Config.ForegroundContext instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public static void HandleCompletes()
-            {
-                throw new System.InvalidOperationException("Promise.Manager.HandleCompletes is no longer valid. Set Promise.Config.ForegroundContext instead.");
-            }
-
-            [Obsolete("Promise.Manager.HandleCompletesAndProgress is no longer valid. Set Promise.Config.ForegroundContext instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public static void HandleCompletesAndProgress()
-            {
-                throw new System.InvalidOperationException("Promise.Manager.HandleCompletesAndProgress is no longer valid. Set Promise.Config.ForegroundContext instead.");
-            }
-
-            [Obsolete("Promise.Manager.HandleProgress is no longer valid. Set Promise.Config.ForegroundContext instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public static void HandleProgress()
-            {
-                throw new System.InvalidOperationException("Promise.Manager.HandleProgress is no longer valid. Set Promise.Config.ForegroundContext instead.");
-            }
-
             /// <summary>
             /// Clears all currently pooled objects. Does not affect pending or preserved promises.
             /// </summary>
@@ -57,16 +32,6 @@ namespace Proto.Promises
                 get { return Internal.ts_currentContext; }
                 [MethodImpl(Internal.InlineOption)]
                 set { Internal.ts_currentContext = value; }
-            }
-
-            [Obsolete, EditorBrowsable(EditorBrowsableState.Never)]
-            public static void LogWarning(string message)
-            {
-                var temp = Config.WarningHandler;
-                if (temp != null)
-                {
-                    temp.Invoke(message);
-                }
             }
         }
     }

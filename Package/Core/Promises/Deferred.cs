@@ -5,12 +5,9 @@
 #endif
 
 #pragma warning disable IDE0019 // Use pattern matching
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0270 // Use coalesce expression
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -139,7 +136,7 @@ namespace Proto.Promises
             public void Reject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this == null || !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                if (_this == null || !_this.TryIncrementDeferredId(_deferredId))
                 {
                     throw new InvalidOperationException("DeferredBase.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -154,7 +151,7 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (Internal.DeferredPromiseHelper.TryIncrementDeferredIdAndUnregisterCancelation(_this, _deferredId))
+                if (Internal.DeferredPromiseHelper.TryIncrementDeferredId(_this, _deferredId))
                 {
                     _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
                     return true;
@@ -174,7 +171,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
                     _this == null ||
 #endif
-                    !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                    !_this.TryIncrementDeferredId(_deferredId))
                 {
                     throw new InvalidOperationException("DeferredBase.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -189,7 +186,7 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (Internal.DeferredPromiseHelper.TryIncrementDeferredIdAndUnregisterCancelation(_this, _deferredId))
+                if (Internal.DeferredPromiseHelper.TryIncrementDeferredId(_this, _deferredId))
                 {
                     _this.CancelDirect();
                     return true;
@@ -231,39 +228,6 @@ namespace Proto.Promises
             public static bool operator !=(DeferredBase lhs, DeferredBase rhs)
             {
                 return !(lhs == rhs);
-            }
-
-            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public void Cancel<TCancel>(TCancel reason)
-            {
-                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
-            }
-
-            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public bool TryCancel<TCancel>(TCancel reason)
-            {
-                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
-            }
-
-            [Obsolete("DeferredBase.State is no longer valid. Use IsValidAndPending.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public State State
-            {
-                get
-                {
-                    throw new InvalidOperationException("DeferredBase.State is no longer valid. Use IsValidAndPending.", Internal.GetFormattedStacktrace(1));
-                }
-            }
-
-            [Obsolete("DeferredBase.Retain is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public void Retain()
-            {
-                throw new InvalidOperationException("DeferredBase.Retain is no longer valid.", Internal.GetFormattedStacktrace(1));
-            }
-
-            [Obsolete("DeferredBase.Release is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public void Release()
-            {
-                throw new InvalidOperationException("DeferredBase.Release is no longer valid.", Internal.GetFormattedStacktrace(1));
             }
         } // struct DeferredBase
 
@@ -346,18 +310,6 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promises.Promise"/>.
-            /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promises.Promise"/> will be canceled.
-            /// </summary>
-            [MethodImpl(Internal.InlineOption)]
-            [Obsolete("You should instead register a callback on the CancelationToken to cancel the deferred directly.", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public static Deferred New(CancelationToken cancelationToken)
-            {
-                var promise = Internal.PromiseRefBase.DeferredPromiseCancel<Internal.VoidResult>.GetOrCreate(cancelationToken);
-                return new Deferred(promise, promise.Id, promise.DeferredId);
-            }
-
-            /// <summary>
             /// Resolve the linked <see cref="Promise"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
@@ -369,7 +321,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
                     _this == null ||
 #endif
-                    !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                    !_this.TryIncrementDeferredId(_deferredId))
                 {
                     throw new InvalidOperationException("Deferred.Resolve: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -394,7 +346,7 @@ namespace Proto.Promises
             public void Reject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this == null || !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                if (_this == null || !_this.TryIncrementDeferredId(_deferredId))
                 {
                     throw new InvalidOperationException("Deferred.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -409,7 +361,7 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                if (_this != null && _this.TryIncrementDeferredId(_deferredId))
                 {
                     _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
                     return true;
@@ -429,7 +381,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
                     _this == null ||
 #endif
-                    !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                    !_this.TryIncrementDeferredId(_deferredId))
                 {
                     throw new InvalidOperationException("Deferred.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -444,7 +396,7 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                if (_this != null && _this.TryIncrementDeferredId(_deferredId))
                 {
                     _this.CancelDirect();
                     return true;
@@ -504,39 +456,6 @@ namespace Proto.Promises
             public static bool operator !=(Deferred lhs, Deferred rhs)
             {
                 return !(lhs == rhs);
-            }
-
-            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public void Cancel<TCancel>(TCancel reason)
-            {
-                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
-            }
-
-            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public bool TryCancel<TCancel>(TCancel reason)
-            {
-                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
-            }
-
-            [Obsolete("Deferred.State is no longer valid. Use IsValidAndPending.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public State State
-            {
-                get
-                {
-                    throw new InvalidOperationException("Deferred.State is no longer valid. Use IsValidAndPending.", Internal.GetFormattedStacktrace(1));
-                }
-            }
-
-            [Obsolete("Deferred.Retain is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public void Retain()
-            {
-                throw new InvalidOperationException("Deferred.Retain is no longer valid.", Internal.GetFormattedStacktrace(1));
-            }
-
-            [Obsolete("Deferred.Release is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public void Release()
-            {
-                throw new InvalidOperationException("Deferred.Release is no longer valid.", Internal.GetFormattedStacktrace(1));
             }
         } // struct Deferred
     } // struct Promise
@@ -622,18 +541,6 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promises.Promise"/>.
-            /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promises.Promise"/> will be canceled.
-            /// </summary>
-            [MethodImpl(Internal.InlineOption)]
-            [Obsolete("You should instead register a callback on the CancelationToken to cancel the deferred directly.", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public static Deferred New(CancelationToken cancelationToken)
-            {
-                var promise = Internal.PromiseRefBase.DeferredPromiseCancel<T>.GetOrCreate(cancelationToken);
-                return new Deferred(promise, promise.Id, promise.DeferredId);
-            }
-
-            /// <summary>
             /// Resolve the linked <see cref="Promise"/> with <paramref name="value"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
@@ -645,7 +552,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
                     _this == null ||
 #endif
-                    !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                    !_this.TryIncrementDeferredId(_deferredId))
                 {
                     throw new InvalidOperationException("Deferred.Resolve: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -670,7 +577,7 @@ namespace Proto.Promises
             public void Reject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this == null || !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                if (_this == null || !_this.TryIncrementDeferredId(_deferredId))
                 {
                     throw new InvalidOperationException("Deferred.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -685,7 +592,7 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                if (_this != null && _this.TryIncrementDeferredId(_deferredId))
                 {
                     _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
                     return true;
@@ -705,7 +612,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
                     _this == null ||
 #endif
-                    !_this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                    !_this.TryIncrementDeferredId(_deferredId))
                 {
                     throw new InvalidOperationException("Deferred.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -720,7 +627,7 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(_deferredId))
+                if (_this != null && _this.TryIncrementDeferredId(_deferredId))
                 {
                     _this.CancelDirect();
                     return true;
@@ -780,39 +687,6 @@ namespace Proto.Promises
             public static bool operator !=(Deferred lhs, Deferred rhs)
             {
                 return !(lhs == rhs);
-            }
-
-            [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public void Cancel<TCancel>(TCancel reason)
-            {
-                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
-            }
-
-            [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public bool TryCancel<TCancel>(TCancel reason)
-            {
-                throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
-            }
-
-            [Obsolete("Deferred.State is no longer valid. Use IsValidAndPending.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public Promise.State State
-            {
-                get
-                {
-                    throw new InvalidOperationException("Deferred.State is no longer valid. Use IsValidAndPending.", Internal.GetFormattedStacktrace(1));
-                }
-            }
-
-            [Obsolete("Deferred.Retain is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public void Retain()
-            {
-                throw new InvalidOperationException("Deferred.Retain is no longer valid.", Internal.GetFormattedStacktrace(1));
-            }
-
-            [Obsolete("Deferred.Release is no longer valid.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public void Release()
-            {
-                throw new InvalidOperationException("Deferred.Release is no longer valid.", Internal.GetFormattedStacktrace(1));
             }
         } // struct Deferred
     } // struct Promise<T>

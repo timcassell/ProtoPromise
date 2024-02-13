@@ -6,12 +6,10 @@
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0270 // Use coalesce expression
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using Proto.Promises.Async.CompilerServices;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -202,18 +200,6 @@ namespace Proto.Promises
             return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
 
-        [Obsolete("Prefer Promise<T>.New()"), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous, bool forceAsync = false)
-        {
-            return Promise<T>.New(resolver, synchronizationOption, forceAsync);
-        }
-
-        [Obsolete("Prefer Promise<T>.New()"), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Promise<T> New<T>(Action<Promise<T>.Deferred> resolver, SynchronizationContext synchronizationContext, bool forceAsync = false)
-        {
-            return Promise<T>.New(resolver, synchronizationContext, forceAsync);
-        }
-
         /// <summary>
         /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked with <paramref name="captureValue"/> and a <see cref="Deferred"/> that controls the state of the <see cref="Promise"/>.
         /// You may provide a <paramref name="synchronizationOption"/> to control the context on which the <paramref name="resolver"/> is invoked.
@@ -245,18 +231,6 @@ namespace Proto.Promises
             ValidateArgument(resolver, "resolver", 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
-        }
-
-        [Obsolete("Prefer Promise<T>.New()"), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous, bool forceAsync = false)
-        {
-            return Promise<T>.New(captureValue, resolver, synchronizationOption, forceAsync);
-        }
-
-        [Obsolete("Prefer Promise<T>.New()"), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Promise<T> New<TCapture, T>(TCapture captureValue, Action<TCapture, Promise<T>.Deferred> resolver, SynchronizationContext synchronizationContext, bool forceAsync = false)
-        {
-            return Promise<T>.New(captureValue, resolver, synchronizationContext, forceAsync);
         }
 
         /// <summary>
@@ -535,12 +509,6 @@ namespace Proto.Promises
             return deferred.Promise;
         }
 
-        [Obsolete("Prefer Promise<T>.Rejected<TReject>(TReject reason)"), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Promise<T> Rejected<T, TReject>(TReject reason)
-        {
-            return Promise<T>.Rejected(reason);
-        }
-
         /// <summary>
         /// Returns a <see cref="Promise"/> that is already canceled.
         /// </summary>
@@ -549,24 +517,12 @@ namespace Proto.Promises
             return Internal.CreateCanceled();
         }
 
-        [Obsolete("Cancelation reasons are no longer supported. Use Canceled() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Promise Canceled<TCancel>(TCancel reason)
-        {
-            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Canceled() instead.", Internal.GetFormattedStacktrace(1));
-        }
-
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that is already canceled.
         /// </summary>
         public static Promise<T> Canceled<T>()
         {
             return Promise<T>.Canceled();
-        }
-
-        [Obsolete("Cancelation reasons are no longer supported. Use Canceled() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Promise<T> Canceled<T, TCancel>(TCancel reason)
-        {
-            return Promise<T>.Canceled(reason);
         }
 
         /// <summary>
@@ -579,34 +535,12 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promise"/>.
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Deferred"/> is pending, it and the <see cref="Promise"/> will be canceled.
-        /// </summary>
-        [MethodImpl(Internal.InlineOption)]
-        [Obsolete("You should instead register a callback on the CancelationToken to cancel the deferred directly.", false), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Deferred NewDeferred(CancelationToken cancelationToken)
-        {
-            return Deferred.New(cancelationToken);
-        }
-
-        /// <summary>
         /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static Promise<T>.Deferred NewDeferred<T>()
         {
             return Promise<T>.Deferred.New();
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Promise{T}.Deferred"/> is pending, it and the <see cref="Promise{T}"/> will be canceled.
-        /// </summary>
-        [MethodImpl(Internal.InlineOption)]
-        [Obsolete("You should instead register a callback on the CancelationToken to cancel the deferred directly.", false), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Promise<T>.Deferred NewDeferred<T>(CancelationToken cancelationToken)
-        {
-            return Promise<T>.Deferred.New(cancelationToken);
         }
 
         /// <summary>
@@ -629,12 +563,6 @@ namespace Proto.Promises
         public static CanceledException CancelException()
         {
             return Internal.CanceledExceptionInternal.GetOrCreate();
-        }
-
-        [Obsolete("Cancelation reasons are no longer supported. Use CancelException() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public static CanceledException CancelException<T>(T value)
-        {
-            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use CancelException() instead.", Internal.GetFormattedStacktrace(1));
         }
 
         /// <summary>

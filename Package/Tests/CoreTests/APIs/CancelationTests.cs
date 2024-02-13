@@ -598,9 +598,6 @@ namespace ProtoPromiseTests.APIs
             public void CancelationTokenInvalidOperations()
             {
                 CancelationToken cancelationToken = new CancelationToken();
-#pragma warning disable CS0618 // Type or member is obsolete
-                Assert.Throws<Proto.Promises.InvalidOperationException>(cancelationToken.Retain);
-#pragma warning restore CS0618 // Type or member is obsolete
                 Assert.Throws<Proto.Promises.InvalidOperationException>(cancelationToken.Release);
             }
 

@@ -5,67 +5,12 @@
 # endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
-using System;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
-    /// <summary>
-    /// Used to get the value of a rejection or cancelation.
-    /// An instance of <see cref="ReasonContainer"/> is only valid during the invocation of the delegate it is passed into.
-    /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    [Obsolete("Promise.ResultContainer.RejectContainer is deprecated, use RejectReason instead (returns object)", false), EditorBrowsable(EditorBrowsableState.Never)]
-    public readonly ref partial struct ReasonContainer
-    {
-        private readonly Internal.IRejectContainer _rejectContainer;
-
-        /// <summary>
-        /// FOR INTERNAL USE ONLY!
-        /// </summary>
-        internal ReasonContainer(Internal.IRejectContainer valueContainer)
-        {
-            _rejectContainer = valueContainer;
-        }
-
-        /// <summary>
-        /// Get the type of the value.
-        /// </summary>
-        public Type ValueType
-        {
-            get
-            {
-                return _rejectContainer.Value.GetType();
-            }
-        }
-
-        /// <summary>
-        /// Get the value.
-        /// </summary>
-        public object Value
-        {
-            get
-            {
-                return _rejectContainer.Value;
-            }
-        }
-
-        /// <summary>
-        /// Try to get the value casted to <typeparamref name="T"/>.
-        /// Returns true if successful, false otherwise.
-        /// </summary>
-        public bool TryGetValueAs<T>(out T value)
-        {
-            return _rejectContainer.TryGetValue(out value);
-        }
-    }
-
     partial struct Promise
     {
         /// <summary>
@@ -148,24 +93,6 @@ namespace Proto.Promises
             {
                 [MethodImpl(Internal.InlineOption)]
                 get { return _target.Reason; }
-            }
-
-            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public object RejectReason
-            {
-                get { return Reason; }
-            }
-
-            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public ReasonContainer RejectContainer
-            {
-                get { return _target.RejectContainer; }
-            }
-
-            [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public ReasonContainer CancelContainer
-            {
-                get { return _target.CancelContainer; }
             }
         }
     }
@@ -272,28 +199,6 @@ namespace Proto.Promises
                 }
             }
 
-            [Obsolete("Prefer Value", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public T Result
-            {
-                get { return Value; }
-            }
-
-            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public object RejectReason
-            {
-                get { return Reason; }
-            }
-
-            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public ReasonContainer RejectContainer
-            {
-                get
-                {
-                    ValidateRejected();
-                    return new ReasonContainer(_rejectContainer.UnsafeAs<Internal.IRejectContainer>());
-                }
-            }
-
             /// <summary>
             /// Cast to <see cref="Promise.ResultContainer"/>.
             /// </summary>
@@ -311,27 +216,6 @@ namespace Proto.Promises
             public static implicit operator ResultContainer(in T value)
             {
                 return new ResultContainer(value, null, Promise.State.Resolved);
-            }
-
-            partial void ValidateRejected();
-#if PROMISE_DEBUG
-            partial void ValidateRejected()
-            {
-                if (State != Promise.State.Rejected)
-                {
-                    throw new InvalidOperationException("Promise must be rejected in order to access RejectContainer.", Internal.GetFormattedStacktrace(2));
-                }
-            }
-#endif
-
-            [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public ReasonContainer CancelContainer
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
-                }
             }
         }
     }

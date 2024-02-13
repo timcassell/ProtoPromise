@@ -10,21 +10,4 @@
         /// </summary>
         void Cancel();
     }
-
-    /// <summary>
-    /// Retainable interface
-    /// </summary>
-    public interface IRetainable
-    {
-        /// <summary>
-        /// Retain this instance.
-        /// <para/>This should always be paired with a call to <see cref="Release"/>
-        /// </summary>
-        void Retain();
-        /// <summary>
-        /// Release this instance.
-        /// <para/>This should always be paired with a call to <see cref="Retain"/>
-        /// </summary>
-        void Release();
-    }
 }

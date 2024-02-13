@@ -4,10 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
-
 using System;
-using System.ComponentModel;
 using System.Diagnostics;
 
 namespace Proto.Promises
@@ -66,15 +63,6 @@ namespace Proto.Promises
         public void GetIsRegisteredAndIsCancelationRequested(out bool isRegistered, out bool isTokenCancelationRequested)
         {
             isRegistered = Internal.CancelationCallbackNode.GetIsRegisteredAndIsCanceled(_ref, _node, _nodeId, _tokenId, out isTokenCancelationRequested);
-        }
-
-        [Obsolete("Use TryUnregister or Dispose.", false), EditorBrowsable(EditorBrowsableState.Never)]
-        public void Unregister()
-        {
-            if (!TryUnregister())
-            {
-                throw new InvalidOperationException("CancelationRegistration is not registered.", Internal.GetFormattedStacktrace(1));
-            }
         }
 
         /// <summary>

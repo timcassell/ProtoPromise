@@ -7,7 +7,6 @@
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0044 // Add readonly modifier
-#pragma warning disable 0618 // Type or member is obsolete
 
 using System;
 using System.Diagnostics;

@@ -11,8 +11,6 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-#pragma warning disable CS0618 // Type or member is obsolete
-
 namespace ProtoPromiseTests.Unity
 {
     public class PromiseYielderTestBehaviour : MonoBehaviour

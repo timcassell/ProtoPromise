@@ -293,28 +293,26 @@ namespace ProtoPromiseTests
 
         public static Promise.Deferred GetNewDeferredVoid(CompleteType completeType, out CancelationSource cancelationSource)
         {
+            cancelationSource = default(CancelationSource);
+            var deferred = Promise.NewDeferred();
             if (completeType == CompleteType.CancelFromToken)
             {
                 cancelationSource = CancelationSource.New();
-#pragma warning disable CS0618 // Type or member is obsolete
-                return Promise.NewDeferred(cancelationSource.Token);
-#pragma warning restore CS0618 // Type or member is obsolete
+                cancelationSource.Token.Register(deferred);
             }
-            cancelationSource = default(CancelationSource);
-            return Promise.NewDeferred();
+            return deferred;
         }
 
         public static Promise<T>.Deferred GetNewDeferredT<T>(CompleteType completeType, out CancelationSource cancelationSource)
         {
+            cancelationSource = default(CancelationSource);
+            var deferred = Promise<T>.NewDeferred();
             if (completeType == CompleteType.CancelFromToken)
             {
                 cancelationSource = CancelationSource.New();
-#pragma warning disable CS0618 // Type or member is obsolete
-                return Promise<T>.NewDeferred(cancelationSource.Token);
-#pragma warning restore CS0618 // Type or member is obsolete
+                cancelationSource.Token.Register(deferred);
             }
-            cancelationSource = default(CancelationSource);
-            return Promise<T>.NewDeferred();
+            return deferred;
         }
 
         public static Promise BuildPromise<TReject>(CompleteType completeType, bool isAlreadyComplete, TReject reason, out Promise.Deferred deferred, out CancelationSource cancelationSource)

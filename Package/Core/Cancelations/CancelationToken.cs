@@ -6,10 +6,8 @@
 
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -21,7 +19,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly partial struct CancelationToken : IRetainable, IEquatable<CancelationToken>
+    public readonly partial struct CancelationToken : IEquatable<CancelationToken>
     {
         /// <summary>
         /// FOR INTERNAL USE ONLY!
@@ -186,18 +184,9 @@ namespace Proto.Promises
             return Internal.CancelationRef.TryRetainUser(_ref, _id);
         }
 
-        [Obsolete("Use TryRetain.", false), EditorBrowsable(EditorBrowsableState.Never)]
-        public void Retain()
-        {
-            if (!TryRetain())
-            {
-                throw new InvalidOperationException("CancelationToken.Retain: token cannot be canceled.", Internal.GetFormattedStacktrace(1));
-            }
-        }
-
         /// <summary>
-        /// Release this instance. Allows resources to be released when the associated <see cref="CancelationSource"/> is disposed (if <see cref="Release"/> has been called for all <see cref="Retain"/> calls).
-        /// <para/>This should always be paired with a call to <see cref="Retain"/>.
+        /// Release this instance. Allows resources to be released when the associated <see cref="CancelationSource"/> is disposed (if <see cref="Release"/> has been called for all <see cref="TryRetain"/> calls).
+        /// <para/>This should always be paired with a call to <see cref="TryRetain"/>.
         /// </summary>
         /// <exception cref="InvalidOperationException"/>
         public void Release()
@@ -265,37 +254,19 @@ namespace Proto.Promises
         }
 #endif
 
-        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public Type CancelationValueType
-        {
-            get
-            {
-                throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
-            }
-        }
-
-        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public object CancelationValue
-        {
-            get
-            {
-                throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
-            }
-        }
-
-        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public bool TryGetCancelationValueAs<T>(out T value)
-        {
-            throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
-        }
-
         /// <summary>
         /// A helper type that facilitates retaining and releasing <see cref="CancelationToken"/>s with a using statement.
         /// This is intended to be used instead of <see cref="TryRetain"/> and <see cref="Release"/> to reduce boilerplate code.
         /// </summary>
         public readonly struct Retainer : IDisposable
         {
+            /// <summary>
+            /// The retained token.
+            /// </summary>
             public readonly CancelationToken token;
+            /// <summary>
+            /// Is the <see cref="token"/> retained.
+            /// </summary>
             public readonly bool isRetained;
 
             [MethodImpl(Internal.InlineOption)]

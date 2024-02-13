@@ -19,7 +19,7 @@ namespace Proto.Promises
         internal interface IDeferredPromise : ITraceable
         {
             int DeferredId { get; }
-            bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId);
+            bool TryIncrementDeferredId(int deferredId);
             void RejectDirect(IRejectContainer reasonContainer);
             void CancelDirect();
         }
@@ -31,9 +31,9 @@ namespace Proto.Promises
                 return _this != null && _this.DeferredId == deferredId;
             }
 
-            internal static bool TryIncrementDeferredIdAndUnregisterCancelation(IDeferredPromise _this, int deferredId)
+            internal static bool TryIncrementDeferredId(IDeferredPromise _this, int deferredId)
             {
-                return _this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId);
+                return _this?.TryIncrementDeferredId(deferredId) == true;
             }
         }
 
@@ -70,7 +70,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public virtual bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId)
+                public bool TryIncrementDeferredId(int deferredId)
                 {
                     bool success = Interlocked.CompareExchange(ref _deferredId, unchecked(deferredId + 1), deferredId) == deferredId;
                     MaybeThrowIfInPool(this, success);
@@ -124,7 +124,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static bool TryResolve(DeferredPromise<TResult> _this, int deferredId, in TResult value)
                 {
-                    if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                    if (_this?.TryIncrementDeferredId(deferredId) == true)
                     {
                         _this.ResolveDirect(value);
                         return true;
@@ -135,7 +135,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static bool TryResolveVoid(DeferredPromise<TResult> _this, int deferredId)
                 {
-                    if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                    if (_this?.TryIncrementDeferredId(deferredId) == true)
                     {
                         _this.ResolveDirectVoid();
                         return true;
@@ -155,58 +155,6 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     HandleNextInternal(null, Promise.State.Resolved);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            internal sealed partial class DeferredPromiseCancel<TResult> : DeferredPromise<TResult>, ICancelable
-            {
-                private DeferredPromiseCancel() { }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    _cancelationRegistration = default(CancelationRegistration);
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                [MethodImpl(InlineOption)]
-                new private static DeferredPromiseCancel<TResult> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<DeferredPromiseCancel<TResult>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new DeferredPromiseCancel<TResult>()
-                        : obj.UnsafeAs<DeferredPromiseCancel<TResult>>();
-                }
-
-                internal static DeferredPromiseCancel<TResult> GetOrCreate(CancelationToken cancelationToken)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    cancelationToken.TryRegister(promise, out promise._cancelationRegistration);
-                    return promise;
-                }
-
-                private bool TryUnregisterCancelation()
-                {
-                    return TryUnregisterAndIsNotCanceling(ref _cancelationRegistration);
-                }
-
-                public override bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId)
-                {
-                    return base.TryIncrementDeferredIdAndUnregisterCancelation(deferredId)
-                        && TryUnregisterCancelation(); // If TryUnregisterCancelation returns false, it means the CancelationSource was canceled.
-                }
-
-                void ICancelable.Cancel()
-                {
-                    ThrowIfInPool(this);
-                    // A simple increment is sufficient.
-                    // If the CancelationSource was canceled before the Deferred was completed, even if the Deferred was completed before the cancelation was invoked, the cancelation takes precedence.
-                    Interlocked.Increment(ref _deferredId);
-                    CancelDirect();
                 }
             }
 
@@ -312,16 +260,16 @@ namespace Proto.Promises
                     catch (OperationCanceledException)
                     {
                         // Don't do anything if the deferred was already completed.
-                        if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                        if (TryIncrementDeferredId(deferredId))
                         {
                             CancelDirect();
                         }
                     }
                     catch (Exception e)
                     {
-                        if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                        if (TryIncrementDeferredId(deferredId))
                         {
-                            RejectDirect(Internal.CreateRejectContainer(e, int.MinValue, null, this));
+                            RejectDirect(CreateRejectContainer(e, int.MinValue, null, this));
                         }
                         else
                         {
