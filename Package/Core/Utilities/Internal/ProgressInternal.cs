@@ -390,7 +390,7 @@ namespace Proto.Promises
                     _next = deferredPromise;
                     registration.Dispose();
                     _smallFields._locker.Exit();
-                    return new Promise(deferredPromise, deferredPromise.Id, 0);
+                    return new Promise(deferredPromise, deferredPromise.Id);
                 }
             }
         }

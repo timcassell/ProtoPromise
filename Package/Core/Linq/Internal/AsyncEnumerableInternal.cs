@@ -223,7 +223,7 @@ namespace Proto.Promises
                         _isStarted = true;
                         Start(newId);
                     }
-                    return new Promise<bool>(this, Id, 0);
+                    return new Promise<bool>(this, Id);
                 }
 
                 private void MoveNext()
@@ -299,7 +299,7 @@ namespace Proto.Promises
                     // Reset for the next awaiter.
                     ResetWithoutStacktrace();
                     iteratorPromise.Handle(this, null, Promise.State.Resolved);
-                    return new Promise(this, Id, 0);
+                    return new Promise(this, Id);
                 }
 
                 internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
@@ -429,7 +429,6 @@ namespace Proto.Promises
                 }
 
                 // We only set _previous to support circular await detection.
-                // We don't set _rejectContainerOrPreviousOrLink to prevent progress subscriptions from going down the chain, because progress is meaningless for AsyncEnumerable.
 #if PROMISE_DEBUG
                 _previous = iteratorPromise._ref;
 #endif

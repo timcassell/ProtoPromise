@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0250 // Make struct 'readonly'
+#pragma warning disable IDE0251 // Make member 'readonly'
 #pragma warning disable 0618 // Type or member is obsolete
 
 using Proto.Promises.Async.CompilerServices;
@@ -304,7 +305,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            public struct WaitFramesInstruction : IAwaitWithProgressInstruction
+            public struct WaitFramesInstruction : IAwaitInstruction
             {
                 private readonly uint _target;
                 private uint _current;
@@ -319,13 +320,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                bool IAwaitWithProgressInstruction.IsCompleted(out float progress)
+                bool IAwaitInstruction.IsCompleted()
                 {
                     unchecked
                     {
                         ++_current;
-                        // If the target is 0, progress will be NaN. But it's fine because it won't be reported.
-                        progress = (float) ((double) _current / _target);
                         return _current == _target;
                     }
                 }
@@ -338,7 +337,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
                 {
-                    return PromiseYieldWithProgressExtensions.ToPromise(this, cancelationToken);
+                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
                 }
 #endif
             }
@@ -389,7 +388,7 @@ namespace Proto.Promises
                 {
                     return _progressToken.HasListener
                         ? PromiseYieldExtensions.ToPromise(this, cancelationToken)
-                        : PromiseYieldWithProgressExtensions.ToPromise(new WaitFramesInstruction(_target), cancelationToken);
+                        : PromiseYieldExtensions.ToPromise(new WaitFramesInstruction(_target), cancelationToken);
                 }
             }
 
@@ -399,34 +398,30 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            public struct WaitTimeInstruction : IAwaitWithProgressInstruction
+            public struct WaitTimeInstruction : IAwaitInstruction
             {
-                private readonly double _target;
                 private double _current;
-                private float _multiplier;
+                private byte _multiplier;
 
                 /// <summary>
                 /// Gets a new <see cref="WaitTimeInstruction"/>.
                 /// </summary>
                 public WaitTimeInstruction(TimeSpan time)
                 {
-                    _target = time.TotalSeconds;
-                    _current = 0d;
+                    _current = time.TotalSeconds;
                     // Set the initial multiplier to 0, so when this is invoked immediately, it won't increment the time.
-                    _multiplier = 0f;
+                    _multiplier = 0;
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                bool IAwaitWithProgressInstruction.IsCompleted(out float progress)
+                bool IAwaitInstruction.IsCompleted()
                 {
                     unchecked
                     {
                         // Multiplier is 0 on the first call, 1 on all future calls.
-                        _current += InternalHelper.PromiseBehaviour.s_deltaTime * _multiplier;
-                        _multiplier = 1f;
-                        // If the target is <= 0, progress will be NaN or +/-Infinity. But it's fine because it won't be reported.
-                        progress = (float) (_current / _target);
-                        return _current >= _target;
+                        _current -= InternalHelper.PromiseBehaviour.s_deltaTime * _multiplier;
+                        _multiplier = 1;
+                        return _current <= 0;
                     }
                 }
 
@@ -438,7 +433,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
                 {
-                    return PromiseYieldWithProgressExtensions.ToPromise(this, cancelationToken);
+                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
                 }
 #endif
             }
@@ -495,7 +490,7 @@ namespace Proto.Promises
                 {
                     return _progressToken.HasListener
                         ? PromiseYieldExtensions.ToPromise(this, cancelationToken)
-                        : PromiseYieldWithProgressExtensions.ToPromise(new WaitTimeInstruction(TimeSpan.FromSeconds(_target)), cancelationToken);
+                        : PromiseYieldExtensions.ToPromise(new WaitTimeInstruction(TimeSpan.FromSeconds(_target)), cancelationToken);
                 }
             }
 
@@ -505,7 +500,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            public struct WaitRealTimeInstruction : IAwaitWithProgressInstruction
+            public struct WaitRealTimeInstruction : IAwaitInstruction
             {
                 private readonly TimeSpan _target;
                 private readonly Internal.ValueStopwatch _stopwatch;
@@ -520,13 +515,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                bool IAwaitWithProgressInstruction.IsCompleted(out float progress)
+                bool IAwaitInstruction.IsCompleted()
                 {
                     unchecked
                     {
                         var current = _stopwatch.GetElapsedTime();
-                        // If the target is <= 0, progress will be NaN or negative. But it's fine because it won't be reported.
-                        progress = (float) ((double) current.Ticks / _target.Ticks);
                         return current >= _target;
                     }
                 }
@@ -539,7 +532,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
                 {
-                    return PromiseYieldWithProgressExtensions.ToPromise(this, cancelationToken);
+                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
                 }
 #endif
             }
@@ -591,7 +584,7 @@ namespace Proto.Promises
                 {
                     return _progressToken.HasListener
                         ? PromiseYieldExtensions.ToPromise(this, cancelationToken)
-                        : PromiseYieldWithProgressExtensions.ToPromise(new WaitRealTimeInstruction(_target), cancelationToken);
+                        : PromiseYieldExtensions.ToPromise(new WaitRealTimeInstruction(_target), cancelationToken);
                 }
             }
 
@@ -757,7 +750,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            public struct WaitAsyncOperationInstruction : IAwaitWithProgressInstruction
+            public struct WaitAsyncOperationInstruction : IAwaitInstruction
             {
                 private readonly UnityEngine.AsyncOperation _asyncOperation;
 
@@ -770,9 +763,8 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                bool IAwaitWithProgressInstruction.IsCompleted(out float progress)
+                bool IAwaitInstruction.IsCompleted()
                 {
-                    progress = _asyncOperation.progress;
                     return _asyncOperation.isDone;
                 }
 
@@ -784,7 +776,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
                 {
-                    return PromiseYieldWithProgressExtensions.ToPromise(this, cancelationToken);
+                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
                 }
 #endif
             }
@@ -824,7 +816,7 @@ namespace Proto.Promises
                 {
                     return _progressToken.HasListener
                         ? PromiseYieldExtensions.ToPromise(this, cancelationToken)
-                        : PromiseYieldWithProgressExtensions.ToPromise(new WaitAsyncOperationInstruction(_asyncOperation), cancelationToken);
+                        : PromiseYieldExtensions.ToPromise(new WaitAsyncOperationInstruction(_asyncOperation), cancelationToken);
                 }
             }
 

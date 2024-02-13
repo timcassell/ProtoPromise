@@ -8,12 +8,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
-
 using NUnit.Framework;
 using Proto.Promises;
 using System;
@@ -37,26 +31,6 @@ namespace ProtoPromiseTests.APIs.Utilities
         {
             TestHelper.Cleanup();
         }
-
-#if PROMISE_PROGRESS
-        [Test]
-        public void AsyncLazy_ProgressIsReportedProperly()
-        {
-            var deferred = Promise.NewDeferred<int>();
-            var lazy = new AsyncLazy<int>(() => deferred.Promise);
-
-            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
-
-            lazy.Promise
-                .SubscribeProgress(progressHelper)
-                .Forget();
-
-            progressHelper.AssertCurrentProgress(0f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
-            progressHelper.ResolveAndAssertResult(deferred, 1, 1f);
-        }
-#endif
 
         [Test]
         public void AsyncLazy_NeverAwaited_DoesNotCallFunc()

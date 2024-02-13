@@ -1317,26 +1317,6 @@ namespace Proto.Promises
                     _callback.Invoke();
                 }
             }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            internal struct DelegateProgress : IProgress<float>
-            {
-                private readonly Action<float> _callback;
-
-                [MethodImpl(InlineOption)]
-                public DelegateProgress(Action<float> callback)
-                {
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Report(float value)
-                {
-                    _callback.Invoke(value);
-                }
-            }
             #endregion
 
             #region Delegates with capture value
@@ -2344,32 +2324,6 @@ namespace Proto.Promises
                 public void Invoke()
                 {
                     _callback.Invoke(_capturedValue);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            internal struct DelegateCaptureProgress<TCapture> : IProgress<float>
-            {
-                private readonly Action<TCapture, float> _callback;
-                private readonly TCapture _capturedValue;
-
-                [MethodImpl(InlineOption)]
-                public DelegateCaptureProgress(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture, float> callback)
-                {
-                    _capturedValue = capturedValue;
-                    _callback = callback;
-                }
-
-                [MethodImpl(InlineOption)]
-                public void Report(float value)
-                {
-                    _callback.Invoke(_capturedValue, value);
                 }
             }
             #endregion

@@ -63,7 +63,7 @@ namespace Proto.Promises.CompilerServices
             => _target.GetResultForAsyncStreamYielder(_enumerableId);
 
         [MethodImpl(Internal.InlineOption)]
-        void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref Internal.PromiseRefBase.AsyncPromiseFields asyncFields)
+        void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             => _target.AwaitOnCompletedForAsyncStreamYielder(asyncPromiseRef, _enumerableId);
 
         void INotifyCompletion.OnCompleted(Action continuation)

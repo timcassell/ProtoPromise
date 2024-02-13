@@ -7,16 +7,7 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
-#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
-
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -83,11 +74,11 @@ namespace Proto.Promises
                     return Interlocked.Add(ref _waitCount, -1) == 0;
                 }
 
-                protected void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                internal void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits)
                 {
                     _waitCount = pendingAwaits;
                     _retainCounter = pendingAwaits;
-                    Reset(depth);
+                    Reset();
 
                     _passThroughs = promisePassThroughs;
                     foreach (var passThrough in promisePassThroughs)
@@ -108,36 +99,26 @@ namespace Proto.Promises
                 }
             }
 
-            internal abstract partial class MergePromise<TResult> : MultiHandleablePromiseBase<TResult>
-            {
-                internal void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ushort depth)
-                {
-#if PROMISE_PROGRESS
-                    _completeProgress = completedProgress;
-#endif
-                    Setup(promisePassThroughs, pendingAwaits, depth);
-                }
-            }
-
-            internal static MergePromise<VoidResult> GetOrCreateAllPromiseVoid(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ushort depth)
-            {
-                var promise = MergePromiseVoid.GetOrCreate();
-                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                return promise;
-            }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class MergePromiseVoid : MergePromise<VoidResult>
+            internal sealed class MergePromiseVoid : MultiHandleablePromiseBase<VoidResult>
             {
                 [MethodImpl(InlineOption)]
-                internal static MergePromiseVoid GetOrCreate()
+                private static MergePromiseVoid GetOrCreate()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<MergePromiseVoid>();
                     return obj == InvalidAwaitSentinel.s_instance
                         ? new MergePromiseVoid()
                         : obj.UnsafeAs<MergePromiseVoid>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static MergePromiseVoid GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits)
+                {
+                    var promise = GetOrCreate();
+                    promise.Setup(promisePassThroughs, pendingAwaits);
+                    return promise;
                 }
 
                 internal override void MaybeDispose()
@@ -166,7 +147,12 @@ namespace Proto.Promises
                 }
             }
 
-            internal sealed class MergePromiseT<TResult> : MergePromise<TResult>
+            internal static MultiHandleablePromiseBase<VoidResult> GetOrCreateAllPromiseVoid(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits)
+            {
+                return MergePromiseVoid.GetOrCreate(promisePassThroughs, pendingAwaits);
+            }
+
+            internal sealed class MergePromiseT<TResult> : MultiHandleablePromiseBase<TResult>
             {
                 private static GetResultDelegate<TResult> s_getResult;
 
@@ -187,13 +173,13 @@ namespace Proto.Promises
                     in
 #endif
                     TResult value,
-                    int pendingAwaits, ulong completedProgress, ushort depth,
+                    int pendingAwaits,
                     GetResultDelegate<TResult> getResultFunc)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise._result = value;
-                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                    promise.Setup(promisePassThroughs, pendingAwaits);
                     return promise;
                 }
 
@@ -231,19 +217,19 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static MergePromise<TResult> GetOrCreateMergePromise<TResult>(
+            internal static MultiHandleablePromiseBase<TResult> GetOrCreateMergePromise<TResult>(
                 ValueLinkedStack<PromisePassThrough> promisePassThroughs,
 #if CSHARP_7_3_OR_NEWER
                 in
 #endif
                 TResult value,
-                int pendingAwaits, ulong completedProgress, ushort depth,
+                int pendingAwaits,
                 GetResultDelegate<TResult> getResultFunc)
             {
-                return MergePromiseT<TResult>.GetOrCreate(promisePassThroughs, value, pendingAwaits, completedProgress, depth, getResultFunc);
+                return MergePromiseT<TResult>.GetOrCreate(promisePassThroughs, value, pendingAwaits, getResultFunc);
             }
 
-            internal sealed partial class MergeSettledPromise<TResult> : MergePromise<TResult>
+            internal sealed partial class MergeSettledPromise<TResult> : MultiHandleablePromiseBase<TResult>
             {
                 private static GetResultContainerDelegate<TResult> s_getResult;
 
@@ -264,13 +250,13 @@ namespace Proto.Promises
                     in
 #endif
                     TResult value,
-                    int pendingAwaits, ulong completedProgress, ushort depth,
+                    int pendingAwaits,
                     GetResultContainerDelegate<TResult> getResultFunc)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise._result = value;
-                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                    promise.Setup(promisePassThroughs, pendingAwaits);
                     return promise;
                 }
 
@@ -304,10 +290,10 @@ namespace Proto.Promises
                 in
 #endif
                 TResult value,
-                int pendingAwaits, ulong completedProgress, ushort depth,
+                int pendingAwaits,
                 GetResultContainerDelegate<TResult> getResultFunc)
             {
-                return MergeSettledPromise<TResult>.GetOrCreate(promisePassThroughs, value, pendingAwaits, completedProgress, depth, getResultFunc);
+                return MergeSettledPromise<TResult>.GetOrCreate(promisePassThroughs, value, pendingAwaits, getResultFunc);
             }
         } // class PromiseRefBase
     } // class Internal

@@ -7,11 +7,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
@@ -249,7 +244,7 @@ namespace Proto.Promises
                     promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, CaptureContext());
                     _queue.Enqueue(promise);
                 }
-                return new Promise<AsyncLock.Key>(promise, promise.Id, 0);
+                return new Promise<AsyncLock.Key>(promise, promise.Id);
             }
 
             internal Promise<AsyncLock.Key> LockAsync(CancelationToken cancelationToken)
@@ -280,7 +275,7 @@ namespace Proto.Promises
                     _queue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncLock.Key>(promise, promise.Id, 0);
+                return new Promise<AsyncLock.Key>(promise, promise.Id);
             }
 
             internal AsyncLock.Key Lock()
@@ -391,7 +386,7 @@ namespace Proto.Promises
                     _queue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncLock.Key>(promise, promise.Id, 0)
+                return new Promise<AsyncLock.Key>(promise, promise.Id)
                     .ContinueWith(resultContainer =>
                     {
                         resultContainer.RethrowIfRejected();
@@ -481,7 +476,7 @@ namespace Proto.Promises
                     promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(condVar, key, callerContext);
                     condVar._queue.Enqueue(promise);
                 }
-                return new Promise(promise, promise.Id, 0);
+                return new Promise(promise, promise.Id);
             }
 
             internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, long key, CancelationToken cancelationToken, SynchronizationContext callerContext)
@@ -516,7 +511,7 @@ namespace Proto.Promises
                     condVar._queue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<bool>(promise, promise.Id, 0);
+                return new Promise<bool>(promise, promise.Id);
             }
 
             internal void ReleaseLockFromWaitPromise(long key)

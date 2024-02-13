@@ -3,16 +3,10 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0019 // Use pattern matching
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0270 // Use coalesce expression
-#pragma warning disable 0618 // Type or member is obsolete
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
@@ -25,8 +19,8 @@ namespace Proto.Promises
     partial struct Promise
     {
         /// <summary>
-        /// Deferred base. An instance of this can be used to report progress and reject or cancel the attached <see cref="Promise"/>.
-        /// <para/>You must use <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to resolve the attached <see cref="Promise"/>.
+        /// Deferred base. An instance of this can be used to reject or cancel the attached <see cref="Promise"/>.
+        /// <para/>You must cast to <see cref="Deferred"/> or <see cref="Promise{T}.Deferred"/> to resolve the attached <see cref="Promise"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -35,16 +29,11 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly // Deferreds behave more like write-only, but this prevents the compiler from emitting defensive copies when passing to a function with the `in` keyword.
 #endif
-            struct DeferredBase : ICancelable, IProgress<float>, IEquatable<DeferredBase>
+            struct DeferredBase : ICancelable, IEquatable<DeferredBase>
         {
             private readonly Internal.IDeferredPromise _ref;
             private readonly short _promiseId;
             private readonly int _deferredId;
-
-            void IProgress<float>.Report(float value)
-            {
-                ReportProgress(value);
-            }
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -61,7 +50,7 @@ namespace Proto.Promises
                         throw new InvalidOperationException("DeferredBase.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
                     }
 #endif
-                    return new Promise((Internal.PromiseRefBase) _this, _promiseId, 0);
+                    return new Promise((Internal.PromiseRefBase) _this, _promiseId);
                 }
             }
 
@@ -211,31 +200,6 @@ namespace Proto.Promises
                 return false;
             }
 
-            /// <summary>
-            /// Report progress between 0 and 1.
-            /// </summary>
-            /// <exception cref="InvalidOperationException"/>
-            /// <exception cref="ArgumentOutOfRangeException"/>
-            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-            public void ReportProgress(float progress)
-            {
-                if (!TryReportProgress(progress))
-                {
-                    throw new InvalidOperationException("DeferredBase.ReportProgress: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
-                }
-            }
-
-            /// <summary>
-            /// Try to report progress between 0 and 1.
-            /// <para/> Returns true if successful, false otherwise.
-            /// </summary>
-            /// <exception cref="ArgumentOutOfRangeException"/>
-            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-            public bool TryReportProgress(float progress)
-            {
-                return Internal.DeferredPromiseHelper.TryReportProgress(_ref, _deferredId, progress);
-            }
-
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="DeferredBase"/>.</summary>
             [MethodImpl(Internal.InlineOption)]
             public bool Equals(DeferredBase other)
@@ -311,7 +275,7 @@ namespace Proto.Promises
         } // struct DeferredBase
 
         /// <summary>
-        /// An instance of this is used to report progress and resolve, reject, or cancel the attached <see cref="Promise"/>.
+        /// An instance of this is used to resolve, reject, or cancel the attached <see cref="Promise"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -320,17 +284,11 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            struct Deferred : ICancelable, IProgress<float>, IEquatable<Deferred>
+            struct Deferred : ICancelable, IEquatable<Deferred>
         {
             internal readonly Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> _ref;
             internal readonly short _promiseId;
             internal readonly int _deferredId;
-
-
-            void IProgress<float>.Report(float value)
-            {
-                ReportProgress(value);
-            }
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -347,7 +305,7 @@ namespace Proto.Promises
                         throw new InvalidOperationException("Deferred.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
                     }
 #endif
-                    return new Promise(_this, _promiseId, 0);
+                    return new Promise(_this, _promiseId);
                 }
             }
 
@@ -506,31 +464,6 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Report progress between 0 and 1.
-            /// </summary>
-            /// <exception cref="InvalidOperationException"/>
-            /// <exception cref="ArgumentOutOfRangeException"/>
-            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-            public void ReportProgress(float progress)
-            {
-                if (!TryReportProgress(progress))
-                {
-                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
-                }
-            }
-
-            /// <summary>
-            /// Try to report progress between 0 and 1.
-            /// <para/> Returns true if successful, false otherwise.
-            /// </summary>
-            /// <exception cref="ArgumentOutOfRangeException"/>
-            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-            public bool TryReportProgress(float progress)
-            {
-                return Internal.DeferredPromiseHelper.TryReportProgress(_ref, _deferredId, progress);
-            }
-
-            /// <summary>
             /// Cast to <see cref="DeferredBase"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
@@ -626,7 +559,7 @@ namespace Proto.Promises
     public partial struct Promise<T>
     {
         /// <summary>
-        /// An instance of this is used to report progress and resolve, reject, or cancel the attached <see cref="Promise"/>.
+        /// An instance of this is used to resolve, reject, or cancel the attached <see cref="Promise"/>.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -635,16 +568,11 @@ namespace Proto.Promises
 #if CSHARP_7_3_OR_NEWER
             readonly
 #endif
-            struct Deferred : ICancelable, IProgress<float>, IEquatable<Deferred>
+            struct Deferred : ICancelable, IEquatable<Deferred>
         {
             internal readonly Internal.PromiseRefBase.DeferredPromise<T> _ref;
             internal readonly short _promiseId;
             internal readonly int _deferredId;
-
-            void IProgress<float>.Report(float value)
-            {
-                ReportProgress(value);
-            }
 
             /// <summary>
             /// The attached <see cref="Promise{T}"/> that this controls.
@@ -661,7 +589,7 @@ namespace Proto.Promises
                         throw new InvalidOperationException("Deferred.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
                     }
 #endif
-                    return new Promise<T>(_this, _promiseId, 0);
+                    return new Promise<T>(_this, _promiseId);
                 }
             }
 
@@ -817,31 +745,6 @@ namespace Proto.Promises
                     return true;
                 }
                 return false;
-            }
-
-            /// <summary>
-            /// Report progress between 0 and 1.
-            /// </summary>
-            /// <exception cref="InvalidOperationException"/>
-            /// <exception cref="ArgumentOutOfRangeException"/>
-            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-            public void ReportProgress(float progress)
-            {
-                if (!TryReportProgress(progress))
-                {
-                    throw new InvalidOperationException("Deferred.ReportProgress: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
-                }
-            }
-
-            /// <summary>
-            /// Try to report progress between 0 and 1.
-            /// <para/> Returns true if successful, false otherwise.
-            /// </summary>
-            /// <exception cref="ArgumentOutOfRangeException"/>
-            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-            public bool TryReportProgress(float progress)
-            {
-                return Internal.DeferredPromiseHelper.TryReportProgress(_ref, _deferredId, progress);
             }
 
             /// <summary>

@@ -83,24 +83,18 @@ namespace Proto.Promises
 
             using (promiseFuncs)
             {
-                if (!promiseFuncs.MoveNext())
-                {
-                    return Internal.CreateResolved(0);
-                }
-
-                // Invoke funcs and normalize the progress.
-                var promise = new Promise(null, 0, Internal.NegativeOneDepth);
-                do
+                var promise = Resolved();
+                while (promiseFuncs.MoveNext())
                 {
                     promise = promise.Then(promiseFuncs.Current, cancelationToken);
-                } while (promiseFuncs.MoveNext());
+                }
                 return promise;
             }
         }
 
         private static Promise SwitchToContext(SynchronizationOption synchronizationOption, bool forceAsync)
         {
-            return Internal.CreateResolved(0)
+            return Resolved()
                 .WaitAsync(synchronizationOption, forceAsync);
         }
 
@@ -129,7 +123,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the context switch to happen asynchronously.</param>
         public static Promise SwitchToContext(SynchronizationContext synchronizationContext, bool forceAsync = false)
         {
-            return Internal.CreateResolved(0)
+            return Resolved()
                 .WaitAsync(synchronizationContext, forceAsync);
         }
 
@@ -504,8 +498,12 @@ namespace Proto.Promises
         public static Promise Resolved()
         {
 #if PROMISE_DEBUG
-            return Internal.CreateResolved(0);
+            // Make a promise on the heap to capture causality trace and help with debugging.
+            var promise = Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>.GetOrCreate();
+            promise.ResolveDirect(new Internal.VoidResult());
+            return new Promise(promise, promise.Id);
 #else
+            // Make a promise on the stack for efficiency.
             return new Promise();
 #endif
         }
@@ -517,8 +515,12 @@ namespace Proto.Promises
         public static Promise<T> Resolved<T>(T value)
         {
 #if PROMISE_DEBUG
-            return Internal.CreateResolved(value, 0);
+            // Make a promise on the heap to capture causality trace and help with debugging.
+            var promise = Internal.PromiseRefBase.DeferredPromise<T>.GetOrCreate();
+            promise.ResolveDirect(value);
+            return new Promise<T>(promise, promise.Id);
 #else
+            // Make a promise on the stack for efficiency.
             return new Promise<T>(value);
 #endif
         }

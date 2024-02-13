@@ -199,7 +199,6 @@ namespace Proto.Promises
                 }
 
                 // We only set _previous to support circular await detection.
-                // We don't set _rejectContainerOrPreviousOrLink to prevent progress subscriptions from going down the chain, because progress is meaningless for AsyncEnumerable.
 #if PROMISE_DEBUG
                 _previous = iteratorPromise._ref;
 #endif
@@ -446,7 +445,6 @@ namespace Proto.Promises
                 }
 
                 // We only set _previous to support circular await detection.
-                // We don't set _rejectContainerOrPreviousOrLink to prevent progress subscriptions from going down the chain, because progress is meaningless for AsyncEnumerable.
 #if PROMISE_DEBUG
                 _previous = iteratorPromise._ref;
 #endif

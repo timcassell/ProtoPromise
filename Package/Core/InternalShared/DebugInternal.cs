@@ -314,7 +314,7 @@ namespace Proto.Promises
 
             private void ValidateAwait(PromiseRefBase other, short promiseId, bool awaited)
             {
-                if (new Promise(other, promiseId, 0).IsValid == false)
+                if (new Promise(other, promiseId).IsValid == false)
                 {
                     // Awaiting or returning an invalid from the callback is not allowed.
                     if (awaited)

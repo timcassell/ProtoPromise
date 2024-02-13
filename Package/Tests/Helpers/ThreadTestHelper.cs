@@ -1,9 +1,9 @@
 ﻿#if !UNITY_WEBGL
 
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
+#undef PROMISE_DEBUG
 #endif
 
 using NUnit.Framework;
@@ -17,27 +17,10 @@ using System.Collections.Generic;
 // These help test all method for threaded concurrency.
 namespace ProtoPromiseTests.Concurrency
 {
-    public class MaybeValuesAttribute : ValuesAttribute
-    {
-        // If progress is enabled, only use a single value instead of all values (otherwise takes a long time to run tests).
-        public MaybeValuesAttribute(object arg1)
-#if PROMISE_PROGRESS
-            : base(arg1)
-#else
-            : base()
-#endif
-        { }
-    }
-
     public enum CombineType
     {
-        InSetup_NoProgress,
-        Parallel_NoProgress,
-#if PROMISE_PROGRESS
-        InSetup_WithProgress,
-        Parallel_WithProgress,
-        InSetup_ProgressParallel,
-#endif
+        InSetup,
+        Parallel,
     }
 
     public enum ActionPlace
@@ -82,34 +65,16 @@ namespace ProtoPromiseTests.Concurrency
 
             public override void MaybeAddParallelAction(List<Action> parallelActions)
             {
-                switch (_combineType)
+                if (_combineType == CombineType.Parallel)
                 {
-                    case CombineType.Parallel_NoProgress:
-                        parallelActions.Add(() => _combinedPromise = _combiner());
-                        break;
-#if PROMISE_PROGRESS
-                    case CombineType.Parallel_WithProgress:
-                        parallelActions.Add(() => _combinedPromise = _combiner().Progress(v => { }, SynchronizationOption.Synchronous));
-                        break;
-                    case CombineType.InSetup_ProgressParallel:
-                        parallelActions.Add(() => _combinedPromise = _combinedPromise.Progress(v => { }, SynchronizationOption.Synchronous));
-                        break;
-#endif
+                    parallelActions.Add(() => _combinedPromise = _combiner());
                 }
             }
 
             public override void Setup()
             {
                 Success = false;
-                if (
-#if PROMISE_PROGRESS
-                    _combineType == CombineType.InSetup_WithProgress)
-                {
-                    _combinedPromise = _combiner().Progress(v => { }, SynchronizationOption.Synchronous);
-                }
-                else if (_combineType == CombineType.InSetup_ProgressParallel ||
-#endif
-                    _combineType == CombineType.InSetup_NoProgress)
+                if (_combineType == CombineType.InSetup)
                 {
                     _combinedPromise = _combiner();
                 }
@@ -130,34 +95,16 @@ namespace ProtoPromiseTests.Concurrency
 
             public override void MaybeAddParallelAction(List<Action> parallelActions)
             {
-                switch (_combineType)
+                if (_combineType == CombineType.Parallel)
                 {
-                    case CombineType.Parallel_NoProgress:
-                        parallelActions.Add(() => _combinedPromise = _combiner());
-                        break;
-#if PROMISE_PROGRESS
-                    case CombineType.Parallel_WithProgress:
-                        parallelActions.Add(() => _combinedPromise = _combiner().Progress(v => { }, SynchronizationOption.Synchronous));
-                        break;
-                    case CombineType.InSetup_ProgressParallel:
-                        parallelActions.Add(() => _combinedPromise = _combinedPromise.Progress(v => { }, SynchronizationOption.Synchronous));
-                        break;
-#endif
+                    parallelActions.Add(() => _combinedPromise = _combiner());
                 }
             }
 
             public override void Setup()
             {
                 Success = false;
-                if (
-#if PROMISE_PROGRESS
-                    _combineType == CombineType.InSetup_WithProgress)
-                {
-                    _combinedPromise = _combiner().Progress(v => { }, SynchronizationOption.Synchronous);
-                }
-                else if (_combineType == CombineType.InSetup_ProgressParallel ||
-#endif
-                    _combineType == CombineType.InSetup_NoProgress)
+                if (_combineType == CombineType.InSetup)
                 {
                     _combinedPromise = _combiner();
                 }

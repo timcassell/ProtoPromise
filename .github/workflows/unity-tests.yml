@@ -8,7 +8,7 @@ concurrency:
 
 jobs:
   unity-tests:
-    name: Test (${{ matrix.testMode.name }}, ${{ matrix.scriptingRuntime.name }}, ${{ matrix.mode.name }}, ${{ matrix.progress.name }}, ${{ matrix.objectPooling.name }}, ${{ matrix.unityVersion }}, ${{ matrix.devMode.name }})
+    name: Test (${{ matrix.testMode.name }}, ${{ matrix.scriptingRuntime.name }}, ${{ matrix.mode.name }}, ${{ matrix.objectPooling.name }}, ${{ matrix.unityVersion }}, ${{ matrix.devMode.name }})
     runs-on: ubuntu-latest
     
     strategy:
@@ -50,15 +50,6 @@ jobs:
           - {
               name: Debug,
               symbol: PROTO_PROMISE_DEBUG_ENABLE
-            }
-        progress:
-          - {
-              name: Progress_Enabled,
-              symbol: PROTO_PROMISE_PROGRESS_ENABLE
-            }
-          - {
-              name: Progress_Disabled,
-              symbol: PROTO_PROMISE_PROGRESS_DISABLE
             }
         objectPooling:
           - {
@@ -123,7 +114,7 @@ jobs:
 
       - name: Rewrite ProjectSettings
         run: |
-          DefineSymbols="${{ matrix.mode.symbol }};${{ matrix.progress.symbol }};${{ matrix.objectPooling.symbol }};${{ matrix.devMode.symbol }}"
+          DefineSymbols="${{ matrix.mode.symbol }};${{ matrix.objectPooling.symbol }};${{ matrix.devMode.symbol }}"
           DefineOriginal="  scriptingDefineSymbols: {}"
           DefineReplace="  scriptingDefineSymbols: \\n    ${{ matrix.testMode.buildTargetId }}: $DefineSymbols"
           sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
@@ -174,12 +165,12 @@ jobs:
       - uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.mode.name }}-${{ matrix.progress.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
+          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
           path: "*_junit.xml"
           reporter: java-junit
 
       - uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.mode.name }}-${{ matrix.progress.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
+          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
           path: artifacts

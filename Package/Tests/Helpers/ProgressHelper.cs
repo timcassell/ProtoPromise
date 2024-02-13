@@ -3,8 +3,6 @@ using Proto.Promises;
 using System;
 using System.Threading;
 
-#pragma warning disable CS0618 // Type or member is obsolete
-
 namespace ProtoPromiseTests
 {
     public enum ProgressType
@@ -178,99 +176,6 @@ namespace ProtoPromiseTests
             }
         }
 
-        public void ReportProgressAndAssertResult(Promise.DeferredBase deferred, float reportValue, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
-        {
-            if (!waitForInvoke)
-            {
-                // If waitForInvoke is false, it means the value is expected to be unchanged.
-                lock (_locker)
-                {
-                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
-                    deferred.ReportProgress(reportValue);
-                }
-                if (executeForeground)
-                {
-                    TestHelper.ExecuteForegroundCallbacks();
-                }
-                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
-                return;
-            }
-
-            bool areEqual;
-            lock (_locker)
-            {
-                PrepareForInvoke();
-                deferred.ReportProgress(reportValue);
-                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
-            }
-            if (!areEqual)
-            {
-                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
-            }
-        }
-
-        public void RejectAndAssertResult<TReject>(Promise.DeferredBase deferred, TReject reason, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
-        {
-            if (!waitForInvoke)
-            {
-                // If waitForInvoke is false, it means the value is expected to be unchanged.
-                lock (_locker)
-                {
-                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
-                    deferred.Reject(reason);
-                }
-                if (executeForeground)
-                {
-                    TestHelper.ExecuteForegroundCallbacks();
-                }
-                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
-                return;
-            }
-
-            bool areEqual;
-            lock (_locker)
-            {
-                PrepareForInvoke();
-                deferred.Reject(reason);
-                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
-            }
-            if (!areEqual)
-            {
-                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
-            }
-        }
-
-        public void CancelAndAssertResult(Promise.DeferredBase deferred, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
-        {
-            if (!waitForInvoke)
-            {
-                // If waitForInvoke is false, it means the value is expected to be unchanged.
-                lock (_locker)
-                {
-                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
-                    deferred.Cancel();
-                }
-                if (executeForeground)
-                {
-                    TestHelper.ExecuteForegroundCallbacks();
-                }
-                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
-                return;
-            }
-
-            bool areEqual;
-            lock (_locker)
-            {
-                PrepareForInvoke();
-                deferred.Cancel();
-                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
-            }
-            if (!areEqual)
-            {
-                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
-            }
-        }
-
         public void CancelAndAssertResult(CancelationSource cancelationSource, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
         {
             if (!waitForInvoke)
@@ -294,37 +199,6 @@ namespace ProtoPromiseTests
             {
                 PrepareForInvoke();
                 cancelationSource.Cancel();
-                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
-            }
-            if (!areEqual)
-            {
-                WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
-            }
-        }
-
-        public void ResolveAndAssertResult(Promise.Deferred deferred, float expectedProgress, bool waitForInvoke = true, bool executeForeground = true, TimeSpan timeout = default(TimeSpan))
-        {
-            if (!waitForInvoke)
-            {
-                // If waitForInvoke is false, it means the value is expected to be unchanged.
-                lock (_locker)
-                {
-                    Assert.AreEqual(expectedProgress, _currentProgress, _delta);
-                    deferred.Resolve();
-                }
-                if (executeForeground)
-                {
-                    TestHelper.ExecuteForegroundCallbacks();
-                }
-                Assert.AreEqual(expectedProgress, _currentProgress, _delta);
-                return;
-            }
-
-            bool areEqual;
-            lock (_locker)
-            {
-                PrepareForInvoke();
-                deferred.Resolve();
                 areEqual = GetCurrentProgressEqualsExpected(expectedProgress, waitForInvoke, executeForeground, timeout);
             }
             if (!areEqual)
@@ -392,94 +266,6 @@ namespace ProtoPromiseTests
             if (!areEqual)
             {
                 WaitForExpectedProgress(expectedProgress, executeForeground, timeout);
-            }
-        }
-
-        public Promise SubscribeAndAssertCurrentProgress(Promise promise, float expectedProgress, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
-        {
-            bool areEqual;
-            lock (_locker)
-            {
-                PrepareForInvoke();
-                promise = Subscribe(promise, cancelationToken);
-                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, timeout: timeout);
-            }
-            if (!areEqual)
-            {
-                WaitForExpectedProgress(expectedProgress, true, timeout);
-            }
-            return promise;
-        }
-
-        public Promise<T> SubscribeAndAssertCurrentProgress<T>(Promise<T> promise, float expectedProgress, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
-        {
-            bool areEqual;
-            lock (_locker)
-            {
-                PrepareForInvoke();
-                promise = Subscribe(promise, cancelationToken);
-                areEqual = GetCurrentProgressEqualsExpected(expectedProgress, timeout: timeout);
-            }
-            if (!areEqual)
-            {
-                WaitForExpectedProgress(expectedProgress, true, timeout);
-            }
-            return promise;
-        }
-
-        public Promise Subscribe(Promise promise, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            if (_synchronizationType == SynchronizationType.Explicit)
-            {
-                switch (_progressType)
-                {
-                    case ProgressType.Callback:
-                        return promise.Progress(Report, TestHelper._foregroundContext, cancelationToken, _forceAsync);
-                    case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), TestHelper._foregroundContext, cancelationToken, _forceAsync);
-                    default:
-                        return promise.Progress(this, TestHelper._foregroundContext, cancelationToken, _forceAsync);
-                }
-            }
-            else
-            {
-                switch (_progressType)
-                {
-                    case ProgressType.Callback:
-                        return promise.Progress(Report, (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
-                    case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
-                    default:
-                        return promise.Progress(this, (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
-                }
-            }
-        }
-
-        public Promise<T> Subscribe<T>(Promise<T> promise, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            if (_synchronizationType == SynchronizationType.Explicit)
-            {
-                switch (_progressType)
-                {
-                    case ProgressType.Callback:
-                        return promise.Progress(Report, TestHelper._foregroundContext, cancelationToken, _forceAsync);
-                    case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), TestHelper._foregroundContext, cancelationToken, _forceAsync);
-                    default:
-                        return promise.Progress(this, TestHelper._foregroundContext, cancelationToken, _forceAsync);
-                }
-            }
-            else
-            {
-                switch (_progressType)
-                {
-                    case ProgressType.Callback:
-                        return promise.Progress(Report, (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
-                    case ProgressType.CallbackWithCapture:
-                        return promise.Progress(this, (helper, v) => helper.Report(v), (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
-                    default:
-                        return promise.Progress(this, (SynchronizationOption) _synchronizationType, cancelationToken, _forceAsync);
-                }
             }
         }
 

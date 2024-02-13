@@ -1,9 +1,9 @@
 ﻿#if !UNITY_WEBGL
 
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
+#undef PROMISE_DEBUG
 #endif
 
 using NUnit.Framework;
@@ -41,7 +41,7 @@ namespace ProtoPromiseTests.Concurrency
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T1void(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeTypeVoid)
+            [Values] CompleteType completeTypeVoid)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
             var completerVoid = TestHelper.GetCompleterVoid(completeTypeVoid, rejectValue);
@@ -53,10 +53,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferredVoid.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completerVoid(deferredVoid, cancelationSourceVoid),
             };
@@ -93,7 +89,7 @@ namespace ProtoPromiseTests.Concurrency
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T2(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1)
+            [Values] CompleteType completeType1)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
             var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
@@ -105,10 +101,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
             };
@@ -146,7 +138,7 @@ namespace ProtoPromiseTests.Concurrency
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
             [Values(CompleteType.Resolve)] CompleteType completeType1,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeTypeVoid)
+            [Values] CompleteType completeTypeVoid)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
             var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
@@ -161,11 +153,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-                () => deferredVoid.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completerVoid(deferredVoid, cancelationSourceVoid),
@@ -205,7 +192,7 @@ namespace ProtoPromiseTests.Concurrency
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T3(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
@@ -221,11 +208,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-                () => deferred2.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
@@ -267,7 +249,7 @@ namespace ProtoPromiseTests.Concurrency
             [Values] CompleteType completeType0,
             [Values(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeTypeVoid)
+            [Values] CompleteType completeTypeVoid)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
             var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
@@ -285,12 +267,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-                () => deferred2.TryReportProgress(0.5f),
-                () => deferredVoid.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
@@ -333,7 +309,7 @@ namespace ProtoPromiseTests.Concurrency
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T4(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3)
         {
@@ -353,12 +329,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-                () => deferred2.TryReportProgress(0.5f),
-                () => deferred3.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
@@ -404,7 +374,7 @@ namespace ProtoPromiseTests.Concurrency
             [Values(CompleteType.Resolve)] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeTypeVoid)
+            [Values] CompleteType completeTypeVoid)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
             var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
@@ -425,13 +395,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-                () => deferred2.TryReportProgress(0.5f),
-                () => deferred3.TryReportProgress(0.5f),
-                () => deferredVoid.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
@@ -477,7 +440,7 @@ namespace ProtoPromiseTests.Concurrency
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T5(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4)
@@ -501,13 +464,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-                () => deferred2.TryReportProgress(0.5f),
-                () => deferred3.TryReportProgress(0.5f),
-                () => deferred4.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
@@ -557,7 +513,7 @@ namespace ProtoPromiseTests.Concurrency
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeTypeVoid)
+            [Values] CompleteType completeTypeVoid)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
             var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
@@ -581,14 +537,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-                () => deferred2.TryReportProgress(0.5f),
-                () => deferred3.TryReportProgress(0.5f),
-                () => deferred4.TryReportProgress(0.5f),
-                () => deferredVoid.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
@@ -637,7 +585,7 @@ namespace ProtoPromiseTests.Concurrency
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T6(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4,
@@ -665,14 +613,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-                () => deferred2.TryReportProgress(0.5f),
-                () => deferred3.TryReportProgress(0.5f),
-                () => deferred4.TryReportProgress(0.5f),
-                () => deferred5.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
@@ -726,7 +666,7 @@ namespace ProtoPromiseTests.Concurrency
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4,
             [Values(CompleteType.Resolve)] CompleteType completeType5,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeTypeVoid)
+            [Values] CompleteType completeTypeVoid)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
             var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
@@ -753,15 +693,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-                () => deferred2.TryReportProgress(0.5f),
-                () => deferred3.TryReportProgress(0.5f),
-                () => deferred4.TryReportProgress(0.5f),
-                () => deferred5.TryReportProgress(0.5f),
-                () => deferredVoid.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
@@ -813,7 +744,7 @@ namespace ProtoPromiseTests.Concurrency
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T7(
             [Values] CombineType combineType,
             [Values] CompleteType completeType0,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4,
@@ -845,15 +776,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-                () => deferred2.TryReportProgress(0.5f),
-                () => deferred3.TryReportProgress(0.5f),
-                () => deferred4.TryReportProgress(0.5f),
-                () => deferred5.TryReportProgress(0.5f),
-                () => deferred6.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),
@@ -911,7 +833,7 @@ namespace ProtoPromiseTests.Concurrency
             [Values(CompleteType.Resolve)] CompleteType completeType4,
             [Values(CompleteType.Resolve)] CompleteType completeType5,
             [Values(CompleteType.Resolve)] CompleteType completeType6,
-            [MaybeValues(CompleteType.Resolve)] CompleteType completeTypeVoid)
+            [Values] CompleteType completeTypeVoid)
         {
             var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
             var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
@@ -941,16 +863,6 @@ namespace ProtoPromiseTests.Concurrency
 
             List<Action> parallelActions = new List<Action>()
             {
-#if PROMISE_PROGRESS
-                () => deferred0.TryReportProgress(0.5f),
-                () => deferred1.TryReportProgress(0.5f),
-                () => deferred2.TryReportProgress(0.5f),
-                () => deferred3.TryReportProgress(0.5f),
-                () => deferred4.TryReportProgress(0.5f),
-                () => deferred5.TryReportProgress(0.5f),
-                () => deferred6.TryReportProgress(0.5f),
-                () => deferredVoid.TryReportProgress(0.5f),
-#endif
                 () => completer0(deferred0, cancelationSource0),
                 () => completer1(deferred1, cancelationSource1),
                 () => completer2(deferred2, cancelationSource2),

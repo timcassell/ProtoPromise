@@ -4,12 +4,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-// define PROTO_PROMISE_PROGRESS_DISABLE to disable progress reports on promises.
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
@@ -41,7 +35,7 @@ namespace Proto.Promises
             /// </summary>
             Rejections,
             /// <summary>
-            /// Track causality when Deferred.Reject is called and every time a promise is created or a delegate is added to a promise (i.e. with .Then or .Progress).
+            /// Track causality when Deferred.Reject is called and every time a promise is created or a delegate is added to a promise (i.e. with .Then).
             /// <para/>
             /// NOTE: This can be extremely expensive, so you should only enable this if you ran into an error and you are not sure where it came from.
             /// </summary>
@@ -64,15 +58,6 @@ namespace Proto.Promises
 #endif
         public static class Config
         {
-            [Obsolete("Use ProgressPrecision to get the precision of progress reports."), EditorBrowsable(EditorBrowsableState.Never)]
-            public static readonly int ProgressDecimalBits = 32;
-
-            /// <summary>
-            /// The distance between 1 and the largest value smaller than 1. Progress reports use full 32-bit float precision.
-            /// </summary>
-            [Obsolete(Internal.ProgressObsoleteMessage, false), EditorBrowsable(EditorBrowsableState.Never)]
-            public static readonly float ProgressPrecision = 1f - 0.99999994f;
-
             [Obsolete("Use ObjectPoolingEnabled instead."), EditorBrowsable(EditorBrowsableState.Never)]
             public static PoolType ObjectPooling 
             {

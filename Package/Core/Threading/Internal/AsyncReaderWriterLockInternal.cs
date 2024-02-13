@@ -7,11 +7,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0180 // Use tuple to swap values
@@ -359,7 +354,7 @@ namespace Proto.Promises
                     promise = AsyncReaderLockPromise.GetOrCreate(this, CaptureContext());
                     _readerQueue.Enqueue(promise);
                 }
-                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id, 0);
+                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id);
             }
 
             internal Promise<AsyncReaderWriterLock.ReaderKey> ReaderLockAsync(CancelationToken cancelationToken)
@@ -403,7 +398,7 @@ namespace Proto.Promises
                     _readerQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id, 0);
+                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id);
             }
 
             internal AsyncReaderWriterLock.ReaderKey ReaderLock()
@@ -566,7 +561,7 @@ namespace Proto.Promises
                     _readerQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id, 0)
+                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id)
                     .ContinueWith(resultContainer =>
                     {
                         resultContainer.RethrowIfRejected();
@@ -648,7 +643,7 @@ namespace Proto.Promises
                     promise = AsyncWriterLockPromise.GetOrCreate(this, CaptureContext());
                     _writerQueue.Enqueue(promise);
                 }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id, 0);
+                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id);
             }
 
             internal Promise<AsyncReaderWriterLock.WriterKey> WriterLockAsync(CancelationToken cancelationToken)
@@ -682,7 +677,7 @@ namespace Proto.Promises
                     _writerQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id, 0);
+                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id);
             }
 
             internal AsyncReaderWriterLock.WriterKey WriterLock()
@@ -810,7 +805,7 @@ namespace Proto.Promises
                     _writerQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id, 0)
+                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id)
                     .ContinueWith(resultContainer =>
                     {
                         resultContainer.RethrowIfRejected();
@@ -901,7 +896,7 @@ namespace Proto.Promises
                     promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, CaptureContext());
                     _upgradeQueue.Enqueue(promise);
                 }
-                return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id, 0);
+                return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id);
             }
 
             internal Promise<AsyncReaderWriterLock.UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken)
@@ -939,7 +934,7 @@ namespace Proto.Promises
                     _upgradeQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id, 0);
+                return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id);
             }
 
             internal AsyncReaderWriterLock.UpgradeableReaderKey UpgradeableReaderLock()
@@ -1082,7 +1077,7 @@ namespace Proto.Promises
                     _upgradeQueue.Enqueue(promise);
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id, 0)
+                return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id)
                     .ContinueWith(resultContainer =>
                     {
                         resultContainer.RethrowIfRejected();
@@ -1163,7 +1158,7 @@ namespace Proto.Promises
                     promise = AsyncWriterLockPromise.GetOrCreate(this, CaptureContext());
                     _upgradeWaiter = promise;
                 }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id, 0);
+                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id);
             }
 
             internal Promise<AsyncReaderWriterLock.WriterKey> UpgradeToWriterLockAsync(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
@@ -1202,7 +1197,7 @@ namespace Proto.Promises
                     _upgradeWaiter = promise;
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id, 0);
+                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id);
             }
 
             internal AsyncReaderWriterLock.WriterKey UpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey)
@@ -1351,7 +1346,7 @@ namespace Proto.Promises
                     _upgradeWaiter = promise;
                     promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id, 0)
+                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id)
                     .ContinueWith(resultContainer =>
                     {
                         resultContainer.RethrowIfRejected();

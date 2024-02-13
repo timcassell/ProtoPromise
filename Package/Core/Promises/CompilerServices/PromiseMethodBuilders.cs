@@ -7,11 +7,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 // Fix for IL2CPP compile bug. https://issuetracker.unity3d.com/issues/il2cpp-incorrect-results-when-calling-a-method-from-outside-class-in-a-struct
 // Unity fixed in 2020.3.20f1 and 2021.1.24f1, but it's simpler to just check for 2021.2 or newer.
@@ -214,7 +209,7 @@ namespace Proto.Promises
             public Promise Task
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return new Promise(_ref, _ref.Id, 0); }
+                get { return new Promise(_ref, _ref.Id); }
             }
 
             /// <summary>Initializes a new <see cref="PromiseMethodBuilder"/>.</summary>
@@ -257,7 +252,7 @@ namespace Proto.Promises
             public Promise<T> Task
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return new Promise<T>(_ref, _ref.Id, 0); }
+                get { return new Promise<T>(_ref, _ref.Id); }
             }
 
             /// <summary>Initializes a new <see cref="PromiseMethodBuilder{T}"/>.</summary>
@@ -300,7 +295,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return _ref == null ? Promise.Resolved() : new Promise(_ref, _ref.Id, 0);
+                    return _ref == null ? Promise.Resolved() : new Promise(_ref, _ref.Id);
                 }
             }
             
@@ -347,7 +342,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 get
                 {
-                    return _ref == null ? new Promise<T>(_result) : new Promise<T>(_ref, _ref.Id, 0);
+                    return _ref == null ? new Promise<T>(_result) : new Promise<T>(_ref, _ref.Id);
                 }
             }
 

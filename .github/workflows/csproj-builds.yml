@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: [Release, Release_NoProgress, Debug, Debug_NoProgress]
+        config: [Release, Debug]
         developerMode: [true, false]
 
     steps:

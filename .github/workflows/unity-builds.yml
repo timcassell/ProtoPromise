@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build (${{ matrix.scriptingRuntime.name }}, ${{ matrix.mode.name }}, ${{ matrix.progress.name }})
+    name: Build (${{ matrix.scriptingRuntime.name }}, ${{ matrix.mode.name }})
     runs-on: ubuntu-latest
     
     strategy:
@@ -40,15 +40,6 @@ jobs:
               name: Debug,
               symbol: PROTO_PROMISE_DEBUG_ENABLE
             }
-        progress:
-          - {
-              name: Progress_Enabled,
-              symbol: PROTO_PROMISE_PROGRESS_ENABLE
-            }
-          - {
-              name: Progress_Disabled,
-              symbol: PROTO_PROMISE_PROGRESS_DISABLE
-            }
 
     steps:
       - name: Checkout
@@ -56,7 +47,7 @@ jobs:
 
       - name: Rewrite ProjectSettings
         run: |
-          DefineSymbols="${{ matrix.mode.symbol }};${{ matrix.progress.symbol }}"
+          DefineSymbols="${{ matrix.mode.symbol }}"
           DefineOriginal="  scriptingDefineSymbols: {}"
           DefineReplace="  scriptingDefineSymbols: \\n    13: $DefineSymbols"
           sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
