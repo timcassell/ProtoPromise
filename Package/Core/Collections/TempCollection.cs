@@ -5,7 +5,7 @@
 #endif
 
 using System;
-#if (NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 using System.Buffers;
 #endif
 using System.Collections;

@@ -198,8 +198,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<T1> Func =
-                    (Internal.PromiseRefBase handler, int index, ref T1 result) => GetMergeResult(handler, index, ref result);
+                internal static readonly Internal.GetResultDelegate<T1> Func = GetMergeResult;
 #endif
             }
 
@@ -261,8 +260,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2>> Func =
-                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2> result) => GetMergeResult(handler, index, ref result);
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2>> Func = GetMergeResult;
 #endif
             }
 
@@ -352,8 +350,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3>> Func =
-                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3> result) => GetMergeResult(handler, index, ref result);
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3>> Func = GetMergeResult;
 #endif
             }
 
@@ -424,7 +421,7 @@ namespace Proto.Promises
             private static class Four<T1, T2, T3, T4>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (T1, T2, T3, T4) result)
                 {
                     switch (index)
                     {
@@ -450,8 +447,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4>> Func =
-                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4> result) => GetMergeResult(handler, index, ref result);
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4>> Func = GetMergeResult;
 #endif
             }
 
@@ -555,8 +551,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5>> Func =
-                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5> result) => GetMergeResult(handler, index, ref result);
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5>> Func = GetMergeResult;
 #endif
             }
 
@@ -667,8 +662,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6>> Func =
-                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5, T6> result) => GetMergeResult(handler, index, ref result);
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6>> Func = GetMergeResult;
 #endif
             }
 
@@ -786,8 +780,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Func =
-                    (Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5, T6, T7> result) => GetMergeResult(handler, index, ref result);
+                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Func = GetMergeResult;
 #endif
             }
 
