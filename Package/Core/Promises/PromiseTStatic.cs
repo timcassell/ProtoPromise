@@ -7,11 +7,9 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable CA1507 // Use nameof to express symbol names
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -769,13 +767,6 @@ namespace Proto.Promises
             }
         }
 
-        [Obsolete("Prefer Promise<T>.All()"), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Promise<IList<T>> AllNonAlloc<TEnumerator>(TEnumerator promises, IList<T> valueContainer) where TEnumerator : IEnumerator<Promise<T>>
-        {
-            ValidateArgument(valueContainer, "valueContainer", 1);
-            return All(promises, valueContainer);
-        }
-
         [MethodImpl(Internal.InlineOption)]
         private static void GetAllResultContainer(Internal.PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref IList<ResultContainer> result)
         {
@@ -1123,12 +1114,6 @@ namespace Proto.Promises
             return Internal.CreateCanceled<T>();
         }
 
-        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Promise<T> Canceled<TCancel>(TCancel reason)
-        {
-            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Canceled() instead.", Internal.GetFormattedStacktrace(1));
-        }
-
         /// <summary>
         /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
         /// </summary>
@@ -1136,17 +1121,6 @@ namespace Proto.Promises
         public static Deferred NewDeferred()
         {
             return Deferred.New();
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while the <see cref="Promise{T}.Deferred"/> is pending, it and the <see cref="Promise{T}"/> will be canceled.
-        /// </summary>
-        [MethodImpl(Internal.InlineOption)]
-        [Obsolete("You should instead register a callback on the CancelationToken to cancel the deferred directly.", false), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Deferred NewDeferred(CancelationToken cancelationToken)
-        {
-            return Deferred.New(cancelationToken);
         }
     }
 }

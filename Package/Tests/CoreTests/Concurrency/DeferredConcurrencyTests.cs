@@ -10,8 +10,6 @@ using NUnit.Framework;
 using Proto.Promises;
 using System.Threading;
 
-#pragma warning disable 0618 // Type or member is obsolete
-
 namespace ProtoPromiseTests.Concurrency
 {
     public class DeferredConcurrencyTests

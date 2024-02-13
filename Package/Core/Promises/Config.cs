@@ -5,14 +5,9 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
-#pragma warning disable CA1041 // Provide ObsoleteAttribute message
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
-#pragma warning disable 1574 // XML comment has cref attribute that could not be resolved
 
 using System;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -42,14 +37,6 @@ namespace Proto.Promises
             All
         }
 
-        [Obsolete("Promise Config now uses a simple boolean for object pooling."), EditorBrowsable(EditorBrowsableState.Never)]
-        public enum PoolType : byte
-        {
-            None,
-            Internal,
-            All
-        }
-
         /// <summary>
         /// Promise configuration. Configuration settings affect the global behaviour of promises.
         /// </summary>
@@ -58,13 +45,6 @@ namespace Proto.Promises
 #endif
         public static class Config
         {
-            [Obsolete("Use ObjectPoolingEnabled instead."), EditorBrowsable(EditorBrowsableState.Never)]
-            public static PoolType ObjectPooling 
-            {
-                get { return ObjectPoolingEnabled ? PoolType.All : PoolType.None; }
-                set { ObjectPoolingEnabled = value != PoolType.None; }
-            }
-
             /// <summary>
             /// Should objects be pooled or not. If this is enabled, objects can be reused to reduce GC pressure.
             /// </summary>
@@ -78,7 +58,6 @@ namespace Proto.Promises
                 set { }
             }
 #else
-            volatile private static bool s_objectPoolingEnabled = true; // Enabled by default.
             public static bool ObjectPoolingEnabled
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -86,6 +65,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 set { s_objectPoolingEnabled = value; } 
             }
+            volatile private static bool s_objectPoolingEnabled = true; // Enabled by default.
 #endif
 
             /// <summary>
@@ -184,9 +164,6 @@ namespace Proto.Promises
             {
                 throw new InvalidOperationException("Cannot disable AsyncFlowExecutionContext. It may only be enabled.");
             }
-
-            [Obsolete, EditorBrowsable(EditorBrowsableState.Never)]
-            public static Action<string> WarningHandler { get; set; }
         }
     }
 }

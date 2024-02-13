@@ -290,11 +290,6 @@ namespace Proto.Promises
                 private int _retainCounter;
             }
 
-            partial class DeferredPromiseCancel<TResult> : DeferredPromise<TResult>
-            {
-                private CancelationRegistration _cancelationRegistration;
-            }
-
             partial class CancelablePromiseResolve<TResult, TResolver> : PromiseSingleAwait<TResult>
                 where TResolver : IDelegateResolveOrCancel
             {

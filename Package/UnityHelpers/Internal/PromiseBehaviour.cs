@@ -61,14 +61,6 @@ namespace Proto.Promises
                 // Even though we try to initialize this as early as possible, it is possible for other code to run before this.
                 // So we need to be careful to not overwrite non-default values.
 
-#pragma warning disable 0612 // Type or member is obsolete
-                if (Promise.Config.WarningHandler == null)
-                {
-                    // Set default warning handler to route to UnityEngine.Debug.
-                    Promise.Config.WarningHandler = UnityEngine.Debug.LogWarning;
-                }
-#pragma warning restore 0612 // Type or member is obsolete
-
                 // Create a PromiseBehaviour instance before any promise actions are made.
                 // Unity will throw if this is not ran on the main thread.
                 new GameObject("Proto.Promises.Unity.PromiseBehaviour")

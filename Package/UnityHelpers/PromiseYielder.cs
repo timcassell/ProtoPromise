@@ -7,11 +7,9 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0250 // Make struct 'readonly'
 #pragma warning disable IDE0251 // Make member 'readonly'
-#pragma warning disable 0618 // Type or member is obsolete
 
 using Proto.Promises.Async.CompilerServices;
 using System;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using UnityEngine;
@@ -39,21 +37,6 @@ namespace Proto.Promises
         public static Promise WaitFor(object yieldInstruction, MonoBehaviour runner = null, CancelationToken cancelationToken = default(CancelationToken))
         {
             return InternalHelper.YieldInstructionRunner.WaitForInstruction(yieldInstruction, runner, cancelationToken);
-        }
-
-        /// <summary>
-        /// Returns a <see cref="Promise"/> that will resolve after 1 frame.
-        /// </summary>
-        /// <param name="runner">The <see cref="MonoBehaviour"/> instance on which the wait will be ran.</param>
-        /// <remarks>
-        /// If <paramref name="runner"/> is provided, the coroutine will be ran on it, otherwise it will be ran on the singleton PromiseYielder instance.
-        /// </remarks>
-        [Obsolete("Prefer to use `await PromiseYielder.WaitOneFrame()`, or use `PromiseYielder.WaitFor(null)` to get the old behaviour.", false), EditorBrowsable(EditorBrowsableState.Never)]
-        public static Promise WaitOneFrame(MonoBehaviour runner)
-        {
-            return runner == null
-                ? WaitOneFrame().ToPromise()
-                : InternalHelper.YieldInstructionRunner.WaitForInstruction(null, runner, default(CancelationToken));
         }
 
         /// <summary>

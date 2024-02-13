@@ -7,11 +7,9 @@
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -159,21 +157,6 @@ namespace Proto.Promises
             ResultContainer resultContainer;
             Internal.PromiseSynchronousWaiter.TryWaitForResult(r, _id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
             return resultContainer;
-        }
-
-        /// <summary>
-        /// Mark this as awaited and wait for the operation to complete with a specified timeout.
-        /// <para/>If the operation completed successfully before the timeout expired, this will return <see langword="true"/> and <paramref name="result"/> will be assigned from the result of the operation. Otherwise, this will return <see langword="false"/>.
-        /// If the operation was rejected or canceled, the appropriate exception will be thrown.
-        /// </summary>
-        /// <remarks>
-        /// If a <see cref="TimeSpan"/> representing -1 millisecond is specified for the timeout parameter, this method blocks indefinitely until the operation is complete.
-        /// <para/>Warning: this may cause a deadlock if you are not careful. Make sure you know what you are doing!
-        /// </remarks>
-        [Obsolete("Use TryWaitForResult instead.", false), EditorBrowsable(EditorBrowsableState.Never)]
-        public bool WaitForResult(TimeSpan timeout, out T result)
-        {
-            return TryWaitForResult(timeout, out result);
         }
 
         /// <summary>
@@ -2245,18 +2228,6 @@ namespace Proto.Promises
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
         }
 #endregion
-
-        [Obsolete("Retain is no longer valid, use Preserve instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public void Retain()
-        {
-            throw new InvalidOperationException("Retain is no longer valid, use Preserve instead.", Internal.GetFormattedStacktrace(1));
-        }
-
-        [Obsolete("Release is no longer valid, use Forget instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public void Release()
-        {
-            throw new InvalidOperationException("Release is no longer valid, use Forget instead.", Internal.GetFormattedStacktrace(1));
-        }
     }
 
     // Inherited from Promise (must copy since structs cannot inherit).
