@@ -8,7 +8,7 @@ concurrency:
 
 jobs:
   unity-tests:
-    name: Test (${{ matrix.testMode.name }}, ${{ matrix.scriptingRuntime.name }}, ${{ matrix.mode.name }}, ${{ matrix.objectPooling.name }}, ${{ matrix.unityVersion }}, ${{ matrix.devMode.name }})
+    name: Test (${{ matrix.testMode.name }}, ${{ matrix.mode.name }}, ${{ matrix.objectPooling.name }}, ${{ matrix.unityVersion }}, ${{ matrix.devMode.name }})
     runs-on: ubuntu-latest
     
     strategy:
@@ -31,17 +31,6 @@ jobs:
           #    value: WebGL,
           #    buildTargetId: 13
           #  }
-        scriptingRuntime:
-          - {
-              name: Net3.5,
-              version: 0,
-              apiCompatibilityLevel: 2,
-            }
-          - {
-              name: Net4.x,
-              version: 1,
-              apiCompatibilityLevel: 6
-            }
         mode:
           - {
               name: Release,
@@ -60,8 +49,8 @@ jobs:
               name: Pool_Disabled,
               symbol: PROTO_PROMISE_POOL_DISABLE
             }
-        # Editor uses 2018.4 to test Net3.5 and Net4.x.
-        # Standalone uses 2019.4 and 2021.3 to test IL2CPP with netstandard 2.0 and netstandard2.1.
+        # Editor uses 2018.4 to test netstandard2.0 in Mono.
+        # Standalone uses 2019.4 and 2021.3 to test IL2CPP with netstandard2.0 and netstandard2.1.
         unityVersion: [2018.4.36f1, 2019.4.40f1, 2021.3.29f1]
         devMode:
           - {
@@ -79,7 +68,7 @@ jobs:
               mode: { name: Debug },
               objectPooling: { name: Pool_Enabled }
             }
-          # Editor tests only run in 2018.4 to test Net3.5 and Net4.x.
+          # Editor tests only run in 2018.4 to keep CI times down.
           - {
               testMode: { name: Editor },
               unityVersion: 2019.4.40f1
@@ -88,20 +77,16 @@ jobs:
               testMode: { name: Editor },
               unityVersion: 2021.3.29f1
             }
-          # Standalone with IL2CPP can only be built with 2019.4+ (unity-builder docker images constraint), which doesn't support Net3.5.
+          # Standalone with IL2CPP can only be built with 2019.4+ (unity-builder docker images constraint).
           - {
               testMode: { name: Standalone },
               unityVersion: 2018.4.36f1
             }
-          - {
-              testMode: { name: Standalone },
-              scriptingRuntime: { name: Net3.5 }
-            }
-          # Only test devMode in Net3.5 in editor, and 2021.3 IL2CPP
+          # Only test devMode in 2018.4 Editor, and 2021.3 IL2CPP
           - {
               devMode: { name: devMode },
               testMode: { name: Editor },
-              scriptingRuntime: { name: Net4.x }
+              unityVersion: 2019.4.40f1
             }
           - {
               devMode: { name: devMode },
@@ -118,14 +103,6 @@ jobs:
           DefineOriginal="  scriptingDefineSymbols: {}"
           DefineReplace="  scriptingDefineSymbols: \\n    ${{ matrix.testMode.buildTargetId }}: $DefineSymbols"
           sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
-
-          RuntimeOriginal="  scriptingRuntimeVersion: 0"
-          RuntimeReplace="  scriptingRuntimeVersion: ${{ matrix.scriptingRuntime.version }}"
-          sed -i "{s/$RuntimeOriginal/$RuntimeReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
-
-          ApiOriginal="  apiCompatibilityLevel: 2"
-          ApiReplace="  apiCompatibilityLevel: ${{ matrix.scriptingRuntime.apiCompatibilityLevel }}"
-          sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
       - name: Run tests
         id: tests
@@ -165,12 +142,12 @@ jobs:
       - uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
+          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
           path: "*_junit.xml"
           reporter: java-junit
 
       - uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.scriptingRuntime.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
+          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
           path: artifacts
