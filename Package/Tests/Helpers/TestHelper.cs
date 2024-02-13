@@ -1,8 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -127,7 +123,7 @@ namespace ProtoPromiseTests
 
         public static void AssertRejection(object expected, object actual)
         {
-#if ENABLE_IL2CPP && !NET_LEGACY && !UNITY_2022_1_OR_NEWER
+#if ENABLE_IL2CPP && !UNITY_2022_1_OR_NEWER
             // ExceptionDispatchInfo.Throw() generates a new Exception object instead of throwing the original object in IL2CPP, causing the Assert to fail.
             // This was fixed in Unity 2022. To avoid the tests failing, we instead have to check the object's type and message.
             if (expected is Exception)
@@ -498,11 +494,7 @@ namespace ProtoPromiseTests
         // The distance between 1 and the largest value smaller than 1.
         public static readonly float progressEpsilon = 1f - 0.99999994f;
 
-        public const int callbacksMultiplier = 3
-#if CSHARP_7_3_OR_NEWER
-            + 1
-#endif
-            ;
+        public const int callbacksMultiplier = 4;
 
         public const int resolveVoidCallbacks = 72 * callbacksMultiplier;
         public const int resolveTCallbacks = 72 * callbacksMultiplier;
@@ -576,9 +568,7 @@ namespace ProtoPromiseTests
                 })
                 .Forget();
             yield return deferred.Promise;
-#if CSHARP_7_3_OR_NEWER
             yield return Await(preservedPromise);
-#endif
         }
 
         public static IEnumerable<Promise<T>> GetTestablePromises<T>(Promise<T> preservedPromise)
@@ -605,12 +595,9 @@ namespace ProtoPromiseTests
                 })
                 .Forget();
             yield return deferred.Promise;
-#if CSHARP_7_3_OR_NEWER
             yield return Await(preservedPromise);
-#endif
         }
 
-#if CSHARP_7_3_OR_NEWER
         private static async Promise Await(Promise promise)
         {
             await promise;
@@ -620,7 +607,6 @@ namespace ProtoPromiseTests
         {
             return await promise;
         }
-#endif
 
         public static void AddResolveCallbacks<TConvert, TCapture>(Promise promise,
             Action onResolve = null, TConvert convertValue = default(TConvert),

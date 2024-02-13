@@ -1,7 +1,3 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
@@ -48,28 +44,6 @@ namespace System.Runtime.CompilerServices
         }
     }
 #endif
-
-#if NET_LEGACY
-    // The C# compiler does not support custom async methods for runtimes older than .Net 4.5,
-    // but we include these interfaces to make it so we don't have to conditionally compile out the builders.
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-    public interface INotifyCompletion
-    {
-        void OnCompleted(Action continuation);
-    }
-
-    public interface ICriticalNotifyCompletion : INotifyCompletion
-    {
-        void UnsafeOnCompleted(Action continuation);
-    }
-
-    public interface IAsyncStateMachine
-    {
-        void MoveNext();
-        void SetStateMachine(IAsyncStateMachine stateMachine);
-    }
-#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
-#endif // NET_LEGACY
 }
 
 namespace Proto.Promises
@@ -129,7 +103,16 @@ namespace Proto.Promises
             public void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
-                Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.Start(ref stateMachine, ref _ref);
+                if (Promise.Config.AsyncFlowExecutionContextEnabled)
+                {
+                    // To support ExecutionContext for AsyncLocal<T>.
+                    // We can use AsyncTaskMethodBuilder to run the state machine on the execution context without creating an object. https://github.com/dotnet/runtime/discussions/56202#discussioncomment-1042195
+                    new AsyncTaskMethodBuilder().Start(ref stateMachine);
+                }
+                else
+                {
+                    stateMachine.MoveNext();
+                }
             }
 
             /// <summary>Does nothing.</summary>
@@ -185,7 +168,7 @@ namespace Proto.Promises
             public void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
             {
-                Internal.PromiseRefBase.AsyncPromiseRef<T>.Start(ref stateMachine, ref _ref);
+                new PromiseMethodBuilder().Start(ref stateMachine);
             }
 
             /// <summary>Does nothing.</summary>

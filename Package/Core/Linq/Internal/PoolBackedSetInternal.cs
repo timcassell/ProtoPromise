@@ -11,7 +11,6 @@ using System.Diagnostics;
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
         // Adapted from System.Linq's Set.
@@ -139,5 +138,4 @@ namespace Proto.Promises
             }
         }
     } // class Internal
-#endif
 } // namespace Proto.Promises

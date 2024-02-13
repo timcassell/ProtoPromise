@@ -1,7 +1,3 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
@@ -13,13 +9,10 @@
 #pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable 0618 // Type or member is obsolete
 
-using Proto.Promises.Async.CompilerServices;
 using System;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices;
 
 namespace Proto.Promises
 {
@@ -176,13 +169,7 @@ namespace Proto.Promises
                 if (e != null)
                 {
                     s_exception = null;
-#if NET_LEGACY
-                    throw Promise.RejectException(e); // Wrap the exception and throw to preserve the stacktrace.
-#elif UNITY_2021_2_OR_NEWER
-                    ExceptionDispatchInfo.Throw(e);
-#else
                     ExceptionDispatchInfo.Capture(e).Throw();
-#endif
                 }
             }
 
@@ -266,95 +253,11 @@ namespace Proto.Promises
         /// <summary>
         /// Converts the <paramref name="awaiter"/> to a <see cref="Promise"/>.
         /// </summary>
-#if CSHARP_7_3_OR_NEWER
         public static async Promise ToPromise<TAwaiter>(this TAwaiter awaiter)
             where TAwaiter : IAwaiter<TAwaiter>
         {
             await awaiter;
         }
-#else // CSHARP_7_3_OR_NEWER
-        public static Promise ToPromise<TAwaiter>(this TAwaiter awaiter)
-            where TAwaiter : IAwaiter<TAwaiter>
-        {
-            __d__0<TAwaiter> stateMachine = default(__d__0<TAwaiter>);
-            stateMachine.__t__builder = PromiseMethodBuilder.Create();
-            stateMachine.awaiter = awaiter;
-            stateMachine.__1__state = -1;
-            stateMachine.__t__builder.Start(ref stateMachine);
-            return stateMachine.__t__builder.Task;
-        }
-
-        // Manually creating the state machine that `await awaiter` would generate, because old C# versions don't support async/await.
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        [StructLayout(LayoutKind.Auto)]
-        [CompilerGenerated]
-        private struct __d__0<TAwaiter> : IAsyncStateMachine where TAwaiter : IAwaiter<TAwaiter>
-        {
-            public int __1__state;
-
-            public PromiseMethodBuilder __t__builder;
-
-            public TAwaiter awaiter;
-
-            private TAwaiter __u__1;
-
-            private void MoveNext()
-            {
-                int num = __1__state;
-                try
-                {
-                    TAwaiter val;
-                    if (num != 0)
-                    {
-                        val = awaiter.GetAwaiter();
-                        if (!val.IsCompleted)
-                        {
-                            num = (__1__state = 0);
-                            __u__1 = val;
-                            __t__builder.AwaitUnsafeOnCompleted(ref val, ref this);
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        val = __u__1;
-                        __u__1 = default(TAwaiter);
-                        num = (__1__state = -1);
-                    }
-                    val.GetResult();
-                }
-                catch (Exception exception)
-                {
-                    __1__state = -2;
-                    __t__builder.SetException(exception);
-                    return;
-                }
-                __1__state = -2;
-                __t__builder.SetResult();
-            }
-
-            void IAsyncStateMachine.MoveNext()
-            {
-                //ILSpy generated this explicit interface implementation from .override directive in MoveNext
-                this.MoveNext();
-            }
-
-            [DebuggerHidden]
-            private void SetStateMachine(IAsyncStateMachine stateMachine)
-            {
-                __t__builder.SetStateMachine(stateMachine);
-            }
-
-            void IAsyncStateMachine.SetStateMachine(IAsyncStateMachine stateMachine)
-            {
-                //ILSpy generated this explicit interface implementation from .override directive in SetStateMachine
-                this.SetStateMachine(stateMachine);
-            }
-        }
-#endif // !CSHARP_7_3_OR_NEWER
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG

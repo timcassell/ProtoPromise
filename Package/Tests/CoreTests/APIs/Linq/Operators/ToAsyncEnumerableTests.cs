@@ -1,4 +1,4 @@
-﻿#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+﻿#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
 using NUnit.Framework;
 using Proto.Promises;
@@ -468,4 +468,4 @@ namespace ProtoPromiseTests.APIs.Linq
     }
 }
 
-#endif
+#endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER

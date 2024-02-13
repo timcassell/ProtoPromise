@@ -122,11 +122,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static bool TryResolve(DeferredPromise<TResult> _this, int deferredId,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult value)
+                internal static bool TryResolve(DeferredPromise<TResult> _this, int deferredId, in TResult value)
                 {
                     if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
                     {
@@ -148,11 +144,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void ResolveDirect(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult value)
+                internal void ResolveDirect(in TResult value)
                 {
                     _result = value;
                     HandleNextInternal(null, Promise.State.Resolved);

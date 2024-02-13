@@ -1,8 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -152,14 +148,12 @@ namespace Proto.Promises
 #endif
         internal sealed partial class RejectionContainerException : RejectContainer, IRejectionToContainer, ICantHandleException
         {
-#if PROMISE_DEBUG && !NET_LEGACY
+#if PROMISE_DEBUG
             // This is used to reconstruct the rejection causality trace when the original exception is rethrown from await in an async function, and this container is lost.
             private static readonly ConditionalWeakTable<object, RejectionException> s_rejectExceptionsForTrace = new ConditionalWeakTable<object, RejectionException>();
 #endif
 
-#if !NET_LEGACY
             ExceptionDispatchInfo _capturedInfo;
-#endif
             partial void SetCreatedAndRejectedStacktrace(int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable);
 #if PROMISE_DEBUG
             private RejectionException _rejectException;
@@ -175,7 +169,6 @@ namespace Proto.Promises
                 if (rejectedStacktrace != null)
                 {
                     const string message = "This exception contains the stacktrace of where Deferred.Reject was called, or Promise.RejectException() was thrown.";
-#if !NET_LEGACY
                     lock (s_rejectExceptionsForTrace)
                     {
                         if (!s_rejectExceptionsForTrace.TryGetValue(Value, out _rejectException))
@@ -184,16 +177,11 @@ namespace Proto.Promises
                             s_rejectExceptionsForTrace.Add(Value, _rejectException);
                         }
                     }
-#else
-                    _rejectException = new RejectionException(message, FormatStackTrace(new StackTrace[1] { rejectedStacktrace }), (Exception) Value);
-#endif
                 }
-#if !NET_LEGACY
                 else
                 {
                     s_rejectExceptionsForTrace.TryGetValue(Value, out _rejectException);
                 }
-#endif
             }
 #endif
 
@@ -203,9 +191,7 @@ namespace Proto.Promises
             {
                 var container = new RejectionContainerException();
                 container._value = value;
-#if !NET_LEGACY
                 container._capturedInfo = ExceptionDispatchInfo.Capture(value);
-#endif
                 SetCreatedStacktrace(container, 2);
                 container.SetCreatedAndRejectedStacktrace(rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
                 return container;
@@ -227,12 +213,7 @@ namespace Proto.Promises
 
             public override ExceptionDispatchInfo GetExceptionDispatchInfo()
             {
-#if NET_LEGACY
-                // Old runtimes don't support preserving stacktrace, so we wrap it in UnhandledException.
-                return ExceptionDispatchInfo.Capture(ToException());
-#else
                 return _capturedInfo;
-#endif
             }
 
             IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)

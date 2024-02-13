@@ -49,10 +49,8 @@ namespace ProtoPromiseTests.Concurrency
 
             var continuationTypes = new ContinuationType[]
             {
-                ContinuationType.ContinueWith
-#if CSHARP_7_3_OR_NEWER
-                , ContinuationType.Await
-#endif
+                ContinuationType.ContinueWith,
+                ContinuationType.Await
             };
 
             foreach (var waitType in waitTypes)
@@ -99,7 +97,6 @@ namespace ProtoPromiseTests.Concurrency
 
             Action SubscribeContinuation = () =>
             {
-#if CSHARP_7_3_OR_NEWER
                 if (continuationType == ContinuationType.Await)
                 {
                     Await().Forget();
@@ -123,7 +120,6 @@ namespace ProtoPromiseTests.Concurrency
                     }
                 }
                 else
-#endif
                 {
                     promise
                         .ContinueWith(_ =>
@@ -228,7 +224,6 @@ namespace ProtoPromiseTests.Concurrency
 
             Action SubscribeContinuation = () =>
             {
-#if CSHARP_7_3_OR_NEWER
                 if (continuationType == ContinuationType.Await)
                 {
                     Await().Forget();
@@ -252,7 +247,6 @@ namespace ProtoPromiseTests.Concurrency
                     }
                 }
                 else
-#endif
                 {
                     promise
                         .ContinueWith(_ =>

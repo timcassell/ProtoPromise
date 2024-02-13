@@ -16,7 +16,6 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
         internal static Promise ParallelForEachAsync<TParallelBody, TSource>(Linq.AsyncEnumerable<TSource> enumerable, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
@@ -522,5 +521,4 @@ namespace Proto.Promises
             } // class PromiseParallelForEach
         } // class PromiseRefBase
     } // class Internal
-#endif // CSHARP_7_3_OR_NEWER
 }

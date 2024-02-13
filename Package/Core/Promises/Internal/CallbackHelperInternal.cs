@@ -35,11 +35,8 @@ namespace Proto.Promises
             internal static class CallbackHelperArg<TArg>
             {
                 [MethodImpl(InlineOption)]
-                private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    Promise<TArg> resolved) where TDelegate : IAction<TArg>
+                private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise<TArg> resolved)
+                    where TDelegate : IAction<TArg>
                 {
                     try
                     {
@@ -53,11 +50,8 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static Promise InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    Promise<TArg> resolved) where TDelegate : IFunc<TArg, Promise>
+                private static Promise InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, in Promise<TArg> resolved)
+                    where TDelegate : IFunc<TArg, Promise>
                 {
                     try
                     {
@@ -239,11 +233,8 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static Promise<TResult> InvokeCallbackDirect<TDelegate>(TDelegate resolver,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    Promise resolved) where TDelegate : IFunc<TResult>
+                private static Promise<TResult> InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise resolved)
+                    where TDelegate : IFunc<TResult>
                 {
                     try
                     {
@@ -261,11 +252,8 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static Promise<TResult> InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    Promise resolved) where TDelegate : IFunc<Promise<TResult>>
+                private static Promise<TResult> InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, in Promise resolved)
+                    where TDelegate : IFunc<Promise<TResult>>
                 {
                     try
                     {
@@ -622,11 +610,8 @@ namespace Proto.Promises
             internal static class CallbackHelper<TArg, TResult>
             {
                 [MethodImpl(InlineOption)]
-                private static Promise<TResult> InvokeCallbackDirect<TDelegate>(TDelegate resolver,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    Promise<TArg> resolved) where TDelegate : IFunc<TArg, TResult>
+                private static Promise<TResult> InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise<TArg> resolved)
+                    where TDelegate : IFunc<TArg, TResult>
                 {
                     try
                     {
@@ -640,11 +625,8 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static Promise<TResult> InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    Promise<TArg> resolved) where TDelegate : IFunc<TArg, Promise<TResult>>
+                private static Promise<TResult> InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, in Promise<TArg> resolved)
+                    where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
                     try
                     {
@@ -843,11 +825,8 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    Promise resolved) where TDelegate : IAction
+                private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise resolved)
+                    where TDelegate : IAction
                 {
                     try
                     {
@@ -865,11 +844,8 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static Promise InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    Promise resolved) where TDelegate : IFunc<Promise>
+                private static Promise InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, in Promise resolved)
+                    where TDelegate : IFunc<Promise>
                 {
                     try
                     {
@@ -924,11 +900,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static TResult GetResultFromResolved<TResult>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    Promise<TResult> promise)
+                internal static TResult GetResultFromResolved<TResult>(in Promise<TResult> promise)
                 {
                     if (promise._ref == null)
                     {

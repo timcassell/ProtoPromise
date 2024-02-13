@@ -4,7 +4,7 @@
 // Modified to work in Unity/netstandard2.0 without using the nuget package.
 // Hooks up to Promise.Manager.ClearObjectPool() event instead of using Gen2GC callbacks.
 
-#if CSHARP_7_3_OR_NEWER && !(NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,7 +14,7 @@ using System.Threading;
 
 namespace Proto.Promises.Collections
 {
-#if CSHARP_7_3_OR_NEWER && !(NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 
     /// <summary>
     /// Provides an ArrayPool implementation meant to be used as the singleton returned from ArrayPool.Shared.
@@ -279,5 +279,5 @@ namespace Proto.Promises.Collections
         }
     }
 
-#endif // CSHARP_7_3_OR_NEWER && !(NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#endif // UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 }

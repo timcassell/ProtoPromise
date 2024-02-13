@@ -1,16 +1,10 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
 
-#if !NET_LEGACY || NET40
 using System.Threading.Tasks;
-#endif
 
 using System.Diagnostics;
 
@@ -24,7 +18,6 @@ namespace Proto.Promises
 #endif
     public static partial class Extensions
     {
-#if CSHARP_7_3_OR_NEWER || NET45
         /// <summary>
         /// Convert the <paramref name="promise"/> to a <see cref="Task"/>.
         /// </summary>
@@ -56,111 +49,8 @@ namespace Proto.Promises
         {
             return await task;
         }
-#elif !NET_LEGACY || NET40
-        /// <summary>
-        /// Convert the <paramref name="promise"/> to a <see cref="Task"/>.
-        /// </summary>
-        public static Task ToTask(this Promise promise)
-        {
-            var taskCompletionSource = new TaskCompletionSource<bool>();
-            promise
-                .ContinueWith(taskCompletionSource, (source, resultContainer) =>
-                {
-                    if (resultContainer.State == Promise.State.Resolved)
-                    {
-                        source.SetResult(true);
-                    }
-                    else if (resultContainer.State == Promise.State.Canceled)
-                    {
-                        source.SetCanceled();
-                    }
-                    else
-                    {
-                        System.Exception exception = resultContainer._target._rejectContainer.UnsafeAs<Internal.IRejectContainer>().GetExceptionDispatchInfo().SourceException;
-                        source.SetException(exception);
-                    }
-                })
-                .Forget();
-            return taskCompletionSource.Task;
-        }
 
-        /// <summary>
-        /// Convert the <paramref name="promise"/> to a <see cref="Task{T}"/>.
-        /// </summary>
-        public static Task<T> ToTask<T>(this Promise<T> promise)
-        {
-            var taskCompletionSource = new TaskCompletionSource<T>();
-            promise
-                .ContinueWith(taskCompletionSource, (source, resultContainer) =>
-                {
-                    if (resultContainer.State == Promise.State.Resolved)
-                    {
-                        source.SetResult(resultContainer.Value);
-                    }
-                    else if (resultContainer.State == Promise.State.Canceled)
-                    {
-                        source.SetCanceled();
-                    }
-                    else
-                    {
-                        System.Exception exception = resultContainer._rejectContainer.UnsafeAs<Internal.IRejectContainer>().GetExceptionDispatchInfo().SourceException;
-                        source.SetException(exception);
-                    }
-                })
-                .Forget();
-            return taskCompletionSource.Task;
-        }
-
-        /// <summary>
-        /// Convert the <paramref name="task"/> to a <see cref="Promise"/>.
-        /// </summary>
-        public static Promise ToPromise(this Task task)
-        {
-            var deferred = Promise.NewDeferred();
-            task.ContinueWith(t =>
-            {
-                if (t.Status == TaskStatus.RanToCompletion)
-                {
-                    deferred.Resolve();
-                }
-                else if (t.Status == TaskStatus.Canceled)
-                {
-                    deferred.Cancel();
-                }
-                else
-                {
-                    deferred.Reject(t.Exception);
-                }
-            }, TaskContinuationOptions.ExecuteSynchronously);
-            return deferred.Promise;
-        }
-
-        /// <summary>
-        /// Convert the <paramref name="task"/> to a <see cref="Promise{T}"/>.
-        /// </summary>
-        public static Promise<T> ToPromise<T>(this Task<T> task)
-        {
-            var deferred = Promise.NewDeferred<T>();
-            task.ContinueWith(t =>
-            {
-                if (t.Status == TaskStatus.RanToCompletion)
-                {
-                    deferred.Resolve(t.Result);
-                }
-                else if (t.Status == TaskStatus.Canceled)
-                {
-                    deferred.Cancel();
-                }
-                else
-                {
-                    deferred.Reject(t.Exception);
-                }
-            }, TaskContinuationOptions.ExecuteSynchronously);
-            return deferred.Promise;
-        }
-#endif // elif !NET_LEGACY || NET40
-
-#if UNITY_2021_2_OR_NEWER || (!NET_LEGACY && !UNITY_5_5_OR_NEWER)
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
         /// <summary>
         /// Convert the <paramref name="task"/> to a <see cref="Promise"/>.
         /// </summary>

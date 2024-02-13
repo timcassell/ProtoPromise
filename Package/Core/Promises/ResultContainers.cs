@@ -22,11 +22,7 @@ namespace Proto.Promises
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
     [Obsolete("Promise.ResultContainer.RejectContainer is deprecated, use RejectReason instead (returns object)", false), EditorBrowsable(EditorBrowsableState.Never)]
-    public
-#if CSHARP_7_3_OR_NEWER
-        readonly ref
-#endif
-        partial struct ReasonContainer
+    public readonly ref partial struct ReasonContainer
     {
         private readonly Internal.IRejectContainer _rejectContainer;
 
@@ -78,11 +74,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            struct ResultContainer
+        public readonly struct ResultContainer
         {
             internal static ResultContainer Resolved
             {
@@ -108,11 +100,7 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                Promise<Internal.VoidResult>.ResultContainer target)
+            internal ResultContainer(in Promise<Internal.VoidResult>.ResultContainer target)
             {
                 _target = target;
             }
@@ -190,11 +178,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct ResultContainer
+        public readonly partial struct ResultContainer
         {
             /// <summary>
             /// FOR INTERNAL USE ONLY!
@@ -207,11 +191,7 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                T result, object rejectContainer, Promise.State state)
+            internal ResultContainer(in T result, object rejectContainer, Promise.State state)
             {
                 _rejectContainer = rejectContainer;
                 _state = state;
@@ -328,7 +308,7 @@ namespace Proto.Promises
             /// Wrap the value in <see cref="ResultContainer"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            public static implicit operator ResultContainer(T value)
+            public static implicit operator ResultContainer(in T value)
             {
                 return new ResultContainer(value, null, Promise.State.Resolved);
             }

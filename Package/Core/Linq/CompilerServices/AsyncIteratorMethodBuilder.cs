@@ -9,7 +9,6 @@ using System.Security;
 
 namespace Proto.Promises.CompilerServices
 {
-#if CSHARP_7_3_OR_NEWER
     /// <summary>
     /// Awaitable type used to wait for the consumer to move the async iterator forward.
     /// </summary>
@@ -105,5 +104,4 @@ namespace Proto.Promises.CompilerServices
         public void SetStateMachine(IAsyncStateMachine stateMachine)
             => _builder.SetStateMachine(stateMachine);
     }
-#endif
 }

@@ -6,7 +6,6 @@
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         /// <summary>
@@ -107,5 +106,4 @@ namespace Proto.Promises.Linq
         }
 #endif // NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP3_0_OR_GREATER
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

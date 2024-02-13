@@ -6,7 +6,6 @@
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         /// <summary>
@@ -29,5 +28,4 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> Prepend<TSource>(this AsyncEnumerable<TSource> source, TSource element)
             => Internal.AppendPrependHelper<TSource>.Prepend(source, element);
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

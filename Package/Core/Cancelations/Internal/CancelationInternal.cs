@@ -1,8 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -57,11 +53,7 @@ namespace Proto.Promises
             private readonly Action<TCapture> _callback;
 
             [MethodImpl(InlineOption)]
-            internal CancelDelegateToken(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TCapture capturedValue, Action<TCapture> callback)
+            internal CancelDelegateToken(in TCapture capturedValue, Action<TCapture> callback)
             {
                 _capturedValue = capturedValue;
                 _callback = callback;
@@ -299,11 +291,8 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryRegister<TCancelable>(CancelationRef _this, int tokenId,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TCancelable cancelable, out CancelationRegistration registration) where TCancelable : ICancelable
+            internal static bool TryRegister<TCancelable>(CancelationRef _this, int tokenId, in TCancelable cancelable, out CancelationRegistration registration)
+                where TCancelable : ICancelable
             {
                 if (_this == null)
                 {
@@ -314,11 +303,8 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private bool TryRegister<TCancelable>(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TCancelable cancelable, int tokenId, out CancelationRegistration registration) where TCancelable : ICancelable
+            private bool TryRegister<TCancelable>(in TCancelable cancelable, int tokenId, out CancelationRegistration registration)
+                where TCancelable : ICancelable
             {
                 var nodeCreator = new UserNodeCreator<TCancelable>(cancelable);
                 bool success = TryRegister(ref nodeCreator, tokenId);
@@ -603,7 +589,6 @@ namespace Proto.Promises
             {
                 if (--_internalRetainCounter == 0 & _userRetainCounter == 0)
                 {
-#if !NET_LEGACY || NET40
                     if (_bclSource != null)
                     {
                         CancelationConverter.DetachCancelationRef(_bclSource);
@@ -617,7 +602,6 @@ namespace Proto.Promises
                         _bclSource = null;
                         Thread.MemoryBarrier();
                     }
-#endif
                     unchecked
                     {
                         ++_tokenId;
@@ -699,11 +683,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CallbackNodeImpl<TCancelable> GetOrCreate(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCancelable cancelable, CancelationRef parent)
+                internal static CallbackNodeImpl<TCancelable> GetOrCreate(in TCancelable cancelable, CancelationRef parent)
                 {
                     var node = GetOrCreate();
                     node._parentId = parent._smallFields._instanceId;
@@ -890,11 +870,7 @@ namespace Proto.Promises
                 private readonly TCancelable _cancelable;
 
                 [MethodImpl(InlineOption)]
-                public UserNodeCreator(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCancelable cancelable)
+                public UserNodeCreator(in TCancelable cancelable)
                 {
                     _registration = default(CancelationRegistration);
                     _cancelable = cancelable;
@@ -1146,7 +1122,6 @@ namespace Proto.Promises
 
         partial class CancelationRef
         {
-#if !NET_LEGACY || NET40
             // A separate class so that static data won't need to be created if it is never used.
             internal static class CancelationConverter
             {
@@ -1327,7 +1302,6 @@ namespace Proto.Promises
                     _smallFields._locker.Exit();
                 }
             }
-#endif // !NET_LEGACY || NET40
         } // class CancelationRef
     } // class Internal
 } // namespace Proto.Promises

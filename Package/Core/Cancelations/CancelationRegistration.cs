@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
@@ -19,11 +18,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public
-#if CSHARP_7_3_OR_NEWER
-        readonly
-#endif
-        partial struct CancelationRegistration : IEquatable<CancelationRegistration>, IDisposable
+    public readonly partial struct CancelationRegistration : IEquatable<CancelationRegistration>, IDisposable
     {
         private readonly Internal.CancelationRef _ref;
         private readonly Internal.CancelationCallbackNode _node;
@@ -132,11 +127,7 @@ namespace Proto.Promises
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
         {
-#if CSHARP_7_3_OR_NEWER
             return obj is CancelationRegistration registration && Equals(registration);
-#else
-            return obj is CancelationRegistration && Equals((CancelationRegistration) obj);
-#endif
         }
 
         /// <summary>Returns the hash code for this instance.</summary>
@@ -158,7 +149,7 @@ namespace Proto.Promises
         }
     }
 
-#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
     partial struct CancelationRegistration : IAsyncDisposable
     {
         System.Threading.Tasks.ValueTask IAsyncDisposable.DisposeAsync()

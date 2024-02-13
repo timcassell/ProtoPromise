@@ -1,8 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -25,11 +21,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public
-#if CSHARP_7_3_OR_NEWER
-        readonly
-#endif
-        partial struct CancelationToken : IRetainable, IEquatable<CancelationToken>
+    public readonly partial struct CancelationToken : IRetainable, IEquatable<CancelationToken>
     {
         /// <summary>
         /// FOR INTERNAL USE ONLY!
@@ -225,7 +217,6 @@ namespace Proto.Promises
             return new Retainer(this);
         }
 
-#if !NET_LEGACY || NET40
         /// <summary>
         /// Convert this to a <see cref="System.Threading.CancellationToken"/>.
         /// </summary>
@@ -234,7 +225,6 @@ namespace Proto.Promises
         {
             return Internal.CancelationRef.GetCancellationToken(_ref, _id);
         }
-#endif
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationToken"/>.</summary>
         public bool Equals(CancelationToken other)
@@ -245,11 +235,7 @@ namespace Proto.Promises
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
         {
-#if CSHARP_7_3_OR_NEWER
             return obj is CancelationToken token && Equals(token);
-#else
-            return obj is CancelationToken && Equals((CancelationToken) obj);
-#endif
         }
 
         /// <summary>Returns the hash code for this instance.</summary>
@@ -307,11 +293,7 @@ namespace Proto.Promises
         /// A helper type that facilitates retaining and releasing <see cref="CancelationToken"/>s with a using statement.
         /// This is intended to be used instead of <see cref="TryRetain"/> and <see cref="Release"/> to reduce boilerplate code.
         /// </summary>
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            struct Retainer : IDisposable
+        public readonly struct Retainer : IDisposable
         {
             public readonly CancelationToken token;
             public readonly bool isRetained;
@@ -339,7 +321,6 @@ namespace Proto.Promises
 
     partial class Extensions
     {
-#if !NET_LEGACY || NET40
         /// <summary>
         /// Convert <paramref name="token"/> to a <see cref="CancelationToken"/>.
         /// </summary>
@@ -349,6 +330,5 @@ namespace Proto.Promises
         {
             return Internal.CancelationRef.CancelationConverter.Convert(token);
         }
-#endif // !NET_LEGACY || NET40
     }
 }

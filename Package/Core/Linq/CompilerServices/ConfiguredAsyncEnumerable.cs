@@ -7,7 +7,6 @@ using System.Threading;
 
 namespace Proto.Promises.CompilerServices
 {
-#if CSHARP_7_3_OR_NEWER
     /// <summary>
     /// Provides an awaitable async enumerable that enables cancelable iteration and configured awaits.
     /// </summary>
@@ -375,5 +374,4 @@ namespace Proto.Promises.CompilerServices
             }
         }
     }
-#endif
 }

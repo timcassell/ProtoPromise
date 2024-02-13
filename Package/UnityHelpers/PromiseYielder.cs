@@ -328,18 +328,6 @@ namespace Proto.Promises
                         return _current == _target;
                     }
                 }
-
-#if !CSHARP_7_3_OR_NEWER
-                /// <summary>
-                /// Converts this to a <see cref="Promise"/>.
-                /// </summary>
-                // Old C# compiler thinks the .ToPromise() extension methods are ambiguous, so we add it here explicitly.
-                [MethodImpl(Internal.InlineOption)]
-                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
-                {
-                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
-                }
-#endif
             }
 
             /// <summary>
@@ -424,18 +412,6 @@ namespace Proto.Promises
                         return _current <= 0;
                     }
                 }
-
-#if !CSHARP_7_3_OR_NEWER
-                /// <summary>
-                /// Converts this to a <see cref="Promise"/>.
-                /// </summary>
-                // Old C# compiler thinks the .ToPromise() extension methods are ambiguous, so we add it here explicitly.
-                [MethodImpl(Internal.InlineOption)]
-                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
-                {
-                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
-                }
-#endif
             }
 
             /// <summary>
@@ -523,18 +499,6 @@ namespace Proto.Promises
                         return current >= _target;
                     }
                 }
-
-#if !CSHARP_7_3_OR_NEWER
-                /// <summary>
-                /// Converts this to a <see cref="Promise"/>.
-                /// </summary>
-                // Old C# compiler thinks the .ToPromise() extension methods are ambiguous, so we add it here explicitly.
-                [MethodImpl(Internal.InlineOption)]
-                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
-                {
-                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
-                }
-#endif
             }
 
             /// <summary>
@@ -612,18 +576,6 @@ namespace Proto.Promises
                 {
                     return _predicate.Invoke();
                 }
-
-#if !CSHARP_7_3_OR_NEWER
-                /// <summary>
-                /// Converts this to a <see cref="Promise"/>.
-                /// </summary>
-                // Old C# compiler thinks the .ToPromise() extension methods are ambiguous, so we add it here explicitly.
-                [MethodImpl(Internal.InlineOption)]
-                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
-                {
-                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
-                }
-#endif
             }
 
             /// <summary>
@@ -652,18 +604,6 @@ namespace Proto.Promises
                 {
                     return _predicate.Invoke(_capturedValue);
                 }
-
-#if !CSHARP_7_3_OR_NEWER
-                /// <summary>
-                /// Converts this to a <see cref="Promise"/>.
-                /// </summary>
-                // Old C# compiler thinks the .ToPromise() extension methods are ambiguous, so we add it here explicitly.
-                [MethodImpl(Internal.InlineOption)]
-                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
-                {
-                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
-                }
-#endif
             }
 
             /// <summary>
@@ -690,18 +630,6 @@ namespace Proto.Promises
                 {
                     return !_predicate.Invoke();
                 }
-
-#if !CSHARP_7_3_OR_NEWER
-                /// <summary>
-                /// Converts this to a <see cref="Promise"/>.
-                /// </summary>
-                // Old C# compiler thinks the .ToPromise() extension methods are ambiguous, so we add it here explicitly.
-                [MethodImpl(Internal.InlineOption)]
-                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
-                {
-                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
-                }
-#endif
             }
 
             /// <summary>
@@ -730,18 +658,6 @@ namespace Proto.Promises
                 {
                     return !_predicate.Invoke(_capturedValue);
                 }
-
-#if !CSHARP_7_3_OR_NEWER
-                /// <summary>
-                /// Converts this to a <see cref="Promise"/>.
-                /// </summary>
-                // Old C# compiler thinks the .ToPromise() extension methods are ambiguous, so we add it here explicitly.
-                [MethodImpl(Internal.InlineOption)]
-                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
-                {
-                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
-                }
-#endif
             }
 
             /// <summary>
@@ -767,18 +683,6 @@ namespace Proto.Promises
                 {
                     return _asyncOperation.isDone;
                 }
-
-#if !CSHARP_7_3_OR_NEWER
-                /// <summary>
-                /// Converts this to a <see cref="Promise"/>.
-                /// </summary>
-                // Old C# compiler thinks the .ToPromise() extension methods are ambiguous, so we add it here explicitly.
-                [MethodImpl(Internal.InlineOption)]
-                public Promise ToPromise(CancelationToken cancelationToken = default(CancelationToken))
-                {
-                    return PromiseYieldExtensions.ToPromise(this, cancelationToken);
-                }
-#endif
             }
 
             /// <summary>

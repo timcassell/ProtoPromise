@@ -43,7 +43,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsFalse(promise.IsValid);
 
-#if CSHARP_7_3_OR_NEWER && PROMISE_DEBUG
+#if PROMISE_DEBUG
             Assert.Throws<InvalidOperationException>(() => promise.GetAwaiter());
 #endif
             Assert.Throws<InvalidOperationException>(() => promise.Preserve());
@@ -170,7 +170,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsFalse(promise.IsValid);
 
-#if CSHARP_7_3_OR_NEWER && PROMISE_DEBUG
+#if PROMISE_DEBUG
             Assert.Throws<InvalidOperationException>(() => promise.GetAwaiter());
 #endif
             Assert.Throws<InvalidOperationException>(() => promise.Preserve());
@@ -886,7 +886,6 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-#if CSHARP_7_3_OR_NEWER
         [Test]
         public void PromiseSwitchToContextWorksProperly_Await(
             [Values(SynchronizationType.Foreground,
@@ -926,7 +925,6 @@ namespace ProtoPromiseTests.APIs
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
         }
-#endif // CSHARP_7_3_OR_NEWER
 
         [Test]
         public void PromiseMayBeResolvedWithNullable(

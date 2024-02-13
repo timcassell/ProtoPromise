@@ -9,7 +9,6 @@ using System.Collections.Generic;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         /// <summary>
@@ -110,5 +109,4 @@ namespace Proto.Promises.Linq
             }
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

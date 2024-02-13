@@ -13,7 +13,6 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
         internal interface IAsyncEnumerable<T>
@@ -233,7 +232,7 @@ namespace Proto.Promises
                     // Reset for the next awaiter.
                     ResetWithoutStacktrace();
                     // Handle iterator promise to move the async state machine forward.
-                    InterlockedExchange(ref _iteratorPromiseRef, null).Handle(this, null, Promise.State.Resolved);
+                    Interlocked.Exchange(ref _iteratorPromiseRef, null).Handle(this, null, Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -282,7 +281,7 @@ namespace Proto.Promises
 
                     ThrowIfInPool(this);
                     _disposed = true;
-                    var iteratorPromise = InterlockedExchange(ref _iteratorPromiseRef, null);
+                    var iteratorPromise = Interlocked.Exchange(ref _iteratorPromiseRef, null);
                     if (iteratorPromise == null)
                     {
                         // DisposeAsync was called before MoveNextAsync, the async iterator function never started.
@@ -451,5 +450,4 @@ namespace Proto.Promises
             throw new InvalidOperationException("AsyncEnumerable instance is not valid. AsyncEnumerable may only be used once.", GetFormattedStacktrace(skipFrames + 1));
         }
     } // class Internal
-#endif
 } // namespace Proto.Promises

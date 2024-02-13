@@ -6,7 +6,6 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises.CompilerServices
 {
-#if CSHARP_7_3_OR_NEWER
     /// <summary>
     /// Awaitable type used to wait for the consumer to move the async iterator forward.
     /// </summary>
@@ -76,5 +75,4 @@ namespace Proto.Promises.CompilerServices
         internal Internal.PromiseRefBase.AsyncStreamAwaiterForLinqExtension<T> ForLinqExtension()
             => new Internal.PromiseRefBase.AsyncStreamAwaiterForLinqExtension<T>(_target, _enumerableId);
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

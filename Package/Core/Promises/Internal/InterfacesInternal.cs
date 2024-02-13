@@ -1,8 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -13,13 +9,6 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
-#if NET_LEGACY // IProgress<T> is included in .Net 4.5 and later.
-    internal interface IProgress<T>
-    {
-        void Report(T value);
-    }
-#endif
-
     partial class Internal
     {
         // Abstract classes are used instead of interfaces, because virtual calls on interfaces are twice as slow as virtual calls on classes.

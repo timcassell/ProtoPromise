@@ -16,7 +16,6 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -588,5 +587,4 @@ namespace Proto.Promises
             }
         }
     } // class Internal
-#endif
 } // namespace Proto.Promises

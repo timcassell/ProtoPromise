@@ -1,6 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -52,7 +50,7 @@ namespace ProtoPromiseTests.APIs
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(default(AsyncEnumerable<int>), 1, null); });
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(default(AsyncEnumerable<int>), 1, null, SynchronizationContext.Current); });
 
-#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, (item, cancellationToken) => Promise.Resolved()); });
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, (item, cancellationToken) => Promise.Resolved(), SynchronizationContext.Current); });
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, 1, (item, num, cancellationToken) => Promise.Resolved()); });
@@ -62,7 +60,7 @@ namespace ProtoPromiseTests.APIs
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), null, SynchronizationContext.Current); });
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), 1, null); });
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), 1, null, SynchronizationContext.Current); });
-#endif // NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
         }
 #endif
 
@@ -396,8 +394,8 @@ namespace ProtoPromiseTests.APIs
             promisePreserved.Forget();
             cts.Dispose();
 
-            Assert.IsInstanceOf<Proto.Promises.AggregateException>(actual);
-            var aggregate = (Proto.Promises.AggregateException) actual;
+            Assert.IsInstanceOf<AggregateException>(actual);
+            var aggregate = (AggregateException) actual;
             Assert.AreEqual(1, aggregate.InnerExceptions.Count);
             Assert.AreEqual(expected, aggregate.InnerException);
         }
@@ -445,8 +443,8 @@ namespace ProtoPromiseTests.APIs
                 .Catch((Exception e) => actual = e)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
-            Assert.IsInstanceOf<Proto.Promises.AggregateException>(actual);
-            var aggregate = (Proto.Promises.AggregateException) actual;
+            Assert.IsInstanceOf<AggregateException>(actual);
+            var aggregate = (AggregateException) actual;
             Assert.AreEqual(1, aggregate.InnerExceptions.Count);
             Assert.AreEqual(expected, aggregate.InnerException);
         }
@@ -480,8 +478,8 @@ namespace ProtoPromiseTests.APIs
                 .Catch((Exception e) => actual = e)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(barrier.ParticipantCount));
 
-            Assert.IsInstanceOf<Proto.Promises.AggregateException>(actual);
-            var aggregate = (Proto.Promises.AggregateException) actual;
+            Assert.IsInstanceOf<AggregateException>(actual);
+            var aggregate = (AggregateException) actual;
 
             Assert.AreEqual(2, aggregate.InnerExceptions.Count);
             Assert.IsTrue(aggregate.InnerExceptions.Any(e => e is FormatException));
@@ -491,7 +489,7 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void Exception_ImplicitlyCancelsOtherWorkers_Async()
         {
-            Proto.Promises.AggregateException aggregateException = null;
+            AggregateException aggregateException = null;
 
             Promise.ParallelForEachAsync(Infinite(), (item, cancelationToken) =>
             {
@@ -501,7 +499,7 @@ namespace ProtoPromiseTests.APIs
                 }
                 return Promise.Resolved();
             })
-                .Catch((Proto.Promises.AggregateException e) => aggregateException = e)
+                .Catch((AggregateException e) => aggregateException = e)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
             Assert.IsNotNull(aggregateException);
@@ -518,7 +516,7 @@ namespace ProtoPromiseTests.APIs
                 cancelationToken.Register(() => deferred.Resolve());
                 return deferred.Promise;
             }, maxDegreeOfParallelism: 2)
-                .Catch((Proto.Promises.AggregateException e) => aggregateException = e)
+                .Catch((AggregateException e) => aggregateException = e)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
 
             Assert.IsNotNull(aggregateException);
@@ -554,7 +552,7 @@ namespace ProtoPromiseTests.APIs
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
         }
 
-#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
         private static async IAsyncEnumerable<int> EnumerableRangeIAsync(int start, int count, bool yield = true)
         {
             for (int i = start; i < start + count; i++)
@@ -567,7 +565,7 @@ namespace ProtoPromiseTests.APIs
                 yield return i;
             }
         }
-#endif // NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
         private static AsyncEnumerable<int> EnumerableRangeAsync(int start, int count, bool yield = true)
         {
@@ -587,5 +585,3 @@ namespace ProtoPromiseTests.APIs
     }
 #endif // !UNITY_WEBGL
 }
-
-#endif // CSHARP_7_3_OR_NEWER

@@ -10,7 +10,6 @@ using System.Diagnostics;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER // We only expose AsyncEnumerable where custom async method builders are supported.
     /// <summary>
     /// Async iterator to provide to <see cref="AsyncEnumerable{T}.Create{TAsyncIterator}(TAsyncIterator)"/>.
     /// </summary>
@@ -113,5 +112,4 @@ namespace Proto.Promises.Linq
         }
 #endif
     }
-#endif // CSHARP_7_3_OR_NEWER
 }
