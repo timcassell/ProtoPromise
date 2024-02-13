@@ -8,7 +8,7 @@ concurrency:
 
 jobs:
   unity-tests:
-    name: Test (${{ matrix.testMode.name }}, ${{ matrix.mode.name }}, ${{ matrix.objectPooling.name }}, ${{ matrix.unityVersion }}, ${{ matrix.devMode.name }})
+    name: Test (${{ matrix.testMode.name }}, ${{ matrix.mode.name }}, ${{ matrix.objectPooling.name }}, ${{ matrix.unityVersion }})
     runs-on: ubuntu-latest
     
     strategy:
@@ -52,15 +52,6 @@ jobs:
         # Editor uses 2018.4 to test netstandard2.0 in Mono.
         # Standalone uses 2019.4 and 2021.3 to test IL2CPP with netstandard2.0 and netstandard2.1.
         unityVersion: [2018.4.36f1, 2019.4.40f1, 2021.3.29f1]
-        devMode:
-          - {
-              name: devMode,
-              symbol: PROTO_PROMISE_DEVELOPER_MODE
-            }
-          - {
-              name: userMode,
-              symbol: PROTO_PROMISE_DEVELOPER_MODE_DISABLE
-            }
 
         exclude:
           # DEBUG mode forces pooling disabled.
@@ -82,16 +73,6 @@ jobs:
               testMode: { name: Standalone },
               unityVersion: 2018.4.36f1
             }
-          # Only test devMode in 2018.4 Editor, and 2021.3 IL2CPP
-          - {
-              devMode: { name: devMode },
-              testMode: { name: Editor },
-              unityVersion: 2019.4.40f1
-            }
-          - {
-              devMode: { name: devMode },
-              unityVersion: 2019.4.40f1
-            }
 
     steps:
       - name: Checkout
@@ -99,7 +80,7 @@ jobs:
 
       - name: Rewrite ProjectSettings
         run: |
-          DefineSymbols="${{ matrix.mode.symbol }};${{ matrix.objectPooling.symbol }};${{ matrix.devMode.symbol }}"
+          DefineSymbols="${{ matrix.mode.symbol }};${{ matrix.objectPooling.symbol }}"
           DefineOriginal="  scriptingDefineSymbols: {}"
           DefineReplace="  scriptingDefineSymbols: \\n    ${{ matrix.testMode.buildTargetId }}: $DefineSymbols"
           sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
@@ -142,12 +123,12 @@ jobs:
       - uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
+          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}
           path: "*_junit.xml"
           reporter: java-junit
 
       - uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}-${{ matrix.devMode.name }}
+          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}
           path: artifacts
