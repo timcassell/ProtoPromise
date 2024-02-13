@@ -1,4 +1,4 @@
-﻿#if !UNITY_WEBGL && CSHARP_7_3_OR_NEWER
+﻿#if !UNITY_WEBGL
 
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
@@ -331,4 +331,4 @@ namespace ProtoPromiseTests.Concurrency
     }
 }
 
-#endif // !UNITY_WEBGL && CSHARP_7_3_OR_NEWER
+#endif // !UNITY_WEBGL

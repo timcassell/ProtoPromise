@@ -1,16 +1,15 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#if CSHARP_7_3_OR_NEWER && !(NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
+using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 #endif
 
-using System;
-
 namespace Proto.Promises.Collections
 {
-#if CSHARP_7_3_OR_NEWER && !(NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 
     internal static class Utilities
     {
@@ -48,5 +47,5 @@ namespace Proto.Promises.Collections
         }
     }
 
-#endif // CSHARP_7_3_OR_NEWER && !(NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#endif // UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 }

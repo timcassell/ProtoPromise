@@ -9,7 +9,6 @@ using System;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         // Implementation note: unlike System.Linq which does a type-check for ICollection<T> before iterating, we don't do it.
@@ -283,5 +282,4 @@ namespace Proto.Promises.Linq
             }
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

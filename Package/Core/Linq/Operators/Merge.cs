@@ -2,7 +2,6 @@ using System.Collections.Generic;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         /// <summary>
@@ -156,5 +155,4 @@ namespace Proto.Promises.Linq
             => AsyncEnumerable.Merge(source1, source2, source3, source4);
     }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-#endif // CSHARP_7_3_OR_NEWER
 }

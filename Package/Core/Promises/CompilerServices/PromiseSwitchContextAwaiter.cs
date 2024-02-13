@@ -1,7 +1,3 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
@@ -22,11 +18,7 @@ namespace Proto.Promises.Async.CompilerServices
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public
-#if CSHARP_7_3_OR_NEWER
-        readonly
-#endif
-        partial struct PromiseSwitchToContextAwaiter : ICriticalNotifyCompletion
+    public readonly partial struct PromiseSwitchToContextAwaiter : ICriticalNotifyCompletion
     {
         private readonly SynchronizationContext _context;
         private readonly bool _forceAsync;

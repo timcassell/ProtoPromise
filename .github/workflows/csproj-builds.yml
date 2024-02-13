@@ -27,7 +27,11 @@ jobs:
         with:
           global-json-file: global.json
           
-      - name: Build
+      - name: Build Core
         run: |
-          dotnet build -c ${{ matrix.config }} -p:DeveloperMode=${{ matrix.developerMode }}
+          dotnet build -c ${{ matrix.config }} /p:DeveloperMode=${{ matrix.developerMode }} /p:IsNugetBuild=true
+        timeout-minutes: 10
+
+      - name: Build Analyzer
+        run: dotnet build ./ProtoPromise.Analyzer/ProtoPromise.Analyzer -c ${{ matrix.config }}
         timeout-minutes: 10

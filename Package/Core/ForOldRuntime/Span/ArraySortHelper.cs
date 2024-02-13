@@ -8,13 +8,12 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 // ArraySortHelpers used for Span.Sort extensions in older runtimes.
+// This exists natively in .Net 5+.
 // Using Proto.Promises namespace instead of the original System.Runtime.CompilerServices, and wrapped in Internal class.
 namespace Proto.Promises
 {
-    // This exists natively in .Net 5+.
-    // We only use this for async Linq OrderBy extensions, so we don't need it in legacy runtimes (.Net 4.5-).
     // TODO: Unity hasn't adopted .Net 5+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
-#if CSHARP_7_3_OR_NEWER && !NET5_0_OR_GREATER
+#if !NET5_0_OR_GREATER
     partial class Internal
     {
         internal static class IntrospectiveSortUtilities
@@ -221,5 +220,5 @@ namespace Proto.Promises
             }
         }
     }
-#endif // CSHARP_7_3_OR_NEWER && !NET5_0_OR_GREATER
+#endif // !NET5_0_OR_GREATER
 }

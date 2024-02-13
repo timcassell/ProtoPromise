@@ -18,11 +18,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public
-#if CSHARP_7_3_OR_NEWER
-        readonly
-#endif
-        struct CancelationSource : ICancelable, IDisposable, IEquatable<CancelationSource>
+    public readonly struct CancelationSource : ICancelable, IDisposable, IEquatable<CancelationSource>
     {
         private readonly Internal.CancelationRef _ref;
         private readonly int _sourceId;
@@ -173,11 +169,7 @@ namespace Proto.Promises
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
         {
-#if CSHARP_7_3_OR_NEWER
             return obj is CancelationSource source && Equals(source);
-#else
-            return obj is CancelationSource && Equals((CancelationSource) obj);
-#endif
         }
 
         /// <summary>Returns the hash code for this instance.</summary>

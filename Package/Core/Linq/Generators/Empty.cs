@@ -12,7 +12,6 @@ using System.Diagnostics;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER // We only expose AsyncEnumerable where custom async method builders are supported.
     partial class AsyncEnumerable
     {
         /// <summary>
@@ -40,12 +39,10 @@ namespace Proto.Promises.Linq
             => new AsyncEnumerable<T>(Internal.AsyncEnumerableEmptySentinel<T>.s_instance);
 #endif
     }
-#endif // CSHARP_7_3_OR_NEWER
 }
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
 #if !PROMISE_DEBUG
@@ -118,5 +115,4 @@ namespace Proto.Promises
             }
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

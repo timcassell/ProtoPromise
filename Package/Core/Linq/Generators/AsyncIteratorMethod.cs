@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     /// <summary>
     /// Type used to create an <see cref="AsyncEnumerable{T}"/> with <see cref="AsyncEnumerable{T}.Create(Func{AsyncStreamWriter{T}, CancelationToken, AsyncIteratorMethod})"/>.
     /// </summary>
@@ -25,5 +24,4 @@ namespace Proto.Promises.Linq
         internal AsyncIteratorMethod(Promise promise)
             => _promise = promise;
     }
-#endif
 }

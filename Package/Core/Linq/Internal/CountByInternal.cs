@@ -14,7 +14,6 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -474,5 +473,4 @@ namespace Proto.Promises
                 => AsyncEnumerable<KeyValuePair<TKey, int>>.Create(new ConfiguredCountByAsyncIterator<TSource, TEqualityComparer, TKeySelector>(configuredAsyncEnumerator, keySelector, comparer));
         }
     } // class Internal
-#endif
 } // namespace Proto.Promises

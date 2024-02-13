@@ -1,8 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -27,13 +23,9 @@ namespace Proto.Promises
     /// or its then method, which registers callbacks to be invoked with its resolve value when the <see cref="Promise{T}"/> is resolved,
     /// or the reason why the <see cref="Promise{T}"/> cannot be resolved.
     /// </summary>
-    public
-#if CSHARP_7_3_OR_NEWER
-        readonly
-#endif
-        partial struct Promise<T> : IEquatable<Promise<T>>
+    public readonly partial struct Promise<T> : IEquatable<Promise<T>>
     {
-#if UNITY_2021_2_OR_NEWER || (!NET_LEGACY && !UNITY_5_5_OR_NEWER)
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
         /// <summary>
         /// Convert this to a <see cref="System.Threading.Tasks.ValueTask{T}"/>.
         /// </summary>
@@ -51,11 +43,7 @@ namespace Proto.Promises
         /// Cast to <see cref="System.Threading.Tasks.ValueTask{T}"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public static implicit operator System.Threading.Tasks.ValueTask<T>(
-#if CSHARP_7_3_OR_NEWER
-            in
-#endif
-            Promise<T> rhs)
+        public static implicit operator System.Threading.Tasks.ValueTask<T>(in Promise<T> rhs)
         {
             return rhs.AsValueTask();
         }
@@ -76,15 +64,11 @@ namespace Proto.Promises
         /// Cast to <see cref="System.Threading.Tasks.ValueTask"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public static implicit operator System.Threading.Tasks.ValueTask(
-#if CSHARP_7_3_OR_NEWER
-            in
-#endif
-            Promise<T> rhs)
+        public static implicit operator System.Threading.Tasks.ValueTask(in Promise<T> rhs)
         {
             return rhs.AsValueTaskVoid();
         }
-#endif
+#endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
         /// <summary>
         /// Gets whether this instance is valid to be awaited.
@@ -112,11 +96,7 @@ namespace Proto.Promises
         /// Cast to <see cref="Promise"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public static implicit operator Promise(
-#if CSHARP_7_3_OR_NEWER
-            in
-#endif
-            Promise<T> rhs)
+        public static implicit operator Promise(in Promise<T> rhs)
         {
             return rhs.AsPromise();
         }
@@ -3667,11 +3647,7 @@ namespace Proto.Promises
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
         {
-#if CSHARP_7_3_OR_NEWER
             return obj is Promise<T> promise && Equals(promise);
-#else
-            return obj is Promise<T> && Equals((Promise<T>) obj);
-#endif
         }
 
         // Promises really shouldn't be used for lookups, but GetHashCode is overridden to complement ==.

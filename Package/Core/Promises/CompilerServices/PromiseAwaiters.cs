@@ -1,7 +1,3 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
@@ -129,11 +125,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct PromiseAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        public readonly partial struct PromiseAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
         {
             private readonly Promise _promise;
 
@@ -141,11 +133,7 @@ namespace Proto.Promises
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal PromiseAwaiterVoid(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                Promise promise)
+            internal PromiseAwaiterVoid(in Promise promise)
             {
                 _promise = promise;
                 CreateOverride();
@@ -235,11 +223,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        public readonly partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
         {
             private readonly Promise<T> _promise;
 
@@ -247,11 +231,7 @@ namespace Proto.Promises
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal PromiseAwaiter(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                Promise<T> promise)
+            internal PromiseAwaiter(in Promise<T> promise)
             {
                 _promise = promise;
                 CreateOverride();
@@ -342,11 +322,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct PromiseNoThrowAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        public readonly partial struct PromiseNoThrowAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
         {
             private readonly Promise _promise;
 
@@ -354,11 +330,7 @@ namespace Proto.Promises
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal PromiseNoThrowAwaiterVoid(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                Promise promise)
+            internal PromiseNoThrowAwaiterVoid(in Promise promise)
             {
                 _promise = promise;
                 CreateOverride();
@@ -450,11 +422,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct PromiseNoThrowAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        public readonly partial struct PromiseNoThrowAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
         {
             private readonly Promise<T> _promise;
 
@@ -462,11 +430,7 @@ namespace Proto.Promises
             /// Internal use.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal PromiseNoThrowAwaiter(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                Promise<T> promise)
+            internal PromiseNoThrowAwaiter(in Promise<T> promise)
             {
                 _promise = promise;
                 CreateOverride();

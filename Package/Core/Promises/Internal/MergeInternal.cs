@@ -1,8 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -64,7 +60,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 protected bool TrySetComplete()
                 {
-                    return InterlockedExchange(ref _waitCount, 0) > 0;
+                    return Interlocked.Exchange(ref _waitCount, 0) > 0;
                 }
 
                 [MethodImpl(InlineOption)]
@@ -169,10 +165,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static MergePromiseT<TResult> GetOrCreate(
                     ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult value,
+                    in TResult value,
                     int pendingAwaits,
                     GetResultDelegate<TResult> getResultFunc)
                 {
@@ -219,10 +212,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal static MultiHandleablePromiseBase<TResult> GetOrCreateMergePromise<TResult>(
                 ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TResult value,
+                in TResult value,
                 int pendingAwaits,
                 GetResultDelegate<TResult> getResultFunc)
             {
@@ -246,10 +236,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static MergeSettledPromise<TResult> GetOrCreate(
                     ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult value,
+                    in TResult value,
                     int pendingAwaits,
                     GetResultContainerDelegate<TResult> getResultFunc)
                 {
@@ -286,10 +273,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal static MergeSettledPromise<TResult> GetOrCreateMergeSettledPromise<TResult>(
                 ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TResult value,
+                in TResult value,
                 int pendingAwaits,
                 GetResultContainerDelegate<TResult> getResultFunc)
             {

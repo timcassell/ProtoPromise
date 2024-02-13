@@ -141,8 +141,8 @@ namespace Proto.Promises
                 {
                     _syncContext.Execute();
                 }
-                // In case someone clears `Promise.Config.UncaughtRejectionHandler`, we catch the AggregateException here and log it.
-                catch (AggregateException e)
+                // In case someone clears `Promise.Config.UncaughtRejectionHandler`, we catch the exception here and log it.
+                catch (System.Exception e)
                 {
                     UnityEngine.Debug.LogException(e);
                 }

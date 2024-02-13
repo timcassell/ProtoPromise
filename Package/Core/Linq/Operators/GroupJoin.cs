@@ -11,7 +11,6 @@ using System.Collections.Generic;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         #region AsyncEnumerable
@@ -914,5 +913,4 @@ namespace Proto.Promises.Linq
         }
         #endregion ConfiguredAsyncEnumerable
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

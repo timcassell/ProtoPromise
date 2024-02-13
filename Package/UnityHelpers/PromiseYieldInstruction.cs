@@ -1,7 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -193,11 +190,7 @@ namespace Proto.Promises
 
             public override void Dispose()
             {
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
-                if (Interlocked.CompareExchange(ref _disposeChecker, 1, 0) == 1)
-#else
                 if (Interlocked.Exchange(ref _disposeChecker, 1) == 1)
-#endif
                 {
                     throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
                 }
@@ -247,11 +240,7 @@ namespace Proto.Promises
 
             public override void Dispose()
             {
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
-                if (Interlocked.CompareExchange(ref _disposeChecker, 1, 0) == 1)
-#else
                 if (Interlocked.Exchange(ref _disposeChecker, 1) == 1)
-#endif
                 {
                     throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
                 }

@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFrameworks>net6.0;net472</TargetFrameworks>
     <IsPackable>false</IsPackable>
-    <DefineConstants>TRACE;CSHARP_7_3_OR_NEWER</DefineConstants>
     <LangVersion>9</LangVersion>
     <!-- Set from command line -->
     <DeveloperMode>false</DeveloperMode>

@@ -29,8 +29,7 @@ namespace Proto.Promises
             get { return new(&GetAllResultContainer); }
         }
 #else
-        private static readonly Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc =
-            (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref IList<ResultContainer> result) => GetAllResultContainer(handler, rejectContainer, state, index, ref result);
+        private static readonly Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc = GetAllResultContainer;
 #endif
 
         /// <summary>
@@ -356,9 +355,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -420,9 +417,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -485,9 +480,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -559,9 +552,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -632,9 +623,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -707,9 +696,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -783,9 +770,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -867,9 +852,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -946,9 +929,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -1027,9 +1008,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -1109,9 +1088,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -1192,9 +1170,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -1283,9 +1260,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -1368,9 +1343,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -1455,9 +1428,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -1543,9 +1514,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -1632,9 +1602,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -1722,9 +1691,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -1816,9 +1784,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -1907,9 +1873,7 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
 #endif
             }
 
@@ -2000,9 +1964,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -2094,9 +2057,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -2189,9 +2151,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -2285,9 +2246,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -2382,9 +2342,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -2482,9 +2441,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -2579,9 +2537,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -2678,9 +2635,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -2778,9 +2734,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -2879,9 +2834,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -2981,9 +2935,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -3084,9 +3037,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
@@ -3188,9 +3140,8 @@ namespace Proto.Promises
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer>>
-                    Func = (Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer> result)
-                    => GetMergeResult(handler, rejectContainer, state, index, ref result);
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 

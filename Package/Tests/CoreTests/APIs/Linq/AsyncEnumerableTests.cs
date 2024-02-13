@@ -1,5 +1,5 @@
 ﻿// Unity 2020.2 added C#8 support.
-#if UNITY_2020_2_OR_NEWER || (CSHARP_7_3_OR_NEWER && !UNITY_5_5_OR_NEWER)
+#if UNITY_2020_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
 using NUnit.Framework;
 using Proto.Promises;
@@ -677,4 +677,4 @@ namespace ProtoPromiseTests.APIs.Linq
     }
 }
 
-#endif
+#endif // UNITY_2020_2_OR_NEWER || !UNITY_2018_3_OR_NEWER

@@ -1,10 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if CSHARP_7_3_OR_NEWER
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -889,7 +883,6 @@ namespace ProtoPromiseTests.APIs
 #endif // PROMISE_DEBUG
     }
 
-#if !NET_LEGACY
     public class AsyncLocalTests
     {
         [SetUp]
@@ -968,7 +961,4 @@ namespace ProtoPromiseTests.APIs
             return 3;
         }
     }
-#endif
 }
-
-#endif

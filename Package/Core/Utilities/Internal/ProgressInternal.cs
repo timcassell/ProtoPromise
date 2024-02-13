@@ -54,11 +54,7 @@ namespace Proto.Promises
             private readonly TCapture _capturedValue;
 
             [MethodImpl(InlineOption)]
-            public DelegateCaptureProgress(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TCapture capturedValue, Action<TCapture, double> callback)
+            public DelegateCaptureProgress(in TCapture capturedValue, Action<TCapture, double> callback)
             {
                 _capturedValue = capturedValue;
                 _callback = callback;
@@ -74,11 +70,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal
-#if CSHARP_7_3_OR_NEWER
-            ref // Don't allow on the heap.
-# endif
-            struct NewProgressReportValues
+        internal ref struct NewProgressReportValues
         {
             internal ProgressBase _reporter;
             internal ProgressBase _next;

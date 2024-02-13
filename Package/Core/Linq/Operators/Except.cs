@@ -10,7 +10,6 @@ using System.Collections.Generic;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         /// <summary>
@@ -349,5 +348,4 @@ namespace Proto.Promises.Linq
             return Internal.ExceptByHelper<TKey>.ExceptByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

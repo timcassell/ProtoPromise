@@ -14,7 +14,6 @@ using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -1381,5 +1380,4 @@ namespace Proto.Promises
             }
         } // class SelectManyHelper<TCollection, TResult>
     } // class Internal
-#endif
 } // namespace Proto.Promises

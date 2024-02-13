@@ -838,7 +838,6 @@ namespace ProtoPromiseTests.Unity
             Time.timeScale = oldTimeScale;
         }
 
-#if CSHARP_7_3_OR_NEWER
 
         [UnityTest]
         public IEnumerator PromiseYielderWaitOneFrame_WaitsOneFrame_Async()
@@ -1488,6 +1487,5 @@ namespace ProtoPromiseTests.Unity
 
             Time.timeScale = oldTimeScale;
         }
-#endif // CSHARP_7_3_OR_NEWER
     }
 }

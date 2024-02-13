@@ -1,7 +1,3 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
@@ -26,11 +22,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public 
-#if CSHARP_7_3_OR_NEWER
-        readonly
-# endif
-        partial struct Progress
+    public readonly partial struct Progress
     {
         private readonly Internal.ProgressListener _impl;
         private readonly int _id;
@@ -134,12 +126,7 @@ namespace Proto.Promises
         /// <returns>A new progress object.</returns>
         /// <remarks>Depending on the invoke option, the <paramref name="handler"/> may be invoked concurrently with itself.</remarks>
 
-#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.5. Make it internal instead of public so the unit tests can still use it.
-        internal
-#else
-        public
-#endif
-        static Progress New<TProgress>(TProgress handler,
+        public static Progress New<TProgress>(TProgress handler,
             SynchronizationOption invokeOption = SynchronizationOption.Foreground,
             bool forceAsync = false,
             CancelationToken cancelationToken = default(CancelationToken))
@@ -218,13 +205,7 @@ namespace Proto.Promises
         /// <param name="cancelationToken">Cancelation token used to stop progress from being reported.</param>
         /// <returns>A new progress object.</returns>
         /// <remarks>Depending on the invoke context, the <paramref name="handler"/> may be invoked concurrently with itself.</remarks>
-
-#if NET_LEGACY // System.IProgress<T> not available prior to .Net 4.5. Make it internal instead of public so the unit tests can still use it.
-        internal
-#else
-        public
-#endif
-        static Progress New<TProgress>(TProgress handler,
+        public static Progress New<TProgress>(TProgress handler,
             SynchronizationContext invokeContext,
             bool forceAsync = false,
             CancelationToken cancelationToken = default(CancelationToken))
@@ -299,11 +280,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            struct RaceBuilder : IDisposable
+        public readonly struct RaceBuilder : IDisposable
         {
             private readonly Internal.ProgressRacer _impl;
             private readonly int _id;
@@ -361,11 +338,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            struct MergeBuilder : IDisposable
+        public readonly struct MergeBuilder : IDisposable
         {
             private readonly Internal.ProgressMerger _impl;
             private readonly int _id;
@@ -430,11 +403,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            struct MultiHandler : IDisposable
+        public readonly struct MultiHandler : IDisposable
         {
             private readonly Internal.ProgressMultiHandler _impl;
             private readonly int _id;
@@ -496,7 +465,7 @@ namespace Proto.Promises
         }
     } // struct Progress
 
-#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
     partial struct Progress : IAsyncDisposable
     {
         System.Threading.Tasks.ValueTask IAsyncDisposable.DisposeAsync()
@@ -504,7 +473,7 @@ namespace Proto.Promises
             return DisposeAsync();
         }
     }
-#endif // NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
     /// <summary>
     /// Propagates progress updates.
@@ -512,11 +481,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public
-#if CSHARP_7_3_OR_NEWER
-        readonly
-#endif
-        struct ProgressToken : IProgress<double>
+    public readonly struct ProgressToken : IProgress<double>
     {
         internal readonly Internal.ProgressBase _impl;
         internal readonly int _id;

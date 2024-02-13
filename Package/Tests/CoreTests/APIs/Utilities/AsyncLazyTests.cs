@@ -1,7 +1,3 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
@@ -12,9 +8,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using System;
 using System.Threading;
-#if CSHARP_7_3_OR_NEWER
 using System.Threading.Tasks;
-#endif
 
 namespace ProtoPromiseTests.APIs.Utilities
 {
@@ -256,7 +250,6 @@ namespace ProtoPromiseTests.APIs.Utilities
         }
 #endif // !UNITY_WEBGL
 
-#if CSHARP_7_3_OR_NEWER
         [Test]
         public void AsyncLazy_CallsFuncDirectly_Async()
         {
@@ -481,7 +474,5 @@ namespace ProtoPromiseTests.APIs.Utilities
             Assert.AreNotEqual(testThread, funcThread);
         }
 #endif // !UNITY_WEBGL
-
-#endif // CSHARP_7_3_OR_NEWER
     }
 }

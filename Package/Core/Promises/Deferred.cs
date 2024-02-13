@@ -25,11 +25,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly // Deferreds behave more like write-only, but this prevents the compiler from emitting defensive copies when passing to a function with the `in` keyword.
-#endif
-            struct DeferredBase : ICancelable, IEquatable<DeferredBase>
+        // Deferreds behave more like write-only, but this prevents the compiler from emitting defensive copies when passing to a function with the `in` keyword.
+        public readonly struct DeferredBase : ICancelable, IEquatable<DeferredBase>
         {
             private readonly Internal.IDeferredPromise _ref;
             private readonly short _promiseId;
@@ -210,11 +207,7 @@ namespace Proto.Promises
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
             {
-#if CSHARP_7_3_OR_NEWER
                 return obj is DeferredBase deferred && Equals(deferred);
-#else
-                return obj is DeferredBase && Equals((DeferredBase) obj);
-#endif
             }
 
             /// <summary>Returns the hash code for this instance.</summary>
@@ -280,11 +273,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            struct Deferred : ICancelable, IEquatable<Deferred>
+        public readonly struct Deferred : ICancelable, IEquatable<Deferred>
         {
             internal readonly Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> _ref;
             internal readonly short _promiseId;
@@ -491,11 +480,7 @@ namespace Proto.Promises
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
             {
-#if CSHARP_7_3_OR_NEWER
                 return obj is Deferred deferred && Equals(deferred);
-#else
-                return obj is Deferred && Equals((Deferred) obj);
-#endif
             }
 
             /// <summary>Returns the hash code for this instance.</summary>
@@ -564,11 +549,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            struct Deferred : ICancelable, IEquatable<Deferred>
+        public readonly struct Deferred : ICancelable, IEquatable<Deferred>
         {
             internal readonly Internal.PromiseRefBase.DeferredPromise<T> _ref;
             internal readonly short _promiseId;
@@ -775,11 +756,7 @@ namespace Proto.Promises
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
             {
-#if CSHARP_7_3_OR_NEWER
                 return obj is Deferred deferred && Equals(deferred);
-#else
-                return obj is Deferred && Equals((Deferred) obj);
-#endif
             }
 
             /// <summary>Returns the hash code for this instance.</summary>

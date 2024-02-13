@@ -17,7 +17,6 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -1097,5 +1096,4 @@ namespace Proto.Promises
                 => _comparer.Compare(y, x);
         }
     } // class Internal
-#endif
 } // namespace Proto.Promises

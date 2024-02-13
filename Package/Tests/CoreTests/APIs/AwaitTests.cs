@@ -1,6 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -986,7 +984,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-#if UNITY_2021_2_OR_NEWER || (!NET_LEGACY && !UNITY_5_5_OR_NEWER)
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
         [Test]
         public void PromiseAsValueTaskIsResolvedProperly_void([Values] bool isPending)
         {
@@ -1077,5 +1075,3 @@ namespace ProtoPromiseTests.APIs
 #endif
     }
 }
-
-#endif

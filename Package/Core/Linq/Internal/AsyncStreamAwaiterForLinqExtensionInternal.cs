@@ -10,7 +10,6 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
         partial class PromiseRefBase
@@ -72,5 +71,4 @@ namespace Proto.Promises
             }
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

@@ -1,8 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -37,7 +33,7 @@ namespace Proto.Promises
 
     partial class Internal
     {
-#if UNITY_2021_2_OR_NEWER || (!NET_LEGACY && !UNITY_5_5_OR_NEWER)
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
         partial class PromiseRefBase : System.Threading.Tasks.Sources.IValueTaskSource
         {
             public void GetResult(short token)
@@ -115,7 +111,7 @@ namespace Proto.Promises
                 }
             }
         }
-#endif
+#endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -193,7 +189,7 @@ namespace Proto.Promises
 
                 if (promise.State != Promise.State.Pending)
                 {
-                    if (InterlockedExchange(ref _waitState, WaitedSuccessState) == CompletedState)
+                    if (Interlocked.Exchange(ref _waitState, WaitedSuccessState) == CompletedState)
                     {
                         // Handle was already called (possibly synchronously) and returned without repooling, so we repool here.
                         ObjectPool.MaybeRepool(this);
@@ -204,7 +200,7 @@ namespace Proto.Promises
                 lock (this)
                 {
                     // Check the completion state and set to waiting before monitor wait.
-                    if (InterlockedExchange(ref _waitState, WaitingState) == CompletedState)
+                    if (Interlocked.Exchange(ref _waitState, WaitingState) == CompletedState)
                     {
                         // Handle was called and returned without pulsing or repooling, so we repool here.
                         // Exit the lock before repool.
@@ -243,7 +239,7 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
                 handler.SetCompletionState(rejectContainer, state);
 
-                int waitState = InterlockedExchange(ref _waitState, CompletedState);
+                int waitState = Interlocked.Exchange(ref _waitState, CompletedState);
                 if (waitState == InitialState)
                 {
                     return;
@@ -543,7 +539,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private void HandleNextAlreadyAwaited(object rejectContainer, Promise.State state)
             {
-                ExchangeWaiter(InvalidAwaitSentinel.s_instance).Handle(this, rejectContainer, state);
+                Interlocked.Exchange(ref _next, InvalidAwaitSentinel.s_instance).Handle(this, rejectContainer, state);
             }
 
             protected void HandleNextInternal(object rejectContainer, Promise.State state)
@@ -577,12 +573,6 @@ namespace Proto.Promises
             {
                 Thread.MemoryBarrier(); // Make sure previous writes are done before swapping _next.
                 return Interlocked.CompareExchange(ref _next, waiter, comparand);
-            }
-
-            [MethodImpl(InlineOption)]
-            private HandleablePromiseBase ExchangeWaiter(HandleablePromiseBase waiter)
-            {
-                return InterlockedExchange(ref _next, waiter);
             }
 
             [MethodImpl(InlineOption)]
@@ -1058,11 +1048,7 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal static PromiseConfigured<TResult> GetOrCreateFromResolved(SynchronizationContext synchronizationContext,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult result, bool forceAsync)
+                internal static PromiseConfigured<TResult> GetOrCreateFromResolved(SynchronizationContext synchronizationContext, in TResult result, bool forceAsync)
                 {
                     var promise = GetOrCreateBase(synchronizationContext, forceAsync);
                     promise._isScheduling = 1;
@@ -1083,11 +1069,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     handler.SetCompletionState(rejectContainer, state);
 
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
-                    if (Interlocked.CompareExchange(ref _isScheduling, 1, 0) != 0)
-#else
                     if (Interlocked.Exchange(ref _isScheduling, 1) != 0)
-#endif
                     {
                         MaybeDispose();
                         handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
@@ -1141,11 +1123,7 @@ namespace Proto.Promises
                 void ICancelable.Cancel()
                 {
                     _wasCanceled = true;
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
-                    if (Interlocked.CompareExchange(ref _isScheduling, 1, 0) != 0)
-#else
                     if (Interlocked.Exchange(ref _isScheduling, 1) != 0)
-#endif
                     {
                         MaybeDispose();
                         return;
@@ -1409,11 +1387,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void WaitFor<TResult>(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                Promise<TResult> other, PromiseRefBase handler)
+            internal void WaitFor<TResult>(in Promise<TResult> other, PromiseRefBase handler)
             {
                 ThrowIfInPool(this);
                 ValidateReturn(other);
@@ -1465,11 +1439,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void WaitFor(PromiseRefBase other,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult maybeResult, short id, PromiseRefBase handler)
+                internal void WaitFor(PromiseRefBase other, in TResult maybeResult, short id, PromiseRefBase handler)
                 {
                     WaitFor(other, maybeResult, id, handler, new DefaultCompleteHandler(this));
                 }
@@ -1488,11 +1458,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                protected void WaitFor<TCompleteHandler>(PromiseRefBase other,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult maybeResult, short id, PromiseRefBase handler, TCompleteHandler completeHandler)
+                protected void WaitFor<TCompleteHandler>(PromiseRefBase other, in TResult maybeResult, short id, PromiseRefBase handler, TCompleteHandler completeHandler)
                     where TCompleteHandler : IWaitForCompleteHandler
                 {
                     if (other == null)

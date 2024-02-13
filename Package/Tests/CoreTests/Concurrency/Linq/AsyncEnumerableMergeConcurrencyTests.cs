@@ -1,4 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+﻿#if !UNITY_WEBGL
 
 using NUnit.Framework;
 using Proto.Promises;
@@ -104,4 +104,4 @@ namespace ProtoPromiseTests.Concurrency.Linq
     }
 }
 
-#endif // CSHARP_7_3_OR_NEWER && !UNITY_WEBGL
+#endif // !UNITY_WEBGL

@@ -4,7 +4,6 @@ using System;
 
 namespace Proto.Promises.CompilerServices
 {
-#if CSHARP_7_3_OR_NEWER
     internal sealed class AsyncEnumerableDisposedException : Exception
     {
         // We can use a singleton instance since we never care about the stack trace.
@@ -12,5 +11,4 @@ namespace Proto.Promises.CompilerServices
 
         private AsyncEnumerableDisposedException() : base("This is a special exception used for async enumerables. It should never be caught by user code!") { }
     }
-#endif
 }

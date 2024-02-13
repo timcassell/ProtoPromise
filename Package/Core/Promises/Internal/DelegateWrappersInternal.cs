@@ -85,81 +85,49 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateCaptureVoidVoid<TCapture> Create<TCapture>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture> callback)
+                internal static DelegateCaptureVoidVoid<TCapture> Create<TCapture>(in TCapture capturedValue, Action<TCapture> callback)
                 {
                     return new DelegateCaptureVoidVoid<TCapture>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, TResult> callback)
+                internal static DelegateCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(in TCapture capturedValue, Func<TCapture, TResult> callback)
                 {
                     return new DelegateCaptureVoidResult<TCapture, TResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture, TArg> callback)
+                internal static DelegateCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(in TCapture capturedValue, Action<TCapture, TArg> callback)
                 {
                     return new DelegateCaptureArgVoid<TCapture, TArg>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
+                internal static DelegateCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(in TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
                 {
                     return new DelegateCaptureArgResult<TCapture, TArg, TResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateCapturePromiseVoidVoid<TCapture> Create<TCapture>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, Promise> callback)
+                internal static DelegateCapturePromiseVoidVoid<TCapture> Create<TCapture>(in TCapture capturedValue, Func<TCapture, Promise> callback)
                 {
                     return new DelegateCapturePromiseVoidVoid<TCapture>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateCapturePromiseVoidResult<TCapture, TResult> Create<TCapture, TResult>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, Promise<TResult>> callback)
+                internal static DelegateCapturePromiseVoidResult<TCapture, TResult> Create<TCapture, TResult>(in TCapture capturedValue, Func<TCapture, Promise<TResult>> callback)
                 {
                     return new DelegateCapturePromiseVoidResult<TCapture, TResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateCapturePromiseArgVoid<TCapture, TArg> Create<TCapture, TArg>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
+                internal static DelegateCapturePromiseArgVoid<TCapture, TArg> Create<TCapture, TArg>(in TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
                 {
                     return new DelegateCapturePromiseArgVoid<TCapture, TArg>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateCapturePromiseArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, TArg, Promise<TResult>> callback)
+                internal static DelegateCapturePromiseArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(in TCapture capturedValue, Func<TCapture, TArg, Promise<TResult>> callback)
                 {
                     return new DelegateCapturePromiseArgResult<TCapture, TArg, TResult>(capturedValue, callback);
                 }
@@ -189,41 +157,25 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueCaptureVoidVoid<TCapture> Create<TCapture>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
+                internal static DelegateContinueCaptureVoidVoid<TCapture> Create<TCapture>(in TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
                 {
                     return new DelegateContinueCaptureVoidVoid<TCapture>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
+                internal static DelegateContinueCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(in TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
                 {
                     return new DelegateContinueCaptureVoidResult<TCapture, TResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
+                internal static DelegateContinueCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(in TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
                 {
                     return new DelegateContinueCaptureArgVoid<TCapture, TArg>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
+                internal static DelegateContinueCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
                 {
                     return new DelegateContinueCaptureArgResult<TCapture, TArg, TResult>(capturedValue, callback);
                 }
@@ -253,41 +205,25 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseCaptureVoidVoid<TCapture> Create<TCapture>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
+                internal static DelegateContinuePromiseCaptureVoidVoid<TCapture> Create<TCapture>(in TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
                 {
                     return new DelegateContinuePromiseCaptureVoidVoid<TCapture>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TResult>> callback)
+                internal static DelegateContinuePromiseCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(in TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TResult>> callback)
                 {
                     return new DelegateContinuePromiseCaptureVoidResult<TCapture, TResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
+                internal static DelegateContinuePromiseCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
                 {
                     return new DelegateContinuePromiseCaptureArgVoid<TCapture, TArg>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>> callback)
+                internal static DelegateContinuePromiseCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>> callback)
                 {
                     return new DelegateContinuePromiseCaptureArgResult<TCapture, TArg, TResult>(capturedValue, callback);
                 }
@@ -305,21 +241,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateNewPromiseCaptureVoid<TCapture> Create<TCapture>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture, Promise.Deferred> callback)
+                internal static DelegateNewPromiseCaptureVoid<TCapture> Create<TCapture>(in TCapture capturedValue, Action<TCapture, Promise.Deferred> callback)
                 {
                     return new DelegateNewPromiseCaptureVoid<TCapture>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateNewPromiseCaptureResult<TCapture, TResult> Create<TCapture, TResult>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture, Promise<TResult>.Deferred> callback)
+                internal static DelegateNewPromiseCaptureResult<TCapture, TResult> Create<TCapture, TResult>(in TCapture capturedValue, Action<TCapture, Promise<TResult>.Deferred> callback)
                 {
                     return new DelegateNewPromiseCaptureResult<TCapture, TResult>(capturedValue, callback);
                 }
@@ -331,11 +259,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Func2ArgResultCapture<TCapture, TArg1, TArg2, TResult> Create<TCapture, TArg1, TArg2, TResult>(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, TArg1, TArg2, TResult> callback)
+                internal static Func2ArgResultCapture<TCapture, TArg1, TArg2, TResult> Create<TCapture, TArg1, TArg2, TResult>(in TCapture capturedValue, Func<TCapture, TArg1, TArg2, TResult> callback)
                 {
                     return new Func2ArgResultCapture<TCapture, TArg1, TArg2, TResult>(capturedValue, callback);
                 }
@@ -1330,11 +1254,7 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateNewPromiseCaptureVoid(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture, Promise.Deferred> callback)
+                public DelegateNewPromiseCaptureVoid(in TCapture capturedValue, Action<TCapture, Promise.Deferred> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1356,11 +1276,7 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateNewPromiseCaptureResult(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture, Promise<TResult>.Deferred> callback)
+                public DelegateNewPromiseCaptureResult(in TCapture capturedValue, Action<TCapture, Promise<TResult>.Deferred> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1388,11 +1304,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureVoidVoid(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture> callback)
+                public DelegateCaptureVoidVoid(in TCapture capturedValue, Action<TCapture> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1463,11 +1375,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureVoidResult(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, TResult> callback)
+                public DelegateCaptureVoidResult(in TCapture capturedValue, Func<TCapture, TResult> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1542,11 +1450,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureArgVoid(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture, TArg> callback)
+                public DelegateCaptureArgVoid(in TCapture capturedValue, Action<TCapture, TArg> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1624,11 +1528,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureArgResult(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
+                public DelegateCaptureArgResult(in TCapture capturedValue, Func<TCapture, TArg, TResult> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1708,11 +1608,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCapturePromiseVoidVoid(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, Promise> callback)
+                public DelegateCapturePromiseVoidVoid(in TCapture capturedValue, Func<TCapture, Promise> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1762,11 +1658,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCapturePromiseVoidResult(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, Promise<TResult>> callback)
+                public DelegateCapturePromiseVoidResult(in TCapture capturedValue, Func<TCapture, Promise<TResult>> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1816,11 +1708,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCapturePromiseArgVoid(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
+                public DelegateCapturePromiseArgVoid(in TCapture capturedValue, Func<TCapture, TArg, Promise> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1872,11 +1760,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCapturePromiseArgResult(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, TArg, Promise<TResult>> callback)
+                public DelegateCapturePromiseArgResult(in TCapture capturedValue, Func<TCapture, TArg, Promise<TResult>> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1923,11 +1807,7 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureVoidVoid(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
+                public DelegateContinueCaptureVoidVoid(in TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1964,11 +1844,7 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureVoidResult(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
+                public DelegateContinueCaptureVoidResult(in TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -2006,11 +1882,7 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureArgVoid(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
+                public DelegateContinueCaptureArgVoid(in TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -2047,11 +1919,7 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureArgResult(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
+                public DelegateContinueCaptureArgResult(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -2095,11 +1963,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseCaptureVoidVoid(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
+                public DelegateContinuePromiseCaptureVoidVoid(in TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -2142,11 +2006,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseCaptureVoidResult(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TResult>> callback)
+                public DelegateContinuePromiseCaptureVoidResult(in TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TResult>> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -2189,11 +2049,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseCaptureArgVoid(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
+                public DelegateContinuePromiseCaptureArgVoid(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -2236,11 +2092,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseCaptureArgResult(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>> callback)
+                public DelegateContinuePromiseCaptureArgResult(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -2284,11 +2136,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureFinally(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture> callback)
+                public DelegateCaptureFinally(in TCapture capturedValue, Action<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
@@ -2310,11 +2158,7 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateCaptureCancel(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Action<TCapture> callback)
+                public DelegateCaptureCancel(in TCapture capturedValue, Action<TCapture> callback)
                 {
                     _capturedValue = capturedValue;
                     _callback = callback;
@@ -2359,11 +2203,7 @@ namespace Proto.Promises
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public Func2ArgResultCapture(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCapture capturedValue, Func<TCapture, TArg1, TArg2, TResult> callback)
+                public Func2ArgResultCapture(in TCapture capturedValue, Func<TCapture, TArg1, TArg2, TResult> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;

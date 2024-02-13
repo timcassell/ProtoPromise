@@ -14,23 +14,12 @@ concurrency:
 
 jobs:
   build:
-    name: Build (${{ matrix.scriptingRuntime.name }}, ${{ matrix.mode.name }})
+    name: Build ${{ matrix.mode.name }}
     runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
       matrix:
-        scriptingRuntime:
-          - {
-              name: Net3.5,
-              version: 0,
-              apiCompatibilityLevel: 2
-            }
-          - {
-              name: Net4.x,
-              version: 1,
-              apiCompatibilityLevel: 6
-            }
         mode:
           - {
               name: Release,
@@ -51,14 +40,6 @@ jobs:
           DefineOriginal="  scriptingDefineSymbols: {}"
           DefineReplace="  scriptingDefineSymbols: \\n    13: $DefineSymbols"
           sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
-
-          RuntimeOriginal="  scriptingRuntimeVersion: 0"
-          RuntimeReplace="  scriptingRuntimeVersion: ${{ matrix.scriptingRuntime.version }}"
-          sed -i "{s/$RuntimeOriginal/$RuntimeReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
-
-          ApiOriginal="  apiCompatibilityLevel: 2"
-          ApiReplace="  apiCompatibilityLevel: ${{ matrix.scriptingRuntime.apiCompatibilityLevel }}"
-          sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
       - name: Build Project
         uses: game-ci/unity-builder@v3

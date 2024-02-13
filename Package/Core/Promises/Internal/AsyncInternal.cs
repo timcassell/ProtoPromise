@@ -1,8 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -90,37 +86,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void SetAsyncResult(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult result)
+                internal void SetAsyncResult(in TResult result)
                 {
                     ThrowIfInPool(this);
                     _result = result;
                     HandleNextInternal(null, Promise.State.Resolved);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static void Start<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
-                    where TStateMachine : IAsyncStateMachine
-                {
-                    if (Promise.Config.AsyncFlowExecutionContextEnabled)
-                    {
-                        // To support ExecutionContext for AsyncLocal<T>.
-#if !NET_LEGACY
-                        // We can use AsyncTaskMethodBuilder to run the state machine on the execution context without creating an object. https://github.com/dotnet/runtime/discussions/56202#discussioncomment-1042195
-                        new AsyncTaskMethodBuilder().Start(ref stateMachine);
-#else
-                        // AsyncTaskMethodBuilder isn't available pre .Net 4.5, so we have to create the object to run the state machine on the execution context.
-                        SetStateMachine(ref stateMachine, ref _ref);
-                        _ref.MoveNext();
-#endif
-                    }
-                    else
-                    {
-                        stateMachine.MoveNext();
-                    }
                 }
 
                 [MethodImpl(InlineOption | AggressiveOptimizationOption)]

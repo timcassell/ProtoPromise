@@ -1,8 +1,4 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -17,7 +13,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-#if PROMISE_DEBUG && !NET_LEGACY
+#if PROMISE_DEBUG
 using System.Linq;
 #endif
 
@@ -166,50 +162,6 @@ namespace Proto.Promises
         {
             const string CausalitySplitMessage = "--- End of stack trace from the previous location where the exception was thrown ---";
 
-#if NET_LEGACY
-            // Format stack trace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
-            var _stackTraces = new List<string>();
-            var separator = new string[1] { Environment.NewLine + " " };
-            var sb = new System.Text.StringBuilder();
-            foreach (StackTrace st in stackTraces)
-            {
-                string stackTrace = st.ToString();
-                if (string.IsNullOrEmpty(stackTrace))
-                {
-                    continue;
-                }
-                foreach (var trace in stackTrace.Substring(1).Split(separator, StringSplitOptions.RemoveEmptyEntries))
-                {
-                    if (!trace.Contains("Proto.Promises"))
-                    {
-                        sb.AppendLine(trace);
-                    }
-                }
-                sb.Replace(":line ", ":")
-                    .Replace("(", " (")
-                    .Replace(") in", ") [0x00000] in"); // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
-                _stackTraces.Add(sb.ToString());
-                sb.Length = 0;
-            }
-            if (_stackTraces.Count == 0)
-            {
-                return " ";
-            }
-            if (_stackTraces.Count == 1)
-            {
-                return _stackTraces[0] + " ";
-            }
-            for (int i = 0, max = _stackTraces.Count - 1; i < max ; ++i)
-            {
-                sb.Append(_stackTraces[i]).Append(" ")
-                    .AppendLine()
-                    .Append(CausalitySplitMessage).Append(" ")
-                    .AppendLine();
-
-            }
-            sb.Append(_stackTraces[_stackTraces.Count - 1]).Append(" ");
-            return sb.ToString();
-#else // NET_LEGACY
             // StackTrace.ToString() format issue was fixed in the new runtime.
             var causalityTrace = stackTraces
                 .Select(stackTrace => stackTrace.GetFrames()
@@ -233,10 +185,8 @@ namespace Proto.Promises
             return string.Join(
                 Environment.NewLine + CausalitySplitMessage + Environment.NewLine,
                 causalityTrace);
-#endif // NET_LEGACY
         }
 
-#if !NET_LEGACY
         private static bool IsNonUserCode(System.Reflection.MemberInfo memberInfo)
         {
             if (memberInfo == null)
@@ -246,7 +196,6 @@ namespace Proto.Promises
             return memberInfo.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
                 || IsNonUserCode(memberInfo.DeclaringType);
         }
-#endif // !NET_LEGACY
 
         partial interface ITraceable
         {
@@ -438,7 +387,6 @@ namespace Proto.Promises
                 }
             }
 
-#if CSHARP_7_3_OR_NEWER
             partial class PromiseParallelForEachAsync<TParallelBody, TSource>
             {
                 private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
@@ -470,7 +418,6 @@ namespace Proto.Promises
                     }
                 }
             }
-#endif // CSHARP_7_3_OR_NEWER
         }
 #else // PROMISE_DEBUG
         internal static string GetFormattedStacktrace(int skipFrames)
