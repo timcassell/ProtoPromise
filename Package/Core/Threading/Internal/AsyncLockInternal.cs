@@ -197,7 +197,7 @@ namespace Proto.Promises
                 void IAsyncLockPromise.Reject(IRejectContainer rejectContainer)
                 {
                     _cancelationRegistration.Dispose();
-                    _tempRejectContainer = rejectContainer;
+                    _rejectContainer = rejectContainer;
                     _tempState = Promise.State.Rejected;
                     // Notify the lock so this will be placed on the ready queue to re-acquire the lock before continuing.
                     _lock.NotifyAbandonedConditionVariable(this);

@@ -27,7 +27,7 @@ namespace Proto.Promises
             // We queue the successful MoveNextAsync results instead of using Promise.RaceWithIndex, to avoid having to preserve each promise.
             protected SingleConsumerAsyncQueueInternal<int> _readyQueue = new SingleConsumerAsyncQueueInternal<int>(0);
             protected TempCollectionBuilder<AsyncEnumerator<TValue>> _enumerators;
-            protected TempCollectionBuilder<(object rejectContainer, Promise disposePromise)> _disposePromises;
+            protected TempCollectionBuilder<(IRejectContainer rejectContainer, Promise disposePromise)> _disposePromises;
             protected SpinLocker _locker = new SpinLocker();
 
             protected void ContinueMerge(int index)
@@ -85,7 +85,7 @@ namespace Proto.Promises
                 }
             }
 
-            protected void DisposeEnumerator(AsyncEnumerator<TValue> enumerator, object rejectContainer)
+            protected void DisposeEnumerator(AsyncEnumerator<TValue> enumerator, IRejectContainer rejectContainer)
             {
                 var tuple = (rejectContainer, enumerator.DisposeAsync());
                 
@@ -188,7 +188,7 @@ namespace Proto.Promises
                 // We don't store the source directly, to reduce memory, we just store it in the _cancelationToken field and use the _ref directly.
                 _sourcesEnumerator._target._cancelationToken = _cancelationToken = CancelationSource.New(_cancelationToken).Token;
                 _enumerators = new TempCollectionBuilder<AsyncEnumerator<TValue>>(0);
-                _disposePromises = new TempCollectionBuilder<(object rejectContainer, Promise disposePromise)>(0);
+                _disposePromises = new TempCollectionBuilder<(IRejectContainer rejectContainer, Promise disposePromise)>(0);
                 var iteratorPromise = Iterate(enumerableId)._promise;
                 if (iteratorPromise._ref == null)
                 {
@@ -290,7 +290,7 @@ namespace Proto.Promises
                         }
                         if (rejectContainer != null)
                         {
-                            var container = rejectContainer.UnsafeAs<IRejectContainer>();
+                            var container = rejectContainer;
                             var exception = container.Value as Exception
                                 // If the reason was not an exception, get the reason wrapped in an exception.
                                 ?? container.GetExceptionDispatchInfo().SourceException;
@@ -434,7 +434,7 @@ namespace Proto.Promises
                 // We don't store the source directly, to reduce memory, we just store it in the _cancelationToken field and use the _ref directly.
                 _cancelationToken = CancelationSource.New(_cancelationToken).Token;
                 _enumerators = new TempCollectionBuilder<AsyncEnumerator<TValue>>(0);
-                _disposePromises = new TempCollectionBuilder<(object rejectContainer, Promise disposePromise)>(0);
+                _disposePromises = new TempCollectionBuilder<(IRejectContainer rejectContainer, Promise disposePromise)>(0);
                 var iteratorPromise = Iterate(enumerableId)._promise;
                 if (iteratorPromise._ref == null)
                 {
@@ -529,7 +529,7 @@ namespace Proto.Promises
                         }
                         if (rejectContainer != null)
                         {
-                            var container = rejectContainer.UnsafeAs<IRejectContainer>();
+                            var container = rejectContainer;
                             var exception = container.Value as Exception
                                 // If the reason was not an exception, get the reason wrapped in an exception.
                                 ?? container.GetExceptionDispatchInfo().SourceException;

@@ -356,10 +356,11 @@ namespace Proto.Promises
                     goto LoopStart;
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     RemovePending(handler);
-                    handler.SetCompletionState(rejectContainer, state);
+                    var rejectContainer = handler._rejectContainer;
+                    handler.SetCompletionState(state);
                     handler.MaybeDispose();
 
                     // We hook this up to the MoveNextAsync promise and the parallel body promise,
@@ -409,9 +410,9 @@ namespace Proto.Promises
                     }
                 }
 
-                private void RecordRejection(object rejectContainer)
+                private void RecordRejection(IRejectContainer rejectContainer)
                 {
-                    var container = rejectContainer.UnsafeAs<IRejectContainer>();
+                    var container = rejectContainer;
                     var exception = container.Value as Exception
                         // If the reason was not an exception, get the reason wrapped in an exception.
                         ?? container.GetExceptionDispatchInfo().SourceException;
@@ -462,13 +463,13 @@ namespace Proto.Promises
                     // This must be the very last thing done.
                     if (_exceptions != null)
                     {
-                        var rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                         _exceptions = null;
-                        HandleNextInternal(rejectContainer, Promise.State.Rejected);
+                        HandleNextInternal(Promise.State.Rejected);
                     }
                     else
                     {
-                        HandleNextInternal(null, _completionState);
+                        HandleNextInternal(_completionState);
                     }
                 }
 
@@ -502,11 +503,11 @@ namespace Proto.Promises
                     continuePromise.Forget(continuePromise.Id);
                 }
 
-                void IDelegateContinue.Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, PromiseRefBase owner)
+                void IDelegateContinue.Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, PromiseRefBase owner)
                 {
                     RemovePending(handler);
                     handler.MaybeDispose();
-                    owner.HandleNextInternal(null, Promise.State.Resolved);
+                    owner.HandleNextInternal(Promise.State.Resolved);
                     if (state == Promise.State.Rejected)
                     {
                         RecordRejection(rejectContainer);

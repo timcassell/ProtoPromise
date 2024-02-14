@@ -27,18 +27,18 @@ namespace Proto.Promises
 
         internal readonly unsafe struct GetResultContainerDelegate<TResult>
         {
-            private readonly delegate*<PromiseRefBase, object, Promise.State, int, ref TResult, void> _ptr;
+            private readonly delegate*<PromiseRefBase, IRejectContainer, Promise.State, int, ref TResult, void> _ptr;
 
             [MethodImpl(InlineOption)]
-            internal GetResultContainerDelegate(delegate*<PromiseRefBase, object, Promise.State, int, ref TResult, void> ptr) => _ptr = ptr;
+            internal GetResultContainerDelegate(delegate*<PromiseRefBase, IRejectContainer, Promise.State, int, ref TResult, void> ptr) => _ptr = ptr;
 
             [MethodImpl(InlineOption)]
-            internal void Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref TResult result) => _ptr(handler, rejectContainer, state, index, ref result);
+            internal void Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, int index, ref TResult result) => _ptr(handler, rejectContainer, state, index, ref result);
         }
 #else
         internal delegate void GetResultDelegate<TResult>(PromiseRefBase handler, int index, ref TResult result);
 
-        internal delegate void GetResultContainerDelegate<TResult>(PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref TResult result);
+        internal delegate void GetResultContainerDelegate<TResult>(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, int index, ref TResult result);
 #endif
 
         partial class PromiseRefBase
@@ -51,7 +51,7 @@ namespace Proto.Promises
                 partial void AddPending(PromiseRefBase pendingPromise);
                 partial void ClearPending();
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
+                internal override void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
 
                 // When each promise is completed, we decrement the wait count until it reaches zero before we handle the next waiter.
                 // If a promise completes with a state that should complete this promise before all the other promises were complete,
@@ -126,19 +126,20 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
                     bool isComplete = state == Promise.State.Resolved
                         ? RemoveWaiterAndGetIsComplete()
                         : TrySetComplete();
                     if (isComplete)
                     {
+                        _rejectContainer = handler._rejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
+                        HandleNextInternal(state);
                         return;
                     }
-                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
+                    handler.MaybeReportUnhandledAndDispose(state);
                     MaybeDispose();
                 }
             }
@@ -185,7 +186,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override sealed void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
                     bool isComplete;
                     if (state == Promise.State.Resolved)
@@ -199,12 +200,13 @@ namespace Proto.Promises
                     }
                     if (isComplete)
                     {
+                        _rejectContainer = handler._rejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
+                        HandleNextInternal(state);
                         return;
                     }
-                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
+                    handler.MaybeReportUnhandledAndDispose(state);
                     MaybeDispose();
                 }
             }
@@ -256,14 +258,15 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override sealed void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
-                    s_getResult.Invoke(handler, rejectContainer, state, index, ref _result);
+                    _rejectContainer = handler._rejectContainer;
+                    s_getResult.Invoke(handler, _rejectContainer, state, index, ref _result);
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
                     if (RemoveWaiterAndGetIsComplete())
                     {
-                        HandleNextInternal(null, Promise.State.Resolved);
+                        HandleNextInternal(Promise.State.Resolved);
                         return;
                     }
                     MaybeDispose();

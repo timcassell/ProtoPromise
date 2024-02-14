@@ -145,15 +145,17 @@ namespace Proto.Promises
                 return promise;
             }
 
-            internal override void Handle(Internal.PromiseRefBase handler, object rejectContainer, Promise.State state)
+            internal override void Handle(Internal.PromiseRefBase handler, Promise.State state)
             {
-                handler.SetCompletionState(rejectContainer, state);
+                handler.SetCompletionState(state);
                 _result = handler.GetResult<T>();
+                _rejectContainer = handler._rejectContainer;
+                handler.SuppressRejection = true;
                 handler.MaybeDispose();
-                OnComplete(rejectContainer, state);
+                OnComplete(state);
             }
 
-            protected override void OnComplete(object rejectContainer, Promise.State state)
+            protected override void OnComplete(Promise.State state)
             {
                 var lazyFields = _owner._lazyFields;
                 PromiseMultiAwait<T> preservedPromise;
@@ -168,7 +170,7 @@ namespace Proto.Promises
                     }
 
                     preservedPromise.Forget(preservedPromise.Id);
-                    HandleNextInternal(rejectContainer, state);
+                    HandleNextInternal(state);
                     return;
                 }
 
@@ -185,7 +187,7 @@ namespace Proto.Promises
                 }
 
                 preservedPromise.Forget(preservedPromise.Id);
-                HandleNextInternal(rejectContainer, state);
+                HandleNextInternal(state);
             }
         } // class LazyPromiseNoProgress
 
@@ -260,15 +262,17 @@ namespace Proto.Promises
                 return Promise<T>.Resolved(owner._result);
             }
 
-            internal override void Handle(Internal.PromiseRefBase handler, object rejectContainer, Promise.State state)
+            internal override void Handle(Internal.PromiseRefBase handler, Promise.State state)
             {
-                handler.SetCompletionState(rejectContainer, state);
+                handler.SetCompletionState(state);
                 _result = handler.GetResult<T>();
+                _rejectContainer = handler._rejectContainer;
+                handler.SuppressRejection = true;
                 handler.MaybeDispose();
-                OnComplete(rejectContainer, state);
+                OnComplete(state);
             }
 
-            protected override void OnComplete(object rejectContainer, Promise.State state)
+            protected override void OnComplete(Promise.State state)
             {
                 var lazyFields = _owner._lazyFields;
                 PromiseMultiAwait<T> preservedPromise;
@@ -287,7 +291,7 @@ namespace Proto.Promises
 
                     progressHandler.Dispose(progressHandler.Id);
                     preservedPromise.Forget(preservedPromise.Id);
-                    HandleNextInternal(rejectContainer, state);
+                    HandleNextInternal(state);
                     return;
                 }
 
@@ -308,7 +312,7 @@ namespace Proto.Promises
                 progressHandler.Report(1d, progressHandler.Id);
                 progressHandler.Dispose(progressHandler.Id);
                 preservedPromise.Forget(preservedPromise.Id);
-                HandleNextInternal(rejectContainer, state);
+                HandleNextInternal(state);
             }
         } // class LazyWithProgressPromise
     } // class AsyncLazy<T>
@@ -341,12 +345,12 @@ namespace Proto.Promises
                     }
                     catch (OperationCanceledException)
                     {
-                        OnComplete(null, Promise.State.Canceled);
+                        OnComplete(Promise.State.Canceled);
                     }
                     catch (Exception e)
                     {
-                        var rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                        OnComplete(rejectContainer, Promise.State.Rejected);
+                        _rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        OnComplete(Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
                 }
@@ -362,17 +366,17 @@ namespace Proto.Promises
                     }
                     catch (OperationCanceledException)
                     {
-                        OnComplete(null, Promise.State.Canceled);
+                        OnComplete(Promise.State.Canceled);
                     }
                     catch (Exception e)
                     {
-                        var rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                        OnComplete(rejectContainer, Promise.State.Rejected);
+                        _rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        OnComplete(Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
                 }
 
-                protected abstract void OnComplete(object rejectContainer, Promise.State state);
+                protected abstract void OnComplete(Promise.State state);
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
@@ -390,17 +394,18 @@ namespace Proto.Promises
                     [MethodImpl(InlineOption)]
                     void IWaitForCompleteHandler.HandleHookup(PromiseRefBase handler)
                     {
-                        var rejectContainer = handler._rejectContainer;
                         var state = handler.State;
                         _owner._result = handler.GetResult<TResult>();
+                        _owner._rejectContainer = handler._rejectContainer;
+                        _owner.SuppressRejection = true;
                         handler.MaybeDispose();
-                        _owner.OnComplete(rejectContainer, state);
+                        _owner.OnComplete(state);
                     }
 
                     [MethodImpl(InlineOption)]
                     void IWaitForCompleteHandler.HandleNull()
                     {
-                        _owner.OnComplete(null, Promise.State.Resolved);
+                        _owner.OnComplete(Promise.State.Resolved);
                     }
                 }
             }

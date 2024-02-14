@@ -37,7 +37,7 @@ namespace Proto.Promises
                 if (state == Promise.State.Rejected)
                 {
                     SuppressRejection = true;
-                    var exceptionDispatchInfo = _rejectContainer.UnsafeAs<IRejectContainer>().GetExceptionDispatchInfo();
+                    var exceptionDispatchInfo = _rejectContainer.GetExceptionDispatchInfo();
                     MaybeDispose();
                     return exceptionDispatchInfo;
                 }
@@ -170,10 +170,10 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     ThrowIfInPool(this);
-                    handler.SetCompletionState(rejectContainer, state);
+                    handler.SetCompletionState(state);
                     Invoke();
                 }
             }

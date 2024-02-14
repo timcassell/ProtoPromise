@@ -47,7 +47,7 @@ namespace Proto.Promises
 #endif
     public abstract class PromiseYieldInstruction : CustomYieldInstruction, IDisposable
     {
-        volatile protected object _rejectContainer;
+        volatile private protected Internal.IRejectContainer _rejectContainer;
         volatile protected Promise.State _state;
         volatile protected int _retainCounter;
 
@@ -98,7 +98,7 @@ namespace Proto.Promises
                 }
                 case Promise.State.Rejected:
                 {
-                    ((Internal.IRejectContainer) _rejectContainer).GetExceptionDispatchInfo().Throw();
+                    _rejectContainer.GetExceptionDispatchInfo().Throw();
                     throw null; // This point will never be reached, but the C# compiler thinks it might.
                 }
                 default:

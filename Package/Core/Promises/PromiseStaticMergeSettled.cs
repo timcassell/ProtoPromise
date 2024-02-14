@@ -17,7 +17,7 @@ namespace Proto.Promises
     public partial struct Promise
     {
         [MethodImpl(Internal.InlineOption)]
-        private static void GetAllResultContainer(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref IList<ResultContainer> result)
+        private static void GetAllResultContainer(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref IList<ResultContainer> result)
         {
             result[index] = new ResultContainer(rejectContainer, state);
         }
@@ -335,7 +335,7 @@ namespace Proto.Promises
             private static class Settled2
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -397,7 +397,7 @@ namespace Proto.Promises
             private static class Settled1<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -460,7 +460,7 @@ namespace Proto.Promises
             private static class Settled0<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -529,7 +529,7 @@ namespace Proto.Promises
             private static class Settled3
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -600,7 +600,7 @@ namespace Proto.Promises
             private static class Settled2<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -673,7 +673,7 @@ namespace Proto.Promises
             private static class Settled1<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -747,7 +747,7 @@ namespace Proto.Promises
             private static class Settled0<T1, T2, T3>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -826,7 +826,7 @@ namespace Proto.Promises
             private static class Settled4
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -903,7 +903,7 @@ namespace Proto.Promises
             private static class Settled3<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -982,7 +982,7 @@ namespace Proto.Promises
             private static class Settled2<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -1062,7 +1062,7 @@ namespace Proto.Promises
             private static class Settled1<T1, T2, T3>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -1144,7 +1144,7 @@ namespace Proto.Promises
             private static class Settled0<T1, T2, T3, T4>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -1231,7 +1231,7 @@ namespace Proto.Promises
             private static class Settled5
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -1314,7 +1314,7 @@ namespace Proto.Promises
             private static class Settled4<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -1399,7 +1399,7 @@ namespace Proto.Promises
             private static class Settled3<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -1485,7 +1485,7 @@ namespace Proto.Promises
             private static class Settled2<T1, T2, T3>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -1573,7 +1573,7 @@ namespace Proto.Promises
             private static class Settled1<T1, T2, T3, T4>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -1662,7 +1662,7 @@ namespace Proto.Promises
             private static class Settled0<T1, T2, T3, T4, T5>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -1752,7 +1752,7 @@ namespace Proto.Promises
             private static class Settled6
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -1841,7 +1841,7 @@ namespace Proto.Promises
             private static class Settled5<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -1932,7 +1932,7 @@ namespace Proto.Promises
             private static class Settled4<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -2025,7 +2025,7 @@ namespace Proto.Promises
             private static class Settled3<T1, T2, T3>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -2119,7 +2119,7 @@ namespace Proto.Promises
             private static class Settled2<T1, T2, T3, T4>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -2214,7 +2214,7 @@ namespace Proto.Promises
             private static class Settled1<T1, T2, T3, T4, T5>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -2310,7 +2310,7 @@ namespace Proto.Promises
             private static class Settled0<T1, T2, T3, T4, T5, T6>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -2406,7 +2406,7 @@ namespace Proto.Promises
             private static class Settled7
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -2502,7 +2502,7 @@ namespace Proto.Promises
             private static class Settled6<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -2600,7 +2600,7 @@ namespace Proto.Promises
             private static class Settled5<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -2699,7 +2699,7 @@ namespace Proto.Promises
             private static class Settled4<T1, T2, T3>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -2799,7 +2799,7 @@ namespace Proto.Promises
             private static class Settled3<T1, T2, T3, T4>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -2900,7 +2900,7 @@ namespace Proto.Promises
             private static class Settled2<T1, T2, T3, T4, T5>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -3002,7 +3002,7 @@ namespace Proto.Promises
             private static class Settled1<T1, T2, T3, T4, T5, T6>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer> result)
                 {
                     switch (index)
                     {
@@ -3105,7 +3105,7 @@ namespace Proto.Promises
             private static class Settled0<T1, T2, T3, T4, T5, T6, T7>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, object rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer> result)
                 {
                     switch (index)
                     {

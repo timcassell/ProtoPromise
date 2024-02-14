@@ -232,7 +232,7 @@ namespace Proto.Promises
                     // Reset for the next awaiter.
                     ResetWithoutStacktrace();
                     // Handle iterator promise to move the async state machine forward.
-                    Interlocked.Exchange(ref _iteratorPromiseRef, null).Handle(this, null, Promise.State.Resolved);
+                    Interlocked.Exchange(ref _iteratorPromiseRef, null).Handle(this, Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -297,40 +297,40 @@ namespace Proto.Promises
                     IncrementPromiseIdAndClearPrevious();
                     // Reset for the next awaiter.
                     ResetWithoutStacktrace();
-                    iteratorPromise.Handle(this, null, Promise.State.Resolved);
+                    iteratorPromise.Handle(this, Promise.State.Resolved);
                     return new Promise(this, Id);
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     // This is called when the async iterator function completes.
                     ThrowIfInPool(this);
-                    handler.SetCompletionState(rejectContainer, state);
+                    handler.SetCompletionState(state);
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
-                        handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
-                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        handler.MaybeReportUnhandledAndDispose(state);
+                        _rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
                         state = Promise.State.Rejected;
                     }
                     else
                     {
+                        _rejectContainer = handler._rejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
                     }
-                    HandleNextInternal(rejectContainer, state);
+                    HandleNextInternal(state);
                 }
 
                 protected void HandleFromSynchronouslyCompletedIterator()
                 {
                     ThrowIfInPool(this);
-                    object rejectContainer = null;
                     Promise.State state = Promise.State.Resolved;
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
-                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        _rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
                         state = Promise.State.Rejected;
                     }
-                    HandleNextInternal(rejectContainer, state);
+                    HandleNextInternal(state);
                 }
 
                 internal void GetResultForAsyncStreamYielder(int enumerableId)
@@ -363,7 +363,7 @@ namespace Proto.Promises
                     }
                     // Complete the MoveNextAsync promise.
                     _result = hasValue;
-                    HandleNextInternal(null, Promise.State.Resolved);
+                    HandleNextInternal(Promise.State.Resolved);
                 }
 
                 protected abstract void Start(int enumerableId);

@@ -28,12 +28,6 @@ namespace Proto.Promises
                 protected CancelationRegistration _cancelationRegistration;
                 // We have to store the state in a separate field until the next awaiter is ready to be invoked on the proper context.
                 protected Promise.State _tempState;
-                // This will only ever be rejected in DEBUG mode.
-#if PROMISE_DEBUG
-                protected object _tempRejectContainer;
-#else
-                private const object _tempRejectContainer = null;
-#endif
 
                 [MethodImpl(InlineOption)]
                 protected void Reset(SynchronizationContext callerContext)
@@ -56,7 +50,7 @@ namespace Proto.Promises
                     if (_callerContext == null)
                     {
                         // It was a synchronous lock or wait, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
-                        HandleNextInternal(_tempRejectContainer, _tempState);
+                        HandleNextInternal(_tempState);
                         return;
                     }
                     // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
@@ -71,7 +65,7 @@ namespace Proto.Promises
                     var currentContext = ts_currentContext;
                     ts_currentContext = _callerContext;
 
-                    HandleNextInternal(_tempRejectContainer, _tempState);
+                    HandleNextInternal(_tempState);
 
                     ts_currentContext = currentContext;
                 }
@@ -84,13 +78,13 @@ namespace Proto.Promises
 
                 public abstract void Cancel();
 
-                internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
+                internal override sealed void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
 
 #if PROMISE_DEBUG
                 internal void Reject(IRejectContainer rejectContainer)
                 {
                     _cancelationRegistration.Dispose();
-                    _tempRejectContainer = rejectContainer;
+                    _rejectContainer = rejectContainer;
                     _tempState = Promise.State.Rejected;
                     Continue();
                 }
