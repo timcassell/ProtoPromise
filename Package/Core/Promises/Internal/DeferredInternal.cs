@@ -79,14 +79,15 @@ namespace Proto.Promises
 
                 public void RejectDirect(IRejectContainer reasonContainer)
                 {
-                    HandleNextInternal(reasonContainer, Promise.State.Rejected);
+                    _rejectContainer = reasonContainer;
+                    HandleNextInternal(Promise.State.Rejected);
                 }
 
                 [MethodImpl(InlineOption)]
                 public void CancelDirect()
                 {
                     ThrowIfInPool(this);
-                    HandleNextInternal(null, Promise.State.Canceled);
+                    HandleNextInternal(Promise.State.Canceled);
                 }
             }
 
@@ -146,15 +147,16 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void ResolveDirect(in TResult value)
                 {
+                    ThrowIfInPool(this);
                     _result = value;
-                    HandleNextInternal(null, Promise.State.Resolved);
+                    HandleNextInternal(Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal void ResolveDirectVoid()
                 {
                     ThrowIfInPool(this);
-                    HandleNextInternal(null, Promise.State.Resolved);
+                    HandleNextInternal(Promise.State.Resolved);
                 }
             }
 

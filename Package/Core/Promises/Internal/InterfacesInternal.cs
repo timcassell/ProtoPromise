@@ -25,9 +25,9 @@ namespace Proto.Promises
                 set { _next = value; }
             }
 
-            internal virtual void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
-            // For Merge/Race promises
-            internal virtual void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index) { throw new System.InvalidOperationException(); }
+            internal virtual void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
+            // For PromisePassThrough
+            internal virtual void Handle(PromiseRefBase handler, Promise.State state, int index) { throw new System.InvalidOperationException(); }
         }
 
         partial class PromiseRefBase

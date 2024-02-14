@@ -135,7 +135,7 @@ namespace Proto.Promises
             CausalityTrace ITraceable.Trace { get; set; }
             volatile internal PromiseRefBase _previous; // Used to detect circular awaits.
 #endif
-            volatile internal object _rejectContainer;
+            internal object _rejectContainer;
 
             private short _promiseId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
             volatile private Promise.State _state;
@@ -164,9 +164,6 @@ namespace Proto.Promises
             {
                 private SynchronizationContext _synchronizationContext;
                 internal CancelationHelper _cancelationHelper;
-                // TODO: progress was removed, so we probably don't need this anymore, and can store it directly in _rejectContainer.
-                // We have to store previous reject container in a separate field so we won't break the registered progress promises chain until this is invoked on the synchronization context.
-                volatile private object _tempRejectContainer;
                 private int _isScheduling; // Flag used so that only Cancel() or Handle() will schedule the continuation. Int for Interlocked.
                 // We have to store the previous state in a separate field until the next awaiter is ready to be invoked on the proper context.
                 volatile private Promise.State _tempState;
@@ -266,7 +263,6 @@ namespace Proto.Promises
                 where TFinalizer : IFunc<Promise>, INullable
             {
                 private TFinalizer _finalizer;
-                private object _previousRejectContainer;
                 private Promise.State _previousState;
             }
 

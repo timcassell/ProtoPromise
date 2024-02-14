@@ -170,10 +170,10 @@ namespace Proto.Promises
 #endif
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     ThrowIfInPool(this);
-                    handler.SetCompletionState(rejectContainer, state);
+                    handler.SetCompletionState(state);
                     Invoke();
                 }
             }

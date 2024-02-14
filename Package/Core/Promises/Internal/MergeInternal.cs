@@ -51,7 +51,7 @@ namespace Proto.Promises
                 partial void AddPending(PromiseRefBase pendingPromise);
                 partial void ClearPending();
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
+                internal override void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
 
                 // When each promise is completed, we decrement the wait count until it reaches zero before we handle the next waiter.
                 // If a promise completes with a state that should complete this promise before all the other promises were complete,
@@ -126,19 +126,20 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
                     bool isComplete = state == Promise.State.Resolved
                         ? RemoveWaiterAndGetIsComplete()
                         : TrySetComplete();
                     if (isComplete)
                     {
+                        _rejectContainer = handler._rejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
+                        HandleNextInternal(state);
                         return;
                     }
-                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
+                    handler.MaybeReportUnhandledAndDispose(state);
                     MaybeDispose();
                 }
             }
@@ -185,7 +186,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override sealed void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
                     bool isComplete;
                     if (state == Promise.State.Resolved)
@@ -199,12 +200,13 @@ namespace Proto.Promises
                     }
                     if (isComplete)
                     {
+                        _rejectContainer = handler._rejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
+                        HandleNextInternal(state);
                         return;
                     }
-                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
+                    handler.MaybeReportUnhandledAndDispose(state);
                     MaybeDispose();
                 }
             }
@@ -256,14 +258,15 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override sealed void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
-                    s_getResult.Invoke(handler, rejectContainer, state, index, ref _result);
+                    _rejectContainer = handler._rejectContainer;
+                    s_getResult.Invoke(handler, _rejectContainer, state, index, ref _result);
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
                     if (RemoveWaiterAndGetIsComplete())
                     {
-                        HandleNextInternal(null, Promise.State.Resolved);
+                        HandleNextInternal(Promise.State.Resolved);
                         return;
                     }
                     MaybeDispose();

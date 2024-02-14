@@ -70,11 +70,12 @@ namespace Proto.Promises
                 {
                     if (exception is OperationCanceledException)
                     {
-                        HandleNextInternal(null, Promise.State.Canceled);
+                        HandleNextInternal(Promise.State.Canceled);
                     }
                     else
                     {
-                        HandleNextInternal(CreateRejectContainer(exception, int.MinValue, null, this), Promise.State.Rejected);
+                        _rejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                        HandleNextInternal(Promise.State.Rejected);
                     }
                 }
 
@@ -82,7 +83,7 @@ namespace Proto.Promises
                 internal void SetAsyncResultVoid()
                 {
                     ThrowIfInPool(this);
-                    HandleNextInternal(null, Promise.State.Resolved);
+                    HandleNextInternal(Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -90,7 +91,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _result = result;
-                    HandleNextInternal(null, Promise.State.Resolved);
+                    HandleNextInternal(Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption | AggressiveOptimizationOption)]
@@ -267,10 +268,10 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     ThrowIfInPool(this);
-                    handler.SetCompletionState(rejectContainer, state);
+                    handler.SetCompletionState(state);
                     SetAwaitedComplete(handler);
                     _continuer.MoveNext.Invoke();
                 }
@@ -336,10 +337,10 @@ namespace Proto.Promises
                         }
                     }
 
-                    internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                    internal override void Handle(PromiseRefBase handler, Promise.State state)
                     {
                         ThrowIfInPool(this);
-                        handler.SetCompletionState(rejectContainer, state);
+                        handler.SetCompletionState(state);
                         SetAwaitedComplete(handler);
                         ContinueMethod();
                     }
