@@ -683,6 +683,8 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     handler.SetCompletionState(state);
 
+                    // Handler is disposed in Execute, so we need to cache the reject container in case of a RethrowException.
+                    var rejectContainer = handler._rejectContainer;
                     bool invokingRejected = false;
                     SetCurrentInvoker(this);
                     try
@@ -691,7 +693,11 @@ namespace Proto.Promises
                     }
                     catch (RethrowException e)
                     {
-                        if (!invokingRejected)
+                        if (invokingRejected)
+                        {
+                            _rejectContainer = rejectContainer;
+                        }
+                        else
                         {
                             _rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
                             state = Promise.State.Rejected;
@@ -1399,6 +1405,20 @@ namespace Proto.Promises
                 void HandleNull();
             }
 
+            // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private static void VerifyAndHandleSelf<TCompleteHandler>(PromiseRefBase other, PromiseRefBase promiseSingleAwait, TCompleteHandler completeHandler)
+                where TCompleteHandler : IWaitForCompleteHandler
+            {
+                if (!VerifyWaiter(promiseSingleAwait))
+                {
+                    throw new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
+                }
+
+                other.WaitUntilStateIsNotPending();
+                completeHandler.HandleHookup(other);
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -1485,20 +1505,6 @@ namespace Proto.Promises
                     {
                         VerifyAndHandleSelf(secondPrevious, promiseSingleAwait, completeHandler);
                     }
-                }
-
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private void VerifyAndHandleSelf<TCompleteHandler>(PromiseRefBase other, PromiseRefBase promiseSingleAwait, TCompleteHandler completeHandler)
-                    where TCompleteHandler : IWaitForCompleteHandler
-                {
-                    if (!VerifyWaiter(promiseSingleAwait))
-                    {
-                        throw new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
-                    }
-
-                    other.WaitUntilStateIsNotPending();
-                    completeHandler.HandleHookup(other);
                 }
 
                 partial void SetSecondPrevious(PromiseRefBase secondPrevious, PromiseRefBase handler);
@@ -1865,9 +1871,12 @@ namespace Proto.Promises
 
                 protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
                 {
-                    // TODO: cache the rejectContainer and dispose the handler before invoking the callback.
                     var callback = _finalizer;
                     _finalizer = default(TFinalizer);
+                    _result = handler.GetResult<TResult>();
+                    _rejectContainer = handler._rejectContainer;
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
                     try
                     {
                         callback.Invoke();
@@ -1875,10 +1884,13 @@ namespace Proto.Promises
                     catch
                     {
                         // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
-                        handler.MaybeReportUnhandledAndDispose(state);
+                        if (state == Promise.State.Rejected)
+                        {
+                            _rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                        }
                         throw;
                     }
-                    HandleSelf(handler, state);
+                    HandleNextInternal(state);
                 }
             }
 
@@ -1963,7 +1975,9 @@ namespace Proto.Promises
                         }
                         _rejectContainer = handler._rejectContainer;
                     }
-                    HandleSelfWithoutResult(handler, state);
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+                    HandleNextInternal(state);
                 }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

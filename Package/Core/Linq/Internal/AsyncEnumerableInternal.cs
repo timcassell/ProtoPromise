@@ -314,6 +314,7 @@ namespace Proto.Promises
                     }
                     else
                     {
+                        _rejectContainer = handler._rejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
                     }
