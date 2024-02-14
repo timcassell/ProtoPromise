@@ -104,7 +104,9 @@ namespace Proto.Promises
 
     partial class Internal
     {
-        internal struct VoidResult { }
+        // The runtime pads structs to the nearest word size when they are fields in classes, even for empty structs.
+        // To save 8 bytes in 64-bit runtime, we use an enum backed by byte instead of an empty struct so that the runtime will pack it efficiently.
+        internal enum VoidResult : byte { }
 
         partial class HandleablePromiseBase
         {
