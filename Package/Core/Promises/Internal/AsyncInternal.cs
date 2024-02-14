@@ -178,7 +178,8 @@ namespace Proto.Promises
 #endif
                     private sealed partial class Continuer<TStateMachine> : PromiseMethodContinuer where TStateMachine : IAsyncStateMachine
                     {
-                        private static readonly ContextCallback s_executionContextCallback = ExecutionContextCallback;
+                        private static readonly ContextCallback s_executionContextCallback = state
+                            => state.UnsafeAs<Continuer<TStateMachine>>()._stateMachine.MoveNext();
 
                         private Continuer()
                         {
@@ -208,11 +209,6 @@ namespace Proto.Promises
                             _owner = null;
                             _stateMachine = default(TStateMachine);
                             ObjectPool.MaybeRepool(this);
-                        }
-
-                        private static void ExecutionContextCallback(object state)
-                        {
-                            state.UnsafeAs<Continuer<TStateMachine>>()._stateMachine.MoveNext();
                         }
 
                         private void ContinueMethod()
@@ -286,7 +282,8 @@ namespace Proto.Promises
 #endif
                 private sealed partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef<TResult> where TStateMachine : IAsyncStateMachine
                 {
-                    private static readonly ContextCallback s_executionContextCallback = ExecutionContextCallback;
+                    private static readonly ContextCallback s_executionContextCallback = state
+                        => state.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>()._stateMachine.MoveNext();
 
                     private AsyncPromiseRefMachine()
                     {
@@ -317,11 +314,6 @@ namespace Proto.Promises
                         _stateMachine = default(TStateMachine);
                         _executionContext = null;
                         ObjectPool.MaybeRepool(this);
-                    }
-
-                    private static void ExecutionContextCallback(object state)
-                    {
-                        state.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>()._stateMachine.MoveNext();
                     }
 
                     [MethodImpl(InlineOption)]
