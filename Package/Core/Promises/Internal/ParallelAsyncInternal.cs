@@ -410,9 +410,9 @@ namespace Proto.Promises
                     }
                 }
 
-                private void RecordRejection(object rejectContainer)
+                private void RecordRejection(IRejectContainer rejectContainer)
                 {
-                    var container = rejectContainer.UnsafeAs<IRejectContainer>();
+                    var container = rejectContainer;
                     var exception = container.Value as Exception
                         // If the reason was not an exception, get the reason wrapped in an exception.
                         ?? container.GetExceptionDispatchInfo().SourceException;
@@ -503,7 +503,7 @@ namespace Proto.Promises
                     continuePromise.Forget(continuePromise.Id);
                 }
 
-                void IDelegateContinue.Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, PromiseRefBase owner)
+                void IDelegateContinue.Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, PromiseRefBase owner)
                 {
                     RemovePending(handler);
                     handler.MaybeDispose();

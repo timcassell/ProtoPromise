@@ -36,7 +36,7 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(object rejectContainer, State state)
+            internal ResultContainer(Internal.IRejectContainer rejectContainer, State state)
             {
                 _target = new Promise<Internal.VoidResult>.ResultContainer(default(Internal.VoidResult), rejectContainer, state);
             }
@@ -110,7 +110,7 @@ namespace Proto.Promises
             /// <summary>
             /// FOR INTERNAL USE ONLY!
             /// </summary>
-            internal readonly object _rejectContainer;
+            internal readonly Internal.IRejectContainer _rejectContainer;
             private readonly Promise.State _state;
             private readonly T _result;
 
@@ -118,7 +118,7 @@ namespace Proto.Promises
             /// FOR INTERNAL USE ONLY!
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(in T result, object rejectContainer, Promise.State state)
+            internal ResultContainer(in T result, Internal.IRejectContainer rejectContainer, Promise.State state)
             {
                 _rejectContainer = rejectContainer;
                 _state = state;
@@ -126,7 +126,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            private ResultContainer(object rejectContainer, Promise.State state)
+            private ResultContainer(Internal.IRejectContainer rejectContainer, Promise.State state)
                 : this(default(T), rejectContainer, state)
             {
             }
@@ -142,7 +142,7 @@ namespace Proto.Promises
                     {
                         throw Promise.CancelException();
                     }
-                    _rejectContainer.UnsafeAs<Internal.IRejectContainer>().GetExceptionDispatchInfo().Throw();
+                    _rejectContainer.GetExceptionDispatchInfo().Throw();
                 }
             }
 
@@ -153,7 +153,7 @@ namespace Proto.Promises
             {
                 if (State == Promise.State.Rejected)
                 {
-                    _rejectContainer.UnsafeAs<Internal.IRejectContainer>().GetExceptionDispatchInfo().Throw();
+                    _rejectContainer.GetExceptionDispatchInfo().Throw();
                 }
             }
 
@@ -194,7 +194,7 @@ namespace Proto.Promises
                 get
                 {
                     return _state == Promise.State.Rejected
-                        ? _rejectContainer.UnsafeAs<Internal.IRejectContainer>().Value
+                        ? _rejectContainer.Value
                         : null;
                 }
             }

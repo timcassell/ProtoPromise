@@ -370,7 +370,7 @@ namespace Proto.Promises
                     if (_rejectContainer is IRejectContainer & State == Promise.State.Rejected & !SuppressRejection)
                     {
                         // Rejection maybe wasn't caught.
-                        _rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                        _rejectContainer.ReportUnhandled();
                     }
                 }
                 catch (Exception e)
@@ -511,7 +511,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void SetCompletionState(object rejectContainer, Promise.State state)
+            internal void SetCompletionState(IRejectContainer rejectContainer, Promise.State state)
             {
                 ThrowIfInPool(this);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -594,12 +594,12 @@ namespace Proto.Promises
                 return nextWaiter;
             }
 
-            private void MaybeReportUnhandledRejection(object rejectContainer, Promise.State state)
+            private void MaybeReportUnhandledRejection(IRejectContainer rejectContainer, Promise.State state)
             {
                 if (state == Promise.State.Rejected & !SuppressRejection)
                 {
                     SuppressRejection = true;
-                    rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                    rejectContainer.ReportUnhandled();
                 }
             }
 
@@ -1163,7 +1163,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        _rejectContainer.UnsafeAs<IRejectContainer>()?.ReportUnhandled();
+                        _rejectContainer?.ReportUnhandled();
                         _rejectContainer = null;
                         _tempState = Promise.State.Canceled;
                     }
@@ -1886,7 +1886,7 @@ namespace Proto.Promises
                         // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
                         if (state == Promise.State.Rejected)
                         {
-                            _rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                            _rejectContainer.ReportUnhandled();
                         }
                         throw;
                     }
@@ -1951,7 +1951,7 @@ namespace Proto.Promises
                         if (state == Promise.State.Rejected)
                         {
                             // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
-                            _rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                            _rejectContainer.ReportUnhandled();
                         }
                         throw;
                     }
@@ -1971,7 +1971,7 @@ namespace Proto.Promises
                         if (_previousState == Promise.State.Rejected)
                         {
                             // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
-                            _rejectContainer.UnsafeAs<IRejectContainer>().ReportUnhandled();
+                            _rejectContainer.ReportUnhandled();
                         }
                         _rejectContainer = handler._rejectContainer;
                     }

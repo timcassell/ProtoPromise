@@ -27,18 +27,18 @@ namespace Proto.Promises
 
         internal readonly unsafe struct GetResultContainerDelegate<TResult>
         {
-            private readonly delegate*<PromiseRefBase, object, Promise.State, int, ref TResult, void> _ptr;
+            private readonly delegate*<PromiseRefBase, IRejectContainer, Promise.State, int, ref TResult, void> _ptr;
 
             [MethodImpl(InlineOption)]
-            internal GetResultContainerDelegate(delegate*<PromiseRefBase, object, Promise.State, int, ref TResult, void> ptr) => _ptr = ptr;
+            internal GetResultContainerDelegate(delegate*<PromiseRefBase, IRejectContainer, Promise.State, int, ref TResult, void> ptr) => _ptr = ptr;
 
             [MethodImpl(InlineOption)]
-            internal void Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref TResult result) => _ptr(handler, rejectContainer, state, index, ref result);
+            internal void Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, int index, ref TResult result) => _ptr(handler, rejectContainer, state, index, ref result);
         }
 #else
         internal delegate void GetResultDelegate<TResult>(PromiseRefBase handler, int index, ref TResult result);
 
-        internal delegate void GetResultContainerDelegate<TResult>(PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref TResult result);
+        internal delegate void GetResultContainerDelegate<TResult>(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, int index, ref TResult result);
 #endif
 
         partial class PromiseRefBase

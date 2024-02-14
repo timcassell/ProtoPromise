@@ -37,7 +37,7 @@ namespace Proto.Promises
                 if (state == Promise.State.Rejected)
                 {
                     SuppressRejection = true;
-                    var exceptionDispatchInfo = _rejectContainer.UnsafeAs<IRejectContainer>().GetExceptionDispatchInfo();
+                    var exceptionDispatchInfo = _rejectContainer.GetExceptionDispatchInfo();
                     MaybeDispose();
                     return exceptionDispatchInfo;
                 }

@@ -135,7 +135,7 @@ namespace Proto.Promises
             CausalityTrace ITraceable.Trace { get; set; }
             volatile internal PromiseRefBase _previous; // Used to detect circular awaits.
 #endif
-            internal object _rejectContainer;
+            internal IRejectContainer _rejectContainer;
 
             private short _promiseId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
             volatile private Promise.State _state;

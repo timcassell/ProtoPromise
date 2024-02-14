@@ -517,8 +517,7 @@ namespace Proto.Promises
             get { return new(&GetAllResult); }
         }
 #else
-        private static readonly Internal.GetResultDelegate<IList<T>> GetAllResultFunc =
-            (Internal.PromiseRefBase handler, int index, ref IList<T> result) => GetAllResult(handler, index, ref result);
+        private static readonly Internal.GetResultDelegate<IList<T>> GetAllResultFunc = GetAllResult;
 #endif
 
         /// <summary>
@@ -768,7 +767,7 @@ namespace Proto.Promises
         }
 
         [MethodImpl(Internal.InlineOption)]
-        private static void GetAllResultContainer(Internal.PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref IList<ResultContainer> result)
+        private static void GetAllResultContainer(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, Promise.State state, int index, ref IList<ResultContainer> result)
         {
             result[index] = new ResultContainer(handler.GetResult<T>(), rejectContainer, state);
         }
@@ -780,8 +779,7 @@ namespace Proto.Promises
             get { return new(&GetAllResultContainer); }
         }
 #else
-        private static readonly Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc =
-            (Internal.PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref IList<ResultContainer> result) => GetAllResultContainer(handler, rejectContainer, state, index, ref result);
+        private static readonly Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc = GetAllResultContainer;
 #endif
 
         /// <summary>

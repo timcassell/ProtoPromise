@@ -45,22 +45,22 @@ namespace Proto.Promises
 
             internal interface IDelegateReject
             {
-                void InvokeRejecter(object rejectContainer, PromiseRefBase owner);
+                void InvokeRejecter(IRejectContainer rejectContainer, PromiseRefBase owner);
             }
 
             internal interface IDelegateRejectPromise
             {
-                void InvokeRejecter(PromiseRefBase handler, object rejectContainer, PromiseRefBase owner);
+                void InvokeRejecter(PromiseRefBase handler, IRejectContainer rejectContainer, PromiseRefBase owner);
             }
 
             internal interface IDelegateContinue
             {
-                void Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, PromiseRefBase owner);
+                void Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, PromiseRefBase owner);
             }
 
             internal interface IDelegateContinuePromise : INullable
             {
-                void Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, PromiseRefBase owner);
+                void Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, PromiseRefBase owner);
             }
 
             internal interface IDelegateNew<TResult>
