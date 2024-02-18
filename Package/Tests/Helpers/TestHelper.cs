@@ -5,7 +5,6 @@
 #endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
 
 using NUnit.Framework;
 using Proto.Promises;

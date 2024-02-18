@@ -73,7 +73,7 @@ namespace Proto.Promises
         {
             // This must not be readonly.
             private ValueLinkedQueue<AsyncEventPromiseBase> _waiters = new ValueLinkedQueue<AsyncEventPromiseBase>();
-            volatile internal int _initialCount;
+            internal int _initialCount;
             volatile internal int _currentCount;
 
             internal AsyncCountdownEventInternal(int initialCount)

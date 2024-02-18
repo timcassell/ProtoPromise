@@ -65,7 +65,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 set { s_objectPoolingEnabled = value; } 
             }
-            volatile private static bool s_objectPoolingEnabled = true; // Enabled by default.
+            private static bool s_objectPoolingEnabled = true; // Enabled by default.
 #endif
 
             /// <summary>
@@ -79,7 +79,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 set { s_debugCausalityTracer = value; }
             }
-            volatile private static TraceLevel s_debugCausalityTracer = TraceLevel.Rejections;
+            private static TraceLevel s_debugCausalityTracer = TraceLevel.Rejections;
 #else
             public static TraceLevel DebugCausalityTracer
             {
@@ -103,7 +103,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 set { s_uncaughtRejectionHandler = value; }
             }
-            volatile private static Action<UnhandledException> s_uncaughtRejectionHandler;
+            private static Action<UnhandledException> s_uncaughtRejectionHandler;
 
             /// <summary>
             /// The <see cref="SynchronizationContext"/> used to marshal work to the UI thread.
@@ -123,7 +123,7 @@ namespace Proto.Promises
                     s_foregroundContext = value;
                 }
             }
-            volatile private static SynchronizationContext s_foregroundContext;
+            private static SynchronizationContext s_foregroundContext;
 
             /// <summary>
             /// The <see cref="SynchronizationContext"/> used to marshal work to a background thread. If this is null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> is used.
@@ -135,7 +135,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 set { s_backgroundContext = value; }
             }
-            volatile private static SynchronizationContext s_backgroundContext;
+            private static SynchronizationContext s_backgroundContext;
 
             /// <summary>
             /// When enabled, <see cref="AsyncLocal{T}"/> objects are supported in async <see cref="Promise"/> and async <see cref="Promise{T}"/> methods.

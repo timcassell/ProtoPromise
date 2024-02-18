@@ -172,12 +172,13 @@ namespace Proto.Promises
             private ValueLinkedStack<LinkedCancelationNode> _links = new ValueLinkedStack<LinkedCancelationNode>();
             internal SmallFields _smallFields = SmallFields.Create();
             // Start with Id 1 instead of 0 to reduce risk of false positives.
-            volatile private int _sourceId = 1;
-            volatile private int _tokenId = 1;
+            private int _sourceId = 1;
+            private int _tokenId = 1;
             private uint _userRetainCounter;
             private readonly byte _userRetainIncrementor; // 0 for s_canceledSentinel, 1 for all others.
             private byte _internalRetainCounter;
             internal bool _linkedToBclToken;
+            // There is no Volatile.Read API for enums, so we have to make the field volatile.
             volatile internal State _state;
 
             internal int SourceId
@@ -185,10 +186,17 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 get { return _sourceId; }
             }
+
             internal int TokenId
             {
                 [MethodImpl(InlineOption)]
                 get { return _tokenId; }
+            }
+
+            internal int VolatileTokenId
+            {
+                [MethodImpl(InlineOption)]
+                get => Volatile.Read(ref _tokenId);
             }
 
             [MethodImpl(InlineOption)]
@@ -228,7 +236,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal static bool IsValidSource(CancelationRef _this, int sourceId)
             {
-                return _this != null && _this.SourceId == sourceId;
+                return _this != null && Volatile.Read(ref _this._sourceId) == sourceId;
             }
 
             [MethodImpl(InlineOption)]
@@ -240,13 +248,16 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool IsSourceCanceled(int sourceId)
             {
-                return sourceId == SourceId & _state >= State.Canceled;
+                // Volatile read the state before the id.
+                return _state >= State.Canceled & sourceId == SourceId;
             }
 
             [MethodImpl(InlineOption)]
             internal static bool CanTokenBeCanceled(CancelationRef _this, int tokenId)
             {
-                return _this != null && (_this.TokenId == tokenId & _this._state != State.Disposed);
+                return _this != null
+                    // Volatile read the state before the id.
+                    && (_this._state != State.Disposed & _this.TokenId == tokenId);
             }
 
             [MethodImpl(InlineOption)]
@@ -258,7 +269,9 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool IsTokenCanceled(int tokenId)
             {
-                return tokenId == TokenId & (_state >= State.Canceled
+                // Volatile read the state before everything else.
+                var state = _state;
+                return tokenId == TokenId & (state >= State.Canceled
                     // TODO: Unity hasn't adopted .Net 6+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
 #if NET6_0_OR_GREATER
                     // This is only necessary in .Net 6 or later, since `CancellationTokenSource.TryReset()` was added.
@@ -652,7 +665,7 @@ namespace Proto.Promises
                 private CallbackNodeImpl() { }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                volatile private bool _disposed;
+                private bool _disposed;
 
                 ~CallbackNodeImpl()
                 {
@@ -735,12 +748,12 @@ namespace Proto.Promises
                 LinkedCancelationNode ILinked<LinkedCancelationNode>.Next { get; set; }
 
                 private CancelationRef _target;
-                volatile private CancelationRef _parent;
+                private CancelationRef _parent;
 
                 private LinkedCancelationNode() { }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                volatile private bool _disposed;
+                private bool _disposed;
 
                 ~LinkedCancelationNode()
                 {
@@ -849,7 +862,7 @@ namespace Proto.Promises
 
                     // Spin until this has been disposed.
                     var spinner = new SpinWait();
-                    while (_parent != null)
+                    while (Volatile.Read(ref _parent) != null)
                     {
                         spinner.SpinOnce();
                     }
@@ -931,7 +944,7 @@ namespace Proto.Promises
 
         internal abstract class CancelationCallbackNode : CancelationCallbackNodeBase
         {
-            volatile protected int _nodeId = 1; // Start with id 1 instead of 0 to reduce risk of false positives.
+            protected int _nodeId = 1; // Start with id 1 instead of 0 to reduce risk of false positives.
             protected int _parentId; // In case the CancelationRegistration is torn from threads.
 
             internal int NodeId
@@ -941,20 +954,15 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private bool GetIsRegistered(CancelationRef parent, int nodeId, int tokenId)
-            {
-                return parent._smallFields._instanceId == _parentId & parent.TokenId == tokenId
-                    & _nodeId == nodeId & _previous != null;
-            }
-
-            [MethodImpl(InlineOption)]
             internal static bool GetIsRegistered(CancelationRef parent, CancelationCallbackNode _this, int nodeId, int tokenId)
             {
                 if (_this == null | parent == null)
                 {
                     return false;
                 }
-                return _this.GetIsRegistered(parent, nodeId, tokenId);
+                // Volatile read the id before everything else.
+                return parent.VolatileTokenId == tokenId & parent._smallFields._instanceId == _this._parentId
+                    & _this._nodeId == nodeId & _this._previous != null;
             }
 
             [MethodImpl(InlineOption)]
@@ -966,7 +974,9 @@ namespace Proto.Promises
                 }
 
                 parent._smallFields._locker.Enter();
-                if (!_this.GetIsRegistered(parent, nodeId, tokenId))
+                var isRegistered = parent.TokenId == tokenId & parent._smallFields._instanceId == _this._parentId
+                    & _this._nodeId == nodeId & _this._previous != null;
+                if (!isRegistered)
                 {
                     parent._smallFields._locker.Exit();
                     return false;
@@ -982,7 +992,8 @@ namespace Proto.Promises
             private bool GetIsRegisteredAndIsCanceled(CancelationRef parent, int nodeId, int tokenId, out bool isCanceled)
             {
                 bool canceled = parent._state >= CancelationRef.State.Canceled;
-                bool tokenIdMatches = parent._smallFields._instanceId == _parentId & parent.TokenId == tokenId;
+                // We read state volatile, so we don't need to read anything else volatile.
+                bool tokenIdMatches = parent.TokenId == tokenId & parent._smallFields._instanceId == _parentId;
                 bool isRegistered = tokenIdMatches & _nodeId == nodeId & _previous != null;
                 isCanceled = canceled & tokenIdMatches;
                 return isRegistered;
@@ -1054,7 +1065,7 @@ namespace Proto.Promises
                     // _this._nodeId will be incremented when the callback is complete and this is disposed.
                     // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
                     // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.
-                    while (nodeId == _this._nodeId & tokenId == parent.TokenId)
+                    while (nodeId == Volatile.Read(ref _this._nodeId) & tokenId == parent.TokenId)
                     {
                         spinner.SpinOnce(); // Spin, as we assume callback execution is fast and that this situation is rare.
                     }
@@ -1103,7 +1114,7 @@ namespace Proto.Promises
                 // node._nodeId will be incremented when the callback is complete and it is disposed.
                 // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
                 // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.
-                if (nodeId == node._nodeId & tokenId == parent.TokenId)
+                if (nodeId == Volatile.Read(ref node._nodeId) & tokenId == parent.TokenId)
                 {
                     // Queue the check to happen again on a background thread.
                     // Force async so the current thread will be yielded if this is already being executed on a background thread.

@@ -6,8 +6,6 @@
 
 #pragma warning disable RECS0108 // Warns about static fields in generic types
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.Diagnostics;
@@ -47,9 +45,9 @@ namespace Proto.Promises
 #endif
     public abstract class PromiseYieldInstruction : CustomYieldInstruction, IDisposable
     {
-        volatile private protected Internal.IRejectContainer _rejectContainer;
-        volatile protected Promise.State _state;
-        volatile protected int _retainCounter;
+        private protected Internal.IRejectContainer _rejectContainer;
+        volatile private protected Promise.State _state;
+        private protected int _retainCounter;
 
         internal PromiseYieldInstruction() { }
 
@@ -123,7 +121,7 @@ namespace Proto.Promises
             ValidateOperation();
         }
 
-        protected void ValidateOperation()
+        private protected void ValidateOperation()
         {
             if (_retainCounter == 0)
             {
@@ -141,7 +139,7 @@ namespace Proto.Promises
 #endif
     public abstract class PromiseYieldInstruction<T> : PromiseYieldInstruction
     {
-        protected T _result;
+        private protected T _result;
 
         internal PromiseYieldInstruction() { }
 

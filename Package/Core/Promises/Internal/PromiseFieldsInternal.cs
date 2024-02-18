@@ -110,7 +110,7 @@ namespace Proto.Promises
 
         partial class HandleablePromiseBase
         {
-            volatile internal HandleablePromiseBase _next;
+            internal HandleablePromiseBase _next;
         }
 
         partial class PromiseSynchronousWaiter : HandleablePromiseBase
@@ -135,7 +135,7 @@ namespace Proto.Promises
 
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
-            volatile internal PromiseRefBase _previous; // Used to detect circular awaits.
+            internal PromiseRefBase _previous; // Used to detect circular awaits.
 #endif
             internal IRejectContainer _rejectContainer;
 
@@ -378,8 +378,8 @@ namespace Proto.Promises
 
             partial class PromisePassThrough : HandleablePromiseBase
             {
-                volatile private PromiseRefBase _owner;
-                volatile private HandleablePromiseBase _target;
+                private PromiseRefBase _owner;
+                private HandleablePromiseBase _target;
                 private int _index;
                 private short _id;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
