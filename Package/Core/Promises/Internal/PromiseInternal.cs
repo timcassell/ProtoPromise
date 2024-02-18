@@ -12,7 +12,6 @@
 #pragma warning disable IDE0250 // Make struct 'readonly'
 #pragma warning disable IDE0251 // Make member 'readonly'
 #pragma warning disable CA1507 // Use nameof to express symbol names
-#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Diagnostics;
