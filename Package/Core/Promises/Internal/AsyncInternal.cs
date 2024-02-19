@@ -139,6 +139,13 @@ namespace Proto.Promises
                 }
 
                 partial void SetAwaitedComplete(PromiseRefBase handler);
+
+#if PROMISE_DEBUG
+                partial void SetAwaitedComplete(PromiseRefBase handler)
+                {
+                    _previous = null;
+                }
+#endif
             }
 
 #if !OPTIMIZED_ASYNC_MODE
