@@ -46,7 +46,6 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
-                    handler.SetCompletionState(state);
                     handler.MaybeReportUnhandledAndDispose(state);
                 }
             }
@@ -107,10 +106,6 @@ namespace Proto.Promises
                     if (waiter != this)
                     {
                         waiter.Handle(handler, state);
-                    }
-                    else
-                    {
-                        handler.SetCompletionState(state);
                     }
                 }
 

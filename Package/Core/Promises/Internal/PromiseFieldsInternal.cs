@@ -140,7 +140,7 @@ namespace Proto.Promises
             internal IRejectContainer _rejectContainer;
 
             private short _promiseId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
-            volatile private Promise.State _state;
+            private Promise.State _state;
             private bool _suppressRejection;
             private bool _wasAwaitedorForgotten;
 
@@ -167,9 +167,7 @@ namespace Proto.Promises
                 private SynchronizationContext _synchronizationContext;
                 internal CancelationHelper _cancelationHelper;
                 private int _isScheduling; // Flag used so that only Cancel() or Handle() will schedule the continuation. Int for Interlocked.
-                // We have to store the previous state in a separate field until the next awaiter is ready to be invoked on the proper context.
-                volatile private Promise.State _tempState;
-                volatile private bool _wasCanceled;
+                private bool _wasCanceled;
                 private bool _forceAsync;
             }
 
@@ -265,7 +263,6 @@ namespace Proto.Promises
                 where TFinalizer : IFunc<Promise>, INullable
             {
                 private TFinalizer _finalizer;
-                private Promise.State _previousState;
             }
 
             partial class PromiseCancel<TResult, TCanceler> : PromiseSingleAwait<TResult>

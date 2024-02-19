@@ -70,7 +70,7 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                _tempState = Promise.State.Canceled;
+                State = Promise.State.Canceled;
                 Continue();
             }
         }
@@ -126,7 +126,7 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                _tempState = Promise.State.Canceled;
+                State = Promise.State.Canceled;
                 Continue();
             }
         }
@@ -182,7 +182,7 @@ namespace Proto.Promises
                 {
                     return;
                 }
-                _tempState = Promise.State.Canceled;
+                State = Promise.State.Canceled;
                 Continue();
             }
         }

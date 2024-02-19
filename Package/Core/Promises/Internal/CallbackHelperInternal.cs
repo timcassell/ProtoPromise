@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0031 // Use null propagation
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0074 // Use compound assignment
 
 using System;
@@ -35,12 +33,12 @@ namespace Proto.Promises
             internal static class CallbackHelperArg<TArg>
             {
                 [MethodImpl(InlineOption)]
-                private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise<TArg> resolved)
+                internal static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver, in TArg arg)
                     where TDelegate : IAction<TArg>
                 {
                     try
                     {
-                        resolver.Invoke(CallbackHelperVoid.GetResultFromResolved(resolved));
+                        resolver.Invoke(arg);
                         return Promise.Resolved();
                     }
                     catch (Exception e)
@@ -50,12 +48,12 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static Promise InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, in Promise<TArg> resolved)
+                internal static Promise InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, in TArg arg)
                     where TDelegate : IFunc<TArg, Promise>
                 {
                     try
                     {
-                        return resolver.Invoke(CallbackHelperVoid.GetResultFromResolved(resolved)).Duplicate();
+                        return resolver.Invoke(arg).Duplicate();
                     }
                     catch (Exception e)
                     {
@@ -67,11 +65,22 @@ namespace Proto.Promises
                 internal static Promise AddResolve<TDelegate>(Promise<TArg> _this, TDelegate resolver, CancelationToken cancelationToken)
                     where TDelegate : IAction<TArg>, IDelegateResolveOrCancel
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperVoid.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(resolver, _this);
+                            ? Promise.Canceled()
+                            : InvokeCallbackDirect(resolver, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        var arg = _this._ref._result;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackDirect(resolver, arg)
+                            : Promise.Rejected(rejectContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -91,11 +100,22 @@ namespace Proto.Promises
                 internal static Promise AddResolveWait<TDelegate>(Promise<TArg> _this, TDelegate resolver, CancelationToken cancelationToken)
                     where TDelegate : IFunc<TArg, Promise>, IDelegateResolveOrCancelPromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperVoid.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(resolver, _this);
+                            ? Promise.Canceled()
+                            : InvokeCallbackAndAdoptDirect(resolver, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        var arg = _this._ref._result;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackAndAdoptDirect(resolver, arg)
+                            : Promise.Rejected(rejectContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -117,13 +137,24 @@ namespace Proto.Promises
                     TDelegateReject rejecter,
                     CancelationToken cancelationToken)
                     where TDelegateResolve : IAction<TArg>, IDelegateResolveOrCancel
-                    where TDelegateReject : IDelegateReject
+                    where TDelegateReject : IDelegateRejectSynchronous, IDelegateReject
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperVoid.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(resolver, _this);
+                            ? Promise.Canceled()
+                            : InvokeCallbackDirect(resolver, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        var arg = _this._ref._result;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackDirect(resolver, arg)
+                            : CallbackHelperVoid.InvokeRejecter(rejecter, rejectContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -145,13 +176,24 @@ namespace Proto.Promises
                     TDelegateReject rejecter,
                     CancelationToken cancelationToken)
                     where TDelegateResolve : IFunc<TArg, Promise>, IDelegateResolveOrCancelPromise
-                    where TDelegateReject : IDelegateRejectPromise
+                    where TDelegateReject : IDelegateRejectSynchronous<Promise>, IDelegateRejectPromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperVoid.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(resolver, _this);
+                            ? Promise.Canceled()
+                            : InvokeCallbackAndAdoptDirect(resolver, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        var arg = _this._ref._result;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackAndAdoptDirect(resolver, arg)
+                            : CallbackHelperVoid.InvokeRejecterAndAdopt(rejecter, rejectContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -169,13 +211,22 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddContinue<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IAction<TArg>, IDelegateContinue
+                    where TDelegateContinue : IAction<Promise<TArg>.ResultContainer>, IDelegateContinue
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperVoid.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(continuer, _this);
+                            ? Promise.Canceled()
+                            : CallbackHelperArg<Promise<TArg>.ResultContainer>.InvokeCallbackDirect(continuer, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var resultContainer = new Promise<TArg>.ResultContainer(_this._ref._result, _this._ref._rejectContainer, _this._ref.State);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested
+                            ? Promise.Canceled()
+                            : CallbackHelperArg<Promise<TArg>.ResultContainer>.InvokeCallbackDirect(continuer, resultContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -193,13 +244,22 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddContinueWait<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TArg, Promise>, IDelegateContinuePromise
+                    where TDelegateContinue : IFunc<Promise<TArg>.ResultContainer, Promise>, IDelegateContinuePromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperVoid.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(continuer, _this);
+                            ? Promise.Canceled()
+                            : CallbackHelperArg<Promise<TArg>.ResultContainer>.InvokeCallbackAndAdoptDirect(continuer, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var resultContainer = new Promise<TArg>.ResultContainer(_this._ref._result, _this._ref._rejectContainer, _this._ref.State);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested
+                            ? Promise.Canceled()
+                            : CallbackHelperArg<Promise<TArg>.ResultContainer>.InvokeCallbackAndAdoptDirect(continuer, resultContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -221,29 +281,19 @@ namespace Proto.Promises
 #endif
             internal static class CallbackHelperResult<TResult>
             {
-                internal static Promise<TResult> Canceled(PromiseRefBase _ref, short promiseId)
-                {
-                    if (_ref != null)
-                    {
-                        _ref.MaybeMarkAwaitedAndDispose(promiseId);
-                    }
-                    var deferred = DeferredPromise<TResult>.GetOrCreate();
-                    deferred.CancelDirect();
-                    return new Promise<TResult>(deferred, deferred.Id);
-                }
-
-                [MethodImpl(InlineOption)]
-                private static Promise<TResult> InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise resolved)
-                    where TDelegate : IFunc<TResult>
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                internal static Promise<TResult> InvokeRejecter<TDelegateReject>(TDelegateReject rejecter, IRejectContainer rejectContainer)
+                    where TDelegateReject : IDelegateRejectSynchronous<TResult>
                 {
                     try
                     {
-                        if (resolved._ref != null)
-                        {
-                            resolved._ref.MaybeMarkAwaitedAndDispose(resolved._id);
-                        }
-                        TResult result = resolver.Invoke();
-                        return Promise.Resolved(result);
+                        return rejecter.TryInvokeRejecter(rejectContainer, out var result)
+                            ? Promise<TResult>.Resolved(result)
+                            : Promise<TResult>.Rejected(rejectContainer);
+                    }
+                    catch (RethrowException)
+                    {
+                        return Promise<TResult>.Rejected(rejectContainer);
                     }
                     catch (Exception e)
                     {
@@ -251,23 +301,19 @@ namespace Proto.Promises
                     }
                 }
 
-                [MethodImpl(InlineOption)]
-                private static Promise<TResult> InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, in Promise resolved)
-                    where TDelegate : IFunc<Promise<TResult>>
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                internal static Promise<TResult> InvokeRejecterAndAdopt<TDelegateReject>(TDelegateReject rejecter, IRejectContainer rejectContainer)
+                    where TDelegateReject : IDelegateRejectSynchronous<Promise<TResult>>
                 {
                     try
                     {
-                        Promise<TResult> result;
-                        if (resolved._ref == null)
-                        {
-                            result = resolver.Invoke();
-                        }
-                        else
-                        {
-                            resolved._ref.MaybeMarkAwaitedAndDispose(resolved._id);
-                            result = resolver.Invoke();
-                        }
-                        return result.Duplicate();
+                        return rejecter.TryInvokeRejecter(rejectContainer, out var promise)
+                            ? promise.Duplicate()
+                            : Promise<TResult>.Rejected(rejectContainer);
+                    }
+                    catch (RethrowException)
+                    {
+                        return Promise<TResult>.Rejected(rejectContainer);
                     }
                     catch (Exception e)
                     {
@@ -407,11 +453,21 @@ namespace Proto.Promises
                 internal static Promise<TResult> AddResolve<TDelegate>(Promise _this, TDelegate resolver, CancelationToken cancelationToken)
                     where TDelegate : IFunc<TResult>, IDelegateResolveOrCancel
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(resolver, _this);
+                            ? Promise<TResult>.Canceled()
+                            : InvokeCallbackDirect(resolver);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackDirect(resolver)
+                            : Promise<TResult>.Rejected(rejectContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -431,11 +487,21 @@ namespace Proto.Promises
                 internal static Promise<TResult> AddResolveWait<TDelegate>(Promise _this, TDelegate resolver, CancelationToken cancelationToken)
                     where TDelegate : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(resolver, _this);
+                            ? Promise<TResult>.Canceled()
+                            : InvokeCallbackAndAdoptDirect(resolver);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackAndAdoptDirect(resolver)
+                            : Promise<TResult>.Rejected(rejectContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -457,13 +523,23 @@ namespace Proto.Promises
                     TDelegateReject rejecter,
                     CancelationToken cancelationToken)
                     where TDelegateResolve : IFunc<TResult>, IDelegateResolveOrCancel
-                    where TDelegateReject : IDelegateReject
+                    where TDelegateReject : IDelegateRejectSynchronous<TResult>, IDelegateReject
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(resolver, _this);
+                            ? Promise<TResult>.Canceled()
+                            : InvokeCallbackDirect(resolver);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackDirect(resolver)
+                            : InvokeRejecter(rejecter, rejectContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -485,13 +561,23 @@ namespace Proto.Promises
                     TDelegateReject rejecter,
                     CancelationToken cancelationToken)
                     where TDelegateResolve : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise
-                    where TDelegateReject : IDelegateRejectPromise
+                    where TDelegateReject : IDelegateRejectSynchronous<Promise<TResult>>, IDelegateRejectPromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(resolver, _this);
+                            ? Promise<TResult>.Canceled()
+                            : InvokeCallbackAndAdoptDirect(resolver);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackAndAdoptDirect(resolver)
+                            : InvokeRejecterAndAdopt(rejecter, rejectContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -509,13 +595,22 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinue<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TResult>, IDelegateContinue
+                    where TDelegateContinue : IFunc<Promise.ResultContainer, TResult>, IDelegateContinue
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(continuer, _this);
+                            ? Promise<TResult>.Canceled()
+                            : CallbackHelper<Promise.ResultContainer, TResult>.InvokeCallbackDirect(continuer, Promise.ResultContainer.Resolved);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var resultContainer = new Promise.ResultContainer(_this._ref._rejectContainer, _this._ref.State);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested
+                            ? Promise<TResult>.Canceled()
+                            : CallbackHelper<Promise.ResultContainer, TResult>.InvokeCallbackDirect(continuer, resultContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -533,13 +628,22 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinueWait<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<Promise<TResult>>, IDelegateContinuePromise
+                    where TDelegateContinue : IFunc<Promise.ResultContainer, Promise<TResult>>, IDelegateContinuePromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(continuer, _this);
+                            ? Promise<TResult>.Canceled()
+                            : CallbackHelper<Promise.ResultContainer, TResult>.InvokeCallbackAndAdoptDirect(continuer, Promise.ResultContainer.Resolved);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var resultContainer = new Promise.ResultContainer(_this._ref._rejectContainer, _this._ref.State);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested
+                            ? Promise<TResult>.Canceled()
+                            : CallbackHelper<Promise.ResultContainer, TResult>.InvokeCallbackAndAdoptDirect(continuer, resultContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -557,13 +661,25 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddCancel<TDelegateCancel>(Promise<TResult> _this, TDelegateCancel canceler, CancelationToken cancelationToken)
-                    where TDelegateCancel : IDelegateResolveOrCancel
+                    where TDelegateCancel : IFunc<TResult>, IDelegateResolveOrCancel
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : CallbackHelperVoid.Duplicate(_this);
+                            ? Promise<TResult>.Canceled()
+                            : _this;
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var result = _this._ref._result;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested ? Promise<TResult>.Canceled()
+                            : state == Promise.State.Resolved ? Promise.Resolved(result)
+                            : state == Promise.State.Canceled ? InvokeCallbackDirect(canceler)
+                            : Promise<TResult>.Rejected(rejectContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -581,13 +697,25 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddCancelWait<TDelegateCancel>(Promise<TResult> _this, TDelegateCancel canceler, CancelationToken cancelationToken)
-                    where TDelegateCancel : IDelegateResolveOrCancelPromise
+                    where TDelegateCancel : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : new Promise<TResult>(_this._ref, _this._id, _this._result);
+                            ? Promise<TResult>.Canceled()
+                            : _this;
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var result = _this._ref._result;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested ? Promise<TResult>.Canceled()
+                            : state == Promise.State.Resolved ? Promise.Resolved(result)
+                            : state == Promise.State.Canceled ? InvokeCallbackAndAdoptDirect(canceler)
+                            : Promise<TResult>.Rejected(rejectContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -610,12 +738,12 @@ namespace Proto.Promises
             internal static class CallbackHelper<TArg, TResult>
             {
                 [MethodImpl(InlineOption)]
-                private static Promise<TResult> InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise<TArg> resolved)
+                internal static Promise<TResult> InvokeCallbackDirect<TDelegate>(TDelegate resolver, in TArg arg)
                     where TDelegate : IFunc<TArg, TResult>
                 {
                     try
                     {
-                        var result = resolver.Invoke(CallbackHelperVoid.GetResultFromResolved(resolved));
+                        var result = resolver.Invoke(arg);
                         return Promise.Resolved(result);
                     }
                     catch (Exception e)
@@ -625,12 +753,12 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static Promise<TResult> InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, in Promise<TArg> resolved)
+                internal static Promise<TResult> InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, in TArg arg)
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
                     try
                     {
-                        return resolver.Invoke(CallbackHelperVoid.GetResultFromResolved(resolved)).Duplicate();
+                        return resolver.Invoke(arg).Duplicate();
                     }
                     catch (Exception e)
                     {
@@ -642,11 +770,22 @@ namespace Proto.Promises
                 internal static Promise<TResult> AddResolve<TDelegate>(Promise<TArg> _this, TDelegate resolver, CancelationToken cancelationToken)
                     where TDelegate : IFunc<TArg, TResult>, IDelegateResolveOrCancel
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(resolver, _this);
+                            ? Promise<TResult>.Canceled()
+                            : InvokeCallbackDirect(resolver, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var arg = _this._ref._result;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackDirect(resolver, arg)
+                            : Promise<TResult>.Rejected(rejectContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -666,11 +805,22 @@ namespace Proto.Promises
                 internal static Promise<TResult> AddResolveWait<TDelegate>(Promise<TArg> _this, TDelegate resolver, CancelationToken cancelationToken)
                     where TDelegate : IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancelPromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(resolver, _this);
+                            ? Promise<TResult>.Canceled()
+                            : InvokeCallbackAndAdoptDirect(resolver, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var arg = _this._ref._result;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackAndAdoptDirect(resolver, arg)
+                            : Promise<TResult>.Rejected(rejectContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -692,13 +842,24 @@ namespace Proto.Promises
                     TDelegateReject rejecter,
                     CancelationToken cancelationToken)
                     where TDelegateResolve : IFunc<TArg, TResult>, IDelegateResolveOrCancel
-                    where TDelegateReject : IDelegateReject
+                    where TDelegateReject : IDelegateRejectSynchronous<TResult>, IDelegateReject
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(resolver, _this);
+                            ? Promise<TResult>.Canceled()
+                            : InvokeCallbackDirect(resolver, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var arg = _this._ref._result;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackDirect(resolver, arg)
+                            : CallbackHelperResult<TResult>.InvokeRejecter(rejecter, rejectContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -720,13 +881,24 @@ namespace Proto.Promises
                     TDelegateReject rejecter,
                     CancelationToken cancelationToken)
                     where TDelegateResolve : IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancelPromise
-                    where TDelegateReject : IDelegateRejectPromise
+                    where TDelegateReject : IDelegateRejectSynchronous<Promise<TResult>>, IDelegateRejectPromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(resolver, _this);
+                            ? Promise<TResult>.Canceled()
+                            : InvokeCallbackAndAdoptDirect(resolver, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var arg = _this._ref._result;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackAndAdoptDirect(resolver, arg)
+                            : CallbackHelperResult<TResult>.InvokeRejecterAndAdopt(rejecter, rejectContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -744,13 +916,22 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinue<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TArg, TResult>, IDelegateContinue
+                    where TDelegateContinue : IFunc<Promise<TArg>.ResultContainer, TResult>, IDelegateContinue
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(continuer, _this);
+                            ? Promise<TResult>.Canceled()
+                            : CallbackHelper<Promise<TArg>.ResultContainer, TResult>.InvokeCallbackDirect(continuer, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var resultContainer = new Promise<TArg>.ResultContainer(_this._ref._result, _this._ref._rejectContainer, _this._ref.State);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested
+                            ? Promise<TResult>.Canceled()
+                            : CallbackHelper<Promise<TArg>.ResultContainer, TResult>.InvokeCallbackDirect(continuer, resultContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -768,13 +949,22 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinueWait<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TArg, Promise<TResult>>, IDelegateContinuePromise
+                    where TDelegateContinue : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>, IDelegateContinuePromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(continuer, _this);
+                            ? Promise<TResult>.Canceled()
+                            : CallbackHelper<Promise<TArg>.ResultContainer, TResult>.InvokeCallbackAndAdoptDirect(continuer, _this._result);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var resultContainer = new Promise<TArg>.ResultContainer(_this._ref._result, _this._ref._rejectContainer, _this._ref.State);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested
+                            ? Promise<TResult>.Canceled()
+                            : CallbackHelper<Promise<TArg>.ResultContainer, TResult>.InvokeCallbackAndAdoptDirect(continuer, resultContainer);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -796,69 +986,58 @@ namespace Proto.Promises
 #endif
             internal static class CallbackHelperVoid
             {
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                internal static Promise InvokeRejecter<TDelegateReject>(TDelegateReject rejecter, IRejectContainer rejectContainer)
+                    where TDelegateReject : IDelegateRejectSynchronous
+                {
+                    try
+                    {
+                        return rejecter.TryInvokeRejecter(rejectContainer)
+                            ? Promise.Resolved()
+                            : Promise.Rejected(rejectContainer);
+                    }
+                    catch (RethrowException)
+                    {
+                        return Promise.Rejected(rejectContainer);
+                    }
+                    catch (Exception e)
+                    {
+                        return FromException(e);
+                    }
+                }
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                internal static Promise InvokeRejecterAndAdopt<TDelegateReject>(TDelegateReject rejecter, IRejectContainer rejectContainer)
+                    where TDelegateReject : IDelegateRejectSynchronous<Promise>
+                {
+                    try
+                    {
+                        return rejecter.TryInvokeRejecter(rejectContainer, out var promise)
+                            ? promise.Duplicate()
+                            : Promise.Rejected(rejectContainer);
+                    }
+                    catch (RethrowException)
+                    {
+                        return Promise.Rejected(rejectContainer);
+                    }
+                    catch (Exception e)
+                    {
+                        return FromException(e);
+                    }
+                }
+
                 internal static Promise FromException(Exception e)
                 {
-                    if (e is OperationCanceledException)
-                    {
-                        var promise = Promise.Canceled();
-                        return new Promise(promise._ref, promise._id);
-                    }
-                    else
-                    {
-                        var promise = Promise.Rejected(e);
-                        return new Promise(promise._ref, promise._id);
-                    }
+                    return e is OperationCanceledException
+                        ? Promise.Canceled()
+                        : Promise.Rejected(e);
                 }
 
                 internal static Promise<TResult> FromException<TResult>(Exception e)
                 {
-                    if (e is OperationCanceledException)
-                    {
-                        var promise = Promise<TResult>.Canceled();
-                        return new Promise<TResult>(promise._ref, promise._id);
-                    }
-                    else
-                    {
-                        var promise = Promise<TResult>.Rejected(e);
-                        return new Promise<TResult>(promise._ref, promise._id);
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise resolved)
-                    where TDelegate : IAction
-                {
-                    try
-                    {
-                        if (resolved._ref != null)
-                        {
-                            resolved._ref.MaybeMarkAwaitedAndDispose(resolved._id);
-                        }
-                        resolver.Invoke();
-                        return Promise.Resolved();
-                    }
-                    catch (Exception e)
-                    {
-                        return FromException(e);
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                private static Promise InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, in Promise resolved)
-                    where TDelegate : IFunc<Promise>
-                {
-                    try
-                    {
-                        if (resolved._ref != null)
-                        {
-                            resolved._ref.MaybeMarkAwaitedAndDispose(resolved._id);
-                        }
-                        return resolver.Invoke().Duplicate();
-                    }
-                    catch (Exception e)
-                    {
-                        return FromException(e);
-                    }
+                    return e is OperationCanceledException
+                        ? Promise<TResult>.Canceled()
+                        : Promise<TResult>.Rejected(e);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -888,29 +1067,6 @@ namespace Proto.Promises
                     }
                 }
 
-                internal static Promise Canceled(PromiseRefBase _ref, short promiseId)
-                {
-                    if (_ref != null)
-                    {
-                        _ref.MaybeMarkAwaitedAndDispose(promiseId);
-                    }
-                    var deferred = DeferredPromise<VoidResult>.GetOrCreate();
-                    deferred.CancelDirect();
-                    return new Promise(deferred, deferred.Id);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static TResult GetResultFromResolved<TResult>(in Promise<TResult> promise)
-                {
-                    if (promise._ref == null)
-                    {
-                        return promise._result;
-                    }
-                    var result = promise._ref._result;
-                    promise._ref.MaybeMarkAwaitedAndDispose(promise._id);
-                    return result;
-                }
-
                 internal static Promise Duplicate(Promise _this)
                 {
                     if (_this._ref == null)
@@ -936,11 +1092,20 @@ namespace Proto.Promises
                     if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
+                            ? Promise.Canceled()
                             : _this;
                     }
                     PromiseRefBase promise;
-                    if (cancelationToken.CanBeCanceled)
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise.Canceled()
+                            : state == Promise.State.Resolved ? Promise.Resolved()
+                            : Promise.Rejected(rejectContainer);
+                    }
+                    else if (cancelationToken.CanBeCanceled)
                     {
                         var p = PromiseDuplicateCancel<VoidResult>.GetOrCreate();
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
@@ -957,11 +1122,21 @@ namespace Proto.Promises
                     if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id)
+                            ? Promise<TResult>.Canceled()
                             : _this;
                     }
                     PromiseRef<TResult> promise;
-                    if (cancelationToken.CanBeCanceled)
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var result = _this._ref._result;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : state == Promise.State.Resolved ? Promise.Resolved(result)
+                            : Promise<TResult>.Rejected(rejectContainer);
+                    }
+                    else if (cancelationToken.CanBeCanceled)
                     {
                         var p = PromiseDuplicateCancel<TResult>.GetOrCreate();
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
@@ -1087,7 +1262,7 @@ namespace Proto.Promises
                     {
                         case SynchronizationOption.Synchronous:
                         {
-                        return InvokeCallbackDirect(runner);
+                            return InvokeCallbackDirect(runner);
                         }
                         case SynchronizationOption.Foreground:
                         {
@@ -1176,11 +1351,21 @@ namespace Proto.Promises
                 internal static Promise AddResolve<TDelegate>(Promise _this, TDelegate resolver, CancelationToken cancelationToken)
                     where TDelegate : IAction, IDelegateResolveOrCancel
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(resolver, _this);
+                            ? Promise.Canceled()
+                            : InvokeCallbackDirect(resolver);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackDirect(resolver)
+                            : Promise.Rejected(rejectContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -1200,11 +1385,21 @@ namespace Proto.Promises
                 internal static Promise AddResolveWait<TDelegate>(Promise _this, TDelegate resolver, CancelationToken cancelationToken)
                     where TDelegate : IFunc<Promise>, IDelegateResolveOrCancelPromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(resolver, _this);
+                            ? Promise.Canceled()
+                            : InvokeCallbackAndAdoptDirect(resolver);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackAndAdoptDirect(resolver)
+                            : Promise.Rejected(rejectContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -1226,13 +1421,23 @@ namespace Proto.Promises
                     TDelegateReject rejecter,
                     CancelationToken cancelationToken)
                     where TDelegateResolve : IAction, IDelegateResolveOrCancel
-                    where TDelegateReject : IDelegateReject
+                    where TDelegateReject : IDelegateRejectSynchronous, IDelegateReject
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(resolver, _this);
+                            ? Promise.Canceled()
+                            : InvokeCallbackDirect(resolver);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackDirect(resolver)
+                            : InvokeRejecter(rejecter, rejectContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -1254,13 +1459,23 @@ namespace Proto.Promises
                     TDelegateReject rejecter,
                     CancelationToken cancelationToken)
                     where TDelegateResolve : IFunc<Promise>, IDelegateResolveOrCancelPromise
-                    where TDelegateReject : IDelegateRejectPromise
+                    where TDelegateReject : IDelegateRejectSynchronous<Promise>, IDelegateRejectPromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(resolver, _this);
+                            ? Promise.Canceled()
+                            : InvokeCallbackAndAdoptDirect(resolver);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested | state == Promise.State.Canceled ? Promise.Canceled()
+                            : state == Promise.State.Resolved ? InvokeCallbackAndAdoptDirect(resolver)
+                            : InvokeRejecterAndAdopt(rejecter, rejectContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -1278,13 +1493,22 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddContinue<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IAction, IDelegateContinue
+                    where TDelegateContinue : IAction<Promise.ResultContainer>, IDelegateContinue
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackDirect(continuer, _this);
+                            ? Promise.Canceled()
+                            : CallbackHelperArg<Promise.ResultContainer>.InvokeCallbackDirect(continuer, Promise.ResultContainer.Resolved);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var resultContainer = new Promise.ResultContainer(_this._ref._rejectContainer, _this._ref.State);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested
+                            ? Promise.Canceled()
+                            : CallbackHelperArg<Promise.ResultContainer>.InvokeCallbackDirect(continuer, resultContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -1302,13 +1526,22 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddContinueWait<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<Promise>, IDelegateContinuePromise
+                    where TDelegateContinue : IFunc<Promise.ResultContainer, Promise>, IDelegateContinuePromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : InvokeCallbackAndAdoptDirect(continuer, _this);
+                            ? Promise.Canceled()
+                            : CallbackHelperArg<Promise.ResultContainer>.InvokeCallbackAndAdoptDirect(continuer, Promise.ResultContainer.Resolved);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var resultContainer = new Promise.ResultContainer(_this._ref._rejectContainer, _this._ref.State);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested
+                            ? Promise.Canceled()
+                            : CallbackHelperArg<Promise.ResultContainer>.InvokeCallbackAndAdoptDirect(continuer, resultContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -1328,12 +1561,94 @@ namespace Proto.Promises
                 internal static Promise AddFinally<TFinalizer>(Promise _this, TFinalizer finalizer)
                     where TFinalizer : IAction
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackDirect(finalizer, _this);
+                        return InvokeCallbackDirect(finalizer);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        try
+                        {
+                            finalizer.Invoke();
+                        }
+                        catch (Exception e)
+                        {
+                            // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                            if (state == Promise.State.Rejected)
+                            {
+                                rejectContainer.ReportUnhandled();
+                            }
+                            return FromException(e);
+                        }
+                        return state == Promise.State.Resolved ? Promise.Resolved()
+                            : state == Promise.State.Canceled ? Promise.Canceled()
+                            : Promise.Rejected(rejectContainer);
                     }
                     var promise = PromiseFinally<VoidResult, TFinalizer>.GetOrCreate(finalizer);
                     _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
+
+                // This is an uncommon occurrence.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                internal static Promise FinallyFromCompleted<TFinalizer>(Promise _this, TFinalizer finalizer)
+                    where TFinalizer : IFunc<Promise>
+                {
+                    var state = _this._ref.State;
+                    var rejectContainer = _this._ref._rejectContainer;
+                    _this._ref.SuppressRejection = true;
+                    _this._ref.MaybeDispose();
+                    Promise finallyPromise;
+                    try
+                    {
+                        finallyPromise = finalizer.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                        if (state == Promise.State.Rejected)
+                        {
+                            rejectContainer.ReportUnhandled();
+                        }
+                        return FromException(e);
+                    }
+
+                    if (finallyPromise._ref == null)
+                    {
+                        return state == Promise.State.Resolved ? Promise.Resolved()
+                            : state == Promise.State.Canceled ? Promise.Canceled()
+                            : Promise.Rejected(rejectContainer);
+                    }
+                    if (finallyPromise._ref.GetIsCompleted(finallyPromise._id))
+                    {
+                        var finallyState = finallyPromise._ref.State;
+                        var finallyRejectContainer = finallyPromise._ref._rejectContainer;
+                        finallyPromise._ref.SuppressRejection = true;
+                        finallyPromise._ref.MaybeDispose();
+                        if (finallyState == Promise.State.Resolved)
+                        {
+                            finallyState = state;
+                        }
+                        else
+                        {
+                            if (state == Promise.State.Rejected)
+                            {
+                                // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                                rejectContainer.ReportUnhandled();
+                            }
+                            rejectContainer = finallyRejectContainer;
+                        }
+                        return finallyState == Promise.State.Resolved ? Promise.Resolved()
+                            : finallyState == Promise.State.Canceled ? Promise.Canceled()
+                            : Promise.Rejected(rejectContainer);
+                    }
+
+                    var promise = PromiseFinallyWait<VoidResult, DelegatePromiseVoidVoid>.GetOrCreateFromComplete(rejectContainer, state);
+                    finallyPromise._ref.HookupNewPromise(finallyPromise._id, promise);
                     return new Promise(promise, promise.Id);
                 }
 
@@ -1341,9 +1656,13 @@ namespace Proto.Promises
                 internal static Promise AddFinallyWait<TFinalizer>(Promise _this, TFinalizer finalizer)
                     where TFinalizer : IFunc<Promise>, INullable
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackAndAdoptDirect(finalizer, _this);
+                        return InvokeCallbackAndAdoptDirect(finalizer);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        return FinallyFromCompleted(_this, finalizer);
                     }
                     var promise = PromiseFinallyWait<VoidResult, TFinalizer>.GetOrCreate(finalizer);
                     _this._ref.HookupNewPromise(_this._id, promise);
@@ -1354,21 +1673,99 @@ namespace Proto.Promises
                 internal static Promise<TResult> AddFinally<TResult, TFinalizer>(Promise<TResult> _this, TFinalizer finalizer)
                     where TFinalizer : IAction
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
-                        TResult result = GetResultFromResolved(_this);
                         try
                         {
                             finalizer.Invoke();
-                            return Promise.Resolved(result);
+                            return Promise.Resolved(_this._result);
                         }
                         catch (Exception e)
                         {
                             return FromException<TResult>(e);
                         }
                     }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var result = _this._ref._result;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        try
+                        {
+                            finalizer.Invoke();
+                        }
+                        catch (Exception e)
+                        {
+                            // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                            if (state == Promise.State.Rejected)
+                            {
+                                rejectContainer.ReportUnhandled();
+                            }
+                            return FromException<TResult>(e);
+                        }
+                        return state == Promise.State.Resolved ? Promise.Resolved(result)
+                            : state == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : Promise<TResult>.Rejected(rejectContainer);
+                    }
                     var promise = PromiseFinally<TResult, TFinalizer>.GetOrCreate(finalizer);
                     _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
+
+                // This is an uncommon occurrence.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                internal static Promise<TResult> FinallyFromCompleted<TResult, TFinalizer>(TFinalizer finalizer, IRejectContainer rejectContainer, TResult result, Promise.State state)
+                    where TFinalizer : IFunc<Promise>
+                {
+                    Promise finallyPromise;
+                    try
+                    {
+                        finallyPromise = finalizer.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                        if (state == Promise.State.Rejected)
+                        {
+                            rejectContainer.ReportUnhandled();
+                        }
+                        return FromException<TResult>(e);
+                    }
+
+                    if (finallyPromise._ref == null)
+                    {
+                        return state == Promise.State.Resolved ? Promise.Resolved(result)
+                            : state == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : Promise<TResult>.Rejected(rejectContainer);
+                    }
+                    if (finallyPromise._ref.GetIsCompleted(finallyPromise._id))
+                    {
+                        var finallyState = finallyPromise._ref.State;
+                        var finallyRejectContainer = finallyPromise._ref._rejectContainer;
+                        finallyPromise._ref.SuppressRejection = true;
+                        finallyPromise._ref.MaybeDispose();
+                        if (finallyState == Promise.State.Resolved)
+                        {
+                            finallyState = state;
+                        }
+                        else
+                        {
+                            if (state == Promise.State.Rejected)
+                            {
+                                // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                                rejectContainer.ReportUnhandled();
+                            }
+                            rejectContainer = finallyRejectContainer;
+                        }
+                        return finallyState == Promise.State.Resolved ? Promise.Resolved(result)
+                            : finallyState == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : Promise<TResult>.Rejected(rejectContainer);
+                    }
+
+                    var promise = PromiseFinallyWait<TResult, DelegatePromiseVoidVoid>.GetOrCreateFromComplete(rejectContainer, state);
+                    finallyPromise._ref.HookupNewPromise(finallyPromise._id, promise);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
@@ -1376,20 +1773,18 @@ namespace Proto.Promises
                 internal static Promise<TResult> AddFinallyWait<TResult, TFinalizer>(Promise<TResult> _this, TFinalizer finalizer)
                     where TFinalizer : IFunc<Promise>, INullable
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
-                        TResult result = GetResultFromResolved(_this);
-                        try
-                        {
-                            var finallyPromise = finalizer.Invoke();
-                            finallyPromise = new Promise(finallyPromise._ref, finallyPromise._id);
-                            return finallyPromise
-                                .Then(result, r => r);
-                        }
-                        catch (Exception e)
-                        {
-                            return FromException<TResult>(e);
-                        }
+                        return FinallyFromCompleted(finalizer, null, _this._result, Promise.State.Resolved);
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var result = _this._ref._result;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return FinallyFromCompleted(finalizer, rejectContainer, result, state);
                     }
                     var promise = PromiseFinallyWait<TResult, TFinalizer>.GetOrCreate(finalizer);
                     _this._ref.HookupNewPromise(_this._id, promise);
@@ -1398,13 +1793,24 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddCancel<TDelegateCancel>(Promise _this, TDelegateCancel canceler, CancelationToken cancelationToken)
-                    where TDelegateCancel : IDelegateResolveOrCancel
+                    where TDelegateCancel : IAction, IDelegateResolveOrCancel
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : Duplicate(_this);
+                            ? Promise.Canceled()
+                            : _this;
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested ? Promise.Canceled()
+                            : state == Promise.State.Resolved ? Promise.Resolved()
+                            : state == Promise.State.Canceled ? InvokeCallbackDirect(canceler)
+                            : Promise.Rejected(rejectContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
@@ -1422,13 +1828,24 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddCancelWait<TDelegateCancel>(Promise _this, TDelegateCancel canceler, CancelationToken cancelationToken)
-                    where TDelegateCancel : IDelegateResolveOrCancelPromise
+                    where TDelegateCancel : IFunc<Promise>, IDelegateResolveOrCancelPromise
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
-                            : new Promise(_this._ref, _this._id);
+                            ? Promise.Canceled()
+                            : _this;
+                    }
+                    if (_this._ref.GetIsCompleted(_this._id))
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref._rejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeDispose();
+                        return cancelationToken.IsCancelationRequested ? Promise.Canceled()
+                            : state == Promise.State.Resolved ? Promise.Resolved()
+                            : state == Promise.State.Canceled ? InvokeCallbackAndAdoptDirect(canceler)
+                            : Promise.Rejected(rejectContainer);
                     }
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)

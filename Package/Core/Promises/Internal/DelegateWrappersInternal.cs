@@ -293,7 +293,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 Promise IFunc<Promise>.Invoke()
                 {
-                    return new Promise();
+                    return Promise.Resolved();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -400,7 +400,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateVoidVoid : IAction, IFunc<Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise, IDelegateRun
+            internal struct DelegateVoidVoid : IAction, IFunc<Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise,
+                IDelegateReject, IDelegateRejectPromise, IDelegateRejectSynchronous, IDelegateRejectSynchronous<Promise>, IDelegateRun
             {
                 private readonly Action _callback;
 
@@ -426,7 +427,7 @@ namespace Proto.Promises
                 Promise IFunc<Promise>.Invoke()
                 {
                     Invoke();
-                    return new Promise();
+                    return Promise.Resolved();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -464,12 +465,26 @@ namespace Proto.Promises
                     Invoke();
                     owner.HandleNextInternal(Promise.State.Resolved);
                 }
+
+                bool IDelegateRejectSynchronous.TryInvokeRejecter(IRejectContainer rejectContainer)
+                {
+                    Invoke();
+                    return true;
+                }
+
+                bool IDelegateRejectSynchronous<Promise>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise result)
+                {
+                    Invoke();
+                    result = Promise.Resolved();
+                    return true;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateVoidResult<TResult> : IFunc<TResult>, IFunc<Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise, IDelegateRun
+            internal struct DelegateVoidResult<TResult> : IFunc<TResult>, IFunc<Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise,
+                IDelegateReject, IDelegateRejectPromise, IDelegateRejectSynchronous<TResult>, IDelegateRejectSynchronous<Promise<TResult>>, IDelegateRun
             {
                 private readonly Func<TResult> _callback;
 
@@ -537,12 +552,25 @@ namespace Proto.Promises
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(Promise.State.Resolved);
                 }
+
+                bool IDelegateRejectSynchronous<TResult>.TryInvokeRejecter(IRejectContainer rejectContainer, out TResult result)
+                {
+                    result = Invoke();
+                    return true;
+                }
+
+                bool IDelegateRejectSynchronous<Promise<TResult>>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise<TResult> result)
+                {
+                    result = Promise.Resolved(Invoke());
+                    return true;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateArgVoid<TArg> : IAction<TArg>, IFunc<TArg, Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
+            internal struct DelegateArgVoid<TArg> : IAction<TArg>, IFunc<TArg, Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise,
+                IDelegateReject, IDelegateRejectPromise, IDelegateRejectSynchronous, IDelegateRejectSynchronous<Promise>
             {
                 private readonly Action<TArg> _callback;
 
@@ -568,7 +596,7 @@ namespace Proto.Promises
                 Promise IFunc<TArg, Promise>.Invoke(TArg arg)
                 {
                     Invoke(arg);
-                    return new Promise();
+                    return Promise.Resolved();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -614,12 +642,37 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     InvokeRejecter(rejectContainer, owner);
                 }
+
+                bool IDelegateRejectSynchronous.TryInvokeRejecter(IRejectContainer rejectContainer)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        Invoke(arg);
+                        return true;
+                    }
+                    return false;
+                }
+
+                bool IDelegateRejectSynchronous<Promise>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise result)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        Invoke(arg);
+                        result = Promise.Resolved();
+                        return true;
+                    }
+                    result = default;
+                    return false;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateArgResult<TArg, TResult> : IFunc<TArg, TResult>, IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
+            internal struct DelegateArgResult<TArg, TResult> : IFunc<TArg, TResult>, IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise,
+                IDelegateReject, IDelegateRejectPromise, IDelegateRejectSynchronous<TResult>, IDelegateRejectSynchronous<Promise<TResult>>
             {
                 private readonly Func<TArg, TResult> _callback;
 
@@ -693,12 +746,36 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     InvokeRejecter(rejectContainer, owner);
                 }
+
+                bool IDelegateRejectSynchronous<TResult>.TryInvokeRejecter(IRejectContainer rejectContainer, out TResult result)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        result = Invoke(arg);
+                        return true;
+                    }
+                    result = default;
+                    return false;
+                }
+
+                bool IDelegateRejectSynchronous<Promise<TResult>>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise<TResult> result)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        result = Promise.Resolved(Invoke(arg));
+                        return true;
+                    }
+                    result = default;
+                    return false;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegatePromiseVoidVoid : IFunc<Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRunPromise
+            internal struct DelegatePromiseVoidVoid : IFunc<Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRejectSynchronous<Promise>, IDelegateRunPromise
             {
                 private readonly Func<Promise> _callback;
 
@@ -741,12 +818,18 @@ namespace Proto.Promises
                     Promise result = Invoke();
                     owner.WaitFor(result, null);
                 }
+
+                bool IDelegateRejectSynchronous<Promise>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise result)
+                {
+                    result = Invoke();
+                    return true;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegatePromiseVoidResult<TResult> : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRunPromise
+            internal struct DelegatePromiseVoidResult<TResult> : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRejectSynchronous<Promise<TResult>>, IDelegateRunPromise
             {
                 private readonly Func<Promise<TResult>> _callback;
 
@@ -789,12 +872,18 @@ namespace Proto.Promises
                     Promise<TResult> result = Invoke();
                     owner.WaitFor(result, null);
                 }
+
+                bool IDelegateRejectSynchronous<Promise<TResult>>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise<TResult> result)
+                {
+                    result = Invoke();
+                    return true;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegatePromiseArgVoid<TArg> : IFunc<TArg, Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
+            internal struct DelegatePromiseArgVoid<TArg> : IFunc<TArg, Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRejectSynchronous<Promise>
             {
                 private readonly Func<TArg, Promise> _callback;
 
@@ -840,12 +929,24 @@ namespace Proto.Promises
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }
+
+                bool IDelegateRejectSynchronous<Promise>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise result)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        result = Invoke(arg);
+                        return true;
+                    }
+                    result = default;
+                    return false;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegatePromiseArgResult<TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
+            internal struct DelegatePromiseArgResult<TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRejectSynchronous<Promise<TResult>>
             {
                 private readonly Func<TArg, Promise<TResult>> _callback;
 
@@ -891,13 +992,25 @@ namespace Proto.Promises
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }
+
+                bool IDelegateRejectSynchronous<Promise<TResult>>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise<TResult> result)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        result = Invoke(arg);
+                        return true;
+                    }
+                    result = default;
+                    return false;
+                }
             }
 
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinueVoidVoid : IAction, IDelegateContinue
+            internal struct DelegateContinueVoidVoid : IAction<Promise.ResultContainer>, IDelegateContinue
             {
                 private readonly Promise.ContinueAction _callback;
 
@@ -908,13 +1021,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke()
-                {
-                    Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(Promise.ResultContainer resultContainer)
+                public void Invoke(Promise.ResultContainer resultContainer)
                 {
                     _callback.Invoke(resultContainer);
                 }
@@ -932,7 +1039,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinueVoidResult<TResult> : IFunc<TResult>, IDelegateContinue
+            internal struct DelegateContinueVoidResult<TResult> : IFunc<Promise.ResultContainer, TResult>, IDelegateContinue
             {
                 private readonly Promise.ContinueFunc<TResult> _callback;
 
@@ -943,13 +1050,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public TResult Invoke()
-                {
-                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private TResult Invoke(Promise.ResultContainer resultContainer)
+                public TResult Invoke(Promise.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(resultContainer);
                 }
@@ -968,7 +1069,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinueArgVoid<TArg> : IAction<TArg>, IDelegateContinue
+            internal struct DelegateContinueArgVoid<TArg> : IAction<Promise<TArg>.ResultContainer>, IDelegateContinue
             {
                 private readonly Promise<TArg>.ContinueAction _callback;
 
@@ -979,13 +1080,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(TArg arg)
-                {
-                    Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(Promise<TArg>.ResultContainer resultContainer)
+                public void Invoke(Promise<TArg>.ResultContainer resultContainer)
                 {
                     _callback.Invoke(resultContainer);
                 }
@@ -1003,7 +1098,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinueArgResult<TArg, TResult> : IFunc<TArg, TResult>, IDelegateContinue
+            internal struct DelegateContinueArgResult<TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, TResult>, IDelegateContinue
             {
                 private readonly Promise<TArg>.ContinueFunc<TResult> _callback;
 
@@ -1014,13 +1109,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public TResult Invoke(TArg arg)
-                {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private TResult Invoke(Promise<TArg>.ResultContainer resultContainer)
+                public TResult Invoke(Promise<TArg>.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(resultContainer);
                 }
@@ -1039,7 +1128,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinuePromiseVoidVoid : IFunc<Promise>, IDelegateContinuePromise
+            internal struct DelegateContinuePromiseVoidVoid : IFunc<Promise.ResultContainer, Promise>, IDelegateContinuePromise
             {
                 private readonly Promise.ContinueFunc<Promise> _callback;
 
@@ -1056,13 +1145,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise Invoke()
-                {
-                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private Promise Invoke(Promise.ResultContainer resultContainer)
+                public Promise Invoke(Promise.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(resultContainer);
                 }
@@ -1080,7 +1163,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinuePromiseVoidResult<TResult> : IFunc<Promise<TResult>>, IDelegateContinuePromise
+            internal struct DelegateContinuePromiseVoidResult<TResult> : IFunc<Promise.ResultContainer, Promise<TResult>>, IDelegateContinuePromise
             {
                 private readonly Promise.ContinueFunc<Promise<TResult>> _callback;
 
@@ -1097,13 +1180,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise<TResult> Invoke()
-                {
-                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private Promise<TResult> Invoke(Promise.ResultContainer resultContainer)
+                public Promise<TResult> Invoke(Promise.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(resultContainer);
                 }
@@ -1121,7 +1198,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinuePromiseArgVoid<TArg> : IFunc<TArg, Promise>, IDelegateContinuePromise
+            internal struct DelegateContinuePromiseArgVoid<TArg> : IFunc<Promise<TArg>.ResultContainer, Promise>, IDelegateContinuePromise
             {
                 private readonly Promise<TArg>.ContinueFunc<Promise> _callback;
 
@@ -1138,13 +1215,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise Invoke(TArg arg)
-                {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private Promise Invoke(Promise<TArg>.ResultContainer resultContainer)
+                public Promise Invoke(Promise<TArg>.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(resultContainer);
                 }
@@ -1162,7 +1233,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinuePromiseArgResult<TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateContinuePromise
+            internal struct DelegateContinuePromiseArgResult<TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>, IDelegateContinuePromise
             {
                 private readonly Promise<TArg>.ContinueFunc<Promise<TResult>> _callback;
 
@@ -1179,13 +1250,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise<TResult> Invoke(TArg arg)
-                {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private Promise<TResult> Invoke(Promise<TArg>.ResultContainer resultContainer)
+                public Promise<TResult> Invoke(Promise<TArg>.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(resultContainer);
                 }
@@ -1297,7 +1362,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCaptureVoidVoid<TCapture> : IAction, IFunc<Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise, IDelegateRun
+            internal struct DelegateCaptureVoidVoid<TCapture> : IAction, IFunc<Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise,
+                IDelegateReject, IDelegateRejectPromise, IDelegateRejectSynchronous, IDelegateRejectSynchronous<Promise>, IDelegateRun
             {
                 private readonly Action<TCapture> _callback;
                 private readonly TCapture _capturedValue;
@@ -1325,7 +1391,7 @@ namespace Proto.Promises
                 Promise IFunc<Promise>.Invoke()
                 {
                     Invoke();
-                    return new Promise();
+                    return Promise.Resolved();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1363,12 +1429,26 @@ namespace Proto.Promises
                     Invoke();
                     owner.HandleNextInternal(Promise.State.Resolved);
                 }
+
+                bool IDelegateRejectSynchronous.TryInvokeRejecter(IRejectContainer rejectContainer)
+                {
+                    Invoke();
+                    return true;
+                }
+
+                bool IDelegateRejectSynchronous<Promise>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise result)
+                {
+                    Invoke();
+                    result = Promise.Resolved();
+                    return true;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCaptureVoidResult<TCapture, TResult> : IFunc<TResult>, IFunc<Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise, IDelegateRun
+            internal struct DelegateCaptureVoidResult<TCapture, TResult> : IFunc<TResult>, IFunc<Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise,
+                IDelegateReject, IDelegateRejectPromise, IDelegateRejectSynchronous<TResult>, IDelegateRejectSynchronous<Promise<TResult>>, IDelegateRun
             {
                 private readonly Func<TCapture, TResult> _callback;
                 private readonly TCapture _capturedValue;
@@ -1438,12 +1518,25 @@ namespace Proto.Promises
                     owner.UnsafeAs<PromiseRef<TResult>>()._result = result;
                     owner.HandleNextInternal(Promise.State.Resolved);
                 }
+
+                bool IDelegateRejectSynchronous<TResult>.TryInvokeRejecter(IRejectContainer rejectContainer, out TResult result)
+                {
+                    result = Invoke();
+                    return true;
+                }
+
+                bool IDelegateRejectSynchronous<Promise<TResult>>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise<TResult> result)
+                {
+                    result = Promise.Resolved(Invoke());
+                    return true;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCaptureArgVoid<TCapture, TArg> : IAction<TArg>, IFunc<TArg, Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
+            internal struct DelegateCaptureArgVoid<TCapture, TArg> : IAction<TArg>, IFunc<TArg, Promise>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise,
+                IDelegateReject, IDelegateRejectPromise, IDelegateRejectSynchronous, IDelegateRejectSynchronous<Promise>
             {
                 private readonly Action<TCapture, TArg> _callback;
                 private readonly TCapture _capturedValue;
@@ -1471,7 +1564,7 @@ namespace Proto.Promises
                 Promise IFunc<TArg, Promise>.Invoke(TArg arg)
                 {
                     Invoke(arg);
-                    return new Promise();
+                    return Promise.Resolved();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1517,12 +1610,37 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     InvokeRejecter(rejectContainer, owner);
                 }
+
+                bool IDelegateRejectSynchronous.TryInvokeRejecter(IRejectContainer rejectContainer)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        Invoke(arg);
+                        return true;
+                    }
+                    return false;
+                }
+
+                bool IDelegateRejectSynchronous<Promise>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise result)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        Invoke(arg);
+                        result = Promise.Resolved();
+                        return true;
+                    }
+                    result = default;
+                    return false;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, TResult>, IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise, IDelegateReject, IDelegateRejectPromise
+            internal struct DelegateCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, TResult>, IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancel, IDelegateResolveOrCancelPromise,
+                IDelegateReject, IDelegateRejectPromise, IDelegateRejectSynchronous<TResult>, IDelegateRejectSynchronous<Promise<TResult>>
             {
                 private readonly Func<TCapture, TArg, TResult> _callback;
                 private readonly TCapture _capturedValue;
@@ -1598,12 +1716,37 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     InvokeRejecter(rejectContainer, owner);
                 }
+
+                bool IDelegateRejectSynchronous<TResult>.TryInvokeRejecter(IRejectContainer rejectContainer, out TResult result)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        result = Invoke(arg);
+                        return true;
+                    }
+                    result = default;
+                    return false;
+                }
+
+                bool IDelegateRejectSynchronous<Promise<TResult>>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise<TResult> result)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        result = Promise.Resolved(Invoke(arg));
+                        return true;
+                    }
+                    result = default;
+                    return false;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCapturePromiseVoidVoid<TCapture> : IFunc<Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRunPromise
+            internal struct DelegateCapturePromiseVoidVoid<TCapture> : IFunc<Promise>, IDelegateResolveOrCancelPromise,
+                IDelegateRejectPromise, IDelegateRejectSynchronous<Promise>, IDelegateRunPromise
             {
                 private readonly Func<TCapture, Promise> _callback;
                 private readonly TCapture _capturedValue;
@@ -1648,12 +1791,19 @@ namespace Proto.Promises
                     Promise result = Invoke();
                     owner.WaitFor(result, null);
                 }
+
+                bool IDelegateRejectSynchronous<Promise>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise result)
+                {
+                    result = Invoke();
+                    return true;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCapturePromiseVoidResult<TCapture, TResult> : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise, IDelegateRunPromise
+            internal struct DelegateCapturePromiseVoidResult<TCapture, TResult> : IFunc<Promise<TResult>>, IDelegateResolveOrCancelPromise,
+                IDelegateRejectPromise, IDelegateRejectSynchronous<Promise<TResult>>, IDelegateRunPromise
             {
                 private readonly Func<TCapture, Promise<TResult>> _callback;
                 private readonly TCapture _capturedValue;
@@ -1698,12 +1848,19 @@ namespace Proto.Promises
                     Promise<TResult> result = Invoke();
                     owner.WaitFor(result, null);
                 }
+
+                bool IDelegateRejectSynchronous<Promise<TResult>>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise<TResult> result)
+                {
+                    result = Invoke();
+                    return true;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCapturePromiseArgVoid<TCapture, TArg> : IFunc<TArg, Promise>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
+            internal struct DelegateCapturePromiseArgVoid<TCapture, TArg> : IFunc<TArg, Promise>, IDelegateResolveOrCancelPromise,
+                IDelegateRejectPromise, IDelegateRejectSynchronous<Promise>
             {
                 private readonly Func<TCapture, TArg, Promise> _callback;
                 private readonly TCapture _capturedValue;
@@ -1751,12 +1908,25 @@ namespace Proto.Promises
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }
+
+                bool IDelegateRejectSynchronous<Promise>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise result)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        result = Invoke(arg);
+                        return true;
+                    }
+                    result = default;
+                    return false;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateCapturePromiseArgResult<TCapture, TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancelPromise, IDelegateRejectPromise
+            internal struct DelegateCapturePromiseArgResult<TCapture, TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateResolveOrCancelPromise,
+                IDelegateRejectPromise, IDelegateRejectSynchronous<Promise<TResult>>
             {
                 private readonly Func<TCapture, TArg, Promise<TResult>> _callback;
                 private readonly TCapture _capturedValue;
@@ -1804,13 +1974,25 @@ namespace Proto.Promises
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }
+
+                bool IDelegateRejectSynchronous<Promise<TResult>>.TryInvokeRejecter(IRejectContainer rejectContainer, out Promise<TResult> result)
+                {
+                    TArg arg;
+                    if (rejectContainer.TryGetValue(out arg))
+                    {
+                        result = Invoke(arg);
+                        return true;
+                    }
+                    result = default;
+                    return false;
+                }
             }
 
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinueCaptureVoidVoid<TCapture> : IAction, IDelegateContinue
+            internal struct DelegateContinueCaptureVoidVoid<TCapture> : IAction<Promise.ResultContainer>, IDelegateContinue
             {
                 private readonly Promise.ContinueAction<TCapture> _callback;
                 private readonly TCapture _capturedValue;
@@ -1823,13 +2005,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke()
-                {
-                    Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(Promise.ResultContainer resultContainer)
+                public void Invoke(Promise.ResultContainer resultContainer)
                 {
                     _callback.Invoke(_capturedValue, resultContainer);
                 }
@@ -1847,7 +2023,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinueCaptureVoidResult<TCapture, TResult> : IFunc<TResult>, IDelegateContinue
+            internal struct DelegateContinueCaptureVoidResult<TCapture, TResult> : IFunc<Promise.ResultContainer, TResult>, IDelegateContinue
             {
                 private readonly Promise.ContinueFunc<TCapture, TResult> _callback;
                 private readonly TCapture _capturedValue;
@@ -1860,13 +2036,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public TResult Invoke()
-                {
-                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private TResult Invoke(Promise.ResultContainer resultContainer)
+                public TResult Invoke(Promise.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(_capturedValue, resultContainer);
                 }
@@ -1885,7 +2055,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinueCaptureArgVoid<TCapture, TArg> : IAction<TArg>, IDelegateContinue
+            internal struct DelegateContinueCaptureArgVoid<TCapture, TArg> : IAction<Promise<TArg>.ResultContainer>, IDelegateContinue
             {
                 private readonly Promise<TArg>.ContinueAction<TCapture> _callback;
                 private readonly TCapture _capturedValue;
@@ -1898,13 +2068,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(TArg arg)
-                {
-                    Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private void Invoke(Promise<TArg>.ResultContainer resultContainer)
+                public void Invoke(Promise<TArg>.ResultContainer resultContainer)
                 {
                     _callback.Invoke(_capturedValue, resultContainer);
                 }
@@ -1922,7 +2086,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinueCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, TResult>, IDelegateContinue
+            internal struct DelegateContinueCaptureArgResult<TCapture, TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, TResult>, IDelegateContinue
             {
                 private readonly Promise<TArg>.ContinueFunc<TCapture, TResult> _callback;
                 private readonly TCapture _capturedValue;
@@ -1935,13 +2099,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public TResult Invoke(TArg arg)
-                {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private TResult Invoke(Promise<TArg>.ResultContainer resultContainer)
+                public TResult Invoke(Promise<TArg>.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(_capturedValue, resultContainer);
                 }
@@ -1960,7 +2118,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinuePromiseCaptureVoidVoid<TCapture> : IFunc<Promise>, IDelegateContinuePromise
+            internal struct DelegateContinuePromiseCaptureVoidVoid<TCapture> : IFunc<Promise.ResultContainer, Promise>, IDelegateContinuePromise
             {
                 private readonly Promise.ContinueFunc<TCapture, Promise> _callback;
                 private readonly TCapture _capturedValue;
@@ -1979,13 +2137,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise Invoke()
-                {
-                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private Promise Invoke(Promise.ResultContainer resultContainer)
+                public Promise Invoke(Promise.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(_capturedValue, resultContainer);
                 }
@@ -2003,7 +2155,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinuePromiseCaptureVoidResult<TCapture, TResult> : IFunc<Promise<TResult>>, IDelegateContinuePromise
+            internal struct DelegateContinuePromiseCaptureVoidResult<TCapture, TResult> : IFunc<Promise.ResultContainer, Promise<TResult>>, IDelegateContinuePromise
             {
                 private readonly Promise.ContinueFunc<TCapture, Promise<TResult>> _callback;
                 private readonly TCapture _capturedValue;
@@ -2022,13 +2174,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise<TResult> Invoke()
-                {
-                    return Invoke(new Promise.ResultContainer(null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private Promise<TResult> Invoke(Promise.ResultContainer resultContainer)
+                public Promise<TResult> Invoke(Promise.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(_capturedValue, resultContainer);
                 }
@@ -2046,7 +2192,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinuePromiseCaptureArgVoid<TCapture, TArg> : IFunc<TArg, Promise>, IDelegateContinuePromise
+            internal struct DelegateContinuePromiseCaptureArgVoid<TCapture, TArg> : IFunc<Promise<TArg>.ResultContainer, Promise>, IDelegateContinuePromise
             {
                 private readonly Promise<TArg>.ContinueFunc<TCapture, Promise> _callback;
                 private readonly TCapture _capturedValue;
@@ -2065,13 +2211,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise Invoke(TArg arg)
-                {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private Promise Invoke(Promise<TArg>.ResultContainer resultContainer)
+                public Promise Invoke(Promise<TArg>.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(_capturedValue, resultContainer);
                 }
@@ -2089,7 +2229,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal struct DelegateContinuePromiseCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateContinuePromise
+            internal struct DelegateContinuePromiseCaptureArgResult<TCapture, TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>, IDelegateContinuePromise
             {
                 private readonly Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>> _callback;
                 private readonly TCapture _capturedValue;
@@ -2108,13 +2248,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise<TResult> Invoke(TArg arg)
-                {
-                    return Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
-                }
-
-                [MethodImpl(InlineOption)]
-                private Promise<TResult> Invoke(Promise<TArg>.ResultContainer resultContainer)
+                public Promise<TResult> Invoke(Promise<TArg>.ResultContainer resultContainer)
                 {
                     return _callback.Invoke(_capturedValue, resultContainer);
                 }

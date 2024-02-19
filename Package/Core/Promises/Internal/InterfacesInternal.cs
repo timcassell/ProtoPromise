@@ -43,6 +43,16 @@ namespace Proto.Promises
                 void InvokeResolver(PromiseRefBase handler, Promise.State state, PromiseRefBase owner);
             }
 
+            internal interface IDelegateRejectSynchronous
+            {
+                bool TryInvokeRejecter(IRejectContainer rejectContainer);
+            }
+
+            internal interface IDelegateRejectSynchronous<TResult>
+            {
+                bool TryInvokeRejecter(IRejectContainer rejectContainer, out TResult result);
+            }
+
             internal interface IDelegateReject
             {
                 void InvokeRejecter(IRejectContainer rejectContainer, PromiseRefBase owner);

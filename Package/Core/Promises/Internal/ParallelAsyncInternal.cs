@@ -63,7 +63,6 @@ namespace Proto.Promises
                 private int _remainingAvailableWorkers;
                 private int _waitCounter;
                 private List<Exception> _exceptions;
-                private Promise.State _completionState;
                 // We need an async lock to lock around MoveNextAsync.
                 // We just use a counter instead of AsyncLock, and implement the locking algorithm directly.
                 // This is possible because we only use the lock once in a single code path.
@@ -90,7 +89,7 @@ namespace Proto.Promises
                     promise._body = body;
                     promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
-                    promise._completionState = Promise.State.Resolved;
+                    promise._state = Promise.State.Resolved;
                     promise._lockAndLaunchNext = 0;
                     var cancelRef = CancelationRef.GetOrCreate();
                     promise._cancelationRef = cancelRef;
@@ -114,7 +113,7 @@ namespace Proto.Promises
 
                 public void Cancel()
                 {
-                    _completionState = Promise.State.Canceled;
+                    _state = Promise.State.Canceled;
                     _cancelationRef.Cancel();
                 }
 
@@ -259,7 +258,7 @@ namespace Proto.Promises
                     }
                     catch (OperationCanceledException)
                     {
-                        _completionState = Promise.State.Canceled;
+                        _state = Promise.State.Canceled;
                         MaybeComplete(1);
                     }
                     catch (Exception e)
@@ -361,7 +360,6 @@ namespace Proto.Promises
                     RemovePending(handler);
                     var rejectContainer = handler._rejectContainer;
                     handler.SuppressRejection = true;
-                    handler.SetCompletionState(state);
                     handler.MaybeDispose();
 
                     // We hook this up to the MoveNextAsync promise and the parallel body promise,
@@ -394,7 +392,7 @@ namespace Proto.Promises
 
                     if (state == Promise.State.Canceled)
                     {
-                        _completionState = Promise.State.Canceled;
+                        _state = Promise.State.Canceled;
                     }
                     else
                     {
@@ -470,7 +468,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        HandleNextInternal(_completionState);
+                        HandleNextInternal(_state);
                     }
                 }
 
@@ -487,7 +485,7 @@ namespace Proto.Promises
                     {
                         disposePromise.Forget();
                         // Canceled = 3 and Resolved = 1, this happens to work with | to not overwrite the canceled state if this state is resolved.
-                        _completionState |= state;
+                        _state |= state;
                         OnComplete();
                         return;
                     }
@@ -515,7 +513,7 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     owner.HandleNextInternal(Promise.State.Resolved);
                     // Canceled = 3 and Resolved = 1, this happens to work with | to not overwrite the canceled state if this state is resolved.
-                    _completionState |= state;
+                    _state |= state;
                     OnComplete();
                 }
 

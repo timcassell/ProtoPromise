@@ -56,6 +56,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                internal bool TryUnregister(PromiseRefBase owner, ref bool wasCanceled)
+                {
+                    ThrowIfInPool(owner);
+                    return TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !wasCanceled;
+                }
+
+                [MethodImpl(InlineOption)]
                 internal bool TryRelease()
                 {
                     return InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0;

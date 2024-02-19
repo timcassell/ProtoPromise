@@ -147,7 +147,6 @@ namespace Proto.Promises
 
             internal override void Handle(Internal.PromiseRefBase handler, Promise.State state)
             {
-                handler.SetCompletionState(state);
                 _result = handler.GetResult<T>();
                 _rejectContainer = handler._rejectContainer;
                 handler.SuppressRejection = true;
@@ -264,7 +263,6 @@ namespace Proto.Promises
 
             internal override void Handle(Internal.PromiseRefBase handler, Promise.State state)
             {
-                handler.SetCompletionState(state);
                 _result = handler.GetResult<T>();
                 _rejectContainer = handler._rejectContainer;
                 handler.SuppressRejection = true;

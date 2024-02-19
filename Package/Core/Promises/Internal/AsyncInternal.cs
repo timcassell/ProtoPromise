@@ -274,7 +274,6 @@ namespace Proto.Promises
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     ThrowIfInPool(this);
-                    handler.SetCompletionState(state);
                     SetAwaitedComplete(handler);
                     _continuer.MoveNext.Invoke();
                 }
@@ -339,7 +338,6 @@ namespace Proto.Promises
                     internal override void Handle(PromiseRefBase handler, Promise.State state)
                     {
                         ThrowIfInPool(this);
-                        handler.SetCompletionState(state);
                         SetAwaitedComplete(handler);
                         ContinueMethod();
                     }

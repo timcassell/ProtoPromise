@@ -305,7 +305,6 @@ namespace Proto.Promises
                 {
                     // This is called when the async iterator function completes.
                     ThrowIfInPool(this);
-                    handler.SetCompletionState(state);
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
                         handler.MaybeReportUnhandledAndDispose(state);

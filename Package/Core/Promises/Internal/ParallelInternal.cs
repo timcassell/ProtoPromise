@@ -228,7 +228,6 @@ namespace Proto.Promises
                 private int _remainingAvailableWorkers;
                 private int _waitCounter;
                 private List<Exception> _exceptions;
-                private Promise.State _completionState;
 
                 private PromiseParallelForEach() { }
 
@@ -249,7 +248,7 @@ namespace Proto.Promises
                     promise._body = body;
                     promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
-                    promise._completionState = Promise.State.Resolved;
+                    promise._state = Promise.State.Resolved;
                     promise._cancelationRef = CancelationRef.GetOrCreate();
                     cancelationToken.TryRegister(promise, out promise._externalCancelationRegistration);
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
@@ -270,7 +269,7 @@ namespace Proto.Promises
 
                 public void Cancel()
                 {
-                    _completionState = Promise.State.Canceled;
+                    _state = Promise.State.Canceled;
                     _cancelationRef.Cancel();
                 }
 
@@ -329,7 +328,7 @@ namespace Proto.Promises
                     }
                     catch (OperationCanceledException)
                     {
-                        _completionState = Promise.State.Canceled;
+                        _state = Promise.State.Canceled;
                         MaybeComplete();
                     }
                     catch (Exception e)
@@ -385,7 +384,6 @@ namespace Proto.Promises
                     RemovePending(handler);
                     var rejectContainer = handler._rejectContainer;
                     handler.SuppressRejection = true;
-                    handler.SetCompletionState(state);
                     handler.MaybeDispose();
 
                     if (state == Promise.State.Resolved)
@@ -398,7 +396,7 @@ namespace Proto.Promises
                     }
                     else if (state == Promise.State.Canceled)
                     {
-                        _completionState = Promise.State.Canceled;
+                        _state = Promise.State.Canceled;
                         MaybeComplete();
                     }
                     else
@@ -454,7 +452,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            HandleNextInternal(_completionState);
+                            HandleNextInternal(_state);
                         }
                     }
                 }
