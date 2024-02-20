@@ -510,22 +510,6 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void SetCompletionState(IRejectContainer rejectContainer, Promise.State state)
-            {
-                ThrowIfInPool(this);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                if (state == Promise.State.Pending)
-                {
-                    throw new System.InvalidOperationException("Cannot SetCompletionState with a pending state.");
-                }
-#endif
-                _rejectContainer = rejectContainer;
-                // Very important, write State must come after write _rejectContainer. This is a volatile write, so we don't need a full memory barrier.
-                // State is checked for completion, and if it is read not pending on another thread, _rejectContainer must have already been written so the other thread can read it.
-                State = state;
-            }
-
-            [MethodImpl(InlineOption)]
             internal void SetCompletionState(Promise.State state)
             {
                 ThrowIfInPool(this);
@@ -547,12 +531,6 @@ namespace Proto.Promises
                     return default(TResult);
                 }
                 return this.UnsafeAs<PromiseRef<TResult>>()._result;
-            }
-
-            [MethodImpl(InlineOption)]
-            private void HandleNextAlreadyAwaited(Promise.State state)
-            {
-                Interlocked.Exchange(ref _next, InvalidAwaitSentinel.s_instance).Handle(this, state);
             }
 
             protected void HandleNextInternal(Promise.State state)
@@ -1099,7 +1077,7 @@ namespace Proto.Promises
                     if (ShouldContinueSynchronous())
                     {
                         TryUnregisterCancelationAndSetTempState();
-                        HandleNextAlreadyAwaited(state);
+                        _next.Handle(this, state);
                         return;
                     }
 
@@ -1123,7 +1101,7 @@ namespace Proto.Promises
 
                     TryUnregisterCancelationAndSetTempState();
                     // We don't need to synchronize access here because this is only called when the previous promise completed or the token canceled, and the waiter has already been added, so there are no race conditions.
-                    HandleNextAlreadyAwaited(_tempState);
+                    _next.Handle(this, _tempState);
 
                     ts_currentContext = currentContext;
                 }
@@ -1147,7 +1125,7 @@ namespace Proto.Promises
 
                     if (ShouldContinueSynchronous())
                     {
-                        HandleNextAlreadyAwaited(_tempState);
+                        _next.Handle(this, _tempState);
                         return;
                     }
 
@@ -1886,6 +1864,7 @@ namespace Proto.Promises
                         if (state == Promise.State.Rejected)
                         {
                             _rejectContainer.ReportUnhandled();
+                            _rejectContainer = null; // Null it out in case it's a canceled exception.
                         }
                         throw;
                     }
@@ -1951,6 +1930,7 @@ namespace Proto.Promises
                         {
                             // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
                             _rejectContainer.ReportUnhandled();
+                            _rejectContainer = null; // Null it out in case it's a canceled exception.
                         }
                         throw;
                     }

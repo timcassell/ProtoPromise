@@ -146,9 +146,10 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                private void Invoke()
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     ThrowIfInPool(this);
+                    handler.SetCompletionState(state);
                     var callback = _continuer;
 #if PROMISE_DEBUG
                     SetCurrentInvoker(this);
@@ -168,13 +169,6 @@ namespace Proto.Promises
                     ClearCurrentInvoker();
                     Dispose();
 #endif
-                }
-
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
-                {
-                    ThrowIfInPool(this);
-                    handler.SetCompletionState(state);
-                    Invoke();
                 }
             }
         }

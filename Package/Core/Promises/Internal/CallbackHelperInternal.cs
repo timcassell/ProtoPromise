@@ -405,7 +405,7 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddResolve<TDelegate>(Promise _this, TDelegate resolver, CancelationToken cancelationToken)
-                    where TDelegate : IFunc<TResult>, IDelegateResolveOrCancelPromise
+                    where TDelegate : IFunc<TResult>, IDelegateResolveOrCancel
                 {
                     if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                     {
@@ -416,12 +416,12 @@ namespace Proto.Promises
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelablePromiseResolvePromise<TResult, TDelegate>.GetOrCreate(resolver);
+                        var p = CancelablePromiseResolve<TResult, TDelegate>.GetOrCreate(resolver);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = PromiseResolvePromise<TResult, TDelegate>.GetOrCreate(resolver);
+                        promise = PromiseResolve<TResult, TDelegate>.GetOrCreate(resolver);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise<TResult>(promise, promise.Id);

@@ -673,11 +673,15 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void ThrowingRethrowInOnRejectedRejectsThePromiseWithTheSameReason_void()
+        public void ThrowingRethrowInOnRejectedRejectsThePromiseWithTheSameReason_void(
+            [Values] bool alreadyComplete)
         {
             string expected = "Reject!";
 
-            var promise = Promise.Rejected(expected).Preserve();
+            CancelationSource cancelationSource;
+            Promise.Deferred deferred;
+            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, expected, out deferred, out cancelationSource)
+                .Preserve();
 
             int rejectCount = 0;
 
@@ -701,6 +705,8 @@ namespace ProtoPromiseTests.APIs
                 onCallbackAddedConvert: onCallbackAddedConvert
             );
 
+            deferred.TryReject(expected);
+
             Assert.AreEqual(
                 TestHelper.rejectVoidCallbacks * 2,
                 rejectCount
@@ -710,11 +716,15 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void ThrowingRethrowInOnRejectedRejectsThePromiseWithTheSameReason_T()
+        public void ThrowingRethrowInOnRejectedRejectsThePromiseWithTheSameReason_T(
+            [Values] bool alreadyComplete)
         {
             string expected = "Reject!";
 
-            var promise = Promise<int>.Rejected(expected).Preserve();
+            CancelationSource cancelationSource;
+            Promise<int>.Deferred deferred;
+            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, 0, expected, out deferred, out cancelationSource)
+                .Preserve();
 
             int rejectCount = 0;
 
@@ -738,6 +748,8 @@ namespace ProtoPromiseTests.APIs
                 onCallbackAddedConvert: onCallbackAddedConvert,
                 onCallbackAddedT: onCallbackAddedConvert
             );
+
+            deferred.TryReject(expected);
 
             Assert.AreEqual(
                 TestHelper.rejectTCallbacks * 2,
@@ -912,7 +924,7 @@ namespace ProtoPromiseTests.APIs
                         : synchronizationType == TestHelper.backgroundType
                         ? Promise.SwitchToBackgroundAwait(forceAsync)
                         : Promise.SwitchToContextAwait(TestHelper._foregroundContext, forceAsync);
-                    
+
                     await contextSwitcher;
 
                     TestHelper.AssertCallbackContext(synchronizationType, invokeContext, foregroundThread);

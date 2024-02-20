@@ -104,7 +104,10 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            void IDisposable.Dispose() { }
+            void IDisposable.Dispose()
+            {
+                _enumerator.Dispose();
+            }
         }
 
         internal interface IParallelBody<TSource>

@@ -512,6 +512,7 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise"/> that is already canceled.
         /// </summary>
+        [MethodImpl(Internal.InlineOption)]
         public static Promise Canceled()
         {
             return Internal.CreateCanceled();
@@ -520,6 +521,7 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that is already canceled.
         /// </summary>
+        [MethodImpl(Internal.InlineOption)]
         public static Promise<T> Canceled<T>()
         {
             return Promise<T>.Canceled();

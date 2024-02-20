@@ -360,6 +360,7 @@ namespace Proto.Promises
                 {
                     RemovePending(handler);
                     var rejectContainer = handler._rejectContainer;
+                    handler.SuppressRejection = true;
                     handler.SetCompletionState(state);
                     handler.MaybeDispose();
 
@@ -506,12 +507,13 @@ namespace Proto.Promises
                 void IDelegateContinue.Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, PromiseRefBase owner)
                 {
                     RemovePending(handler);
-                    handler.MaybeDispose();
-                    owner.HandleNextInternal(Promise.State.Resolved);
                     if (state == Promise.State.Rejected)
                     {
                         RecordRejection(rejectContainer);
+                        handler.SuppressRejection = true;
                     }
+                    handler.MaybeDispose();
+                    owner.HandleNextInternal(Promise.State.Resolved);
                     // Canceled = 3 and Resolved = 1, this happens to work with | to not overwrite the canceled state if this state is resolved.
                     _completionState |= state;
                     OnComplete();
