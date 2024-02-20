@@ -203,7 +203,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Returns a new <see cref="Promise"/> that inherits the state of this, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled before the continuation is invoked.
+        /// Returns a new <see cref="Promise"/> that inherits the state of this, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled before this is complete.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public Promise WaitAsync(CancelationToken cancelationToken)
