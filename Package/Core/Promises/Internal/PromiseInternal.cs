@@ -334,7 +334,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 get { return _state; }
                 [MethodImpl(InlineOption)]
-                private protected set { _state = value; }
+                private set { _state = value; }
             }
 
             internal bool SuppressRejection
@@ -997,7 +997,7 @@ namespace Proto.Promises
                     var promise = GetOrCreateBase(synchronizationContext, forceAsync);
                     promise._isScheduling = 1;
                     promise._result = result;
-                    promise._state = Promise.State.Resolved;
+                    promise._tempState = Promise.State.Resolved;
                     promise._next = PromiseCompletionSentinel.s_instance;
                     return promise;
                 }
@@ -1022,8 +1022,8 @@ namespace Proto.Promises
                     _rejectContainer = handler._rejectContainer;
                     handler.SuppressRejection = true;
                     _result = handler.GetResult<TResult>();
+                    _tempState = state;
                     handler.MaybeDispose();
-                    SetCompletionState(state);
 
                     // Leave pending until this is awaited.
                     if (ReadNextWaiterAndMaybeSetCompleted() == PendingAwaitSentinel.s_instance)
@@ -1033,8 +1033,8 @@ namespace Proto.Promises
 
                     if (ShouldContinueSynchronous())
                     {
-                        TryUnregisterCancelationAndSetState();
-                        _next.Handle(this, state);
+                        TryUnregisterCancelationAndSetTempState();
+                        HandleNextInternal(state);
                         return;
                     }
 
@@ -1056,10 +1056,10 @@ namespace Proto.Promises
                     var currentContext = ts_currentContext;
                     ts_currentContext = _synchronizationContext;
 
-                    TryUnregisterCancelationAndSetState();
+                    TryUnregisterCancelationAndSetTempState();
                     // We don't need to synchronize access here because this is only called when the previous promise completed or the token canceled,
                     // and the waiter has already been added, so there are no race conditions.
-                    _next.Handle(this, _state);
+                    HandleNextInternal(_tempState);
 
                     ts_currentContext = currentContext;
                 }
@@ -1073,7 +1073,7 @@ namespace Proto.Promises
                         return;
                     }
 
-                    SetCompletionState(Promise.State.Canceled);
+                    _tempState = Promise.State.Canceled;
 
                     // Leave pending until this is awaited.
                     if (ReadNextWaiterAndMaybeSetCompleted() == PendingAwaitSentinel.s_instance)
@@ -1083,16 +1083,16 @@ namespace Proto.Promises
 
                     if (ShouldContinueSynchronous())
                     {
-                        _next.Handle(this, Promise.State.Canceled);
+                        HandleNextInternal(_tempState);
                         return;
                     }
 
                     ScheduleContinuationOnContext();
                 }
 
-                private void TryUnregisterCancelationAndSetState()
+                private void TryUnregisterCancelationAndSetTempState()
                 {
-                    if (_cancelationHelper.TryUnregister(this, ref _wasCanceled))
+                    if (_cancelationHelper.TryUnregister(this) & !_wasCanceled)
                     {
                         _cancelationHelper.TryRelease();
                     }
@@ -1100,7 +1100,7 @@ namespace Proto.Promises
                     {
                         _rejectContainer?.ReportUnhandled();
                         _rejectContainer = null;
-                        _state = Promise.State.Canceled;
+                        _tempState = Promise.State.Canceled;
                     }
                 }
 
@@ -1138,7 +1138,8 @@ namespace Proto.Promises
 
                     if (shouldContinueSynchronous)
                     {
-                        TryUnregisterCancelationAndSetState();
+                        TryUnregisterCancelationAndSetTempState();
+                        SetCompletionState(_tempState);
                         previousWaiter = waiter;
                         return null;
                     }
@@ -1157,7 +1158,8 @@ namespace Proto.Promises
                         && CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance)
                     {
                         WasAwaitedOrForgotten = true;
-                        TryUnregisterCancelationAndSetState();
+                        TryUnregisterCancelationAndSetTempState();
+                        SetCompletionState(_tempState);
                         return true;
                     }
                     return false;
@@ -1858,7 +1860,7 @@ namespace Proto.Promises
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._rejectContainer = rejectContainer;
-                    promise.State = state;
+                    promise._previousState = state;
                     return promise;
                 }
 
@@ -1899,7 +1901,7 @@ namespace Proto.Promises
                         throw;
                     }
                     // Store the state until the returned promise is complete.
-                    State = state;
+                    _previousState = state;
                     WaitFor(result._ref, result._id, handler, new CompleteHandler(this));
                 }
 
@@ -1907,11 +1909,11 @@ namespace Proto.Promises
                 {
                     if (state == Promise.State.Resolved)
                     {
-                        state = State;
+                        state = _previousState;
                     }
                     else
                     {
-                        if (State == Promise.State.Rejected)
+                        if (_previousState == Promise.State.Rejected)
                         {
                             // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
                             _rejectContainer.ReportUnhandled();
@@ -1945,7 +1947,7 @@ namespace Proto.Promises
                     [MethodImpl(InlineOption)]
                     void IWaitForCompleteHandler.HandleNull()
                     {
-                        _owner.HandleNextInternal(_owner.State);
+                        _owner.HandleNextInternal(_owner._previousState);
                     }
                 }
             }

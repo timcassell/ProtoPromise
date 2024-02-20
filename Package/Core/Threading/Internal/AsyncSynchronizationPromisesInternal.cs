@@ -26,6 +26,8 @@ namespace Proto.Promises
                 // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
                 private SynchronizationContext _callerContext;
                 protected CancelationRegistration _cancelationRegistration;
+                // We have to store the state in a separate field until the next awaiter is ready to be invoked on the proper context.
+                protected Promise.State _tempState;
 
                 [MethodImpl(InlineOption)]
                 protected void Reset(SynchronizationContext callerContext)
@@ -33,7 +35,7 @@ namespace Proto.Promises
                     Reset();
                     _callerContext = callerContext;
                     // Assume the resolved state will occur. If this is actually canceled or rejected, the state will be set at that time.
-                    State = Promise.State.Resolved;
+                    _tempState = Promise.State.Resolved;
                 }
 
                 new protected void Dispose()
@@ -48,7 +50,7 @@ namespace Proto.Promises
                     if (_callerContext == null)
                     {
                         // It was a synchronous lock or wait, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
-                        HandleNextInternal(State);
+                        HandleNextInternal(_tempState);
                         return;
                     }
                     // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
@@ -63,7 +65,7 @@ namespace Proto.Promises
                     var currentContext = ts_currentContext;
                     ts_currentContext = _callerContext;
 
-                    HandleNextInternal(State);
+                    HandleNextInternal(_tempState);
 
                     ts_currentContext = currentContext;
                 }
@@ -83,7 +85,7 @@ namespace Proto.Promises
                 {
                     _cancelationRegistration.Dispose();
                     _rejectContainer = rejectContainer;
-                    State = Promise.State.Rejected;
+                    _tempState = Promise.State.Rejected;
                     Continue();
                 }
 #endif
