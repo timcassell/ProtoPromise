@@ -50,8 +50,8 @@ jobs:
               symbol: PROTO_PROMISE_POOL_DISABLE
             }
         # Editor uses 2018.4 to test netstandard2.0 in Mono.
-        # Standalone uses 2019.4 and 2021.3 to test IL2CPP with netstandard2.0 and netstandard2.1.
-        unityVersion: [2018.4.36f1, 2019.4.40f1, 2021.3.29f1]
+        # Standalone uses 2019.4 and 2023.1 to test IL2CPP with netstandard2.0 and netstandard2.1.
+        unityVersion: [2018.4.36f1, 2019.4.40f1, 2023.1.0f1]
 
         exclude:
           # DEBUG mode forces pooling disabled.
@@ -66,7 +66,7 @@ jobs:
             }
           - {
               testMode: { name: Editor },
-              unityVersion: 2021.3.29f1
+              unityVersion: 2023.1.0f1
             }
           # Standalone with IL2CPP can only be built with 2019.4+ (unity-builder docker images constraint).
           - {

@@ -2,7 +2,8 @@
     "name": "ProtoPromiseTests",
     "references": [
         "ProtoPromise",
-        "ProtoPromiseUnityHelpers"
+        "ProtoPromise.UnityHelpers.2018.3",
+        "ProtoPromise.UnityHelpers.2023.1"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"

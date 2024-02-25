@@ -50,7 +50,11 @@ namespace UnityBuilderAction
                     break;
                 }
                 case BuildTarget.StandaloneOSX:
+#if UNITY_2023_1_OR_NEWER
+                    PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
+#else
                     PlayerSettings.SetScriptingBackend(BuildTargetGroup.Standalone, ScriptingImplementation.Mono2x);
+#endif
                     break;
             }
 

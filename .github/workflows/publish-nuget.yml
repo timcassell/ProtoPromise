@@ -30,8 +30,12 @@ jobs:
             echo "version ${VERSION} not found in ProtoPromise.csproj"
             exit 1
           fi
-          if ! grep -q "<Version>${VERSION}</Version>" ProtoPromiseUnityHelpers/ProtoPromiseUnityHelpers.csproj; then
-            echo "version ${VERSION} not found in ProtoPromiseUnityHelpers.csproj"
+          if ! grep -q "<Version>${VERSION}</Version>" ProtoPromise.UnityHelpers/2018.3/ProtoPromise.UnityHelpers.2018.3.csproj; then
+            echo "version ${VERSION} not found in ProtoPromise.UnityHelpers.2018.3.csproj"
+            exit 1
+          fi
+          if ! grep -q "<Version>${VERSION}</Version>" ProtoPromise.UnityHelpers/2023.1/ProtoPromise.UnityHelpers.2023.1.csproj; then
+            echo "version ${VERSION} not found in ProtoPromise.UnityHelpers.2023.1.csproj"
             exit 1
           fi
           if ! grep -q "\"version\": \"${VERSION}\"" Package/package.json; then
@@ -50,8 +54,11 @@ jobs:
       - name: Overwrite ProtoPromise nuspec version
         run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromise/nuget/ProtoPromise.nuspec
 
-      - name: Overwrite ProtoPromiseUnityHelpers nuspec version
-        run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromiseUnityHelpers/nuget/ProtoPromiseUnityHelpers.nuspec
+      - name: Overwrite ProtoPromise.UnityHelpers.2018.3 nuspec version
+        run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromise.UnityHelpers/2018.3/nuget/ProtoPromise.UnityHelpers.2018.3.nuspec
+
+      - name: Overwrite ProtoPromise.UnityHelpers.2023.1 nuspec version
+        run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromise.UnityHelpers/2023.1/nuget/ProtoPromise.UnityHelpers.2023.1.nuspec
 
       - name: Overwrite ProtoPromise nuspec release notes
         env:
@@ -63,7 +70,8 @@ jobs:
       - name: Print nuspecs
         run: |
           cat ProtoPromise/nuget/ProtoPromise.nuspec
-          cat ProtoPromiseUnityHelpers/nuget/ProtoPromiseUnityHelpers.nuspec
+          cat ProtoPromise.UnityHelpers/2018.3/nuget/ProtoPromise.UnityHelpers.2018.3.nuspec
+          cat ProtoPromise.UnityHelpers/2023.1/nuget/ProtoPromise.UnityHelpers.2023.1.nuspec
 
       - name: Setup nuget
         uses: nuget/setup-nuget@v1
@@ -84,15 +92,23 @@ jobs:
       - name: Pack ProtoPromise
         run: nuget pack ProtoPromise/nuget/ProtoPromise.nuspec
 
-      - name: Pack Unity Helpers
-        run: nuget pack ProtoPromiseUnityHelpers/nuget/ProtoPromiseUnityHelpers.nuspec
+      - name: Pack Unity Helpers 2018.3
+        run: nuget pack ProtoPromise.UnityHelpers/2018.3/nuget/ProtoPromise.UnityHelpers.2018.3.nuspec
+
+      - name: Pack Unity Helpers 2023.1
+        run: nuget pack ProtoPromise.UnityHelpers/2023.1/nuget/ProtoPromise.UnityHelpers.2023.1.nuspec
 
       - name: Push ProtoPromise
         run: dotnet nuget push ProtoPromise.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
-      - name: Push Unity Helpers
-        run: dotnet nuget push ProtoPromiseUnityHelpers.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
+      - name: Push Unity Helpers 2018.3
+        run: dotnet nuget push ProtoPromise.UnityHelpers.2018.3.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+      - name: Push Unity Helpers 2023.1
+        run: dotnet nuget push ProtoPromise.UnityHelpers.2023.1.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
