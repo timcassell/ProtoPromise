@@ -2,7 +2,7 @@
     "name": "ProtoPromiseDemo",
     "references": [
         "ProtoPromise",
-        "ProtoPromiseUnityHelpers"
+        "ProtoPromise.UnityHelpers.2018.3"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [],
