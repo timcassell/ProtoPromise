@@ -176,14 +176,12 @@ namespace Proto.Promises
             partial class RunPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
                 where TDelegate : IDelegateRun
             {
-                private SynchronizationContext _synchronizationContext;
                 private TDelegate _runner;
             }
 
             partial class RunWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
                 where TDelegate : IDelegateRunPromise
             {
-                private SynchronizationContext _synchronizationContext;
                 private TDelegate _runner;
             }
 
@@ -211,7 +209,6 @@ namespace Proto.Promises
             partial class DeferredNewPromise<TResult, TDelegate> : DeferredPromise<TResult>
                 where TDelegate : IDelegateNew<TResult>
             {
-                private SynchronizationContext _synchronizationContext;
                 private TDelegate _runner;
             }
 

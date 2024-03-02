@@ -57,6 +57,7 @@ namespace ProtoPromiseTests
 
             private void ThreadAction()
             {
+                Promise.Manager.ThreadStaticSynchronizationContext = _owner;
                 while (true)
                 {
                     BackgroundSynchronizationContext owner = _owner;

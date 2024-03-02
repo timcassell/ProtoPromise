@@ -347,7 +347,7 @@ namespace Proto.Promises
                         }
                     }
 
-                    if (!forceAsync & synchronizationContext == ts_currentContext)
+                    if (!forceAsync & synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext)
                     {
                         return InvokeCallbackDirect(runner);
                     }
@@ -393,7 +393,7 @@ namespace Proto.Promises
                         }
                     }
 
-                    if (!forceAsync & synchronizationContext == ts_currentContext)
+                    if (!forceAsync & synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext)
                     {
                         return InvokeCallbackAndAdoptDirect(runner);
                     }
@@ -1116,7 +1116,7 @@ namespace Proto.Promises
                         }
                     }
 
-                    if (!forceAsync & synchronizationContext == ts_currentContext)
+                    if (!forceAsync & synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext)
                     {
                         return InvokeCallbackDirect(runner);
                     }
@@ -1162,7 +1162,7 @@ namespace Proto.Promises
                         }
                     }
 
-                    if (!forceAsync & synchronizationContext == ts_currentContext)
+                    if (!forceAsync & synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext)
                     {
                         return InvokeCallbackAndAdoptDirect(runner);
                     }

@@ -222,7 +222,7 @@ namespace Proto.Promises.CompilerServices
                                 Internal.GetFormattedStacktrace(2));
                         }
                         // We ignore the _forceAsync flag here.
-                        return synchronizationContext == Internal.ts_currentContext
+                        return synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext
                             ? default
                             : new SwitchToConfiguredContextAwaiter(synchronizationContext);
                     }
@@ -243,7 +243,7 @@ namespace Proto.Promises.CompilerServices
                     synchronizationContext = Internal.BackgroundSynchronizationContextSentinel.s_instance;
                 }
                 // We ignore the _forceAsync flag here.
-                return synchronizationContext == Internal.ts_currentContext
+                return synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext
                     ? default
                     : new SwitchToConfiguredContextAwaiter(synchronizationContext);
             }
@@ -348,7 +348,7 @@ namespace Proto.Promises.CompilerServices
         public bool IsCompleted
         {
             [MethodImpl(Internal.InlineOption)]
-            get => _context == null | _context == Internal.ts_currentContext;
+            get => _context == null | _context == Promise.Manager.ThreadStaticSynchronizationContext;
         }
 
         [MethodImpl(Internal.InlineOption)]

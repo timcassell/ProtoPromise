@@ -228,13 +228,12 @@ namespace Proto.Promises
                         }
                     }
 
-                    if (!forceAsync & context == ts_currentContext)
+                    if (!forceAsync & context == Promise.Manager.ThreadStaticSynchronizationContext)
                     {
                         Run();
                         return;
                     }
 
-                    _synchronizationContext = context;
                     ScheduleContextCallback(context, this,
                         obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run(),
                         obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run()
@@ -248,10 +247,6 @@ namespace Proto.Promises
                     var deferredId = DeferredId;
                     var runner = _runner;
                     _runner = default(TDelegate);
-
-                    var currentContext = ts_currentContext;
-                    ts_currentContext = _synchronizationContext;
-                    _synchronizationContext = null;
 
                     SetCurrentInvoker(this);
                     try
@@ -279,7 +274,6 @@ namespace Proto.Promises
                         }
                     }
                     ClearCurrentInvoker();
-                    ts_currentContext = currentContext;
                 }
             }
         } // class PromiseRef

@@ -25,11 +25,6 @@ namespace Proto.Promises
 #endif
     internal static partial class Internal
     {
-        // This is used to detect if we're currently executing on the context we're going to schedule to, so we can just invoke synchronously instead.
-        // TODO: If we ever drop support for .Net Framework/old Mono, this can be replaced with `SynchronizationContext.Current`.
-        [ThreadStatic]
-        internal static SynchronizationContext ts_currentContext;
-
         private static void ScheduleContextCallback(SynchronizationContext context, object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback)
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -228,11 +223,9 @@ namespace Proto.Promises
         internal static SynchronizationContext CaptureContext()
         {
             // We capture the current context to post the continuation. If it's null, we use the background context.
-            return ts_currentContext
-                // TODO: Unity hasn't adopted .Net Core yet, and they most certainly will not use the NETCOREAPP compilation symbol, so we'll have to update the compilation symbols here once Unity finally does adopt it.
-#if NETCOREAPP
-                ?? SynchronizationContext.Current
-#else
+            return Promise.Manager.ThreadStaticSynchronizationContext
+                // TODO: update compilation symbol when Unity adopts .Net Core.
+#if !NETCOREAPP
                 // Old .Net Framework/Mono includes `SynchronizationContext.Current` in the `ExecutionContext`, so it may not be null on a background thread.
                 // We check for that case to not unnecessarily invoke continuations on a foreground thread when they can continue on a background thread.
                 ?? (Thread.CurrentThread.IsBackground ? null : SynchronizationContext.Current)

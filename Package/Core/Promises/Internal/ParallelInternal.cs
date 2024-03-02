@@ -319,9 +319,6 @@ namespace Proto.Promises
 
                 private void ExecuteWorker(bool launchNext)
                 {
-                    var currentContext = ts_currentContext;
-                    ts_currentContext = _synchronizationContext;
-                    
                     SetCurrentInvoker(this);
                     try
                     {
@@ -340,8 +337,6 @@ namespace Proto.Promises
                         MaybeComplete();
                     }
                     ClearCurrentInvoker();
-
-                    ts_currentContext = currentContext;
                 }
 
                 private void WorkerBody(bool launchNext)
