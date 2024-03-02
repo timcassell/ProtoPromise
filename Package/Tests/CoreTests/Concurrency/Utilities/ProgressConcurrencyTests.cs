@@ -41,7 +41,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                 // Setup
                 () =>
                 {
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+                    progressHelper = new ProgressHelper(progressType, synchronizationType, forceAsync: true);
                     progress = progressHelper.ToProgress();
                     progressToken = progress.Token;
 
@@ -83,7 +83,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                 // Setup
                 () =>
                 {
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+                    progressHelper = new ProgressHelper(progressType, synchronizationType, forceAsync: true);
                     progress = progressHelper.ToProgress();
                     progressToken = progress.Token;
 
@@ -132,7 +132,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                 {
                     cancelationSource = CancelationSource.New();
                     cancelationToken = cancelationSource.Token;
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+                    progressHelper = new ProgressHelper(progressType, synchronizationType, forceAsync: true);
                     progress = progressHelper.ToProgress(cancelationToken);
                     progressToken = progress.Token;
 
@@ -185,7 +185,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                 // Setup
                 () =>
                 {
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+                    progressHelper = new ProgressHelper(progressType, synchronizationType, forceAsync: true);
                     progress = progressHelper.ToProgress();
                     var progressToken = progress.Token;
                     progressMerger = Progress.NewMergeBuilder(progressToken.Slice(0d, 0.3d));

@@ -36,7 +36,7 @@ namespace ProtoPromiseTests.Concurrency.Linq
                 {
                     for (int j = 0; j < 10; ++j)
                     {
-                        await Promise.SwitchToBackgroundAwait();
+                        await Promise.SwitchToBackgroundAwait(forceAsync: true);
 
                         // Make all threads yield at the same time.
                         barrier.SignalAndWait();
@@ -68,7 +68,7 @@ namespace ProtoPromiseTests.Concurrency.Linq
                     barrier.AddParticipant();
                     for (int j = 0; j < 10; ++j)
                     {
-                        await Promise.SwitchToBackgroundAwait();
+                        await Promise.SwitchToBackgroundAwait(forceAsync: true);
 
                         // Make all threads yield at the same time.
                         barrier.SignalAndWait();
@@ -84,7 +84,7 @@ namespace ProtoPromiseTests.Concurrency.Linq
                 barrier.AddParticipant();
                 for (int i = 0; i < enumerableCount; ++i)
                 {
-                    await Promise.SwitchToBackgroundAwait();
+                    await Promise.SwitchToBackgroundAwait(forceAsync: true);
 
                     // Make all threads yield at the same time.
                     barrier.SignalAndWait();
