@@ -40,41 +40,9 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new 1 will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, IList<ResultContainer> valueContainer = null)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount);
-
-            if (valueContainer == null)
-            {
-                valueContainer = new ResultContainer[2];
-            }
-            else
-            {
-                // Make sure list has the same count as promises.
-                int listSize = valueContainer.Count;
-                while (listSize > 2)
-                {
-                    valueContainer.RemoveAt(--listSize);
-                }
-                while (listSize < 2)
-                {
-                    valueContainer.Add(default(ResultContainer));
-                    ++listSize;
-                }
-            }
-            valueContainer[0] = ResultContainer.Resolved;
-            valueContainer[1] = ResultContainer.Resolved;
-
-            if (pendingCount == 0)
-            {
-                return Resolved(valueContainer);
-            }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergeSettledPromise(passThroughs, valueContainer, pendingCount, GetAllResultContainerFunc);
-            return new Promise<IList<ResultContainer>>(promise, promise.Id);
+            return AllSettled(Internal.GetEnumerator(promise1, promise2));
         }
 
         /// <summary>
@@ -86,44 +54,10 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new 1 will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, Promise promise3, IList<ResultContainer> valueContainer = null)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref passThroughs, 2, ref pendingCount);
-
-            if (valueContainer == null)
-            {
-                valueContainer = new ResultContainer[3];
-            }
-            else
-            {
-                // Make sure list has the same count as promises.
-                int listSize = valueContainer.Count;
-                while (listSize > 3)
-                {
-                    valueContainer.RemoveAt(--listSize);
-                }
-                while (listSize < 3)
-                {
-                    valueContainer.Add(default(ResultContainer));
-                    ++listSize;
-                }
-            }
-            valueContainer[0] = ResultContainer.Resolved;
-            valueContainer[1] = ResultContainer.Resolved;
-            valueContainer[2] = ResultContainer.Resolved;
-
-            if (pendingCount == 0)
-            {
-                return Resolved(valueContainer);
-            }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergeSettledPromise(passThroughs, valueContainer, pendingCount, GetAllResultContainerFunc);
-            return new Promise<IList<ResultContainer>>(promise, promise.Id);
+            return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
         /// <summary>
@@ -136,47 +70,11 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new 1 will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, Promise promise3, Promise promise4, IList<ResultContainer> valueContainer = null)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref passThroughs, 3, ref pendingCount);
-
-            if (valueContainer == null)
-            {
-                valueContainer = new ResultContainer[4];
-            }
-            else
-            {
-                // Make sure list has the same count as promises.
-                int listSize = valueContainer.Count;
-                while (listSize > 4)
-                {
-                    valueContainer.RemoveAt(--listSize);
-                }
-                while (listSize < 4)
-                {
-                    valueContainer.Add(default(ResultContainer));
-                    ++listSize;
-                }
-            }
-            valueContainer[0] = ResultContainer.Resolved;
-            valueContainer[1] = ResultContainer.Resolved;
-            valueContainer[2] = ResultContainer.Resolved;
-            valueContainer[3] = ResultContainer.Resolved;
-
-            if (pendingCount == 0)
-            {
-                return Resolved(valueContainer);
-            }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergeSettledPromise(passThroughs, valueContainer, pendingCount, GetAllResultContainerFunc);
-            return new Promise<IList<ResultContainer>>(promise, promise.Id);
+            return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
         /// <summary>

@@ -53,7 +53,7 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
-                    if (TrySetComplete())
+                    if (TrySetComplete(handler))
                     {
                         _result = handler.GetResult<TResult>();
                         _rejectContainer = handler._rejectContainer;
@@ -106,7 +106,7 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
-                    if (TrySetComplete())
+                    if (TrySetComplete(handler))
                     {
                         _result = index;
                         _rejectContainer = handler._rejectContainer;
@@ -159,7 +159,7 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
-                    if (TrySetComplete())
+                    if (TrySetComplete(handler))
                     {
                         _result = new ValueTuple<int, TResult>(index, handler.GetResult<TResult>());
                         _rejectContainer = handler._rejectContainer;
@@ -213,8 +213,8 @@ namespace Proto.Promises
                 internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
                     bool isComplete = state == Promise.State.Resolved
-                        ? TrySetComplete()
-                        : RemoveWaiterAndGetIsComplete();
+                        ? TrySetComplete(handler)
+                        : RemoveWaiterAndGetIsComplete(handler);
                     handler.SuppressRejection = true;
                     if (isComplete)
                     {
@@ -269,8 +269,8 @@ namespace Proto.Promises
                 internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
                     bool isComplete = handler.State == Promise.State.Resolved
-                        ? TrySetComplete()
-                        : RemoveWaiterAndGetIsComplete();
+                        ? TrySetComplete(handler)
+                        : RemoveWaiterAndGetIsComplete(handler);
                     handler.SuppressRejection = true;
                     if (isComplete)
                     {
@@ -325,8 +325,8 @@ namespace Proto.Promises
                 internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
                     bool isComplete = handler.State == Promise.State.Resolved
-                        ? TrySetComplete()
-                        : RemoveWaiterAndGetIsComplete();
+                        ? TrySetComplete(handler)
+                        : RemoveWaiterAndGetIsComplete(handler);
                     handler.SuppressRejection = true;
                     if (isComplete)
                     {

@@ -48,8 +48,9 @@ namespace Proto.Promises
 #endif
             internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
+                partial void ValidateNoPending();
                 partial void AddPending(PromiseRefBase pendingPromise);
-                partial void ClearPending();
+                partial void RemoveComplete(PromiseRefBase completePromise);
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
 
@@ -58,14 +59,16 @@ namespace Proto.Promises
                 // we instead swap the count to 0 so that it will be marked complete early, and future completions will decrement into negative and never read 0 again.
                 // (Merge reject/cancel, or First resolve, Race always tries to set complete).
                 [MethodImpl(InlineOption)]
-                protected bool TrySetComplete()
+                protected bool TrySetComplete(PromiseRefBase completePromise)
                 {
+                    RemoveComplete(completePromise);
                     return Interlocked.Exchange(ref _waitCount, 0) > 0;
                 }
 
                 [MethodImpl(InlineOption)]
-                protected bool RemoveWaiterAndGetIsComplete()
+                protected bool RemoveWaiterAndGetIsComplete(PromiseRefBase completePromise)
                 {
+                    RemoveComplete(completePromise);
                     // No overflow check as we expect the count to be able to go negative.
                     return Interlocked.Add(ref _waitCount, -1) == 0;
                 }
@@ -76,7 +79,6 @@ namespace Proto.Promises
                     _retainCounter = pendingAwaits;
                     Reset();
 
-                    _passThroughs = promisePassThroughs;
                     foreach (var passThrough in promisePassThroughs)
                     {
                         AddPending(passThrough.Owner);
@@ -86,12 +88,8 @@ namespace Proto.Promises
 
                 new protected void Dispose()
                 {
+                    ValidateNoPending();
                     base.Dispose();
-                    while (_passThroughs.IsNotEmpty)
-                    {
-                        _passThroughs.Pop().Dispose();
-                    }
-                    ClearPending();
                 }
             }
 
@@ -129,8 +127,8 @@ namespace Proto.Promises
                 internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
                     bool isComplete = state == Promise.State.Resolved
-                        ? RemoveWaiterAndGetIsComplete()
-                        : TrySetComplete();
+                        ? RemoveWaiterAndGetIsComplete(handler)
+                        : TrySetComplete(handler);
                     if (isComplete)
                     {
                         _rejectContainer = handler._rejectContainer;
@@ -192,11 +190,11 @@ namespace Proto.Promises
                     if (state == Promise.State.Resolved)
                     {
                         s_getResult.Invoke(handler, index, ref _result);
-                        isComplete = RemoveWaiterAndGetIsComplete();
+                        isComplete = RemoveWaiterAndGetIsComplete(handler);
                     }
                     else
                     {
-                        isComplete = TrySetComplete();
+                        isComplete = TrySetComplete(handler);
                     }
                     if (isComplete)
                     {
@@ -264,7 +262,7 @@ namespace Proto.Promises
                     s_getResult.Invoke(handler, _rejectContainer, state, index, ref _result);
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
-                    if (RemoveWaiterAndGetIsComplete())
+                    if (RemoveWaiterAndGetIsComplete(handler))
                     {
                         HandleNextInternal(Promise.State.Resolved);
                         return;

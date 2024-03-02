@@ -21,20 +21,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount);
-
-            if (pendingCount == 0)
-            {
-                return Resolved();
-            }
-            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount);
-            return new Promise(promise, promise.Id);
+            return All(Internal.GetEnumerator(promise1, promise2));
         }
 
         /// <summary>
@@ -43,22 +32,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref passThroughs, 2, ref pendingCount);
-
-            if (pendingCount == 0)
-            {
-                return Resolved();
-            }
-            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount);
-            return new Promise(promise, promise.Id);
+            return All(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
         /// <summary>
@@ -67,24 +44,11 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-
             ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref passThroughs, 0, ref pendingCount);
             ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount);
             ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref passThroughs, 2, ref pendingCount);
             ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref passThroughs, 3, ref pendingCount);
-
-            if (pendingCount == 0)
-            {
-                return Resolved();
-            }
-            var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount);
-            return new Promise(promise, promise.Id);
+            return All(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
         /// <summary>

@@ -2110,26 +2110,6 @@ namespace Proto.Promises
                     }
                 }
 
-                internal int Index
-                {
-                    [MethodImpl(InlineOption)]
-                    get
-                    {
-                        ThrowIfInPool(this);
-                        return _index;
-                    }
-                }
-
-                internal short Id
-                {
-                    [MethodImpl(InlineOption)]
-                    get
-                    {
-                        ThrowIfInPool(this);
-                        return _id;
-                    }
-                }
-
                 private PromisePassThrough() { }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -2185,9 +2165,11 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
-                    ThrowIfInPool(this);
+                    var target = _target;
+                    var index = _index;
+                    Dispose();
                     handler.SetCompletionState(state);
-                    _target.Handle(handler, state, Index);
+                    target.Handle(handler, state, index);
                 }
 
                 internal void Dispose()

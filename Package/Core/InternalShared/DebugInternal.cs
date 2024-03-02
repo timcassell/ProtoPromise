@@ -325,32 +325,43 @@ namespace Proto.Promises
 
             partial class MultiHandleablePromiseBase<TResult>
             {
-                private readonly Stack<PromiseRefBase> _previousPromises = new Stack<PromiseRefBase>();
+                private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
 
                 protected override void BorrowPreviousPromises(Stack<PromiseRefBase> borrower)
                 {
-                    lock (_previousPromises)
+                    lock (_pendingPromises)
                     {
-                        foreach (var promiseRef in _previousPromises)
+                        foreach (var promiseRef in _pendingPromises)
                         {
                             borrower.Push(promiseRef);
                         }
                     }
                 }
 
-                partial void AddPending(PromiseRefBase pendingPromise)
+                partial void ValidateNoPending()
                 {
-                    lock (_previousPromises)
+                    lock (_pendingPromises)
                     {
-                        _previousPromises.Push(pendingPromise);
+                        if (_pendingPromises.Count != 0)
+                        {
+                            throw new System.InvalidOperationException("MultiHandleablePromiseBase disposed with pending promises.");
+                        }
                     }
                 }
 
-                partial void ClearPending()
+                partial void AddPending(PromiseRefBase pendingPromise)
                 {
-                    lock (_previousPromises)
+                    lock (_pendingPromises)
                     {
-                        _previousPromises.Clear();
+                        _pendingPromises.Add(pendingPromise);
+                    }
+                }
+
+                partial void RemoveComplete(PromiseRefBase completePromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Remove(completePromise);
                     }
                 }
             }
@@ -370,6 +381,17 @@ namespace Proto.Promises
                     }
                 }
 
+                partial void ValidateNoPending()
+                {
+                    lock (_pendingPromises)
+                    {
+                        if (_pendingPromises.Count != 0)
+                        {
+                            throw new System.InvalidOperationException("PromiseParallelForEach disposed with pending promises.");
+                        }
+                    }
+                }
+
                 partial void AddPending(PromiseRefBase pendingPromise)
                 {
                     lock (_pendingPromises)
@@ -378,7 +400,7 @@ namespace Proto.Promises
                     }
                 }
 
-                partial void RemovePending(PromiseRefBase completePromise)
+                partial void RemoveComplete(PromiseRefBase completePromise)
                 {
                     lock (_pendingPromises)
                     {
@@ -402,6 +424,17 @@ namespace Proto.Promises
                     }
                 }
 
+                partial void ValidateNoPending()
+                {
+                    lock (_pendingPromises)
+                    {
+                        if (_pendingPromises.Count != 0)
+                        {
+                            throw new System.InvalidOperationException("PromiseParallelForEachAsync disposed with pending promises.");
+                        }
+                    }
+                }
+
                 partial void AddPending(PromiseRefBase pendingPromise)
                 {
                     lock (_pendingPromises)
@@ -410,7 +443,7 @@ namespace Proto.Promises
                     }
                 }
 
-                partial void RemovePending(PromiseRefBase completePromise)
+                partial void RemoveComplete(PromiseRefBase completePromise)
                 {
                     lock (_pendingPromises)
                     {

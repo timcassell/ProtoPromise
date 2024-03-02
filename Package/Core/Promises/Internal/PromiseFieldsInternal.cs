@@ -354,10 +354,6 @@ namespace Proto.Promises
             {
                 protected int _waitCount;
                 protected int _retainCounter;
-                // TODO: progress was removed, we probably don't need to store the passthroughs anymore.
-                // We store the passthroughs for lazy progress subscribe.
-                // The passthroughs will be released when this has fully released if a progress listener did not do it already.
-                protected ValueLinkedStack<PromisePassThrough> _passThroughs;
             }
 
             partial class RacePromise<TResult> : MultiHandleablePromiseBase<TResult>
@@ -378,6 +374,8 @@ namespace Proto.Promises
 
             partial class PromisePassThrough : HandleablePromiseBase
             {
+                // TODO: we can store target in _next field, and we only need to store owner in DEBUG mode.
+                // We also probably don't need to store id anymore if we hook up directly to the MultiHandleablePromiseBase.
                 private PromiseRefBase _owner;
                 private HandleablePromiseBase _target;
                 private int _index;

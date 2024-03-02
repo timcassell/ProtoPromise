@@ -21,21 +21,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._ref == null | promise2._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                return Resolved();
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-
-            var promise = Internal.PromiseRefBase.RacePromise<Internal.VoidResult>.GetOrCreate(passThroughs, 2);
-            return new Promise(promise, promise.Id);
+            return Race(Internal.GetEnumerator(promise1, promise2));
         }
 
         /// <summary>
@@ -44,24 +32,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                return Resolved();
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-
-            var promise = Internal.PromiseRefBase.RacePromise<Internal.VoidResult>.GetOrCreate(passThroughs, 3);
-            return new Promise(promise, promise.Id);
+            return Race(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
         /// <summary>
@@ -70,27 +44,11 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null | promise4._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
-                return Resolved();
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
-
-            var promise = Internal.PromiseRefBase.RacePromise<Internal.VoidResult>.GetOrCreate(passThroughs, 4);
-            return new Promise(promise, promise.Id);
+            return Race(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
         /// <summary>
@@ -163,22 +121,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
 
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._ref == null | promise2._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                int resolveIndex = promise1._ref == null ? 0 : 1;
-                return Resolved(resolveIndex);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-
-            var promise = Internal.PromiseRefBase.RacePromiseWithIndexVoid.GetOrCreate(passThroughs, 2);
-            return new Promise<int>(promise, promise.Id);
+            return RaceWithIndex(Internal.GetEnumerator(promise1, promise2));
         }
 
         /// <summary>
@@ -187,27 +133,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2, Promise promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                int resolveIndex = promise1._ref == null ? 0
-                    : promise2._ref == null ? 1
-                    : 2;
-                return Resolved(resolveIndex);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-
-            var promise = Internal.PromiseRefBase.RacePromiseWithIndexVoid.GetOrCreate(passThroughs, 3);
-            return new Promise<int>(promise, promise.Id);
+            return RaceWithIndex(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
         /// <summary>
@@ -216,31 +145,11 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null | promise4._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
-                int resolveIndex = promise1._ref == null ? 0
-                    : promise2._ref == null ? 1
-                    : promise3._ref == null ? 2
-                    : 3;
-                return Resolved(resolveIndex);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
-
-            var promise = Internal.PromiseRefBase.RacePromiseWithIndexVoid.GetOrCreate(passThroughs, 4);
-            return new Promise<int>(promise, promise.Id);
+            return RaceWithIndex(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
         /// <summary>
@@ -343,21 +252,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._ref == null | promise2._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, true);
-                return Resolved();
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-
-            var promise = Internal.PromiseRefBase.FirstPromise<Internal.VoidResult>.GetOrCreate(passThroughs, 2);
-            return new Promise(promise, promise.Id);
+            return First(Internal.GetEnumerator(promise1, promise2));
         }
 
         /// <summary>
@@ -366,24 +263,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, true);
-                return Resolved();
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-
-            var promise = Internal.PromiseRefBase.FirstPromise<Internal.VoidResult>.GetOrCreate(passThroughs, 3);
-            return new Promise(promise, promise.Id);
+            return First(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
         /// <summary>
@@ -392,27 +275,11 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null | promise4._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, true);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, true);
-                return Resolved();
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
-
-            var promise = Internal.PromiseRefBase.FirstPromise<Internal.VoidResult>.GetOrCreate(passThroughs, 4);
-            return new Promise(promise, promise.Id);
+            return First(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
         /// <summary>
@@ -485,22 +352,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._ref == null | promise2._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                int resolveIndex = promise1._ref == null ? 0 : 1;
-                return Resolved(resolveIndex);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-
-            var promise = Internal.PromiseRefBase.FirstPromiseWithIndexVoid.GetOrCreate(passThroughs, 2);
-            return new Promise<int>(promise, promise.Id);
+            return FirstWithIndex(Internal.GetEnumerator(promise1, promise2));
         }
 
         /// <summary>
@@ -509,27 +363,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2, Promise promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                int resolveIndex = promise1._ref == null ? 0
-                    : promise2._ref == null ? 1
-                    : 2;
-                return Resolved(resolveIndex);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-
-            var promise = Internal.PromiseRefBase.FirstPromiseWithIndexVoid.GetOrCreate(passThroughs, 3);
-            return new Promise<int>(promise, promise.Id);
+            return FirstWithIndex(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
         /// <summary>
@@ -538,31 +375,11 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._ref == null | promise2._ref == null | promise3._ref == null | promise4._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
-                int resolveIndex = promise1._ref == null ? 0
-                    : promise2._ref == null ? 1
-                    : promise3._ref == null ? 2
-                    : 3;
-                return Resolved(resolveIndex);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
-
-            var promise = Internal.PromiseRefBase.FirstPromiseWithIndexVoid.GetOrCreate(passThroughs, 4);
-            return new Promise<int>(promise, promise.Id);
+            return FirstWithIndex(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
         /// <summary>
@@ -665,27 +482,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                var result = new ValueTuple<int, T>(0, promise1._result);
-                return Resolved(result);
-            }
-            if (promise2._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                var result = new ValueTuple<int, T>(1, promise1._result);
-                return Resolved(result);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-
-            var promise = Internal.PromiseRefBase.RacePromiseWithIndex<T>.GetOrCreate(passThroughs, 2);
-            return new Promise<ValueTuple<int, T>>(promise, promise.Id);
+            return RaceWithIndex<T, Internal.Enumerator<Promise<T>, Internal.TwoItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2));
         }
 
         /// <summary>
@@ -694,38 +493,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                var result = new ValueTuple<int, T>(0, promise1._result);
-                return Resolved(result);
-            }
-            if (promise2._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                var result = new ValueTuple<int, T>(1, promise1._result);
-                return Resolved(result);
-            }
-            if (promise3._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                var result = new ValueTuple<int, T>(2, promise1._result);
-                return Resolved(result);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-
-            var promise = Internal.PromiseRefBase.RacePromiseWithIndex<T>.GetOrCreate(passThroughs, 3);
-            return new Promise<ValueTuple<int, T>>(promise, promise.Id);
+            return RaceWithIndex<T, Internal.Enumerator<Promise<T>, Internal.ThreeItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
         /// <summary>
@@ -734,51 +505,11 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
-                var result = new ValueTuple<int, T>(0, promise1._result);
-                return Resolved(result);
-            }
-            if (promise2._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
-                var result = new ValueTuple<int, T>(1, promise1._result);
-                return Resolved(result);
-            }
-            if (promise3._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
-                var result = new ValueTuple<int, T>(2, promise1._result);
-                return Resolved(result);
-            }
-            if (promise4._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                var result = new ValueTuple<int, T>(3, promise1._result);
-                return Resolved(result);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
-
-            var promise = Internal.PromiseRefBase.RacePromiseWithIndex<T>.GetOrCreate(passThroughs, 4);
-            return new Promise<ValueTuple<int, T>>(promise, promise.Id);
+            return RaceWithIndex<T, Internal.Enumerator<Promise<T>, Internal.FourItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
         /// <summary>
@@ -852,27 +583,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
-            if (promise1._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                var result = new ValueTuple<int, T>(0, promise1._result);
-                return Resolved(result);
-            }
-            if (promise2._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                var result = new ValueTuple<int, T>(1, promise1._result);
-                return Resolved(result);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-
-            var promise = Internal.PromiseRefBase.FirstPromiseWithIndex<T>.GetOrCreate(passThroughs, 2);
-            return new Promise<ValueTuple<int, T>>(promise, promise.Id);
+            return FirstWithIndex<T, Internal.Enumerator<Promise<T>, Internal.TwoItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2));
         }
 
         /// <summary>
@@ -881,38 +594,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
-            if (promise1._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                var result = new ValueTuple<int, T>(0, promise1._result);
-                return Resolved(result);
-            }
-            if (promise2._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                var result = new ValueTuple<int, T>(1, promise1._result);
-                return Resolved(result);
-            }
-            if (promise3._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                var result = new ValueTuple<int, T>(2, promise1._result);
-                return Resolved(result);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-
-            var promise = Internal.PromiseRefBase.FirstPromiseWithIndex<T>.GetOrCreate(passThroughs, 3);
-            return new Promise<ValueTuple<int, T>>(promise, promise.Id);
+            return FirstWithIndex<T, Internal.Enumerator<Promise<T>, Internal.ThreeItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
         /// <summary>
@@ -921,51 +606,11 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-
             ValidateArgument(promise1, "promise1", 1);
             ValidateArgument(promise2, "promise2", 1);
             ValidateArgument(promise3, "promise3", 1);
             ValidateArgument(promise4, "promise4", 1);
-            if (promise1._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
-                var result = new ValueTuple<int, T>(0, promise1._result);
-                return Resolved(result);
-            }
-            if (promise2._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
-                var result = new ValueTuple<int, T>(1, promise1._result);
-                return Resolved(result);
-            }
-            if (promise3._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise4._ref, promise4._id, false);
-                var result = new ValueTuple<int, T>(2, promise1._result);
-                return Resolved(result);
-            }
-            if (promise4._ref == null)
-            {
-                Internal.MaybeMarkAwaitedAndDispose(promise1._ref, promise1._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise2._ref, promise2._id, false);
-                Internal.MaybeMarkAwaitedAndDispose(promise3._ref, promise3._id, false);
-                var result = new ValueTuple<int, T>(3, promise1._result);
-                return Resolved(result);
-            }
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise1, 0));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise2, 1));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise3, 2));
-            passThroughs.Push(Internal.PromiseRefBase.PromisePassThrough.GetOrCreate(promise4, 3));
-
-            var promise = Internal.PromiseRefBase.FirstPromiseWithIndex<T>.GetOrCreate(passThroughs, 4);
-            return new Promise<ValueTuple<int, T>>(promise, promise.Id);
+            return FirstWithIndex<T, Internal.Enumerator<Promise<T>, Internal.FourItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
         /// <summary>
