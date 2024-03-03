@@ -338,7 +338,7 @@ namespace Proto.Promises
                     }
                 }
 
-                partial void ValidateNoPending()
+                private void ValidateNoPending()
                 {
                     lock (_pendingPromises)
                     {
@@ -363,6 +363,12 @@ namespace Proto.Promises
                     {
                         _pendingPromises.Remove(completePromise);
                     }
+                }
+
+                new protected void Dispose()
+                {
+                    ValidateNoPending();
+                    base.Dispose();
                 }
             }
 

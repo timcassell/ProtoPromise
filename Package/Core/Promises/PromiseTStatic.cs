@@ -85,34 +85,52 @@ namespace Proto.Promises
                 {
                     throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
-                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-                T value = default(T);
-                int pendingCount = 0;
 
-                int index = -1; // Index isn't necessary for Race, but might help with debugging.
-                do
+                bool isResolved = false;
+                T result = default;
+                var p = promises.Current;
+                if (p._ref != null)
                 {
-                    var p = promises.Current;
-                    ValidateElement(p, "promises", 1);
-                    if (!Internal.TryPrepareForRace(p, ref value, ref passThroughs, ++index))
+                    goto HookupMaybePending;
+                }
+                isResolved = true;
+                result = p._result;
+                while (promises.MoveNext())
+                {
+                    p = promises.Current;
+                    if (p._ref != null)
                     {
-                        // Validate and release remaining elements.
-                        while (promises.MoveNext())
-                        {
-                            p = promises.Current;
-                            ValidateElement(p, "promises", 1);
-                        }
-                        // Repool any created passthroughs.
-                        foreach (var passthrough in passThroughs)
-                        {
-                            passthrough.Dispose();
-                        }
-                        return Resolved(value);
+                        goto HookupMaybePending;
                     }
-                    ++pendingCount;
-                } while (promises.MoveNext());
 
-                var promise = Internal.PromiseRefBase.RacePromise<T>.GetOrCreate(passThroughs, pendingCount);
+                }
+                // No non-resolved promises.
+                return Resolved(result);
+
+            HookupMaybePending:
+                ValidateElement(p, "promises", 1);
+                var promise = Internal.PromiseRefBase.RacePromise<T>.GetOrCreate();
+                promise.AddWaiter(p._ref, p._id);
+                while (promises.MoveNext())
+                {
+                    p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    bool resolved = p._ref == null;
+                    if (!resolved)
+                    {
+                        promise.AddWaiter(p._ref, p._id);
+                    }
+                    else if (!isResolved)
+                    {
+                        isResolved = true;
+                        result = p._result;
+                    }
+                }
+                if (isResolved)
+                {
+                    promise.Forget(promise.Id);
+                    return Resolved(result);
+                }
                 return new Promise<T>(promise, promise.Id);
             }
         }
@@ -183,37 +201,58 @@ namespace Proto.Promises
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to First.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
-                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-                T value = default(T);
-                int pendingCount = 0;
 
-                int index = -1; // Index isn't necessary for First, but might help with debugging.
-                do
+                bool isResolved = false;
+                T result = default;
+                var p = promises.Current;
+                if (p._ref != null)
                 {
-                    var p = promises.Current;
-                    ValidateElement(p, "promises", 1);
-                    if (!Internal.TryPrepareForRace(p, ref value, ref passThroughs, ++index))
+                    goto HookupMaybePending;
+                }
+                isResolved = true;
+                result = p._result;
+                while (promises.MoveNext())
+                {
+                    p = promises.Current;
+                    if (p._ref != null)
                     {
-                        // Validate and release remaining elements.
-                        while (promises.MoveNext())
-                        {
-                            p = promises.Current;
-                            ValidateElement(p, "promises", 1);
-                            Internal.MaybeMarkAwaitedAndDispose(p._ref, p._id, true);
-                        }
-                        // Repool any created passthroughs.
-                        foreach (var passthrough in passThroughs)
-                        {
-                            passthrough.Dispose();
-                        }
-                        return Resolved(value);
+                        goto HookupMaybePending;
                     }
-                    ++pendingCount;
-                } while (promises.MoveNext());
 
-                var promise = Internal.PromiseRefBase.FirstPromise<T>.GetOrCreate(passThroughs, pendingCount);
+                }
+                // No non-resolved promises.
+                return Resolved(result);
+
+            HookupMaybePending:
+                ValidateElement(p, "promises", 1);
+                var promise = Internal.PromiseRefBase.FirstPromise<T>.GetOrCreate();
+                uint pendingCount = 1;
+                promise.AddWaiter(p._ref, p._id);
+                while (promises.MoveNext())
+                {
+                    p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    bool resolved = p._ref == null;
+                    if (!resolved)
+                    {
+                        checked { ++pendingCount; }
+                        promise.AddWaiter(p._ref, p._id);
+                    }
+                    else if (!isResolved)
+                    {
+                        isResolved = true;
+                        result = p._result;
+                    }
+                }
+                promise.MarkReady(pendingCount);
+                if (isResolved)
+                {
+                    promise.SuppressRejection = true;
+                    promise.Forget(promise.Id);
+                    return Resolved(result);
+                }
                 return new Promise<T>(promise, promise.Id);
             }
         }
@@ -439,46 +478,76 @@ namespace Proto.Promises
 
             using (promises)
             {
-                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-                int pendingCount = 0;
-
                 if (valueContainer == null)
                 {
                     valueContainer = new List<T>();
                 }
 
                 int i = 0;
+                int index = 0;
                 int listSize = valueContainer.Count;
+                Promise<T> p;
                 while (promises.MoveNext())
                 {
-                    var p = promises.Current;
-                    ValidateElement(p, "promises", 1);
-                    T value = default(T);
-                    Internal.PrepareForMerge(p, ref value, ref passThroughs, i, ref pendingCount);
+                    index = i;
+                    ++i;
                     // Make sure list has the same count as promises.
-                    if (listSize < (i + 1))
+                    if (listSize < i)
                     {
                         ++listSize;
-                        valueContainer.Add(value);
+                        valueContainer.Add(default);
+                    }
+                    p = promises.Current;
+                    if (p._ref == null)
+                    {
+                        valueContainer[index] = p._result;
                     }
                     else
                     {
-                        valueContainer[i] = value;
+                        goto HookupMaybePending;
                     }
+                }
+                // No non-resolved promises.
+                // Make sure list has the same count as promises.
+                while (listSize > i)
+                {
+                    valueContainer.RemoveAt(--listSize);
+                }
+                return Promise.Resolved(valueContainer);
+
+            HookupMaybePending:
+                ValidateElement(p, "promises", 1);
+                var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(valueContainer, GetAllResultFunc);
+                uint pendingCount = 1;
+                promise.AddWaiterWithIndex(p._ref, p._id, index);
+                while (promises.MoveNext())
+                {
+                    index = i;
                     ++i;
+                    // Make sure list has the same count as promises.
+                    if (listSize < i)
+                    {
+                        ++listSize;
+                        valueContainer.Add(default);
+                    }
+                    p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (p._ref == null)
+                    {
+                        valueContainer[index] = p._result;
+                    }
+                    else
+                    {
+                        checked { ++pendingCount; }
+                        promise.AddWaiterWithIndex(p._ref, p._id, index);
+                    }
                 }
                 // Make sure list has the same count as promises.
                 while (listSize > i)
                 {
                     valueContainer.RemoveAt(--listSize);
                 }
-
-                if (pendingCount == 0)
-                {
-                    return Promise.Resolved(valueContainer);
-                }
-
-                var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, valueContainer, pendingCount, GetAllResultFunc);
+                promise.MarkReady(pendingCount);
                 return new Promise<IList<T>>(promise, promise.Id);
             }
         }
@@ -583,46 +652,76 @@ namespace Proto.Promises
 
             using (promises)
             {
-                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-                int pendingCount = 0;
-
                 if (valueContainer == null)
                 {
                     valueContainer = new List<ResultContainer>();
                 }
 
                 int i = 0;
+                int index = 0;
                 int listSize = valueContainer.Count;
+                Promise<T> p;
                 while (promises.MoveNext())
                 {
-                    var p = promises.Current;
-                    ValidateElement(p, "promises", 1);
-                    T value = default(T);
-                    Internal.PrepareForMerge(p, ref value, ref passThroughs, i, ref pendingCount);
+                    index = i;
+                    ++i;
                     // Make sure list has the same count as promises.
-                    if (listSize < (i + 1))
+                    if (listSize < i)
                     {
                         ++listSize;
-                        valueContainer.Add(value);
+                        valueContainer.Add(default);
+                    }
+                    p = promises.Current;
+                    if (p._ref == null)
+                    {
+                        valueContainer[index] = p._result;
                     }
                     else
                     {
-                        valueContainer[i] = value;
+                        goto HookupMaybePending;
                     }
+                }
+                // No non-resolved promises.
+                // Make sure list has the same count as promises.
+                while (listSize > i)
+                {
+                    valueContainer.RemoveAt(--listSize);
+                }
+                return Promise.Resolved(valueContainer);
+
+            HookupMaybePending:
+                ValidateElement(p, "promises", 1);
+                var promise = Internal.PromiseRefBase.GetOrCreateMergeSettledPromise(valueContainer, GetAllResultContainerFunc);
+                uint pendingCount = 1;
+                promise.AddWaiterWithIndex(p._ref, p._id, index);
+                while (promises.MoveNext())
+                {
+                    index = i;
                     ++i;
+                    // Make sure list has the same count as promises.
+                    if (listSize < i)
+                    {
+                        ++listSize;
+                        valueContainer.Add(default);
+                    }
+                    p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (p._ref == null)
+                    {
+                        valueContainer[index] = p._result;
+                    }
+                    else
+                    {
+                        checked { ++pendingCount; }
+                        promise.AddWaiterWithIndex(p._ref, p._id, index);
+                    }
                 }
                 // Make sure list has the same count as promises.
                 while (listSize > i)
                 {
                     valueContainer.RemoveAt(--listSize);
                 }
-
-                if (pendingCount == 0)
-                {
-                    return Promise.Resolved(valueContainer);
-                }
-
-                var promise = Internal.PromiseRefBase.GetOrCreateMergeSettledPromise(passThroughs, valueContainer, pendingCount, GetAllResultContainerFunc);
+                promise.MarkReady(pendingCount);
                 return new Promise<IList<ResultContainer>>(promise, promise.Id);
             }
         }

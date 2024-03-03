@@ -352,8 +352,8 @@ namespace Proto.Promises
 #region Multi Promises
             partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
-                protected int _waitCount;
                 protected int _retainCounter;
+                protected int _isComplete; // Flag used to indicate that the promise has already been completed. int for Interlocked.
             }
 
             partial class RacePromise<TResult> : MultiHandleablePromiseBase<TResult>
@@ -366,21 +366,35 @@ namespace Proto.Promises
 
             partial class FirstPromise<TResult> : RacePromise<TResult>
             {
+                protected int _waitCount; // int for Interlocked since it doesn't support uint on older runtimes.
             }
 
             partial class FirstPromiseWithIndex<TResult> : FirstPromise<ValueTuple<int, TResult>>
             {
             }
 
+            partial class MergePromiseBase<TResult> : MultiHandleablePromiseBase<TResult>
+            {
+                protected int _waitCount; // int for Interlocked since it doesn't support uint on older runtimes.
+            }
+
+            partial class MergePromiseVoid : MergePromiseBase<VoidResult>
+            {
+            }
+
+            partial class MergePromiseT<TResult> : MergePromiseBase<TResult>
+            {
+            }
+
+            partial class MergeSettledPromise<TResult> : MergePromiseBase<TResult>
+            {
+            }
+
             partial class PromisePassThrough : HandleablePromiseBase
             {
-                // TODO: we can store target in _next field, and we only need to store owner in DEBUG mode.
-                // We also probably don't need to store id anymore if we hook up directly to the MultiHandleablePromiseBase.
-                private PromiseRefBase _owner;
-                private HandleablePromiseBase _target;
                 private int _index;
-                private short _id;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                private PromiseRefBase _owner;
                 private bool _disposed;
 #endif
             }

@@ -21,8 +21,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return All(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -32,9 +32,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return All(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -44,10 +44,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return All(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -79,22 +79,34 @@ namespace Proto.Promises
 
             using (promises)
             {
-                var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-                int pendingCount = 0;
-
-                int index = -1;
+                Promise p;
                 while (promises.MoveNext())
                 {
-                    var p = promises.Current;
-                    ValidateElement(p, "promises", 1);
-                    Internal.PrepareForMerge(p, ref passThroughs, ++index, ref pendingCount);
+                    p = promises.Current;
+                    if (p._ref != null)
+                    {
+                        goto HookupMaybePending;
+                    }
                 }
+                // No non-resolved promises.
+                return Resolved();
 
-                if (pendingCount == 0)
+            HookupMaybePending:
+                ValidateElement(p, "promises", 1);
+                var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid();
+                uint pendingCount = 1;
+                promise.AddWaiter(p._ref, p._id);
+                while (promises.MoveNext())
                 {
-                    return Resolved();
+                    p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (p._ref != null)
+                    {
+                        checked { ++pendingCount; }
+                        promise.AddWaiter(p._ref, p._id);
+                    }
                 }
-                var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid(passThroughs, pendingCount);
+                promise.MarkReady(pendingCount);
                 return new Promise(promise, promise.Id);
             }
         }
@@ -182,10 +194,14 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref T1 result)
                 {
-                    if (index == 0)
+                    // We don't need to check the index for this in RELEASE mode because this will not be called for the promise void.
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    if (index != 0)
                     {
-                        result = handler.GetResult<T1>();
+                        throw new System.ArgumentOutOfRangeException(nameof(index), "index must be 0");
                     }
+#endif
+                    result = handler.GetResult<T1>();
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
@@ -212,20 +228,26 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T1> Merge<T1>(Promise<T1> promise1, Promise promise2)
         {
-            T1 value = default(T1);
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
-
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref passThroughs, 1, ref pendingCount);
-
-            if (pendingCount == 0)
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            if (promise2._ref == null)
             {
-                return Resolved(value);
+                return promise1.Duplicate();
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetOne<T1>());
+
+            uint pendingCount = 1;
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(default(T1), MergeResultFuncs.GetOne<T1>());
+            promise.AddWaiter(promise2._ref, promise2._id);
+            if (promise1._ref == null)
+            {
+                promise._result = promise1._result;
+            }
+            else
+            {
+                ++pendingCount;
+                promise.AddWaiterWithIndex(promise1._ref, promise1._id, 0);
+            }
+            promise.MarkReady(pendingCount);
             return new Promise<T1>(promise, promise.Id);
         }
 
@@ -237,7 +259,7 @@ namespace Proto.Promises
             private static class Two<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (T1, T2) result)
                 {
                     switch (index)
                     {
@@ -251,18 +273,18 @@ namespace Proto.Promises
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2>> Func
+                internal static unsafe Internal.GetResultDelegate<(T1, T2)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(T1, T2)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<ValueTuple<T1, T2>> GetTwo<T1, T2>()
+            internal static Internal.GetResultDelegate<(T1, T2)> GetTwo<T1, T2>()
             {
                 return Two<T1, T2>.Func;
             }
@@ -272,48 +294,60 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2>> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
+        public static Promise<(T1, T2)> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
         {
-            var value = new ValueTuple<T1, T2>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
+            (T1, T2) value = default;
+            ref (T1, T2) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetTwo<T1, T2>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid an extra branch,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetTwo<T1, T2>());
-            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2)>(promise, promise.Id);
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2>> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
+        public static Promise<(T1, T2)> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
         {
-            var value = new ValueTuple<T1, T2>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
-            ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref passThroughs, 2, ref pendingCount);
+            (T1, T2) value = default;
+            ref (T1, T2) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetTwo<T1, T2>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid an extra branch,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
+            Internal.PrepareForMerge(promise3, valueRef, ref pendingCount, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetTwo<T1, T2>());
-            return new Promise<ValueTuple<T1, T2>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2)>(promise, promise.Id);
         }
 
         private static partial class MergeResultFuncs
@@ -324,7 +358,7 @@ namespace Proto.Promises
             private static class Three<T1, T2, T3>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (T1, T2, T3) result)
                 {
                     switch (index)
                     {
@@ -341,18 +375,18 @@ namespace Proto.Promises
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2, T3>> Func
+                internal static unsafe Internal.GetResultDelegate<(T1, T2, T3)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(T1, T2, T3)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<ValueTuple<T1, T2, T3>> GetThree<T1, T2, T3>()
+            internal static Internal.GetResultDelegate<(T1, T2, T3)> GetThree<T1, T2, T3>()
             {
                 return Three<T1, T2, T3>.Func;
             }
@@ -362,52 +396,66 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2, T3>> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
+        public static Promise<(T1, T2, T3)> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
         {
-            var value = new ValueTuple<T1, T2, T3>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
-            ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
+            (T1, T2, T3) value = default;
+            ref (T1, T2, T3) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetThree<T1, T2, T3>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetThree<T1, T2, T3>());
-            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2, T3)>(promise, promise.Id);
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2, T3>> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
+        public static Promise<(T1, T2, T3)> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
         {
-            var value = new ValueTuple<T1, T2, T3>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
-            ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
-            ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref passThroughs, 3, ref pendingCount);
+            (T1, T2, T3) value = default;
+            ref (T1, T2, T3) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetThree<T1, T2, T3>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
+            Internal.PrepareForMerge(promise4, valueRef, ref pendingCount, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetThree<T1, T2, T3>());
-            return new Promise<ValueTuple<T1, T2, T3>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2, T3)>(promise, promise.Id);
         }
 
         private static partial class MergeResultFuncs
@@ -438,18 +486,18 @@ namespace Proto.Promises
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4>> Func
+                internal static unsafe Internal.GetResultDelegate<(T1, T2, T3, T4)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(T1, T2, T3, T4)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4>> GetFour<T1, T2, T3, T4>()
+            internal static Internal.GetResultDelegate<(T1, T2, T3, T4)> GetFour<T1, T2, T3, T4>()
             {
                 return Four<T1, T2, T3, T4>.Func;
             }
@@ -459,56 +507,72 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2, T3, T4>> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
+        public static Promise<(T1, T2, T3, T4)> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
         {
-            var value = new ValueTuple<T1, T2, T3, T4>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
-            ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
-            ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
+            (T1, T2, T3, T4) value = default;
+            ref (T1, T2, T3, T4) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetFour<T1, T2, T3, T4>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
-            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2, T3, T4>> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
+        public static Promise<(T1, T2, T3, T4)> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
         {
-            var value = new ValueTuple<T1, T2, T3, T4>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
-            ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
-            ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
-            ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref passThroughs, 4, ref pendingCount);
+            (T1, T2, T3, T4) value = default;
+            ref (T1, T2, T3, T4) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetFour<T1, T2, T3, T4>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
+            Internal.PrepareForMerge(promise5, valueRef, ref pendingCount, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
-            return new Promise<ValueTuple<T1, T2, T3, T4>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
         }
 
         private static partial class MergeResultFuncs
@@ -519,7 +583,7 @@ namespace Proto.Promises
             private static class Five<T1, T2, T3, T4, T5>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (T1, T2, T3, T4, T5) result)
                 {
                     switch (index)
                     {
@@ -542,18 +606,18 @@ namespace Proto.Promises
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5>> Func
+                internal static unsafe Internal.GetResultDelegate<(T1, T2, T3, T4, T5)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(T1, T2, T3, T4, T5)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5>> GetFive<T1, T2, T3, T4, T5>()
+            internal static Internal.GetResultDelegate<(T1, T2, T3, T4, T5)> GetFive<T1, T2, T3, T4, T5>()
             {
                 return Five<T1, T2, T3, T4, T5>.Func;
             }
@@ -563,60 +627,78 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2, T3, T4, T5>> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
+        public static Promise<(T1, T2, T3, T4, T5)> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
         {
-            var value = new ValueTuple<T1, T2, T3, T4, T5>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
-            ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
-            ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
-            ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
+            (T1, T2, T3, T4, T5) value = default;
+            ref (T1, T2, T3, T4, T5) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2, T3, T4, T5>> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
+        public static Promise<(T1, T2, T3, T4, T5)> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
         {
-            var value = new ValueTuple<T1, T2, T3, T4, T5>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
-            ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
-            ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
-            ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
-            ValidateArgument(promise6, "promise6", 1);
-            Internal.PrepareForMerge(promise6, ref passThroughs, 5, ref pendingCount);
+            (T1, T2, T3, T4, T5) value = default;
+            ref (T1, T2, T3, T4, T5) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
+            Internal.PrepareForMerge(promise6, valueRef, ref pendingCount, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
         }
 
         private static partial class MergeResultFuncs
@@ -627,7 +709,7 @@ namespace Proto.Promises
             private static class Six<T1, T2, T3, T4, T5, T6>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5, T6> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (T1, T2, T3, T4, T5, T6) result)
                 {
                     switch (index)
                     {
@@ -653,18 +735,18 @@ namespace Proto.Promises
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6>> Func
+                internal static unsafe Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6>> GetSix<T1, T2, T3, T4, T5, T6>()
+            internal static Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6)> GetSix<T1, T2, T3, T4, T5, T6>()
             {
                 return Six<T1, T2, T3, T4, T5, T6>.Func;
             }
@@ -674,64 +756,84 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6>> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
+        public static Promise<(T1, T2, T3, T4, T5, T6)> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
         {
-            var value = new ValueTuple<T1, T2, T3, T4, T5, T6>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
-            ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
-            ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
-            ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
-            ValidateArgument(promise6, "promise6", 1);
-            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount);
+            (T1, T2, T3, T4, T5, T6) value = default;
+            ref (T1, T2, T3, T4, T5, T6) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5, T6)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise6, ref valueRef.Item6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6>> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
+        public static Promise<(T1, T2, T3, T4, T5, T6)> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
         {
-            var value = new ValueTuple<T1, T2, T3, T4, T5, T6>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise7, nameof(promise7), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
-            ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
-            ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
-            ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
-            ValidateArgument(promise6, "promise6", 1);
-            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount);
-            ValidateArgument(promise7, "promise7", 1);
-            Internal.PrepareForMerge(promise7, ref passThroughs, 6, ref pendingCount);
+            (T1, T2, T3, T4, T5, T6) value = default;
+            ref (T1, T2, T3, T4, T5, T6) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5, T6)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise6, ref valueRef.Item6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
+            Internal.PrepareForMerge(promise7, valueRef, ref pendingCount, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
         }
 
         private static partial class MergeResultFuncs
@@ -742,7 +844,7 @@ namespace Proto.Promises
             private static class Seven<T1, T2, T3, T4, T5, T6, T7>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ValueTuple<T1, T2, T3, T4, T5, T6, T7> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (T1, T2, T3, T4, T5, T6, T7) result)
                 {
                     switch (index)
                     {
@@ -771,18 +873,18 @@ namespace Proto.Promises
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Func
+                internal static unsafe Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6, T7)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get { return new(&GetMergeResult); }
                 }
 #else
-                internal static readonly Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6, T7)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> GetSeven<T1, T2, T3, T4, T5, T6, T7>()
+            internal static Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6, T7)> GetSeven<T1, T2, T3, T4, T5, T6, T7>()
             {
                 return Seven<T1, T2, T3, T4, T5, T6, T7>.Func;
             }
@@ -792,68 +894,90 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6, T7}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
+        public static Promise<(T1, T2, T3, T4, T5, T6, T7)> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
         {
-            var value = new ValueTuple<T1, T2, T3, T4, T5, T6, T7>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise7, nameof(promise7), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
-            ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
-            ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
-            ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
-            ValidateArgument(promise6, "promise6", 1);
-            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount);
-            ValidateArgument(promise7, "promise7", 1);
-            Internal.PrepareForMerge(promise7, ref value.Item7, ref passThroughs, 6, ref pendingCount);
+            (T1, T2, T3, T4, T5, T6, T7) value = default;
+            ref (T1, T2, T3, T4, T5, T6, T7) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5, T6, T7)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise6, ref valueRef.Item6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise7, ref valueRef.Item7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6, T7}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7, Promise promise8)
+        public static Promise<(T1, T2, T3, T4, T5, T6, T7)> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7, Promise promise8)
         {
-            var value = new ValueTuple<T1, T2, T3, T4, T5, T6, T7>();
-            var passThroughs = new Internal.ValueLinkedStack<Internal.PromiseRefBase.PromisePassThrough>();
-            int pendingCount = 0;
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise7, nameof(promise7), 1);
+            ValidateArgument(promise8, nameof(promise8), 1);
 
-            ValidateArgument(promise1, "promise1", 1);
-            Internal.PrepareForMerge(promise1, ref value.Item1, ref passThroughs, 0, ref pendingCount);
-            ValidateArgument(promise2, "promise2", 1);
-            Internal.PrepareForMerge(promise2, ref value.Item2, ref passThroughs, 1, ref pendingCount);
-            ValidateArgument(promise3, "promise3", 1);
-            Internal.PrepareForMerge(promise3, ref value.Item3, ref passThroughs, 2, ref pendingCount);
-            ValidateArgument(promise4, "promise4", 1);
-            Internal.PrepareForMerge(promise4, ref value.Item4, ref passThroughs, 3, ref pendingCount);
-            ValidateArgument(promise5, "promise5", 1);
-            Internal.PrepareForMerge(promise5, ref value.Item5, ref passThroughs, 4, ref pendingCount);
-            ValidateArgument(promise6, "promise6", 1);
-            Internal.PrepareForMerge(promise6, ref value.Item6, ref passThroughs, 5, ref pendingCount);
-            ValidateArgument(promise7, "promise7", 1);
-            Internal.PrepareForMerge(promise7, ref value.Item7, ref passThroughs, 6, ref pendingCount);
-            ValidateArgument(promise8, "promise8", 1);
-            Internal.PrepareForMerge(promise8, ref passThroughs, 7, ref pendingCount);
+            (T1, T2, T3, T4, T5, T6, T7) value = default;
+            ref (T1, T2, T3, T4, T5, T6, T7) valueRef = ref value;
+            uint pendingCount = 0;
+            var mergeResultFunc = MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>();
+            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5, T6, T7)> promise = null;
+
+            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
+            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
+            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise6, ref valueRef.Item6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
+            valueRef = promise == null ? ref value : ref promise._result;
+            Internal.PrepareForMerge(promise7, ref valueRef.Item7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
+            Internal.PrepareForMerge(promise8, valueRef, ref pendingCount, ref promise, mergeResultFunc);
 
             if (pendingCount == 0)
             {
                 return Resolved(value);
             }
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(passThroughs, value, pendingCount, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
-            return new Promise<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>(promise, promise.Id);
+            promise.MarkReady(pendingCount);
+            return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
         }
     }
 }
