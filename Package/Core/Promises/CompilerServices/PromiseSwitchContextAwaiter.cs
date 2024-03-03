@@ -49,7 +49,7 @@ namespace Proto.Promises.Async.CompilerServices
             [MethodImpl(Internal.InlineOption)]
             get
             {
-                return !_forceAsync & _context == Internal.ts_currentContext;
+                return !_forceAsync & _context == Promise.Manager.ThreadStaticSynchronizationContext;
             }
         }
 

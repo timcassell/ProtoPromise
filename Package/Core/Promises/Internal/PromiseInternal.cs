@@ -1047,7 +1047,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private bool ShouldContinueSynchronous()
                 {
-                    return !_forceAsync & _synchronizationContext == ts_currentContext;
+                    return !_forceAsync & _synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext;
                 }
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
@@ -1096,14 +1096,9 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
 
-                    var currentContext = ts_currentContext;
-                    ts_currentContext = _synchronizationContext;
-
                     TryUnregisterCancelationAndSetTempState();
                     // We don't need to synchronize access here because this is only called when the previous promise completed or the token canceled, and the waiter has already been added, so there are no race conditions.
                     _next.Handle(this, _tempState);
-
-                    ts_currentContext = currentContext;
                 }
 
                 void ICancelable.Cancel()
@@ -1243,7 +1238,6 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void ScheduleOnContext(SynchronizationContext context)
                 {
-                    _synchronizationContext = context;
                     ScheduleContextCallback(context, this,
                         obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run(),
                         obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run()
@@ -1256,10 +1250,6 @@ namespace Proto.Promises
 
                     var runner = _runner;
                     _runner = default(TDelegate);
-
-                    var currentContext = ts_currentContext;
-                    ts_currentContext = _synchronizationContext;
-                    _synchronizationContext = null;
 
                     SetCurrentInvoker(this);
                     try
@@ -1276,7 +1266,6 @@ namespace Proto.Promises
                         HandleNextInternal(Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
-                    ts_currentContext = currentContext;
                 }
             }
 
@@ -1315,7 +1304,6 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void ScheduleOnContext(SynchronizationContext context)
                 {
-                    _synchronizationContext = context;
                     ScheduleContextCallback(context, this,
                         obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run(),
                         obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run()
@@ -1328,10 +1316,6 @@ namespace Proto.Promises
 
                     var runner = _runner;
                     _runner = default(TDelegate);
-
-                    var currentContext = ts_currentContext;
-                    ts_currentContext = _synchronizationContext;
-                    _synchronizationContext = null;
 
                     SetCurrentInvoker(this);
                     try
@@ -1348,7 +1332,6 @@ namespace Proto.Promises
                         HandleNextInternal(Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
-                    ts_currentContext = currentContext;
                 }
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)

@@ -213,7 +213,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool ShouldInvokeSynchronous()
             {
-                return _invokeContext == null | (_invokeContext == ts_currentContext & !_forceAsync);
+                return _invokeContext == null | (!_forceAsync & _invokeContext == Promise.Manager.ThreadStaticSynchronizationContext);
             }
 
             [MethodImpl(InlineOption)]
@@ -330,17 +330,12 @@ namespace Proto.Promises
                 // Exit the lock before invoking so we're not holding the lock while user code runs.
                 _smallFields._locker.Exit();
 
-                var currentContext = ts_currentContext;
-                ts_currentContext = _invokeContext;
-
                 if (!_canceled & !cancelationToken.IsCancelationRequested)
                 {
                     InvokeAndCatch(progress);
                 }
 
                 AfterInvoke();
-
-                ts_currentContext = currentContext;
             }
 
             void ICancelable.Cancel()
