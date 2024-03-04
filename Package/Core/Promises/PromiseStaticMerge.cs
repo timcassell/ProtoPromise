@@ -303,7 +303,7 @@ namespace Proto.Promises
             ref (T1, T2) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetTwo<T1, T2>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid an extra branch,
@@ -333,7 +333,7 @@ namespace Proto.Promises
             ref (T1, T2) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetTwo<T1, T2>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid an extra branch,
@@ -406,7 +406,7 @@ namespace Proto.Promises
             ref (T1, T2, T3) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetThree<T1, T2, T3>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2, T3)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
@@ -439,7 +439,7 @@ namespace Proto.Promises
             ref (T1, T2, T3) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetThree<T1, T2, T3>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2, T3)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
@@ -518,7 +518,7 @@ namespace Proto.Promises
             ref (T1, T2, T3, T4) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetFour<T1, T2, T3, T4>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
@@ -554,7 +554,7 @@ namespace Proto.Promises
             ref (T1, T2, T3, T4) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetFour<T1, T2, T3, T4>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
@@ -639,7 +639,7 @@ namespace Proto.Promises
             ref (T1, T2, T3, T4, T5) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
@@ -678,7 +678,7 @@ namespace Proto.Promises
             ref (T1, T2, T3, T4, T5) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
@@ -769,7 +769,7 @@ namespace Proto.Promises
             ref (T1, T2, T3, T4, T5, T6) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5, T6)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5, T6)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
@@ -811,7 +811,7 @@ namespace Proto.Promises
             ref (T1, T2, T3, T4, T5, T6) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5, T6)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5, T6)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
@@ -908,7 +908,7 @@ namespace Proto.Promises
             ref (T1, T2, T3, T4, T5, T6, T7) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5, T6, T7)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5, T6, T7)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
@@ -953,7 +953,7 @@ namespace Proto.Promises
             ref (T1, T2, T3, T4, T5, T6, T7) valueRef = ref value;
             uint pendingCount = 0;
             var mergeResultFunc = MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>();
-            Internal.PromiseRefBase.MergePromiseT<(T1, T2, T3, T4, T5, T6, T7)> promise = null;
+            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5, T6, T7)> promise = null;
 
             Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
             // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,

@@ -8,7 +8,6 @@
 #pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0083 // Use pattern matching
 #pragma warning disable IDE0250 // Make struct 'readonly'
 #pragma warning disable IDE0251 // Make member 'readonly'

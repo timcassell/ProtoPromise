@@ -378,11 +378,7 @@ namespace Proto.Promises
                 protected int _waitCount; // int for Interlocked since it doesn't support uint on older runtimes.
             }
 
-            partial class MergePromiseVoid : MergePromiseBase<VoidResult>
-            {
-            }
-
-            partial class MergePromiseT<TResult> : MergePromiseBase<TResult>
+            partial class MergePromise<TResult> : MergePromiseBase<TResult>
             {
             }
 

@@ -8,6 +8,8 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
+#pragma warning disable IDE0074 // Use compound assignment
+
 namespace Proto.Promises
 {
     partial class Internal
@@ -43,7 +45,7 @@ namespace Proto.Promises
 
         [MethodImpl(InlineOption)]
         internal static void PrepareForMerge<TResult>(Promise promise, in TResult result, ref uint pendingCount,
-            ref PromiseRefBase.MergePromiseT<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
+            ref PromiseRefBase.MergePromise<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
         {
             if (promise._ref != null)
             {
@@ -58,7 +60,7 @@ namespace Proto.Promises
 
         [MethodImpl(InlineOption)]
         internal static void PrepareForMerge<T, TResult>(Promise<T> promise, ref T value, in TResult result, ref uint pendingCount, int index,
-            ref PromiseRefBase.MergePromiseT<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
+            ref PromiseRefBase.MergePromise<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
         {
             if (promise._ref == null)
             {
@@ -217,80 +219,34 @@ namespace Proto.Promises
                     => MarkReady(totalWaiters, ref _waitCount, Promise.State.Resolved);
             }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            internal sealed partial class MergePromiseVoid : MergePromiseBase<VoidResult>
-            {
-                [MethodImpl(InlineOption)]
-                private static MergePromiseVoid GetOrCreateInstance()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseVoid>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new MergePromiseVoid()
-                        : obj.UnsafeAs<MergePromiseVoid>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static MergePromiseVoid GetOrCreate()
-                {
-                    var promise = GetOrCreateInstance();
-                    promise.Reset();
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
-                    {
-                        Dispose();
-                        ObjectPool.MaybeRepool(this);
-                    }
-                }
-
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
-                {
-                    handler.SetCompletionState(state);
-                    bool isComplete = state == Promise.State.Resolved
-                        ? RemoveWaiterAndGetIsComplete(handler)
-                        : TrySetComplete(handler);
-                    if (isComplete)
-                    {
-                        _rejectContainer = handler._rejectContainer;
-                        handler.SuppressRejection = true;
-                        handler.MaybeDispose();
-                        InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
-                        HandleNextInternal(state);
-                        return;
-                    }
-                    handler.MaybeReportUnhandledAndDispose(state);
-                    MaybeDispose();
-                }
-            }
-
-            internal static MergePromiseVoid GetOrCreateAllPromiseVoid()
-                => MergePromiseVoid.GetOrCreate();
-
-            internal sealed partial class MergePromiseT<TResult> : MergePromiseBase<TResult>
+            internal sealed partial class MergePromise<TResult> : MergePromiseBase<TResult>
             {
                 private static GetResultDelegate<TResult> s_getResult;
 
                 [MethodImpl(InlineOption)]
-                private static MergePromiseT<TResult> GetOrCreate()
+                private static MergePromise<TResult> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<TResult>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new MergePromiseT<TResult>()
-                        : obj.UnsafeAs<MergePromiseT<TResult>>();
+                        ? new MergePromise<TResult>()
+                        : obj.UnsafeAs<MergePromise<TResult>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static MergePromiseT<TResult> GetOrCreate(in TResult value, GetResultDelegate<TResult> getResultFunc)
+                internal static MergePromise<TResult> GetOrCreate(in TResult value, GetResultDelegate<TResult> getResultFunc)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._result = value;
+                    return promise;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static MergePromise<TResult> GetOrCreateVoid()
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
                     return promise;
                 }
 
@@ -350,9 +306,12 @@ namespace Proto.Promises
                 }
             }
 
+            internal static MergePromise<VoidResult> GetOrCreateAllPromiseVoid()
+                => MergePromise<VoidResult>.GetOrCreateVoid();
+
             [MethodImpl(InlineOption)]
-            internal static MergePromiseT<TResult> GetOrCreateMergePromise<TResult>(in TResult value, GetResultDelegate<TResult> getResultFunc)
-                => MergePromiseT<TResult>.GetOrCreate(value, getResultFunc);
+            internal static MergePromise<TResult> GetOrCreateMergePromise<TResult>(in TResult value, GetResultDelegate<TResult> getResultFunc)
+                => MergePromise<TResult>.GetOrCreate(value, getResultFunc);
 
             internal sealed partial class MergeSettledPromise<TResult> : MergePromiseBase<TResult>
             {
