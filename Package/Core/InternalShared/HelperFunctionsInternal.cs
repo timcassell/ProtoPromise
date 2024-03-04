@@ -155,8 +155,8 @@ namespace Proto.Promises
                         {
                             uValue -= addOrSubtract;
                         }
-                        newValue = (int) uValue;
                     }
+                    newValue = (int) uValue;
                 } while (Interlocked.CompareExchange(ref location, newValue, initialValue) != initialValue);
                 return newValue;
             }

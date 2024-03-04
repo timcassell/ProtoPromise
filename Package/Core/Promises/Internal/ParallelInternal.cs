@@ -261,6 +261,7 @@ namespace Proto.Promises
 
                 internal override void MaybeDispose()
                 {
+                    ValidateNoPending();
                     Dispose();
                     _body = default(TParallelBody);
                     _synchronizationContext = null;
@@ -377,7 +378,7 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
-                    RemovePending(handler);
+                    RemoveComplete(handler);
                     var rejectContainer = handler._rejectContainer;
                     handler.SuppressRejection = true;
                     handler.SetCompletionState(state);
@@ -454,8 +455,9 @@ namespace Proto.Promises
                     }
                 }
 
+                partial void ValidateNoPending();
                 partial void AddPending(PromiseRefBase pendingPromise);
-                partial void RemovePending(PromiseRefBase completePromise);
+                partial void RemoveComplete(PromiseRefBase completePromise);
             } // class PromiseParallelForEach
         } // class PromiseRefBase
     } // class Internal

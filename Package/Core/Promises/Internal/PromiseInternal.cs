@@ -2073,69 +2073,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromisePassThrough : HandleablePromiseBase, ILinked<PromisePassThrough>
+            internal sealed partial class PromisePassThrough : HandleablePromiseBase
             {
-                PromisePassThrough ILinked<PromisePassThrough>.Next
-                {
-                    [MethodImpl(InlineOption)]
-                    get { return _next.UnsafeAs<PromisePassThrough>(); }
-                    [MethodImpl(InlineOption)]
-                    set { _next = value; }
-                }
-
-                internal PromiseRefBase Owner
-                {
-                    [MethodImpl(InlineOption)]
-                    get
-                    {
-                        ThrowIfInPool(this);
-                        return _owner;
-                    }
-                }
-
-                internal int Index
-                {
-                    [MethodImpl(InlineOption)]
-                    get
-                    {
-                        ThrowIfInPool(this);
-                        return _index;
-                    }
-                }
-
-                internal short Id
-                {
-                    [MethodImpl(InlineOption)]
-                    get
-                    {
-                        ThrowIfInPool(this);
-                        return _id;
-                    }
-                }
-
-                private PromisePassThrough() { }
-
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 ~PromisePassThrough()
                 {
-                    try
+                    if (!_disposed)
                     {
-                        if (!_disposed)
-                        {
-                            // For debugging. This should never happen.
-                            string message = "A PromisePassThrough was garbage collected without it being released."
-                                + " _id: " + _id + ", _index: " + _index + ", Owner: " + Owner
-                                ;
-                            ReportRejection(new UnreleasedObjectException(message), Owner);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // This should never happen.
-                        ReportRejection(e, Owner);
+                        // For debugging. This should never happen.
+                        string message = $"A PromisePassThrough was garbage collected without it being released. _index: {_index}, _owner: {_owner}, _next: {_next}";
+                        ReportRejection(new UnreleasedObjectException(message), _owner);
                     }
                 }
 #endif
+
+                private PromisePassThrough() { }
 
                 [MethodImpl(InlineOption)]
                 private static PromisePassThrough GetOrCreate()
@@ -2146,31 +2098,25 @@ namespace Proto.Promises
                         : obj.UnsafeAs<PromisePassThrough>();
                 }
 
-                internal static PromisePassThrough GetOrCreate(Promise owner, int index)
+                [MethodImpl(InlineOption)]
+                internal static PromisePassThrough GetOrCreate(PromiseRefBase owner, PromiseRefBase target, int index)
                 {
                     var passThrough = GetOrCreate();
-                    passThrough._next = null;
-                    passThrough._owner = owner._ref;
-                    passThrough._id = owner._id;
+                    passThrough._next = target;
                     passThrough._index = index;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    passThrough._owner = owner;
                     passThrough._disposed = false;
 #endif
                     return passThrough;
                 }
 
-                internal void SetTargetAndAddToOwner(PromiseRefBase target)
-                {
-                    ThrowIfInPool(this);
-                    _target = target;
-                    _owner.HookupNewWaiter(_id, this);
-                }
-
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
-                    ThrowIfInPool(this);
-                    handler.SetCompletionState(state);
-                    _target.Handle(handler, state, Index);
+                    var target = _next;
+                    var index = _index;
+                    Dispose();
+                    target.Handle(handler, state, index);
                 }
 
                 internal void Dispose()
@@ -2178,80 +2124,13 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    _owner = null;
                     _disposed = true;
 #endif
-                    _owner = null;
-                    _target = null;
                     ObjectPool.MaybeRepool(this);
                 }
-            } // PromisePassThrough
-
-            internal static void MaybeMarkAwaitedAndDispose(PromiseRefBase promise, short id, bool suppressRejection)
-            {
-                if (promise != null)
-                {
-                    // Suppress rejection before dispose, since the dispose checks the flag. This may still set the flag if the id doesn't match, but that's not a big deal if it happens.
-                    // We only enable SuppressRejection, never disable.
-                    promise.SuppressRejection |= suppressRejection;
-                    promise.MaybeMarkAwaitedAndDispose(id);
-                }
-            }
-        } // PromiseRefBase
-
-        [MethodImpl(InlineOption)]
-        internal static void MaybeMarkAwaitedAndDispose(PromiseRefBase promise, short id, bool suppressRejection)
-        {
-            PromiseRefBase.MaybeMarkAwaitedAndDispose(promise, id, suppressRejection);
-        }
-
-        internal static void PrepareForMerge(Promise promise, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs, int index, ref int pendingAwaits)
-        {
-            if (promise._ref != null)
-            {
-                passThroughs.Push(PromiseRefBase.PromisePassThrough.GetOrCreate(promise, index));
-                checked
-                {
-                    ++pendingAwaits;
-                }
-            }
-        }
-
-        internal static void PrepareForMerge<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs, int index, ref int pendingAwaits)
-        {
-            if (promise._ref == null)
-            {
-                value = promise._result;
-            }
-            else
-            {
-                passThroughs.Push(PromiseRefBase.PromisePassThrough.GetOrCreate(promise, index));
-                checked
-                {
-                    ++pendingAwaits;
-                }
-            }
-        }
-
-        internal static bool TryPrepareForRace(Promise promise, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs, int index)
-        {
-            if (promise._ref != null)
-            {
-                passThroughs.Push(PromiseRefBase.PromisePassThrough.GetOrCreate(promise, index));
-                return true;
-            }
-            return false;
-        }
-
-        internal static bool TryPrepareForRace<T>(Promise<T> promise, ref T value, ref ValueLinkedStack<PromiseRefBase.PromisePassThrough> passThroughs, int index)
-        {
-            if (promise._ref == null)
-            {
-                value = promise._result;
-                return false;
-            }
-            passThroughs.Push(PromiseRefBase.PromisePassThrough.GetOrCreate(promise, index));
-            return true;
-        }
+            } // class PromisePassThrough
+        } // class PromiseRefBase
 
         [MethodImpl(InlineOption)]
         internal static Promise CreateCanceled()
@@ -2280,5 +2159,5 @@ namespace Proto.Promises
 #endif
             return new Promise<T>(promise, promise.Id);
         }
-    } // Internal
+    } // class Internal
 }
