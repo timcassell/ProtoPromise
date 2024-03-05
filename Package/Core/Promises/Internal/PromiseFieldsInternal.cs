@@ -385,13 +385,21 @@ namespace Proto.Promises
 
             partial class PromisePassThrough : HandleablePromiseBase
             {
-                private int _index;
+                protected int _index;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                private PromiseRefBase _owner;
-                private bool _disposed;
+                protected PromiseRefBase _owner;
+                protected bool _disposed;
 #endif
             }
-#endregion
+
+            partial class PromisePassThroughForAll : PromisePassThrough
+            {
+#if !(PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
+                private PromiseRefBase _owner;
+#endif
+                private short _id;
+            }
+            #endregion
 
             partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
             {

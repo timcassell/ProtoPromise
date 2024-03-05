@@ -118,6 +118,74 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
+            internal sealed partial class PromisePassThroughForAll : PromisePassThrough, ILinked<PromisePassThroughForAll>
+            {
+                PromisePassThroughForAll ILinked<PromisePassThroughForAll>.Next
+                {
+                    get => _next.UnsafeAs<PromisePassThroughForAll>();
+                    set => _next = value;
+                }
+
+                internal PromiseRefBase Owner
+                {
+                    [MethodImpl(InlineOption)]
+                    get => _owner;
+                }
+
+                private PromisePassThroughForAll() { }
+
+                [MethodImpl(InlineOption)]
+                private static PromisePassThroughForAll GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromisePassThroughForAll>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromisePassThroughForAll()
+                        : obj.UnsafeAs<PromisePassThroughForAll>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static PromisePassThroughForAll GetOrCreate(PromiseRefBase owner, short id, int index)
+                {
+                    var passThrough = GetOrCreate();
+                    passThrough._next = null;
+                    passThrough._index = index;
+                    passThrough._owner = owner;
+                    passThrough._id = id;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    passThrough._disposed = false;
+#endif
+                    return passThrough;
+                }
+
+                internal void Hookup(PromiseRefBase target)
+                {
+                    ThrowIfInPool(this);
+                    _next = target;
+                    _owner.HookupNewWaiter(_id, this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    var target = _next;
+                    var index = _index;
+                    Dispose();
+                    target.Handle(handler, state, index);
+                }
+
+                private void Dispose()
+                {
+                    ThrowIfInPool(this);
+                    _owner = null;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    _disposed = true;
+#endif
+                    ObjectPool.MaybeRepool(this);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
                 partial void AddPending(PromiseRefBase pendingPromise);
@@ -151,17 +219,19 @@ namespace Proto.Promises
                     return false;
                 }
 
-                protected void AddWaiterForAll(PromiseRefBase promise, short id, int index)
+                [MethodImpl(InlineOption)]
+                protected void AddWaiterForAll(PromisePassThroughForAll passthrough)
                 {
-                    AddPending(promise);
-                    var passthrough = PromisePassThrough.GetOrCreate(promise, this, index);
-                    promise.HookupNewWaiter(id, passthrough);
+                    AddPending(passthrough.Owner);
+                    passthrough.Hookup(this);
                 }
 
                 internal void AddWaiterWithIndex(PromiseRefBase promise, short id, int index)
                 {
                     InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
-                    AddWaiterForAll(promise, id, index);
+                    AddPending(promise);
+                    var passthrough = PromisePassThrough.GetOrCreate(promise, this, index);
+                    promise.HookupNewWaiter(id, passthrough);
                 }
 
                 internal void AddWaiter(PromiseRefBase promise, short id)
@@ -261,18 +331,19 @@ namespace Proto.Promises
                 internal static MergePromise<TResult> GetOrCreateAll(
                     TResult value,
                     GetResultDelegate<TResult> getResultFunc,
-                    ReadOnlySpan<(PromiseRefBase _ref, short id, int index)> promises)
+                    ValueLinkedStack<PromisePassThroughForAll> passthroughs,
+                    int waitCount)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._result = value;
-                    promise._waitCount = promises.Length;
-                    unchecked { promise._retainCounter = promises.Length + 1; }
-                    foreach (var (_ref, id, index) in promises)
+                    promise._waitCount = waitCount;
+                    unchecked { promise._retainCounter = waitCount + 1; }
+                    do
                     {
-                        promise.AddWaiterForAll(_ref, id, index);
-                    }
+                        promise.AddWaiterForAll(passthroughs.Pop());
+                    } while (passthroughs.IsNotEmpty);
                     return promise;
                 }
 
@@ -344,8 +415,9 @@ namespace Proto.Promises
             internal static MergePromise<IList<TResult>> GetOrCreateAllPromise<TResult>(
                 IList<TResult> value,
                 GetResultDelegate<IList<TResult>> getResultFunc,
-                ReadOnlySpan<(PromiseRefBase _ref, short id, int index)> promises)
-                => MergePromise<IList<TResult>>.GetOrCreateAll(value, getResultFunc, promises);
+                ValueLinkedStack<PromisePassThroughForAll> passthroughs,
+                uint waitCount)
+                => MergePromise<IList<TResult>>.GetOrCreateAll(value, getResultFunc, passthroughs, unchecked((int) waitCount));
 
             internal sealed partial class MergeSettledPromise<TResult> : MergePromiseBase<TResult>
             {
@@ -374,18 +446,19 @@ namespace Proto.Promises
                 internal static MergeSettledPromise<TResult> GetOrCreateAll(
                     TResult value,
                     GetResultContainerDelegate<TResult> getResultFunc,
-                    ReadOnlySpan<(PromiseRefBase _ref, short id, int index)> promises)
+                    ValueLinkedStack<PromisePassThroughForAll> passthroughs,
+                    int waitCount)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._result = value;
-                    promise._waitCount = promises.Length;
-                    unchecked { promise._retainCounter = promises.Length + 1; }
-                    foreach (var (_ref, id, index) in promises)
+                    promise._waitCount = waitCount;
+                    unchecked { promise._retainCounter = waitCount + 1; }
+                    do
                     {
-                        promise.AddWaiterForAll(_ref, id, index);
-                    }
+                        promise.AddWaiterForAll(passthroughs.Pop());
+                    } while (passthroughs.IsNotEmpty);
                     return promise;
                 }
 
@@ -420,18 +493,12 @@ namespace Proto.Promises
                 => MergeSettledPromise<TResult>.GetOrCreate(value, getResultFunc);
 
             [MethodImpl(InlineOption)]
-            internal static MergeSettledPromise<IList<Promise.ResultContainer>> GetOrCreateAllSettledPromise(
-                IList<Promise.ResultContainer> value,
-                GetResultContainerDelegate<IList<Promise.ResultContainer>> getResultFunc,
-                ReadOnlySpan<(PromiseRefBase _ref, short id, int index)> promises)
-                => MergeSettledPromise<IList<Promise.ResultContainer>>.GetOrCreateAll(value, getResultFunc, promises);
-
-            [MethodImpl(InlineOption)]
-            internal static MergeSettledPromise<IList<Promise<TResult>.ResultContainer>> GetOrCreateAllSettledPromise<TResult>(
-                IList<Promise<TResult>.ResultContainer> value,
-                GetResultContainerDelegate<IList<Promise<TResult>.ResultContainer>> getResultFunc,
-                ReadOnlySpan<(PromiseRefBase _ref, short id, int index)> promises)
-                => MergeSettledPromise<IList<Promise<TResult>.ResultContainer>>.GetOrCreateAll(value, getResultFunc, promises);
+            internal static MergeSettledPromise<IList<TResultContainer>> GetOrCreateAllSettledPromise<TResultContainer>(
+                IList<TResultContainer> value,
+                GetResultContainerDelegate<IList<TResultContainer>> getResultFunc,
+                ValueLinkedStack<PromisePassThroughForAll> passthroughs,
+                uint waitCount)
+                => MergeSettledPromise<IList<TResultContainer>>.GetOrCreateAll(value, getResultFunc, passthroughs, unchecked((int) waitCount));
         } // class PromiseRefBase
     } // class Internal
 }

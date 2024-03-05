@@ -2073,7 +2073,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromisePassThrough : HandleablePromiseBase
+            internal partial class PromisePassThrough : HandleablePromiseBase
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 ~PromisePassThrough()
@@ -2087,7 +2087,7 @@ namespace Proto.Promises
                 }
 #endif
 
-                private PromisePassThrough() { }
+                protected PromisePassThrough() { }
 
                 [MethodImpl(InlineOption)]
                 private static PromisePassThrough GetOrCreate()
@@ -2119,10 +2119,9 @@ namespace Proto.Promises
                     target.Handle(handler, state, index);
                 }
 
-                internal void Dispose()
+                private void Dispose()
                 {
                     ThrowIfInPool(this);
-
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     _owner = null;
                     _disposed = true;

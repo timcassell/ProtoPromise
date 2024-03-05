@@ -520,40 +520,41 @@ namespace Proto.Promises
                 ValidateElement(p, "promises", 1);
 
                 // In order to prevent a race condition with the list being expanded and results being assigned concurrently,
-                // we put each promise into a temporary collection so that we can make sure the list's size is correct before hooking up any promises.
-                // We just store the ref, id, and index so we don't need to consume extra memory for the result.
-                using (var tempCollection = new TempCollectionBuilder<(Internal.PromiseRefBase _ref, short id, int index)>(1))
+                // we create the passthroughs and link them together in a queue before creating the return promise
+                // so that we can make sure the list's size is correct before hooking up any promises.
+                var passthroughs = new Internal.ValueLinkedQueue<Internal.PromiseRefBase.PromisePassThroughForAll>(
+                    Internal.PromiseRefBase.PromisePassThroughForAll.GetOrCreate(p._ref, p._id, index));
+                uint waitCount = 1;
+                while (promises.MoveNext())
                 {
-                    tempCollection.Add((p._ref, p._id, index));
-                    while (promises.MoveNext())
-                    {
-                        index = i;
-                        ++i;
-                        // Make sure list has the same count as promises.
-                        if (listSize < i)
-                        {
-                            ++listSize;
-                            valueContainer.Add(default);
-                        }
-                        p = promises.Current;
-                        ValidateElement(p, "promises", 1);
-                        if (p._ref == null)
-                        {
-                            valueContainer[index] = p._result;
-                        }
-                        else
-                        {
-                            tempCollection.Add((p._ref, p._id, index));
-                        }
-                    }
+                    index = i;
+                    ++i;
                     // Make sure list has the same count as promises.
-                    while (listSize > i)
+                    if (listSize < i)
                     {
-                        valueContainer.RemoveAt(--listSize);
+                        ++listSize;
+                        valueContainer.Add(default);
                     }
-                    var promise = Internal.PromiseRefBase.GetOrCreateAllPromise(valueContainer, GetAllResultFunc, tempCollection.ReadOnlySpan);
-                    return new Promise<IList<T>>(promise, promise.Id);
+                    p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (p._ref == null)
+                    {
+                        valueContainer[index] = p._result;
+                    }
+                    else
+                    {
+                        checked { ++waitCount; }
+                        passthroughs.EnqueueUnsafe(
+                            Internal.PromiseRefBase.PromisePassThroughForAll.GetOrCreate(p._ref, p._id, index));
+                    }
                 }
+                // Make sure list has the same count as promises.
+                while (listSize > i)
+                {
+                    valueContainer.RemoveAt(--listSize);
+                }
+                var promise = Internal.PromiseRefBase.GetOrCreateAllPromise(valueContainer, GetAllResultFunc, passthroughs.MoveElementsToStack(), waitCount);
+                return new Promise<IList<T>>(promise, promise.Id);
             }
         }
 
@@ -698,40 +699,41 @@ namespace Proto.Promises
                 ValidateElement(p, "promises", 1);
 
                 // In order to prevent a race condition with the list being expanded and results being assigned concurrently,
-                // we put each promise into a temporary collection so that we can make sure the list's size is correct before hooking up any promises.
-                // We just store the ref, id, and index so we don't need to consume extra memory for the result.
-                using (var tempCollection = new TempCollectionBuilder<(Internal.PromiseRefBase _ref, short id, int index)>(1))
+                // we create the passthroughs and link them together in a queue before creating the return promise
+                // so that we can make sure the list's size is correct before hooking up any promises.
+                var passthroughs = new Internal.ValueLinkedQueue<Internal.PromiseRefBase.PromisePassThroughForAll>(
+                    Internal.PromiseRefBase.PromisePassThroughForAll.GetOrCreate(p._ref, p._id, index));
+                uint waitCount = 1;
+                while (promises.MoveNext())
                 {
-                    tempCollection.Add((p._ref, p._id, index));
-                    while (promises.MoveNext())
-                    {
-                        index = i;
-                        ++i;
-                        // Make sure list has the same count as promises.
-                        if (listSize < i)
-                        {
-                            ++listSize;
-                            valueContainer.Add(default);
-                        }
-                        p = promises.Current;
-                        ValidateElement(p, "promises", 1);
-                        if (p._ref == null)
-                        {
-                            valueContainer[index] = p._result;
-                        }
-                        else
-                        {
-                            tempCollection.Add((p._ref, p._id, index));
-                        }
-                    }
+                    index = i;
+                    ++i;
                     // Make sure list has the same count as promises.
-                    while (listSize > i)
+                    if (listSize < i)
                     {
-                        valueContainer.RemoveAt(--listSize);
+                        ++listSize;
+                        valueContainer.Add(default);
                     }
-                    var promise = Internal.PromiseRefBase.GetOrCreateAllSettledPromise(valueContainer, GetAllResultContainerFunc, tempCollection.ReadOnlySpan);
-                    return new Promise<IList<ResultContainer>>(promise, promise.Id);
+                    p = promises.Current;
+                    ValidateElement(p, "promises", 1);
+                    if (p._ref == null)
+                    {
+                        valueContainer[index] = p._result;
+                    }
+                    else
+                    {
+                        checked { ++waitCount; }
+                        passthroughs.EnqueueUnsafe(
+                            Internal.PromiseRefBase.PromisePassThroughForAll.GetOrCreate(p._ref, p._id, index));
+                    }
                 }
+                // Make sure list has the same count as promises.
+                while (listSize > i)
+                {
+                    valueContainer.RemoveAt(--listSize);
+                }
+                var promise = Internal.PromiseRefBase.GetOrCreateAllSettledPromise(valueContainer, GetAllResultContainerFunc, passthroughs.MoveElementsToStack(), waitCount);
+                return new Promise<IList<ResultContainer>>(promise, promise.Id);
             }
         }
 
