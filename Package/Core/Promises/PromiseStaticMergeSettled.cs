@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0074 // Use compound assignment
 
+using Proto.Promises.Collections;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -154,38 +155,42 @@ namespace Proto.Promises
 
             HookupMaybePending:
                 ValidateElement(p, "promises", 1);
-                var promise = Internal.PromiseRefBase.GetOrCreateMergeSettledPromise(valueContainer, GetAllResultContainerFunc);
-                uint pendingCount = 1;
-                promise.AddWaiterWithIndex(p._ref, p._id, index);
-                while (promises.MoveNext())
+
+                // In order to prevent a race condition with the list being expanded and results being assigned concurrently,
+                // we put each promise into a temporary collection so that we can make sure the list's size is correct before hooking up any promises.
+                // We just store the ref, id, and index so we don't need to consume extra memory for the result.
+                using (var tempCollection = new TempCollectionBuilder<(Internal.PromiseRefBase _ref, short id, int index)>(1))
                 {
-                    index = i;
-                    ++i;
+                    tempCollection.Add((p._ref, p._id, index));
+                    while (promises.MoveNext())
+                    {
+                        index = i;
+                        ++i;
+                        // Make sure list has the same count as promises.
+                        if (listSize < i)
+                        {
+                            ++listSize;
+                            valueContainer.Add(default);
+                        }
+                        p = promises.Current;
+                        ValidateElement(p, "promises", 1);
+                        if (p._ref == null)
+                        {
+                            valueContainer[index] = ResultContainer.Resolved;
+                        }
+                        else
+                        {
+                            tempCollection.Add((p._ref, p._id, index));
+                        }
+                    }
                     // Make sure list has the same count as promises.
-                    if (listSize < i)
+                    while (listSize > i)
                     {
-                        ++listSize;
-                        valueContainer.Add(default);
+                        valueContainer.RemoveAt(--listSize);
                     }
-                    p = promises.Current;
-                    ValidateElement(p, "promises", 1);
-                    if (p._ref == null)
-                    {
-                        valueContainer[index] = ResultContainer.Resolved;
-                    }
-                    else
-                    {
-                        checked { ++pendingCount; }
-                        promise.AddWaiterWithIndex(p._ref, p._id, index);
-                    }
+                    var promise = Internal.PromiseRefBase.GetOrCreateAllSettledPromise(valueContainer, GetAllResultContainerFunc, tempCollection.ReadOnlySpan);
+                    return new Promise<IList<ResultContainer>>(promise, promise.Id);
                 }
-                // Make sure list has the same count as promises.
-                while (listSize > i)
-                {
-                    valueContainer.RemoveAt(--listSize);
-                }
-                promise.MarkReady(pendingCount);
-                return new Promise<IList<ResultContainer>>(promise, promise.Id);
             }
         }
 
