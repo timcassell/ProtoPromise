@@ -97,19 +97,19 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise.ContinueAction<int>));
+                promise.ContinueWith(100, default(Action<int, Promise.ResultContainer>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise.ContinueFunc<int, bool>));
+                promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, bool>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise.ContinueFunc<int, Promise>));
+                promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, Promise>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise.ContinueFunc<int, Promise<bool>>));
+                promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, Promise<bool>>));
             });
 
             deferred.Resolve();
@@ -125,19 +125,19 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise<int>.ContinueAction<int>));
+                promise.ContinueWith(100, default(Action<int, Promise<int>.ResultContainer>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, bool>));
+                promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, bool>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, Promise>));
+                promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, Promise>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, Promise<bool>>));
+                promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, Promise<bool>>));
             });
 
             deferred.Resolve(1);
