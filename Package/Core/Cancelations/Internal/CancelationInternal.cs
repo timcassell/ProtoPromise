@@ -608,8 +608,9 @@ namespace Proto.Promises
                         // We should only dispose the source if we were the one that created it.
                         if (!_linkedToBclToken)
                         {
-                            // TODO: We can call _cancellationTokenSource.TryReset() in .Net 6+ instead of always creating a new one.
-                            // But this should only be done if we add a TryReset() API to our own CancelationSource, because if a user still holds an old token after this is reused, it could have cancelations triggered unexpectedly.
+                            // We *could* call _cancellationTokenSource.TryReset() in .Net 6+ instead of always creating a new one,
+                            // but if a user still holds an old token after this is reused, its cancelation state would be incorrect,
+                            // possibly causing cancelations to be triggered unexpectedly.
                             _bclSource.Dispose();
                         }
                         _bclSource = null;

@@ -324,34 +324,6 @@ namespace ProtoPromiseTests.APIs.Linq
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
-        // TODO: add these tests when Count and ToList and ToArray extensions are added.
-        //[Test]
-        //public void Select_IList_Count()
-        //{
-        //    var xs = ToAsyncEnumerableIList(new[] { 1, 2, 3, 4, 5 });
-        //    var ys = xs.Select(x => x * 2);
-
-        //    Assert.Equal(5, await ys.CountAsync());
-        //}
-
-        //[Test]
-        //public void Select_IList_ToList()
-        //{
-        //    var xs = ToAsyncEnumerableIList(new[] { 1, 2, 3, 4, 5 });
-        //    var ys = xs.Select(x => x * 2);
-
-        //    Assert.Equal(new[] { 2, 4, 6, 8, 10 }, await ys.ToListAsync());
-        //}
-
-        //[Test]
-        //public void Select_IList_ToArray()
-        //{
-        //    var xs = ToAsyncEnumerableIList(new[] { 1, 2, 3, 4, 5 });
-        //    var ys = xs.Select(x => x * 2);
-
-        //    Assert.Equal(new[] { 2, 4, 6, 8, 10 }, await ys.ToArrayAsync());
-        //}
-
         public enum ConfiguredType
         {
             NotConfigured,

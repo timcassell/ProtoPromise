@@ -535,9 +535,6 @@ namespace Proto.Promises
 
             protected void HandleNextInternal(Promise.State state)
             {
-                // TODO: Can we write the state before calling the next?
-                // This will require changing how GetIsCompleted is implemented, probably will need to check _next for PromiseCompletionSentinel instead of the State.
-
                 // We pass the state to the waiter instead of setting it here, because we check the state for completion, and we must have already swapped the _next field before setting the state.
                 // If this was not already awaited, the PendingAwaitSentinel will swap the field to PromiseCompletionSentinel and set the state. All other awaiters will just set the state.
                 ThrowIfInPool(this);
