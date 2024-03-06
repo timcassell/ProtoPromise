@@ -30,7 +30,7 @@ namespace Proto.Promises
             return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelBody<int>(body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
         }
 
-        /// <summary>Executes a for loop in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
+        /// <summary>Executes a for loop in which iterations may run in parallel.</summary>
         /// <param name="fromIndex">The start index, inclusive.</param>
         /// <param name="toIndex">The end index, exclusive.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
@@ -62,7 +62,7 @@ namespace Proto.Promises
             return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelCaptureBody<int, TCapture>(captureValue, body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
         }
 
-        /// <summary>Executes a for loop in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
+        /// <summary>Executes a for loop in which iterations may run in parallel.</summary>
         /// <param name="fromIndex">The start index, inclusive.</param>
         /// <param name="toIndex">The end index, exclusive.</param>
         /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
