@@ -348,6 +348,29 @@ namespace Proto.Promises
                 get { return _head != null; }
             }
 
+            [MethodImpl(InlineOption)]
+            internal ValueLinkedQueue(T head)
+            {
+                _head = head;
+                _tail = head;
+            }
+
+            // Only use if this is known to be not empty.
+            internal void EnqueueUnsafe(T item)
+            {
+                AssertNotInCollection(item);
+
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                if (_head == null)
+                {
+                    throw new System.InvalidOperationException("EnqueueUnsafe must only be used on a non-empty queue.");
+                }
+#endif
+
+                _tail.Next = item;
+                _tail = item;
+            }
+
             internal void Enqueue(T item)
             {
                 AssertNotInCollection(item);

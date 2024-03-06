@@ -8,6 +8,7 @@
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable CA1507 // Use nameof to express symbol names
 
+using Proto.Promises.Collections;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -517,9 +518,13 @@ namespace Proto.Promises
 
             HookupMaybePending:
                 ValidateElement(p, "promises", 1);
-                var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(valueContainer, GetAllResultFunc);
-                uint pendingCount = 1;
-                promise.AddWaiterWithIndex(p._ref, p._id, index);
+
+                // In order to prevent a race condition with the list being expanded and results being assigned concurrently,
+                // we create the passthroughs and link them together in a queue before creating the return promise
+                // so that we can make sure the list's size is correct before hooking up any promises.
+                var passthroughs = new Internal.ValueLinkedQueue<Internal.PromiseRefBase.PromisePassThroughForAll>(
+                    Internal.PromiseRefBase.PromisePassThroughForAll.GetOrCreate(p._ref, p._id, index));
+                uint waitCount = 1;
                 while (promises.MoveNext())
                 {
                     index = i;
@@ -538,8 +543,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        checked { ++pendingCount; }
-                        promise.AddWaiterWithIndex(p._ref, p._id, index);
+                        checked { ++waitCount; }
+                        passthroughs.EnqueueUnsafe(
+                            Internal.PromiseRefBase.PromisePassThroughForAll.GetOrCreate(p._ref, p._id, index));
                     }
                 }
                 // Make sure list has the same count as promises.
@@ -547,7 +553,7 @@ namespace Proto.Promises
                 {
                     valueContainer.RemoveAt(--listSize);
                 }
-                promise.MarkReady(pendingCount);
+                var promise = Internal.PromiseRefBase.GetOrCreateAllPromise(valueContainer, GetAllResultFunc, passthroughs.MoveElementsToStack(), waitCount);
                 return new Promise<IList<T>>(promise, promise.Id);
             }
         }
@@ -691,9 +697,13 @@ namespace Proto.Promises
 
             HookupMaybePending:
                 ValidateElement(p, "promises", 1);
-                var promise = Internal.PromiseRefBase.GetOrCreateMergeSettledPromise(valueContainer, GetAllResultContainerFunc);
-                uint pendingCount = 1;
-                promise.AddWaiterWithIndex(p._ref, p._id, index);
+
+                // In order to prevent a race condition with the list being expanded and results being assigned concurrently,
+                // we create the passthroughs and link them together in a queue before creating the return promise
+                // so that we can make sure the list's size is correct before hooking up any promises.
+                var passthroughs = new Internal.ValueLinkedQueue<Internal.PromiseRefBase.PromisePassThroughForAll>(
+                    Internal.PromiseRefBase.PromisePassThroughForAll.GetOrCreate(p._ref, p._id, index));
+                uint waitCount = 1;
                 while (promises.MoveNext())
                 {
                     index = i;
@@ -712,8 +722,9 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        checked { ++pendingCount; }
-                        promise.AddWaiterWithIndex(p._ref, p._id, index);
+                        checked { ++waitCount; }
+                        passthroughs.EnqueueUnsafe(
+                            Internal.PromiseRefBase.PromisePassThroughForAll.GetOrCreate(p._ref, p._id, index));
                     }
                 }
                 // Make sure list has the same count as promises.
@@ -721,7 +732,7 @@ namespace Proto.Promises
                 {
                     valueContainer.RemoveAt(--listSize);
                 }
-                promise.MarkReady(pendingCount);
+                var promise = Internal.PromiseRefBase.GetOrCreateAllSettledPromise(valueContainer, GetAllResultContainerFunc, passthroughs.MoveElementsToStack(), waitCount);
                 return new Promise<IList<ResultContainer>>(promise, promise.Id);
             }
         }
