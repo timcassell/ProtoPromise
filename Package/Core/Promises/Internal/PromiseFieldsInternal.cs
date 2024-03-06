@@ -33,18 +33,9 @@ namespace Proto.Promises
 {
     partial struct Promise
     {
-        /// <summary>
-        /// Internal use.
-        /// </summary>
         internal readonly Internal.PromiseRefBase _ref;
-        /// <summary>
-        /// Internal use.
-        /// </summary>
         internal readonly short _id;
 
-        /// <summary>
-        /// Internal use.
-        /// </summary>
         [MethodImpl(Internal.InlineOption)]
         internal Promise(Internal.PromiseRefBase promiseRef, short id)
         {
@@ -55,22 +46,10 @@ namespace Proto.Promises
 
     partial struct Promise<T>
     {
-        /// <summary>
-        /// Internal use.
-        /// </summary>
         internal readonly Internal.PromiseRefBase.PromiseRef<T> _ref;
-        /// <summary>
-        /// Internal use.
-        /// </summary>
         internal readonly T _result;
-        /// <summary>
-        /// Internal use.
-        /// </summary>
         internal readonly short _id;
 
-        /// <summary>
-        /// Internal use.
-        /// </summary>
         [MethodImpl(Internal.InlineOption)]
         internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef, short id)
         {
@@ -79,9 +58,6 @@ namespace Proto.Promises
             _id = id;
         }
 
-        /// <summary>
-        /// Internal use.
-        /// </summary>
         [MethodImpl(Internal.InlineOption)]
         internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef, short id, T result)
         {
@@ -90,9 +66,6 @@ namespace Proto.Promises
             _id = id;
         }
 
-        /// <summary>
-        /// Internal use.
-        /// </summary>
         [MethodImpl(Internal.InlineOption)]
         internal Promise(T result)
         {

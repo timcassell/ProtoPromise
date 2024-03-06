@@ -129,9 +129,6 @@ namespace Proto.Promises
         {
             private readonly Promise _promise;
 
-            /// <summary>
-            /// Internal use.
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             internal PromiseAwaiterVoid(in Promise promise)
             {
@@ -227,9 +224,6 @@ namespace Proto.Promises
         {
             private readonly Promise<T> _promise;
 
-            /// <summary>
-            /// Internal use.
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             internal PromiseAwaiter(in Promise<T> promise)
             {
@@ -326,9 +320,6 @@ namespace Proto.Promises
         {
             private readonly Promise _promise;
 
-            /// <summary>
-            /// Internal use.
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             internal PromiseNoThrowAwaiterVoid(in Promise promise)
             {
@@ -426,9 +417,6 @@ namespace Proto.Promises
         {
             private readonly Promise<T> _promise;
 
-            /// <summary>
-            /// Internal use.
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             internal PromiseNoThrowAwaiter(in Promise<T> promise)
             {

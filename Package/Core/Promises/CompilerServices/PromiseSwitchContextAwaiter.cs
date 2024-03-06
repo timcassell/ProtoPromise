@@ -23,9 +23,6 @@ namespace Proto.Promises.Async.CompilerServices
         private readonly SynchronizationContext _context;
         private readonly bool _forceAsync;
 
-        /// <summary>
-        /// Internal use.
-        /// </summary>
         [MethodImpl(Internal.InlineOption)]
         internal PromiseSwitchToContextAwaiter(SynchronizationContext context, bool forceAsync)
         {

@@ -21,13 +21,7 @@ namespace Proto.Promises
 #endif
     public readonly partial struct CancelationToken : IEquatable<CancelationToken>
     {
-        /// <summary>
-        /// FOR INTERNAL USE ONLY!
-        /// </summary>
         internal readonly Internal.CancelationRef _ref;
-        /// <summary>
-        /// FOR INTERNAL USE ONLY!
-        /// </summary>
         internal readonly int _id;
 
         /// <summary>
@@ -39,9 +33,6 @@ namespace Proto.Promises
             get { return default(CancelationToken); }
         }
 
-        /// <summary>
-        /// FOR INTERNAL USE ONLY!
-        /// </summary>
         internal CancelationToken(Internal.CancelationRef cancelationRef, int tokenId)
         {
             _ref = cancelationRef;

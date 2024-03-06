@@ -27,23 +27,14 @@ namespace Proto.Promises
                 get { return new ResultContainer(null, State.Resolved); }
             }
 
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
             internal readonly Promise<Internal.VoidResult>.ResultContainer _target;
 
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             internal ResultContainer(Internal.IRejectContainer rejectContainer, State state)
             {
                 _target = new Promise<Internal.VoidResult>.ResultContainer(default(Internal.VoidResult), rejectContainer, state);
             }
 
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             internal ResultContainer(in Promise<Internal.VoidResult>.ResultContainer target)
             {
@@ -107,16 +98,10 @@ namespace Proto.Promises
 #endif
         public readonly partial struct ResultContainer
         {
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
             internal readonly Internal.IRejectContainer _rejectContainer;
             private readonly Promise.State _state;
             private readonly T _result;
 
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             internal ResultContainer(in T result, Internal.IRejectContainer rejectContainer, Promise.State state)
             {

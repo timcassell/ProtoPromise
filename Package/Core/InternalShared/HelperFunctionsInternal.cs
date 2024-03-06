@@ -17,9 +17,6 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-    /// <summary>
-    /// Members of this type are meant for INTERNAL USE ONLY! Do not use in user code! Use the documented public APIs.
-    /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif

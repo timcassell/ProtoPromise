@@ -74,7 +74,7 @@ namespace Proto.Promises
             }
 
             /// <summary>
-            /// Internal use for implicit cast operator.
+            /// Used for implicit cast operator.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             internal DeferredBase(Internal.IDeferredPromise promise, short promiseId, int deferredId)
@@ -288,9 +288,6 @@ namespace Proto.Promises
                 }
             }
 
-            /// <summary>
-            /// Internal use.
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             internal Deferred(Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> promise, short promiseId, int deferredId)
             {
@@ -519,9 +516,6 @@ namespace Proto.Promises
                 }
             }
 
-            /// <summary>
-            /// Internal use.
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
             internal Deferred(Internal.PromiseRefBase.DeferredPromise<T> promise, short promiseId, int deferredId)
             {

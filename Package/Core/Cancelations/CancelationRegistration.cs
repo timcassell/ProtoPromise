@@ -22,9 +22,6 @@ namespace Proto.Promises
         private readonly int _nodeId;
         private readonly int _tokenId;
 
-        /// <summary>
-        /// FOR INTERNAL USE ONLY!
-        /// </summary>
         internal CancelationRegistration(Internal.CancelationRef cancelationRef, Internal.CancelationCallbackNode node, int nodeId, int tokenId)
         {
             _ref = cancelationRef;
